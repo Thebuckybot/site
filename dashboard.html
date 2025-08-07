@@ -8,18 +8,49 @@
   <script defer src="js/dashboard.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Bucky Dashboard</h1>
-    <div id="user-info"></div>
-  </header>
+  <div class="container">
+    <nav>
+      <div class="nav-left">
+        <img class="nav-pfp" src="pics/buckypfp.JPEG" alt="Bucky Profile Picture" />
+        <h1><a href="index.html">Bucky</a></h1>
+      </div>
 
-  <main>
-    <h2>Jouw servers</h2>
-    <div id="guilds-container"></div>
-  </main>
+      <button class="hamburger" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu">
+        <div></div>
+        <div></div>
+        <div></div>
+      </button>
 
-  <footer>
-    <a href="/logout">Uitloggen</a>
-  </footer>
+      <ul id="nav-menu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="tos.html">Terms of Service</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="http://localhost:5000/logout">Logout</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <h2>Your servers</h2>
+      <div id="user-info"></div>
+      <div id="guilds-container"></div>
+    </main>
+
+    <footer>
+      &copy; 2025 Bucky Bot. All rights reserved.
+    </footer>
+  </div>
+
+  <script>
+    const hamburger = document.querySelector('.hamburger');
+    const navMenu = document.getElementById('nav-menu');
+
+    hamburger.addEventListener('click', () => {
+      const expanded = hamburger.getAttribute('aria-expanded') === 'true' || false;
+      hamburger.setAttribute('aria-expanded', !expanded);
+
+      hamburger.classList.toggle('open');
+      navMenu.classList.toggle('open');
+    });
+  </script>
 </body>
 </html>

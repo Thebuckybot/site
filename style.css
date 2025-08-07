@@ -226,3 +226,60 @@ footer {
   font-size: 0.9rem;
   user-select: none;
 }
+
+
+
+
+
+
+.dashboard-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+.guild-card {
+  width: 250px;
+  background-color: #1e1e2f;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease-in-out;
+  cursor: pointer;
+  border: 3px solid transparent;
+  text-align: center;
+}
+
+.guild-card:hover {
+  transform: translateY(-5px);
+}
+
+.guild-card img {
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  margin-bottom: 1rem;
+}
+
+.guild-name {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 0.3rem;
+}
+
+.guild-id {
+  font-size: 0.9rem;
+  color: #aaaaaa;
+}
+
+.guild-card.green-border {
+  border-color: #00ff88;
+}
+
+.guild-card.red-border {
+  border-color: #ff5555;
+}
