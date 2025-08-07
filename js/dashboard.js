@@ -3,14 +3,14 @@ const userInfo = document.getElementById("user-info");
 
 const BOT_ID = "907664862493167680"; // Jouw Bucky bot client ID
 
-// ✅ Invite link genereren
+// Invite link genereren
 function getInviteURL() {
   const permissions = 8; // Of specifieker
   const scopes = "bot applications.commands";
   return `https://discord.com/oauth2/authorize?client_id=${BOT_ID}&scope=${scopes}&permissions=${permissions}`;
 }
 
-// ✅ Serverkaart genereren
+// Serverkaart genereren
 function createGuildCard(guild, botInGuild) {
   const card = document.createElement("div");
   card.className = "guild-card";
@@ -40,23 +40,25 @@ function createGuildCard(guild, botInGuild) {
   guildContainer.appendChild(card);
 }
 
-// ✅ Data ophalen van backend
+// Data ophalen van backend
 fetch("http://localhost:5000/api/me", { credentials: "include" })
   .then(res => res.json())
   .then(data => {
     if (!data.logged_in) {
-      window.location.href = "http://localhost:5000/login"; // of live URL naar je backend
+      // Redirect naar backend login, met terugsturen naar deze pagina na login
+      const redirectUrl = encodeURIComponent(window.location.href);
+      window.location.href = `http://localhost:5000/login?redirect=${redirectUrl}`;
       return;
     }
 
-    // 👤 Gebruiker tonen
+    // Gebruiker tonen
     const user = data.user;
     userInfo.innerHTML = `
       <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
       <span>${user.username}#${user.discriminator}</span>
     `;
 
-    // 🔍 Bucky zit alleen in servers waar bot == true
+    // Toon guilds waar de gebruiker in zit
     const guilds = data.guilds;
     for (const guild of guilds) {
       const botInGuild = guild.permissions && (guild.permissions & 0x20); // MANAGE_GUILD
@@ -65,6 +67,6 @@ fetch("http://localhost:5000/api/me", { credentials: "include" })
   })
   .catch(err => {
     console.error("Error loading dashboard:", err);
-    window.location.href = "http://localhost:5000/login"; // of live URL naar je backend
-
+    // Optioneel fallback
+    window.location.href = "/";
   });
