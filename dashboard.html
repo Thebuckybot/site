@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bucky Dashboard</title>
+</head>
+<body>
+  <h1>Welkom op je dashboard!</h1>
+  <div id="user-info"></div>
+
+  <script>
+    // Token uit de URL halen (optioneel)
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    const username = urlParams.get("username");
+    const id = urlParams.get("id");
+
+    if (username && id) {
+      document.getElementById("user-info").innerText = `Ingelogd als ${username} (ID: ${id})`;
+    } else {
+      document.getElementById("user-info").innerText = "Niet ingelogd.";
+    }
+  </script>
+</body>
+</html>
