@@ -1,24 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bucky Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="js/dashboard.js"></script>
 </head>
 <body>
-  <h1>Welkom op je dashboard!</h1>
-  <div id="user-info"></div>
+  <header>
+    <h1>Bucky Dashboard</h1>
+    <div id="user-info"></div>
+  </header>
 
-  <script>
-    // Token uit de URL halen (optioneel)
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get("token");
-    const username = urlParams.get("username");
-    const id = urlParams.get("id");
+  <main>
+    <h2>Jouw servers</h2>
+    <div id="guilds-container"></div>
+  </main>
 
-    if (username && id) {
-      document.getElementById("user-info").innerText = `Ingelogd als ${username} (ID: ${id})`;
-    } else {
-      document.getElementById("user-info").innerText = "Niet ingelogd.";
-    }
-  </script>
+  <footer>
+    <a href="/logout">Uitloggen</a>
+  </footer>
 </body>
 </html>
