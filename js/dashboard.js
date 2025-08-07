@@ -45,7 +45,7 @@ fetch("http://localhost:5000/api/me", { credentials: "include" })
   .then(res => res.json())
   .then(data => {
     if (!data.logged_in) {
-      window.location.href = "/login";
+      window.location.href = "http://localhost:5000/login"; // of live URL naar je backend
       return;
     }
 
@@ -65,5 +65,6 @@ fetch("http://localhost:5000/api/me", { credentials: "include" })
   })
   .catch(err => {
     console.error("Error loading dashboard:", err);
-    window.location.href = "/login";
+    window.location.href = "http://localhost:5000/login"; // of live URL naar je backend
+
   });
