@@ -40,26 +40,40 @@ function createGuildCard(guild, botInGuild) {
   guildContainer.appendChild(card);
 }
 
-// Data ophalen van backend
+// Eerst userdata ophalen van backend
 fetch("http://localhost:5000/api/me", { credentials: "include" })
   .then(res => res.json())
-  .then(data => {
+  .then(async data => {
     if (!data.logged_in) {
-      // Redirect naar backend login, met terugsturen naar deze pagina na login
       const redirectUrl = encodeURIComponent(window.location.href);
       window.location.href = `http://localhost:5000/login?redirect=${redirectUrl}`;
       return;
     }
 
-    // Gebruiker tonen
     const user = data.user;
     userInfo.innerHTML = `
       <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
       <span>${user.username}#${user.discriminator}</span>
     `;
 
-    // Toon guilds waar de gebruiker in zit
-    const guilds = data.guilds;
+    // Nu access token ophalen van backend
+    const tokenRes = await fetch("http://localhost:5000/api/token", { credentials: "include" });
+    if (!tokenRes.ok) {
+      console.error("Token ophalen mislukt");
+      return;
+    }
+    const { access_token } = await tokenRes.json();
+
+    // Guilds ophalen via Discord API met token
+    const guildRes = await fetch("https://discord.com/api/users/@me/guilds", {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+    if (!guildRes.ok) {
+      console.error("Guilds ophalen mislukt");
+      return;
+    }
+    const guilds = await guildRes.json();
+
     for (const guild of guilds) {
       const botInGuild = guild.permissions && (guild.permissions & 0x20); // MANAGE_GUILD
       createGuildCard(guild, botInGuild);
@@ -67,6 +81,5 @@ fetch("http://localhost:5000/api/me", { credentials: "include" })
   })
   .catch(err => {
     console.error("Error loading dashboard:", err);
-    // Optioneel fallback
     window.location.href = "/";
   });
