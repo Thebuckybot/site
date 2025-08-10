@@ -1,13 +1,15 @@
+import { API_URL } from "./config.js";
+
 const guildContainer = document.getElementById("guilds-container");
 const userInfo = document.getElementById("user-info");
 
-const BOT_ID = "907664862493167680"; // Jouw Bucky bot client ID
+const BOT_ID = "907664862493167680";
 
 // Invite link genereren
 function getInviteURL(guildId) {
-  const permissions = 8; // Admin permissies
+  const permissions = 8;
   const scopes = "bot applications.commands";
-  return `https://discord.com/oauth2/authorize?client_id=${BOT_ID}&scope=${scopes}&permissions=${permissions}&guild_id=${guildId}&response_type=code&redirect_uri=http://localhost:5000/callback`;
+  return `https://discord.com/oauth2/authorize?client_id=${BOT_ID}&scope=${scopes}&permissions=${permissions}&guild_id=${guildId}&response_type=code&redirect_uri=${API_URL}/callback`;
 }
 
 // Serverkaart genereren
@@ -40,7 +42,7 @@ function createGuildCard(guild, botInGuild) {
 }
 
 // Eerst user data ophalen van backend
-fetch("http://localhost:5000/api/me", { credentials: "include" })
+fetch(`${API_URL}/api/me`, { credentials: "include" })
   .then(res => res.json())
   .then(async data => {
     const navMenu = document.getElementById("nav-menu");
@@ -51,7 +53,7 @@ fetch("http://localhost:5000/api/me", { credentials: "include" })
       if (dashboardLink) dashboardLink.remove();
 
       const redirectUrl = encodeURIComponent(window.location.href);
-      window.location.href = `http://localhost:5000/login?redirect=${redirectUrl}`;
+      window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
       return;
     }
 
@@ -69,7 +71,7 @@ fetch("http://localhost:5000/api/me", { credentials: "include" })
     `;
 
     // Access token ophalen van backend
-    const tokenRes = await fetch("http://localhost:5000/api/token", { credentials: "include" });
+    const tokenRes = await fetch(`${API_URL}/api/token`, { credentials: "include" });
     if (!tokenRes.ok) {
       console.error("Token ophalen mislukt");
       return;
@@ -87,12 +89,12 @@ fetch("http://localhost:5000/api/me", { credentials: "include" })
     const guilds = await guildRes.json();
 
     // Backend: haal op waar bot in zit
-    const botGuildsRes = await fetch("http://localhost:5000/api/bot-guilds", { credentials: "include" });
-    const botGuilds = await botGuildsRes.json(); // array met guild_ids
+    const botGuildsRes = await fetch(`${API_URL}/api/bot-guilds`, { credentials: "include" });
+    const botGuilds = await botGuildsRes.json();
 
     // Alleen admin guilds tonen
     for (const guild of guilds) {
-      const isAdmin = guild.permissions && (guild.permissions & 0x8); // ADMINISTRATOR
+      const isAdmin = guild.permissions && (guild.permissions & 0x8);
       if (!isAdmin) continue;
 
       const botInGuild = botGuilds.includes(guild.id);

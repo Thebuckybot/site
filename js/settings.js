@@ -1,3 +1,5 @@
+import { API_URL } from "./config.js";
+
 const params = new URLSearchParams(window.location.search);
 const guildId = params.get("guild_id");
 
@@ -6,7 +8,7 @@ if (!guildId) {
     window.location.href = "dashboard.html";
 }
 
-fetch(`http://localhost:5000/api/guild-settings/${guildId}`, { credentials: "include" })
+fetch(`${API_URL}/api/guild-settings/${guildId}`, { credentials: "include" })
   .then(res => {
     if (res.status === 403) {
       alert("You do not have permission to view or change these settings.");
@@ -42,10 +44,8 @@ function renderSecuritySettings(securityData) {
     antiModeContainer.innerHTML = "";
 
     const punishmentSettings = securityData?.punishment_settings || {};
-    // Verwijder detectionThresholds hier en gebruik punishmentSettings in plaats daarvan.
     const detectionThresholds = securityData?.detection_thresholds || {};
 
-    // Combineer detectionThresholds in punishmentSettings om consistentie te behouden
     const allSettings = { ...punishmentSettings, ...detectionThresholds };
     
     const antiModes = {
@@ -109,7 +109,7 @@ function renderChannelSettings(channelCommandsData) {
     channelCommandsData.forEach(channel => {
         const channelDiv = document.createElement("div");
         channelDiv.className = "channel-card";
-        channelDiv.dataset.channelId = channel.channel_id;    // Zet channel_id hier
+        channelDiv.dataset.channelId = channel.channel_id;
         channelDiv.dataset.channelName = channel.channel_name || 'Unknown channel';
 
         const disabledCommandsHTML = channel.disabled_commands.map(cmd => `
@@ -150,7 +150,7 @@ document.getElementById("save-settings").addEventListener("click", () => {
 
   console.log("Payload die naar de backend wordt gestuurd:", JSON.stringify(payload, null, 2));
 
-  fetch(`http://localhost:5000/api/guild-settings/${guildId}`, {
+  fetch(`${API_URL}/api/guild-settings/${guildId}`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json; charset=utf-8" },
@@ -170,8 +170,6 @@ document.getElementById("save-settings").addEventListener("click", () => {
   .then(data => {
       if (data && data.success) {
           alert(data.message || "Settings saved!");
-          // Optioneel: herlaad de pagina om de wijzigingen te zien.
-          // window.location.reload(); 
       }
   })
   .catch(err => {
@@ -187,7 +185,6 @@ function getSecurityPayload() {
     document.querySelectorAll('.punishment-block').forEach(block => {
         const limitInput = block.querySelector('input[type="number"]');
         if (limitInput) {
-            // Voeg de limiet direct toe aan het punishmentSettings object
             punishmentSettings[limitInput.dataset.key] = parseInt(limitInput.value, 10);
         }
 
@@ -210,7 +207,6 @@ function getSecurityPayload() {
 
     return {
         ...antiModes,
-        // Nu is er alleen punishment_settings, geen aparte detection_thresholds
         punishment_settings: punishmentSettings
     };
 }
@@ -219,7 +215,7 @@ function getChannelCommandsPayload() {
     const channelCommandsData = [];
     document.querySelectorAll('.channel-card').forEach(card => {
         const channelId = card.dataset.channelId;
-        const channelName = card.dataset.channelName; // Haal de naam op die we eerder hebben opgeslagen.
+        const channelName = card.dataset.channelName;
         
         const disabledCommands = Array.from(card.querySelectorAll('.disabled-commands-list input:checked'))
             .map(input => input.value);
@@ -229,7 +225,7 @@ function getChannelCommandsPayload() {
         
         channelCommandsData.push({
             channel_id: channelId,
-            channel_name: channelName, // Voor debug of overzicht
+            channel_name: channelName,
             disabled_commands: disabledCommands,
             disabled_cogs: disabledCogs
         });

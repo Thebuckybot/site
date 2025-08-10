@@ -1,7 +1,9 @@
+import { API_URL } from "./config.js";
+
 document.addEventListener("DOMContentLoaded", () => {
   const navMenu = document.getElementById("nav-menu");
 
-  fetch("http://localhost:5000/api/me", { credentials: "include" })
+  fetch(`${API_URL}/api/me`, { credentials: "include" })
     .then(res => res.json())
     .then(data => {
       // Verwijder bestaande login/dashboard elementen
@@ -19,12 +21,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Logout link toevoegen
         const logoutLi = document.createElement("li");
-        logoutLi.innerHTML = `<a href="http://localhost:5000/logout">Logout</a>`;
+        logoutLi.innerHTML = `<a href="${API_URL}/logout">Logout</a>`;
         navMenu.appendChild(logoutLi);
       } else {
         // Login knop toevoegen
         const loginLi = document.createElement("li");
-        loginLi.innerHTML = `<a id="login-link" href="http://localhost:5000/login">
+        loginLi.innerHTML = `<a id="login-link" href="${API_URL}/login">
           <button id="discord-login-button">Login</button>
         </a>`;
         navMenu.appendChild(loginLi);
