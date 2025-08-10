@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Server Settings</title>
+  <link rel="stylesheet" href="settings.css" />
+</head>
+<body>
+  <header id="guild-header">
+    <div class="guild-info">
+      <img id="guild-icon" alt="Guild Icon" />
+      <h1 id="guild-name"></h1>
+    </div>
+    <a href="dashboard.html" class="back-button">← Dashboard</a>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>🔒 Security Settings</h2>
+      <div id="anti-mode-toggles">
+        </div>
+      <div class="punishment-settings">
+          <h3>Punishment Settings</h3>
+          <div id="punishment-options">
+              </div>
+      </div>
+    </section>
+
+    <section class="card">
+        <h2>🚫 Disabled Commands & Cogs per Channel</h2>
+        <div id="channel-settings-container">
+            </div>
+    </section>
+
+    <button id="save-settings">💾 Save</button>
+  </main>
+
+  <script src="js/settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+/* Globale stijlen & Variabelen */
+:root {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #1a1a2e;
+    --card-bg: #1f203a;
+    --accent-red: #e63946;
+    --accent-blue: #4a82ff;
+    --text-light: #e0e0e0;
+    --text-muted: #a0a0a0;
+    --border-color: #3b3b5c;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-light);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex-grow: 1;
+    padding: 2rem 1rem;
+    max-width: 900px;
+    width: 100%;
+    margin: 2rem auto;
+}
+
+/* --------------------
+   HEADER STIJLEN
+   -------------------- */
+#guild-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    margin: 2rem auto 2rem;
+    max-width: 900px;
+    width: 100%;
+    border: 1px solid var(--border-color);
+}
+
+.guild-info {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+#guild-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--accent-red);
+    box-shadow: 0 0 10px rgba(230, 57, 71, 0.5);
+}
+
+#guild-name {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.back-button {
+  color: var(--text-light);
+  text-decoration: none;
+  font-weight: bold;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  background: linear-gradient(45deg, var(--accent-red), #ff6b6b);
+  box-shadow: 0 4px 10px rgba(230, 57, 71, 0.4);
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(230, 57, 71, 0.6);
+  text-decoration: none;
+}
+
+/* --------------------
+   ALGEMENE KAART- EN SECTIE STIJLEN
+   -------------------- */
+.card {
+    background-color: var(--card-bg);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+}
+
+.card h2 {
+    color: var(--accent-red);
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid rgba(230, 57, 71, 0.2);
+    padding-bottom: 0.75rem;
+}
+
+.card h3 {
+    font-size: 1.4rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--accent-blue);
+}
+
+/* --------------------
+   CONTROLES & INPUTS
+   -------------------- */
+#anti-mode-toggles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+#anti-mode-toggles label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: var(--bg-secondary);
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+#anti-mode-toggles label:hover {
+    background-color: #2a2a44;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+#anti-mode-toggles input[type="checkbox"] {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text-muted);
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#anti-mode-toggles input[type="checkbox"]:checked {
+    background-color: var(--accent-red);
+    border-color: var(--accent-red);
+}
+
+#anti-mode-toggles input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+}
+
+/* Punishment Settings - raster layout */
+#punishment-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.punishment-block {
+    background-color: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.punishment-block h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--accent-blue);
+    font-size: 1.2rem;
+}
+
+.punishment-block label {
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.punishment-block input[type="number"],
+.punishment-block select {
+    width: 100%;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+    padding: 0.75rem;
+    border-radius: 4px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.punishment-block input[type="number"]:focus,
+.punishment-block select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(74, 130, 255, 0.4);
+}
+
+/* --------------------
+   KANALEN STIJLEN
+   -------------------- */
+.channel-card {
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+}
+
+.channel-card h3 {
+    font-size: 1.5rem;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.channel-card h4 {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.channel-id {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    background-color: #2a2a44;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+}
+
+.disabled-commands-list, .disabled-cogs-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.disabled-commands-list label, .disabled-cogs-list label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    background-color: #2a2a44;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    transition: background-color 0.3s ease;
+}
+
+.disabled-commands-list label:hover, .disabled-cogs-list label:hover {
+    background-color: #3b3b5c;
+}
+
+/* --------------------
+   OPSLAAN KNOP
+   -------------------- */
+#save-settings {
+    display: block;
+    width: 100%;
+    padding: 1.25rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(90deg, #e63946, #c1272d);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: 0 6px 15px rgba(230, 57, 71, 0.4);
+}
+
+#save-settings:hover {
+    background: linear-gradient(90deg, #c1272d, #a8242a);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(230, 57, 71, 0.6);
+}
+
+/* --------------------
+   RESPONSIVE DESIGN
+   -------------------- */
+@media (max-width: 768px) {
+    #guild-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .back-button {
+      align-self: flex-end;
+    }
+}

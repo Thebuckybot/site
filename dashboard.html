@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bucky Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
-  <script defer src="js/dashboard.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bucky Dashboard</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <script defer src="js/dashboard.js"></script>
+    <script defer src="js/nav-auth.js"></script> <!-- Login/Dashboard nav script -->
 </head>
 <body>
-  <div class="container">
+  <div class="container dashboard-container-wrapper">
     <nav>
       <div class="nav-left">
         <img class="nav-pfp" src="pics/buckypfp.JPEG" alt="Bucky Profile Picture" />
@@ -21,19 +23,20 @@
         <div></div>
       </button>
 
+      <!-- Alleen vaste links die altijd zichtbaar zijn -->
       <ul id="nav-menu">
-        <li><a href="index.html">Home</a></li>
         <li><a href="tos.html">Terms of Service</a></li>
         <li><a href="privacy.html">Privacy Policy</a></li>
-        <li><a href="http://localhost:5000/logout">Logout</a></li>
+        <!-- Login/Dashboard knop wordt hier door nav-auth.js toegevoegd -->
       </ul>
     </nav>
 
-    <main>
-      <h2>Your servers</h2>
-      <div id="user-info"></div>
-      <div id="guilds-container"></div>
+    <main class="dashboard-main">
+        <h2>Your servers</h2>
+        <div id="user-info"></div>
+        <div id="guilds-container" class="dashboard-container"></div>
     </main>
+
 
     <footer>
       &copy; 2025 Bucky Bot. All rights reserved.
