@@ -249,7 +249,10 @@ async function loadDashboard() {
 }
 
 // Start
-window.addEventListener("DOMContentLoaded", loadDashboard);
+window.addEventListener("DOMContentLoaded", () => {
+    storeTokenFromUrl(); // <-- Token uit ?token=... opslaan
+    loadDashboard();
+});
 
 // Use a single export statement for all functions you want to make available
 export { apiFetch, storeTokenFromUrl };
