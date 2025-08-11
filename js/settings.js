@@ -32,10 +32,19 @@ async function loadSettings() {
     renderSecuritySettings(data.security);
     renderChannelSettings(data.channel_commands);
   } catch (err) {
-    console.error("Error loading settings:", err);
-    alert("An error occurred while loading the settings.");
-  }
+        console.error("Error loading settings:", err);
+        const errorDiv = document.getElementById("error-message");
+        const errorMessage = `An error occurred while loading the settings:\n${err.message || err.toString()}`;
+        if (errorDiv) {
+            errorDiv.textContent = errorMessage;
+            errorDiv.style.display = "block";
+        } else {
+            alert(errorMessage);
+        }
+    }
+
 }
+
 
 
 
