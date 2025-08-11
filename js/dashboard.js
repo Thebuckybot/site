@@ -2,7 +2,50 @@ import { API_URL } from "./config.js";
 
 const guildContainer = document.getElementById("guilds-container");
 const userInfo = document.getElementById("user-info");
+const navMenu = document.getElementById("nav-menu");
 const BOT_ID = "907664862493167680";
+
+function clearUserData() {
+  sessionStorage.removeItem("user_info");
+  sessionStorage.removeItem("user_guilds");
+  localStorage.removeItem("api_token");
+}
+
+function renderNav(loggedIn, user = null) {
+  // Maak nav-menu leeg (of verwijder alleen dashboard/logout/login links)
+  // We gaan voor eenvoudig: we refreshen alleen dashboard/login/logout
+  const dashboardLink = document.querySelector("#dashboard-link");
+  const loginLink = document.querySelector("#login-link");
+  const logoutBtn = document.querySelector("#logout-btn");
+
+  if (loggedIn && user) {
+    if (!dashboardLink) {
+      const li = document.createElement("li");
+      li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
+      navMenu.appendChild(li);
+    }
+    if (!logoutBtn) {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.id = "logout-btn";
+      btn.textContent = "Logout";
+      btn.style.cursor = "pointer";
+      btn.addEventListener("click", doLogout);
+      li.appendChild(btn);
+      navMenu.appendChild(li);
+    }
+    if (loginLink) loginLink.remove();
+  } else {
+    if (dashboardLink) dashboardLink.remove();
+    if (logoutBtn) logoutBtn.parentElement.remove();
+
+    if (!loginLink) {
+      const li = document.createElement("li");
+      li.innerHTML = `<a id="login-link" href="${API_URL}/login"><button id="discord-login-button">Login</button></a>`;
+      navMenu.appendChild(li);
+    }
+  }
+}
 
 // Helper: token uit URL halen en opslaan in localStorage, daarna token uit URL verwijderen
 function storeTokenFromUrl() {
@@ -12,7 +55,7 @@ function storeTokenFromUrl() {
     localStorage.setItem("api_token", token);
     // Verwijder token uit URL zonder te herladen
     params.delete("token");
-    const newUrl = window.location.pathname + "?" + params.toString();
+    const newUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
     window.history.replaceState({}, "", newUrl);
   }
 }
@@ -33,9 +76,8 @@ async function apiFetch(url, options = {}) {
   const res = await fetch(url, options);
   if (res.status === 401) {
     // Token ongeldig, verwijderen
-    localStorage.removeItem("api_token");
-    // Optioneel: redirect naar loginpagina
-    // window.location.href = `${API_URL}/login?redirect=${encodeURIComponent(window.location.href)}`;
+    clearUserData();
+    renderNav(false);
   }
   return res;
 }
@@ -76,6 +118,28 @@ function createGuildCard(guild, botInGuild) {
   guildContainer.appendChild(card);
 }
 
+// Logout functie (POST naar backend + opruimen)
+async function doLogout() {
+  try {
+    const res = await fetch(`${API_URL}/logout`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (res.ok) {
+      clearUserData();
+      renderNav(false);
+      userInfo.innerHTML = "";
+      guildContainer.innerHTML = "";
+      window.location.href = "index.html";
+    } else {
+      alert("Logout failed.");
+    }
+  } catch (err) {
+    console.error("Logout error:", err);
+  }
+}
+
 // Render functie
 function renderGuilds(guilds) {
   guildContainer.innerHTML = "";
@@ -90,7 +154,6 @@ function renderGuilds(guilds) {
 async function loadDashboard() {
   storeTokenFromUrl();
 
-  // Eerst proberen data uit sessionStorage te halen (voor snelle weergave)
   const cachedGuilds = sessionStorage.getItem("user_guilds");
   const cachedUser = sessionStorage.getItem("user_info");
 
@@ -104,6 +167,7 @@ async function loadDashboard() {
     `;
 
     renderGuilds(guilds);
+    renderNav(true, user);
     return;
   }
 
@@ -112,17 +176,15 @@ async function loadDashboard() {
     const data = await res.json();
 
     if (!data.logged_in) {
-      const dashboardLink = document.querySelector("#dashboard-link");
-      if (dashboardLink) dashboardLink.remove();
-
+      clearUserData();
+      renderNav(false);
       const redirectUrl = encodeURIComponent(window.location.href);
       window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
       return;
     }
 
-    // Dashboard link toevoegen als die er nog niet is
+    // Dashboard link toevoegen als die er nog niet is (voor zekerheid)
     if (!document.querySelector("#dashboard-link")) {
-      const navMenu = document.getElementById("nav-menu");
       const li = document.createElement("li");
       li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
       navMenu.appendChild(li);
@@ -130,7 +192,6 @@ async function loadDashboard() {
 
     const user = data.user;
 
-    // Data opslaan in sessionStorage
     sessionStorage.setItem("user_info", JSON.stringify(user));
     sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
 
@@ -140,8 +201,11 @@ async function loadDashboard() {
     `;
 
     renderGuilds(data.guilds);
+    renderNav(true, user);
   } catch (err) {
     console.error("Error loading dashboard:", err);
+    clearUserData();
+    renderNav(false);
     window.location.href = "/";
   }
 }

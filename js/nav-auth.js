@@ -1,57 +1,90 @@
 import { API_URL } from "./config.js";
 
-document.addEventListener("DOMContentLoaded", () => {
-  const navMenu = document.getElementById("nav-menu");
+const navMenu = document.getElementById("nav-menu");
 
-  // Token uit localStorage lezen
-  const token = localStorage.getItem("api_token");
+function clearUserData() {
+  sessionStorage.removeItem("user_info");
+  sessionStorage.removeItem("user_guilds");
+  localStorage.removeItem("api_token"); // consistent met dashboard.js
+}
 
-  // Headers instellen, eventueel met Authorization
-  const headers = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+function renderNav(loggedIn, user = null) {
+  navMenu.innerHTML = ""; // nav eerst leegmaken
+
+  if (loggedIn && user) {
+    // Dashboard link
+    const dashLi = document.createElement("li");
+    dashLi.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
+    navMenu.appendChild(dashLi);
+
+    // Logout knop
+    const logoutLi = document.createElement("li");
+    const logoutBtn = document.createElement("button");
+    logoutBtn.id = "logout-btn";
+    logoutBtn.textContent = "Logout";
+    logoutBtn.style.cursor = "pointer";
+    logoutBtn.addEventListener("click", doLogout);
+    logoutLi.appendChild(logoutBtn);
+    navMenu.appendChild(logoutLi);
+
+  } else {
+    // Login knop
+    const loginLi = document.createElement("li");
+    loginLi.innerHTML = `<a id="login-link" href="${API_URL}/login">
+      <button id="discord-login-button">Login</button>
+    </a>`;
+    navMenu.appendChild(loginLi);
   }
+}
 
-  fetch(`${API_URL}/api/me`, {
-    credentials: "include",
-    headers: headers
-  })
-    .then(res => {
-      if (res.status === 401) {
-        // Ongeldig token? Verwijder en refresh
-        localStorage.removeItem("api_token");
-        return { logged_in: false };
+async function checkLogin() {
+  try {
+    const res = await fetch(`${API_URL}/api/me`, { credentials: "include" });
+    const data = await res.json();
+
+    if (data.logged_in) {
+      renderNav(true, data.user);
+    } else {
+      clearUserData();
+      renderNav(false);
+    }
+  } catch (err) {
+    console.error("Error checking login status:", err);
+    clearUserData();
+    renderNav(false);
+  }
+}
+
+async function doLogout() {
+  try {
+    const res = await fetch(`${API_URL}/logout`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json"
       }
-      return res.json();
-    })
-    .then(data => {
-      // Verwijder bestaande login/dashboard elementen
-      const existingDashboard = document.getElementById("dashboard-link");
-      if (existingDashboard) existingDashboard.remove();
-
-      const existingLogin = document.getElementById("login-link");
-      if (existingLogin) existingLogin.remove();
-
-      if (data.logged_in) {
-        // Dashboard link toevoegen
-        const li = document.createElement("li");
-        li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
-        navMenu.appendChild(li);
-
-        // Logout link toevoegen
-        const logoutLi = document.createElement("li");
-        logoutLi.innerHTML = `<a href="${API_URL}/logout">Logout</a>`;
-        navMenu.appendChild(logoutLi);
-      } else {
-        // Login knop toevoegen
-        const loginLi = document.createElement("li");
-        loginLi.innerHTML = `<a id="login-link" href="${API_URL}/login">
-          <button id="discord-login-button">Login</button>
-        </a>`;
-        navMenu.appendChild(loginLi);
-      }
-    })
-    .catch(err => {
-      console.error("Error checking login status:", err);
     });
+
+    if (res.ok) {
+      clearUserData();
+      renderNav(false);
+      window.location.href = "index.html";
+    } else {
+      alert("Logout failed.");
+    }
+  } catch (err) {
+    console.error("Logout error:", err);
+  }
+}
+
+// Sync logout/login over meerdere tabs
+window.addEventListener("storage", (event) => {
+  if (event.key === "user_info" && !event.newValue) {
+    // User data verwijderd in een andere tab, nav updaten hier ook
+    renderNav(false);
+  }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  checkLogin();
 });

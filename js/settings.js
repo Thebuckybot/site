@@ -18,6 +18,7 @@ function getAuthHeaders() {
   return headers;
 }
 
+
 fetch(`${API_URL}/api/guild-settings/${guildId}`, { 
   credentials: "include",
   headers: getAuthHeaders()
