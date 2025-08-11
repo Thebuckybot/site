@@ -8,7 +8,20 @@ if (!guildId) {
     window.location.href = "dashboard.html";
 }
 
-fetch(`${API_URL}/api/guild-settings/${guildId}`, { credentials: "include" })
+// Functie om headers te maken, incl. Bearer token indien aanwezig
+function getAuthHeaders() {
+  const token = localStorage.getItem("api_token");
+  const headers = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+fetch(`${API_URL}/api/guild-settings/${guildId}`, { 
+  credentials: "include",
+  headers: getAuthHeaders()
+})
   .then(res => {
     if (res.status === 403) {
       alert("You do not have permission to view or change these settings.");
@@ -153,7 +166,10 @@ document.getElementById("save-settings").addEventListener("click", () => {
   fetch(`${API_URL}/api/guild-settings/${guildId}`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json; charset=utf-8" },
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      ...getAuthHeaders()
+    },
     body: JSON.stringify(payload)
   })
   .then(res => {

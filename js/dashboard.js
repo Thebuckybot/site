@@ -2,8 +2,43 @@ import { API_URL } from "./config.js";
 
 const guildContainer = document.getElementById("guilds-container");
 const userInfo = document.getElementById("user-info");
-
 const BOT_ID = "907664862493167680";
+
+// Helper: token uit URL halen en opslaan in localStorage, daarna token uit URL verwijderen
+function storeTokenFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  if (token) {
+    localStorage.setItem("api_token", token);
+    // Verwijder token uit URL zonder te herladen
+    params.delete("token");
+    const newUrl = window.location.pathname + "?" + params.toString();
+    window.history.replaceState({}, "", newUrl);
+  }
+}
+
+function getStoredToken() {
+  return localStorage.getItem("api_token");
+}
+
+// Fetch wrapper die Bearer token gebruikt als die er is
+async function apiFetch(url, options = {}) {
+  options.headers = options.headers || {};
+  const token = getStoredToken();
+  if (token) {
+    options.headers["Authorization"] = `Bearer ${token}`;
+  }
+  options.credentials = "include"; // fallback op sessiecookie
+
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    // Token ongeldig, verwijderen
+    localStorage.removeItem("api_token");
+    // Optioneel: redirect naar loginpagina
+    // window.location.href = `${API_URL}/login?redirect=${encodeURIComponent(window.location.href)}`;
+  }
+  return res;
+}
 
 // Invite link genereren
 function getInviteURL(guildId) {
@@ -51,16 +86,18 @@ function renderGuilds(guilds) {
   });
 }
 
-// Data ophalen (met sessionStorage caching)
-function loadDashboard() {
-  const cached = sessionStorage.getItem("user_guilds");
+// Dashboard laden
+async function loadDashboard() {
+  storeTokenFromUrl();
+
+  // Eerst proberen data uit sessionStorage te halen (voor snelle weergave)
+  const cachedGuilds = sessionStorage.getItem("user_guilds");
   const cachedUser = sessionStorage.getItem("user_info");
 
-  if (cached && cachedUser) {
-    const guilds = JSON.parse(cached);
+  if (cachedGuilds && cachedUser) {
+    const guilds = JSON.parse(cachedGuilds);
     const user = JSON.parse(cachedUser);
-    
-    // Render de gebruiker eerst
+
     userInfo.innerHTML = `
       <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
       <span>${user.username}</span>
@@ -70,47 +107,44 @@ function loadDashboard() {
     return;
   }
 
-  fetch(`${API_URL}/api/me`, { credentials: "include" })
-    .then(res => res.json())
-    .then(data => {
+  try {
+    const res = await apiFetch(`${API_URL}/api/me`);
+    const data = await res.json();
+
+    if (!data.logged_in) {
+      const dashboardLink = document.querySelector("#dashboard-link");
+      if (dashboardLink) dashboardLink.remove();
+
+      const redirectUrl = encodeURIComponent(window.location.href);
+      window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
+      return;
+    }
+
+    // Dashboard link toevoegen als die er nog niet is
+    if (!document.querySelector("#dashboard-link")) {
       const navMenu = document.getElementById("nav-menu");
+      const li = document.createElement("li");
+      li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
+      navMenu.appendChild(li);
+    }
 
-      if (!data.logged_in) {
-        const dashboardLink = document.querySelector("#dashboard-link");
-        if (dashboardLink) dashboardLink.remove();
+    const user = data.user;
 
-        const redirectUrl = encodeURIComponent(window.location.href);
-        window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
-        return;
-      }
+    // Data opslaan in sessionStorage
+    sessionStorage.setItem("user_info", JSON.stringify(user));
+    sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
 
-      // Dashboard link toevoegen
-      if (!document.querySelector("#dashboard-link")) {
-        const li = document.createElement("li");
-        li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
-        navMenu.appendChild(li);
-      }
+    userInfo.innerHTML = `
+      <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
+      <span>${user.username}</span>
+    `;
 
-      const user = data.user;
-      
-      // Gebruikersinfo en guilds in sessionStorage zetten
-      sessionStorage.setItem("user_info", JSON.stringify(user));
-      sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
-      
-      // Render de gebruiker eerst
-      userInfo.innerHTML = `
-        <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
-        <span>${user.username}</span>
-      `;
-      
-      // Render daarna de guilds
-      renderGuilds(data.guilds);
-    })
-    .catch(err => {
-      console.error("Error loading dashboard:", err);
-      window.location.href = "/";
-    });
+    renderGuilds(data.guilds);
+  } catch (err) {
+    console.error("Error loading dashboard:", err);
+    window.location.href = "/";
+  }
 }
 
 // Start
-loadDashboard();
+window.addEventListener("DOMContentLoaded", loadDashboard);
