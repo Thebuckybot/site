@@ -286,44 +286,6 @@ footer {
 
 
 /* Algemene knopstijl voor Dashboard, Logout en Login links */
-a#dashboard-link, a[href*="logout"], a#login-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 120px;
-  padding: 0.75rem 1.25rem;
-  font-weight: bold;
-  color: white;
-  background: linear-gradient(45deg, var(--accent-red), #ff6b6b);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(230, 57, 71, 0.4);
-  transition: all 0.3s ease;
-  text-decoration: none;
-}
-
-/* Hover effect voor de knop-links */
-a#dashboard-link:hover, a[href*="logout"]:hover, a#login-link:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(230, 57, 71, 0.6);
-}
-
-/* Styling van de button in de login link */
-a#login-link button {
-  background: none;
-  border: none;
-  color: inherit;
-  font-weight: inherit;
-  font-size: inherit;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-}
-
-
-/* Algemene knopstijl voor Dashboard, Logout en Login links */
 a#dashboard-link, a[href*="logout"], a#login-link, #logout-btn {
   display: flex;
   align-items: center;
@@ -346,6 +308,20 @@ a#dashboard-link:hover, a[href*="logout"]:hover, a#login-link:hover, #logout-btn
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(230, 57, 71, 0.6);
 }
+
+/* Styling van de button in de login link */
+a#login-link button {
+  background: none;
+  border: none;
+  color: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
 
 
 /* User info container */
