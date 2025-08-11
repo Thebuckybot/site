@@ -130,8 +130,34 @@ function createGuildCard(guild, botInGuild, guildContainer) {
   card.appendChild(img);
   card.appendChild(name);
 
-  card.onclick = () => {
+  card.onclick = async () => {
     if (botInGuild) {
+      try {
+        // Token ophalen uit localStorage
+        const token = getStoredToken();
+
+        // Cache invalidatie request naar backend sturen
+        const response = await fetch("/api/invalidate-cache", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          },
+          credentials: "include"
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+          console.warn("Cache invalidatie mislukte:", data.message);
+        } else {
+          // Na succesvolle invalidatie dashboard opnieuw laden
+          await loadDashboard();
+        }
+      } catch (err) {
+        console.error("Fout bij cache invalidatie:", err);
+      }
+
+      // Daarna pas doorsturen naar instellingenpagina
       window.location.href = `settings.html?guild_id=${guild.id}`;
     } else {
       window.location.href = getInviteURL(guild.id);
