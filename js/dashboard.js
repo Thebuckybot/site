@@ -13,11 +13,15 @@ function clearUserData() {
 }
 
 function renderNav(loggedIn, user = null) {
-  // Maak nav-menu leeg (of verwijder alleen dashboard/logout/login links)
-  // We gaan voor eenvoudig: we refreshen alleen dashboard/login/logout
   const dashboardLink = document.querySelector("#dashboard-link");
   const loginLink = document.querySelector("#login-link");
   const logoutBtn = document.querySelector("#logout-btn");
+
+  // Check if navMenu exists before proceeding
+  if (!navMenu) {
+    console.error("Error: The navigation menu element with ID 'nav-menu' was not found.");
+    return;
+  }
 
   if (loggedIn && user) {
     if (!dashboardLink) {
