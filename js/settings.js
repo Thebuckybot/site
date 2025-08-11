@@ -34,7 +34,7 @@ async function loadSettings() {
   } catch (err) {
         console.error("Error loading settings:", err);
         const errorDiv = document.getElementById("error-message");
-        const errorMessage = `An error occurred while loading the settings:\n${err.message || err.toString()}`;
+        const errorMessage = `An error occurred: ${err.message || err.toString()}`;
         if (errorDiv) {
             errorDiv.textContent = errorMessage;
             errorDiv.style.display = "block";
