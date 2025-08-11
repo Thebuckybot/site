@@ -2,6 +2,12 @@ import { API_URL } from "./config.js";
 
 const navMenu = document.getElementById("nav-menu");
 
+// Deze elementen willen we altijd tonen, ongeacht login status
+const essentialLinksHTML = `
+  <li><a href="tos.html">Terms of Service</a></li>
+  <li><a href="privacy.html">Privacy Policy</a></li>
+`;
+
 function clearUserData() {
   sessionStorage.removeItem("user_info");
   sessionStorage.removeItem("user_guilds");
@@ -9,7 +15,7 @@ function clearUserData() {
 }
 
 function renderNav(loggedIn, user = null) {
-  navMenu.innerHTML = ""; // nav eerst leegmaken
+  navMenu.innerHTML = essentialLinksHTML; // toon eerst altijd cruciale links
 
   if (loggedIn && user) {
     // Dashboard link
@@ -68,19 +74,20 @@ async function doLogout() {
     if (res.ok) {
       clearUserData();
       renderNav(false);
+      // redirect naar homepage of login pagina
       window.location.href = "index.html";
     } else {
       alert("Logout failed.");
     }
   } catch (err) {
     console.error("Logout error:", err);
+    alert("Logout failed due to network error.");
   }
 }
 
 // Sync logout/login over meerdere tabs
 window.addEventListener("storage", (event) => {
   if (event.key === "user_info" && !event.newValue) {
-    // User data verwijderd in een andere tab, nav updaten hier ook
     renderNav(false);
   }
 });
