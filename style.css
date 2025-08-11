@@ -252,11 +252,12 @@ a {
   height: 40px;
   background-color: var(--accent-red);
   color: var(--text-light);
-  font-size: 1.5rem;
+  font-size: 1.5rem; /* Maak het plus-teken groter */
   font-weight: 700;
   border-radius: 8px 0 0 8px;
   position: relative;
   transition: all 0.3s ease;
+  line-height: 40px; /* Zorgt ervoor dat de + precies in het midden staat */
 }
 
 /* Hover-effect voor het plus-icoon met een 'glow' */
