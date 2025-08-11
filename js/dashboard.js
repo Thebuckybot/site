@@ -50,17 +50,17 @@ function renderNav(loggedIn, user = null) {
 }
 
 // Helper: token uit URL halen en opslaan in localStorage, daarna token uit URL verwijderen
-function storeTokenFromUrl() {
+export function storeTokenFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   if (token) {
     localStorage.setItem("api_token", token);
-    // Verwijder token uit URL zonder te herladen
     params.delete("token");
     const newUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
     window.history.replaceState({}, "", newUrl);
   }
 }
+
 
 function getStoredToken() {
   return localStorage.getItem("api_token");
@@ -220,5 +220,5 @@ window.addEventListener("DOMContentLoaded", loadDashboard);
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
 });
-
-export { apiFetch };
+// ...
+export { apiFetch, storeTokenFromUrl };

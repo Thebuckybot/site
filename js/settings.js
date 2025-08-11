@@ -1,5 +1,5 @@
 import { API_URL } from "./config.js";
-import { apiFetch } from './dashboard.js';
+import { apiFetch, storeTokenFromUrl } from './dashboard.js'; // Importeer storeTokenFromUrl
 
 // Gebruik apiFetch(...)
 
