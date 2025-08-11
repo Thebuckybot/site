@@ -57,6 +57,7 @@ nav {
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   flex-wrap: wrap;
   gap: 1rem;
+  position: relative;
 }
 
 .nav-left {
@@ -320,6 +321,32 @@ a#login-link button {
   height: 100%;
   cursor: pointer;
 }
+
+
+/* Algemene knopstijl voor Dashboard, Logout en Login links */
+a#dashboard-link, a[href*="logout"], a#login-link, #logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  padding: 0.75rem 1.25rem;
+  font-weight: bold;
+  color: white;
+  background: linear-gradient(45deg, var(--accent-red), #ff6b6b);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(230, 57, 71, 0.4);
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+/* Hover effect voor de knop-links */
+a#dashboard-link:hover, a[href*="logout"]:hover, a#login-link:hover, #logout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(230, 57, 71, 0.6);
+}
+
 
 /* User info container */
 #user-info {
