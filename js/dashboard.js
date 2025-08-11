@@ -50,7 +50,7 @@ function renderNav(loggedIn, user = null) {
 }
 
 // Helper: token uit URL halen en opslaan in localStorage, daarna token uit URL verwijderen
-export function storeTokenFromUrl() {
+function storeTokenFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   if (token) {
