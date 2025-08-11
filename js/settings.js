@@ -8,42 +8,52 @@ if (!guildId) {
     window.location.href = "dashboard.html";
 }
 
-// Functie om headers te maken, incl. Bearer token indien aanwezig
-function getAuthHeaders() {
+// Helper functie: haal token uit localStorage en bouw headers + credentials
+async function apiFetch(url, options = {}) {
+  options.headers = options.headers || {};
   const token = localStorage.getItem("api_token");
-  const headers = {};
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    options.headers["Authorization"] = `Bearer ${token}`;
   }
-  return headers;
+  options.credentials = "include";  // cookie support
+
+  const res = await fetch(url, options);
+
+  if (res.status === 401) {
+    alert("Session expired or not authenticated. Please log in again.");
+    window.location.href = "index.html";
+  }
+
+  return res;
 }
 
 
-fetch(`${API_URL}/api/guild-settings/${guildId}`, { 
-  credentials: "include",
-  headers: getAuthHeaders()
-})
-  .then(res => {
+
+async function loadSettings() {
+  try {
+    const res = await apiFetch(`${API_URL}/api/guild-settings/${guildId}`);
     if (res.status === 403) {
       alert("You do not have permission to view or change these settings.");
       window.location.href = "dashboard.html";
-      return Promise.reject('Permission denied');
+      return;
     }
-    if (!res.ok) throw new Error('Could not fetch guild settings.');
-    return res.json();
-  })
-  .then(data => {
+    if (!res.ok) {
+      throw new Error('Could not fetch guild settings.');
+    }
+    const data = await res.json();
     if (!data.guild_id) return;
+
     renderGuildHeader(data);
     renderSecuritySettings(data.security);
     renderChannelSettings(data.channel_commands);
-  })
-  .catch(err => {
-    if (err !== 'Permission denied') {
-        console.error("Error:", err);
-        alert("An error occurred while loading the settings.");
-    }
-  });
+  } catch (err) {
+    console.error("Error loading settings:", err);
+    alert("An error occurred while loading the settings.");
+  }
+}
+
+loadSettings();
+
 
 function renderGuildHeader(data) {
     const iconUrl = data.icon 
@@ -153,7 +163,7 @@ function renderChannelSettings(channelCommandsData) {
     });
 }
 
-document.getElementById("save-settings").addEventListener("click", () => {
+document.getElementById("save-settings").addEventListener("click", async () => {
   const security = getSecurityPayload();
   const channelCommands = getChannelCommandsPayload();
 
@@ -164,37 +174,36 @@ document.getElementById("save-settings").addEventListener("click", () => {
 
   console.log("Payload die naar de backend wordt gestuurd:", JSON.stringify(payload, null, 2));
 
-  fetch(`${API_URL}/api/guild-settings/${guildId}`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      ...getAuthHeaders()
-    },
-    body: JSON.stringify(payload)
-  })
-  .then(res => {
-      if (res.status === 403) {
-          alert("You do not have permission to save these settings.");
-          return;
-      }
-       if (!res.ok) {
-          alert("An error occurred while saving. Status: " + res.status);
-          return Promise.reject('Save failed');
-      }
-      return res.json();
-  })
-  .then(data => {
-      if (data && data.success) {
-          alert(data.message || "Settings saved!");
-      }
-  })
-  .catch(err => {
-      if (err !== 'Save failed') {
-        console.error("Error saving settings:", err)
-      }
-  });
+  try {
+    const res = await apiFetch(`${API_URL}/api/guild-settings/${guildId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.status === 403) {
+      alert("You do not have permission to save these settings.");
+      return;
+    }
+
+    if (!res.ok) {
+      alert("An error occurred while saving. Status: " + res.status);
+      return;
+    }
+
+    const data = await res.json();
+
+    if (data && data.success) {
+      alert(data.message || "Settings saved!");
+    }
+
+  } catch (err) {
+    console.error("Error saving settings:", err);
+  }
 });
+
 
 function getSecurityPayload() {
     const punishmentSettings = {};
