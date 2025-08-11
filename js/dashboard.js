@@ -1,6 +1,5 @@
+// dashboard.js
 import { API_URL } from "./config.js";
-
-
 
 const guildContainer = document.getElementById("guilds-container");
 const userInfo = document.getElementById("user-info");
@@ -50,7 +49,7 @@ function renderNav(loggedIn, user = null) {
 }
 
 // Helper: token uit URL halen en opslaan in localStorage, daarna token uit URL verwijderen
-function storeTokenFromUrl() {
+function storeTokenFromUrl() { // Removed 'export' keyword here
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   if (token) {
@@ -60,7 +59,6 @@ function storeTokenFromUrl() {
     window.history.replaceState({}, "", newUrl);
   }
 }
-
 
 function getStoredToken() {
   return localStorage.getItem("api_token");
@@ -85,7 +83,6 @@ async function apiFetch(url, options = {}) {
   }
   return res;
 }
-
 
 // Invite link genereren
 function getInviteURL(guildId) {
@@ -220,5 +217,6 @@ window.addEventListener("DOMContentLoaded", loadDashboard);
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
 });
-// ...
+
+// Use a single export statement for all functions you want to make available
 export { apiFetch, storeTokenFromUrl };
