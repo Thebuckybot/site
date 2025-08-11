@@ -68,21 +68,35 @@ function getStoredToken() {
 async function apiFetch(url, options = {}) {
   options.headers = options.headers || {};
   const token = getStoredToken();
-  console.log("apiFetch - Using token:", token);
+
+  console.log("apiFetch - Using token:", token, "for URL:", url);
+
   if (token) {
     options.headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    console.warn("apiFetch - No token found in localStorage.");
   }
+
   options.credentials = "include";
 
-  const res = await fetch(url, options);
+  try {
+    const res = await fetch(url, options);
 
-  if (res.status === 401) {
-    console.warn("apiFetch - 401 Unauthorized. Clearing user data and redirecting.");
-    clearUserData();
-    renderNav(false);
+    if (res.status === 401) {
+      console.warn("apiFetch - 401 Unauthorized. Clearing user data and redirecting.");
+      clearUserData();
+      renderNav(false);
+      // Optioneel: redirect naar login of home
+      // window.location.href = "index.html";
+    }
+
+    return res;
+  } catch (error) {
+    console.error("apiFetch - Fetch failed:", error);
+    throw error;
   }
-  return res;
 }
+
 
 // Invite link genereren
 function getInviteURL(guildId) {

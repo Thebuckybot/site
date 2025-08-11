@@ -248,5 +248,7 @@ function getChannelCommandsPayload() {
 
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
+  console.log("Token in localStorage (direct na storeTokenFromUrl):", localStorage.getItem("api_token"));
+
   loadSettings();
 });
