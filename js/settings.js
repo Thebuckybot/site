@@ -13,6 +13,7 @@ if (!guildId) {
 
 
 
+// settings.js - loadSettings function
 async function loadSettings() {
   try {
     const res = await apiFetch(`${API_URL}/api/guild-settings/${guildId}`);
@@ -23,7 +24,8 @@ async function loadSettings() {
       return;
     }
     if (!res.ok) {
-      throw new Error('Could not fetch guild settings.');
+      // De foutmelding verfijnen om de statuscode te tonen
+      throw new Error(`Could not fetch guild settings. Status: ${res.status}`);
     }
     const data = await res.json();
     if (!data.guild_id) return;
@@ -37,7 +39,6 @@ async function loadSettings() {
     alert(msg); // toont het hele bericht en de stack
     }
 }
-
 
 
 

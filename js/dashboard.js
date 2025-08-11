@@ -3,7 +3,6 @@ import { API_URL } from "./config.js";
 
 const guildContainer = document.getElementById("guilds-container");
 const userInfo = document.getElementById("user-info");
-let navMenu;
 const BOT_ID = "907664862493167680";
 
 function clearUserData() {
@@ -13,6 +12,7 @@ function clearUserData() {
 }
 
 function renderNav(loggedIn, user = null) {
+  const navMenu = document.getElementById("nav-menu"); // Haal het element hier op.
   const dashboardLink = document.querySelector("#dashboard-link");
   const loginLink = document.querySelector("#login-link");
   const logoutBtn = document.querySelector("#logout-btn");
@@ -55,7 +55,7 @@ function renderNav(loggedIn, user = null) {
 }
 
 // Helper: token uit URL halen en opslaan in localStorage, daarna token uit URL verwijderen
-function storeTokenFromUrl() { // Removed 'export' keyword here
+function storeTokenFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   if (token) {
@@ -104,7 +104,6 @@ async function apiFetch(url, options = {}) {
     throw error;
   }
 }
-
 
 // Invite link genereren
 function getInviteURL(guildId) {
@@ -211,9 +210,7 @@ async function loadDashboard() {
 
     // Dashboard link toevoegen als die er nog niet is (voor zekerheid)
     if (!document.querySelector("#dashboard-link")) {
-      const li = document.createElement("li");
-      li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
-      navMenu.appendChild(li);
+      renderNav(true, data.user);
     }
 
     const user = data.user;
@@ -240,10 +237,6 @@ async function loadDashboard() {
 
 // Start
 window.addEventListener("DOMContentLoaded", loadDashboard);
-document.addEventListener("DOMContentLoaded", () => {
-  navMenu = document.getElementById("nav-menu");
-  storeTokenFromUrl();
-});
 
 // Use a single export statement for all functions you want to make available
 export { apiFetch, storeTokenFromUrl };
