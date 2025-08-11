@@ -132,9 +132,7 @@ function createGuildCard(guild, botInGuild, guildContainer) {
 
   card.onclick = () => {
     if (botInGuild) {
-      // Pass the token along with the guild ID
-      const token = getStoredToken();
-      window.location.href = `settings.html?guild_id=${guild.id}&token=${encodeURIComponent(token)}`;
+      window.location.href = `settings.html?guild_id=${guild.id}`;
     } else {
       window.location.href = getInviteURL(guild.id);
     }
@@ -143,16 +141,20 @@ function createGuildCard(guild, botInGuild, guildContainer) {
   guildContainer.appendChild(card);
 }
 
+
+
 // Logout functie (POST naar backend + opruimen)
 async function doLogout() {
+  clearUserData(); // altijd eerst lokaal wissen, ongeacht resultaat van backend
+
   try {
     const res = await fetch(`${API_URL}/logout`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
     });
+
     if (res.ok) {
-      clearUserData();
       renderNav(false);
 
       // Controleer of de elementen bestaan voordat je ze probeert te manipuleren
@@ -169,11 +171,18 @@ async function doLogout() {
       window.location.href = "index.html";
     } else {
       alert("Logout failed.");
+      // Toch blijven we uitgelogd, want clearUserData is al gedaan
+      renderNav(false);
+      window.location.href = "index.html";
     }
   } catch (err) {
     console.error("Logout error:", err);
+    // Bij een fout ook uitloggen
+    renderNav(false);
+    window.location.href = "index.html";
   }
 }
+
 
 // Render functie
 function renderGuilds(guilds, guildContainer) {

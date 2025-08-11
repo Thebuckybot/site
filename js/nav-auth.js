@@ -8,6 +8,18 @@ const essentialLinksHTML = `
   <li><a href="privacy.html">Privacy Policy</a></li>
 `;
 
+function storeTokenFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  if (token) {
+    localStorage.setItem("api_token", token);
+    params.delete("token");
+    const newUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+    window.history.replaceState({}, "", newUrl);
+  }
+}
+
+
 function clearUserData() {
   sessionStorage.removeItem("user_info");
   sessionStorage.removeItem("user_guilds");
@@ -45,7 +57,18 @@ function renderNav(loggedIn, user = null) {
 
 async function checkLogin() {
   try {
-    const res = await fetch(`${API_URL}/api/me`, { credentials: "include" });
+    const token = localStorage.getItem("api_token");
+    const headers = {};
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_URL}/api/me`, {
+      credentials: "include",
+      headers
+    });
+
     const data = await res.json();
 
     if (data.logged_in) {
@@ -61,6 +84,7 @@ async function checkLogin() {
   }
 }
 
+
 async function doLogout() {
   try {
     const res = await fetch(`${API_URL}/logout`, {
@@ -71,10 +95,11 @@ async function doLogout() {
       }
     });
 
+    // Wis altijd direct, ongeacht serverresponse
+    clearUserData();
+
     if (res.ok) {
-      clearUserData();
       renderNav(false);
-      // redirect naar homepage of login pagina
       window.location.href = "index.html";
     } else {
       alert("Logout failed.");
@@ -85,6 +110,7 @@ async function doLogout() {
   }
 }
 
+
 // Sync logout/login over meerdere tabs
 window.addEventListener("storage", (event) => {
   if (event.key === "user_info" && !event.newValue) {
@@ -93,5 +119,6 @@ window.addEventListener("storage", (event) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  storeTokenFromUrl();
   checkLogin();
 });

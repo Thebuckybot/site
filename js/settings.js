@@ -251,7 +251,13 @@ function getChannelCommandsPayload() {
 
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
-  console.log("Token in localStorage (direct na storeTokenFromUrl):", localStorage.getItem("api_token"));
+
+  const token = localStorage.getItem("api_token");
+  if (!token) {
+    alert("You are not logged in. Redirecting to dashboard...");
+    window.location.href = "dashboard.html";
+    return;
+  }
 
   loadSettings();
 });
