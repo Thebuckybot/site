@@ -204,7 +204,6 @@ main:not(.dashboard-main) {
   margin: 2rem auto;
   padding: 2rem 1.5rem;
 }
-
 /* De container voor de header en de knop */
 .header-with-button {
   display: flex;
@@ -257,7 +256,8 @@ a {
   border-radius: 8px 0 0 8px;
   position: relative; /* Zorg ervoor dat de positionering relatief is */
   transition: all 0.3s ease;
-  line-height: 50px;
+  /* line-height verwijderd */
+  transform: translateY(-5px); /* schuift het plusje iets omhoog */
 }
 
 /* Hover-effect voor het plus-icoon met een 'glow' */
