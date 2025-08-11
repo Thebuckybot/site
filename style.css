@@ -205,6 +205,22 @@ main:not(.dashboard-main) {
   padding: 2rem 1.5rem;
 }
 
+
+.header-with-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.add-server-icon {
+  width: 30px;
+  height: 30px;
+  background-color: var(--card-bg-color);
+  border-radius: 50%;
+  padding: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 /* Header styling blijft gelijk */
 main h2 {
   color: var(--accent-red);

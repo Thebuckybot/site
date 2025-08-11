@@ -105,6 +105,21 @@ async function apiFetch(url, options = {}) {
   }
 }
 
+
+// Nieuwe render functie, gebaseerd op het plan
+function renderGuilds(guilds, guildContainer) {
+    if (!guildContainer) {
+      console.warn("renderGuilds werd aangeroepen, maar guildContainer bestaat niet.");
+      return;
+    }
+    guildContainer.innerHTML = "";
+    guilds.forEach(guild => {
+      // De serverdata is al gefilterd, dus render de kaart direct
+      createGuildCard(guild, guildContainer);
+    });
+}
+
+
 // Invite link genereren
 function getInviteURL(guildId) {
   const permissions = 8;
@@ -112,10 +127,17 @@ function getInviteURL(guildId) {
   return `https://discord.com/oauth2/authorize?client_id=${BOT_ID}&scope=${scopes}&permissions=${permissions}&guild_id=${guildId}&response_type=code&redirect_uri=${API_URL}/callback`;
 }
 
+const inviteButton = document.getElementById("invite-button");
+if (inviteButton) {
+  inviteButton.href = getInviteURL(); // Vul de href met de invite URL
+}
+
+
 // Serverkaart genereren
-function createGuildCard(guild, botInGuild, guildContainer) {
+function createGuildCard(guild, guildContainer) {
   const card = document.createElement("div");
-  card.className = `guild-card ${botInGuild ? "green-border" : "red-border"}`;
+  // De servers die getoond worden hebben altijd de bot, dus de rand is altijd groen
+  card.className = `guild-card green-border`;
 
   const img = document.createElement("img");
   img.src = guild.icon
@@ -130,38 +152,9 @@ function createGuildCard(guild, botInGuild, guildContainer) {
   card.appendChild(img);
   card.appendChild(name);
 
-  card.onclick = async () => {
-    if (botInGuild) {
-      try {
-        // Token ophalen uit localStorage
-        const token = getStoredToken();
-
-        // Cache invalidatie request naar backend sturen
-        const response = await fetch("/api/invalidate-cache", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { "Authorization": `Bearer ${token}` } : {})
-          },
-          credentials: "include"
-        });
-
-        const data = await response.json();
-        if (!data.success) {
-          console.warn("Cache invalidatie mislukte:", data.message);
-        } else {
-          // Na succesvolle invalidatie dashboard opnieuw laden
-          await loadDashboard();
-        }
-      } catch (err) {
-        console.error("Fout bij cache invalidatie:", err);
-      }
-
-      // Daarna pas doorsturen naar instellingenpagina
-      window.location.href = `settings.html?guild_id=${guild.id}`;
-    } else {
-      window.location.href = getInviteURL(guild.id);
-    }
+  // Klikken op de kaart navigeert direct naar de settings
+  card.onclick = () => {
+    window.location.href = `settings.html?guild_id=${guild.id}`;
   };
 
   guildContainer.appendChild(card);
@@ -209,20 +202,6 @@ async function doLogout() {
   }
 }
 
-
-// Render functie
-function renderGuilds(guilds, guildContainer) {
-  if (!guildContainer) {
-    console.warn("renderGuilds werd aangeroepen, maar guildContainer bestaat niet.");
-    return;
-  }
-  guildContainer.innerHTML = "";
-  guilds.forEach(guild => {
-    const isAdmin = guild.permissions && (guild.permissions & 0x8);
-    if (!isAdmin) return; // alleen servers waar je admin bent
-    createGuildCard(guild, guild.bot_in_guild === true, guildContainer);
-  });
-}
 
 // Dashboard laden
 
