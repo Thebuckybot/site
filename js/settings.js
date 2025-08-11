@@ -32,17 +32,10 @@ async function loadSettings() {
     renderSecuritySettings(data.security);
     renderChannelSettings(data.channel_commands);
   } catch (err) {
-        console.error("Error loading settings:", err);
-        const errorDiv = document.getElementById("error-message");
-        const errorMessage = `An error occurred: ${err.message || err.toString()}`;
-        if (errorDiv) {
-            errorDiv.textContent = errorMessage;
-            errorDiv.style.display = "block";
-        } else {
-            alert(errorMessage);
-        }
+    const msg = `Error loading settings: ${err.message}\n\nStack:\n${err.stack}`;
+    console.error(msg);
+    alert(msg); // toont het hele bericht en de stack
     }
-
 }
 
 
