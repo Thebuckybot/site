@@ -205,6 +205,7 @@ main:not(.dashboard-main) {
   padding: 2rem 1.5rem;
 }
 
+
 /* De container voor de header en de knop */
 .header-with-button {
   display: flex;
@@ -252,18 +253,13 @@ a {
   height: 40px;
   background-color: var(--accent-red);
   color: var(--text-light);
+  font-size: 1.5rem;
   font-weight: 700;
   border-radius: 8px 0 0 8px;
   position: relative; /* Zorg ervoor dat de positionering relatief is */
   transition: all 0.3s ease;
-  font-size: 1.5rem;
-  /* geen transform hier */
-}
-
-/* Alleen het plusje iets omhoog schuiven */
-#invite-button .icon-part .plus-sign {
-  display: inline-block;
-  /* transform: translateY(-2px); */
+  /* line-height verwijderd */
+  transform: translateY(-5px); /* schuift het plusje iets omhoog */
 }
 
 /* Hover-effect voor het plus-icoon met een 'glow' */
@@ -281,7 +277,6 @@ a {
 .add-server-icon {
   display: none; /* of verwijder de hele regel */
 }
-
 
 /* Header styling blijft gelijk */
 main h2 {
