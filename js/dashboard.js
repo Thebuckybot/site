@@ -5,14 +5,12 @@ const userInfo = document.getElementById("user-info");
 
 const BOT_ID = "907664862493167680";
 
-// Invite link genereren
 function getInviteURL(guildId) {
   const permissions = 8;
   const scopes = "bot applications.commands";
   return `https://discord.com/oauth2/authorize?client_id=${BOT_ID}&scope=${scopes}&permissions=${permissions}&guild_id=${guildId}&response_type=code&redirect_uri=${API_URL}/callback`;
 }
 
-// Serverkaart genereren
 function createGuildCard(guild, botInGuild) {
   const card = document.createElement("div");
   card.className = `guild-card ${botInGuild ? "green-border" : "red-border"}`;
@@ -41,26 +39,23 @@ function createGuildCard(guild, botInGuild) {
   guildContainer.appendChild(card);
 }
 
-// Render functie
 function renderGuilds(guilds) {
   guildContainer.innerHTML = "";
   guilds.forEach(guild => {
     const isAdmin = guild.permissions && (guild.permissions & 0x8);
-    if (!isAdmin) return; // alleen servers waar je admin bent
+    if (!isAdmin) return;
     createGuildCard(guild, guild.bot_in_guild === true);
   });
 }
 
-// Data ophalen (met sessionStorage caching)
 function loadDashboard() {
-  const cached = sessionStorage.getItem("user_guilds");
+  const cachedGuilds = sessionStorage.getItem("user_guilds");
   const cachedUser = sessionStorage.getItem("user_info");
 
-  if (cached && cachedUser) {
-    const guilds = JSON.parse(cached);
+  if (cachedGuilds && cachedUser) {
+    const guilds = JSON.parse(cachedGuilds);
     const user = JSON.parse(cachedUser);
     
-    // Render de gebruiker eerst
     userInfo.innerHTML = `
       <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
       <span>${user.username}</span>
@@ -84,7 +79,6 @@ function loadDashboard() {
         return;
       }
 
-      // Dashboard link toevoegen
       if (!document.querySelector("#dashboard-link")) {
         const li = document.createElement("li");
         li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
@@ -92,18 +86,14 @@ function loadDashboard() {
       }
 
       const user = data.user;
-      
-      // Gebruikersinfo en guilds in sessionStorage zetten
       sessionStorage.setItem("user_info", JSON.stringify(user));
       sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
       
-      // Render de gebruiker eerst
       userInfo.innerHTML = `
         <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
         <span>${user.username}</span>
       `;
       
-      // Render daarna de guilds
       renderGuilds(data.guilds);
     })
     .catch(err => {
@@ -112,5 +102,4 @@ function loadDashboard() {
     });
 }
 
-// Start
 loadDashboard();
