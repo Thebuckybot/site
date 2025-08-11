@@ -263,7 +263,7 @@ a {
 /* Alleen het plusje iets omhoog schuiven */
 #invite-button .icon-part .plus-sign {
   display: inline-block;
-  transform: translateY(-2px);
+  /* transform: translateY(-2px); */
 }
 
 /* Hover-effect voor het plus-icoon met een 'glow' */
