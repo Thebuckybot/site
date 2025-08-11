@@ -3,7 +3,7 @@ import { API_URL } from "./config.js";
 
 const guildContainer = document.getElementById("guilds-container");
 const userInfo = document.getElementById("user-info");
-const navMenu = document.getElementById("nav-menu");
+let navMenu;
 const BOT_ID = "907664862493167680";
 
 function clearUserData() {
@@ -19,7 +19,9 @@ function renderNav(loggedIn, user = null) {
 
   // Check if navMenu exists before proceeding
   if (!navMenu) {
-    console.error("Error: The navigation menu element with ID 'nav-menu' was not found.");
+    const msg = "Error: The navigation menu element with ID 'nav-menu' was not found.";
+    console.error(msg);
+    alert(msg);
     return;
   }
 
@@ -96,7 +98,9 @@ async function apiFetch(url, options = {}) {
 
     return res;
   } catch (error) {
-    console.error("apiFetch - Fetch failed:", error);
+    const msg = "apiFetch - Fetch failed: " + (error && error.message ? error.message : error);
+    console.error(msg);
+    alert(msg);
     throw error;
   }
 }
@@ -225,7 +229,9 @@ async function loadDashboard() {
     renderGuilds(data.guilds);
     renderNav(true, user);
   } catch (err) {
-    console.error("Error loading dashboard:", err);
+    const msg = "Error loading dashboard: " + (err && err.message ? err.message : err);
+    console.error(msg);
+    alert(msg); // zodat je het ook zonder console ziet
     clearUserData();
     renderNav(false);
     window.location.href = "/";
@@ -235,6 +241,7 @@ async function loadDashboard() {
 // Start
 window.addEventListener("DOMContentLoaded", loadDashboard);
 document.addEventListener("DOMContentLoaded", () => {
+  navMenu = document.getElementById("nav-menu");
   storeTokenFromUrl();
 });
 
