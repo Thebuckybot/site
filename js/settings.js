@@ -16,6 +16,7 @@ if (!guildId) {
 async function loadSettings() {
   try {
     const res = await apiFetch(`${API_URL}/api/guild-settings/${guildId}`);
+
     if (res.status === 403) {
       alert("You do not have permission to view or change these settings.");
       window.location.href = "dashboard.html";
@@ -35,6 +36,7 @@ async function loadSettings() {
     alert("An error occurred while loading the settings.");
   }
 }
+
 
 loadSettings();
 
@@ -189,6 +191,7 @@ document.getElementById("save-settings").addEventListener("click", async () => {
 });
 
 
+
 function getSecurityPayload() {
     const punishmentSettings = {};
     
@@ -242,3 +245,9 @@ function getChannelCommandsPayload() {
     });
     return channelCommandsData;
 }
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  storeTokenFromUrl();
+  loadSettings();
+});
