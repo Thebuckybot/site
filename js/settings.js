@@ -38,7 +38,6 @@ async function loadSettings() {
 }
 
 
-loadSettings();
 
 
 function renderGuildHeader(data) {
