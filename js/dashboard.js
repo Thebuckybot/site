@@ -1,5 +1,7 @@
 import { API_URL } from "./config.js";
 
+
+
 const guildContainer = document.getElementById("guilds-container");
 const userInfo = document.getElementById("user-info");
 const navMenu = document.getElementById("nav-menu");
@@ -68,19 +70,22 @@ function getStoredToken() {
 async function apiFetch(url, options = {}) {
   options.headers = options.headers || {};
   const token = getStoredToken();
+  console.log("apiFetch - Using token:", token);
   if (token) {
     options.headers["Authorization"] = `Bearer ${token}`;
   }
-  options.credentials = "include"; // fallback op sessiecookie
+  options.credentials = "include";
 
   const res = await fetch(url, options);
+
   if (res.status === 401) {
-    // Token ongeldig, verwijderen
+    console.warn("apiFetch - 401 Unauthorized. Clearing user data and redirecting.");
     clearUserData();
     renderNav(false);
   }
   return res;
 }
+
 
 // Invite link genereren
 function getInviteURL(guildId) {
@@ -212,3 +217,6 @@ async function loadDashboard() {
 
 // Start
 window.addEventListener("DOMContentLoaded", loadDashboard);
+document.addEventListener("DOMContentLoaded", () => {
+  storeTokenFromUrl();
+});

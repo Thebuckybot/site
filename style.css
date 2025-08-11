@@ -94,6 +94,7 @@ nav h1 a {
   gap: 1.5rem;
 }
 
+/* Algemene linkstijl in de nav voor niet-knop-links */
 #nav-menu li a:not(#dashboard-link):not(a[href*="logout"]):not(#login-link) {
   color: var(--text-light);
   text-decoration: none;
@@ -105,6 +106,7 @@ nav h1 a {
   align-items: center;
 }
 
+/* Hover-effect voor niet-knop-links */
 #nav-menu li a:not(#dashboard-link):not(a[href*="logout"]):not(#login-link):hover {
   color: var(--accent-red);
   background-color: rgba(230, 57, 71, 0.1);
@@ -284,9 +286,7 @@ footer {
 
 
 /* Algemene knopstijl voor Dashboard, Logout en Login links */
-/* Styling van de knoppen in de nav */
-#nav-menu li a#dashboard-link,
-#nav-menu li button#logout-btn {
+a#dashboard-link, a[href*="logout"], a#login-link, #logout-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -303,9 +303,8 @@ footer {
   text-decoration: none;
 }
 
-/* Hover effect voor de knoppen */
-#nav-menu li a#dashboard-link:hover,
-#nav-menu li button#logout-btn:hover {
+/* Hover effect voor de knop-links */
+a#dashboard-link:hover, a[href*="logout"]:hover, a#login-link:hover, #logout-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(230, 57, 71, 0.6);
 }

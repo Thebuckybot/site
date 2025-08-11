@@ -1,4 +1,7 @@
 import { API_URL } from "./config.js";
+import { apiFetch } from './dashboard.js';
+
+// Gebruik apiFetch(...)
 
 const params = new URLSearchParams(window.location.search);
 const guildId = params.get("guild_id");
@@ -6,25 +9,6 @@ const guildId = params.get("guild_id");
 if (!guildId) {
     alert("No guild selected.");
     window.location.href = "dashboard.html";
-}
-
-// Helper functie: haal token uit localStorage en bouw headers + credentials
-async function apiFetch(url, options = {}) {
-  options.headers = options.headers || {};
-  const token = localStorage.getItem("api_token");
-  if (token) {
-    options.headers["Authorization"] = `Bearer ${token}`;
-  }
-  options.credentials = "include";  // cookie support
-
-  const res = await fetch(url, options);
-
-  if (res.status === 401) {
-    alert("Session expired or not authenticated. Please log in again.");
-    window.location.href = "index.html";
-  }
-
-  return res;
 }
 
 
