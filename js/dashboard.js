@@ -41,67 +41,63 @@ function createGuildCard(guild, botInGuild) {
   guildContainer.appendChild(card);
 }
 
-// Eerst user data ophalen van backend
-fetch(`${API_URL}/api/me`, { credentials: "include" })
-  .then(res => res.json())
-  .then(async data => {
-    const navMenu = document.getElementById("nav-menu");
-
-    if (!data.logged_in) {
-      // Niet ingelogd → geen dashboard link
-      const dashboardLink = document.querySelector("#dashboard-link");
-      if (dashboardLink) dashboardLink.remove();
-
-      const redirectUrl = encodeURIComponent(window.location.href);
-      window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
-      return;
-    }
-
-    // Wel ingelogd → dashboard link toevoegen als hij nog niet bestaat
-    if (!document.querySelector("#dashboard-link")) {
-      const li = document.createElement("li");
-      li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
-      navMenu.appendChild(li);
-    }
-
-    const user = data.user;
-    userInfo.innerHTML = `
-      <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
-      <span>${user.username}</span>
-    `;
-
-    // Access token ophalen van backend
-    const tokenRes = await fetch(`${API_URL}/api/token`, { credentials: "include" });
-    if (!tokenRes.ok) {
-      console.error("Token ophalen mislukt");
-      return;
-    }
-    const { access_token } = await tokenRes.json();
-
-    // Guilds ophalen via Discord API met token
-    const guildRes = await fetch("https://discord.com/api/users/@me/guilds", {
-      headers: { Authorization: `Bearer ${access_token}` }
-    });
-    if (!guildRes.ok) {
-      console.error("Guilds ophalen mislukt");
-      return;
-    }
-    const guilds = await guildRes.json();
-
-    // Backend: haal op waar bot in zit
-    const botGuildsRes = await fetch(`${API_URL}/api/bot-guilds`, { credentials: "include" });
-    const botGuilds = await botGuildsRes.json();
-
-    // Alleen admin guilds tonen
-    for (const guild of guilds) {
-      const isAdmin = guild.permissions && (guild.permissions & 0x8);
-      if (!isAdmin) continue;
-
-      const botInGuild = botGuilds.includes(guild.id);
-      createGuildCard(guild, botInGuild);
-    }
-  })
-  .catch(err => {
-    console.error("Error loading dashboard:", err);
-    window.location.href = "/";
+// Render functie
+function renderGuilds(guilds) {
+  guildContainer.innerHTML = "";
+  guilds.forEach(guild => {
+    const isAdmin = guild.permissions && (guild.permissions & 0x8);
+    if (!isAdmin) return; // alleen servers waar je admin bent
+    createGuildCard(guild, guild.bot_in_guild === true);
   });
+}
+
+// Data ophalen (met sessionStorage caching)
+function loadDashboard() {
+  const cached = sessionStorage.getItem("user_guilds");
+
+  if (cached) {
+    const guilds = JSON.parse(cached);
+    renderGuilds(guilds);
+    return;
+  }
+
+  fetch(`${API_URL}/api/me`, { credentials: "include" })
+    .then(res => res.json())
+    .then(data => {
+      const navMenu = document.getElementById("nav-menu");
+
+      if (!data.logged_in) {
+        const dashboardLink = document.querySelector("#dashboard-link");
+        if (dashboardLink) dashboardLink.remove();
+
+        const redirectUrl = encodeURIComponent(window.location.href);
+        window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
+        return;
+      }
+
+      // Dashboard link toevoegen
+      if (!document.querySelector("#dashboard-link")) {
+        const li = document.createElement("li");
+        li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
+        navMenu.appendChild(li);
+      }
+
+      const user = data.user;
+      userInfo.innerHTML = `
+        <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
+        <span>${user.username}</span>
+      `;
+
+      // Guilds in cache zetten
+      sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
+
+      renderGuilds(data.guilds);
+    })
+    .catch(err => {
+      console.error("Error loading dashboard:", err);
+      window.location.href = "/";
+    });
+}
+
+// Start
+loadDashboard();
