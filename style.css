@@ -205,20 +205,63 @@ main:not(.dashboard-main) {
   padding: 2rem 1.5rem;
 }
 
-
+/* De container voor de header en de knop */
 .header-with-button {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.add-server-icon {
-  width: 30px;
-  height: 30px;
-  background-color: var(--card-bg-color);
-  border-radius: 50%;
-  padding: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+/* Algemene stijl voor de "Add to server" knop */
+#invite-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  background-color: var(--card-bg);
+  color: var(--text-light);
+  text-decoration: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  line-height: 1; /* Zorgt ervoor dat de tekst netjes in het midden staat */
+}
+
+/* Hover-effect voor de hele knop */
+#invite-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Het plus-icoon gedeelte */
+#invite-button .icon-part {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  background-color: var(--accent-red);
+  color: var(--text-light);
+  font-size: 1.5rem;
+  font-weight: 700;
+  border-radius: 8px 0 0 8px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Hover-effect voor het plus-icoon met een 'glow' */
+#invite-button:hover .icon-part {
+  background-color: #ff6b6b; /* Iets lichtere kleur bij hover */
+  box-shadow: 0 0 10px var(--accent-red), 0 0 20px var(--accent-red);
+}
+
+/* Het tekstgedeelte van de knop */
+#invite-button .text-part {
+  padding: 0 1rem;
 }
 
 /* Header styling blijft gelijk */
