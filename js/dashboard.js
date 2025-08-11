@@ -54,9 +54,18 @@ function renderGuilds(guilds) {
 // Data ophalen (met sessionStorage caching)
 function loadDashboard() {
   const cached = sessionStorage.getItem("user_guilds");
+  const cachedUser = sessionStorage.getItem("user_info");
 
-  if (cached) {
+  if (cached && cachedUser) {
     const guilds = JSON.parse(cached);
+    const user = JSON.parse(cachedUser);
+    
+    // Render de gebruiker eerst
+    userInfo.innerHTML = `
+      <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
+      <span>${user.username}</span>
+    `;
+
     renderGuilds(guilds);
     return;
   }
@@ -83,14 +92,18 @@ function loadDashboard() {
       }
 
       const user = data.user;
+      
+      // Gebruikersinfo en guilds in sessionStorage zetten
+      sessionStorage.setItem("user_info", JSON.stringify(user));
+      sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
+      
+      // Render de gebruiker eerst
       userInfo.innerHTML = `
         <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
         <span>${user.username}</span>
       `;
-
-      // Guilds in cache zetten
-      sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
-
+      
+      // Render daarna de guilds
       renderGuilds(data.guilds);
     })
     .catch(err => {
