@@ -205,6 +205,11 @@ main:not(.dashboard-main) {
   padding: 2rem 1.5rem;
 }
 
+/* Link color */
+a {
+  color: var(--link-color);
+  text-decoration: none;
+}
 
 /* De container voor de header en de knop */
 .header-with-button {
@@ -212,12 +217,6 @@ main:not(.dashboard-main) {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-}
-
-/* Link color */
-a {
-  color: var(--link-color);
-  text-decoration: none;
 }
 
 /* Algemene stijl voor de "Add to server" knop */
@@ -256,9 +255,8 @@ a {
   font-size: 1.5rem;
   font-weight: 700;
   border-radius: 8px 0 0 8px;
-  position: relative; /* Zorg ervoor dat de positionering relatief is */
+  position: relative;
   transition: all 0.3s ease;
-  line-height: 50px;
 }
 
 /* Hover-effect voor het plus-icoon met een 'glow' */
@@ -276,6 +274,8 @@ a {
 .add-server-icon {
   display: none; /* of verwijder de hele regel */
 }
+
+
 
 /* Header styling blijft gelijk */
 main h2 {
