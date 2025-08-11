@@ -258,8 +258,7 @@ a {
   border-radius: 8px 0 0 8px;
   position: relative; /* Zorg ervoor dat de positionering relatief is */
   transition: all 0.3s ease;
-  /* line-height verwijderd */
-  transform: translateY(-5px); /* schuift het plusje iets omhoog */
+  line-height: 50px;
 }
 
 /* Hover-effect voor het plus-icoon met een 'glow' */
