@@ -220,3 +220,5 @@ window.addEventListener("DOMContentLoaded", loadDashboard);
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
 });
+
+export { apiFetch };
