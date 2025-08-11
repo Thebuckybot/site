@@ -213,6 +213,12 @@ main:not(.dashboard-main) {
   gap: 1rem;
 }
 
+/* Link color */
+a {
+  color: var(--link-color);
+  text-decoration: none;
+}
+
 /* Algemene stijl voor de "Add to server" knop */
 #invite-button {
   display: flex;
@@ -262,6 +268,11 @@ main:not(.dashboard-main) {
 /* Het tekstgedeelte van de knop */
 #invite-button .text-part {
   padding: 0 1rem;
+}
+
+/* Verwijder de oude .add-server-icon stijl die je niet meer gebruikt */
+.add-server-icon {
+  display: none; /* of verwijder de hele regel */
 }
 
 /* Header styling blijft gelijk */
