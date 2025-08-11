@@ -256,9 +256,8 @@ a {
   font-weight: 700;
   border-radius: 8px 0 0 8px;
   position: relative; /* Zorg ervoor dat de positionering relatief is */
-  top: -5px; /* Dit verschuift het element 2px naar boven */
   transition: all 0.3s ease;
-  line-height: 40px;
+  line-height: 50px;
 }
 
 /* Hover-effect voor het plus-icoon met een 'glow' */
