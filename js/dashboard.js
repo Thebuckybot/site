@@ -113,7 +113,7 @@ function getInviteURL(guildId) {
 }
 
 // Serverkaart genereren
-function createGuildCard(guild, botInGuild) {
+function createGuildCard(guild, botInGuild, guildContainer) {
   const card = document.createElement("div");
   card.className = `guild-card ${botInGuild ? "green-border" : "red-border"}`;
 
@@ -154,8 +154,18 @@ async function doLogout() {
     if (res.ok) {
       clearUserData();
       renderNav(false);
-      userInfo.innerHTML = "";
-      guildContainer.innerHTML = "";
+
+      // Controleer of de elementen bestaan voordat je ze probeert te manipuleren
+      const userInfo = document.getElementById("user-info");
+      const guildContainer = document.getElementById("guilds-container");
+
+      if (userInfo) {
+        userInfo.innerHTML = "";
+      }
+      if (guildContainer) {
+        guildContainer.innerHTML = "";
+      }
+
       window.location.href = "index.html";
     } else {
       alert("Logout failed.");
@@ -166,73 +176,76 @@ async function doLogout() {
 }
 
 // Render functie
-function renderGuilds(guilds) {
+function renderGuilds(guilds, guildContainer) {
+  if (!guildContainer) {
+    console.warn("renderGuilds werd aangeroepen, maar guildContainer bestaat niet.");
+    return;
+  }
   guildContainer.innerHTML = "";
   guilds.forEach(guild => {
     const isAdmin = guild.permissions && (guild.permissions & 0x8);
     if (!isAdmin) return; // alleen servers waar je admin bent
-    createGuildCard(guild, guild.bot_in_guild === true);
+    createGuildCard(guild, guild.bot_in_guild === true, guildContainer);
   });
 }
 
 // Dashboard laden
+
 async function loadDashboard() {
-  storeTokenFromUrl();
+    storeTokenFromUrl();
+    const cachedGuilds = sessionStorage.getItem("user_guilds");
+    const cachedUser = sessionStorage.getItem("user_info");
 
-  const cachedGuilds = sessionStorage.getItem("user_guilds");
-  const cachedUser = sessionStorage.getItem("user_info");
+    const userInfo = document.getElementById("user-info");
+    const guildContainer = document.getElementById("guilds-container");
 
-  if (cachedGuilds && cachedUser) {
-    const guilds = JSON.parse(cachedGuilds);
-    const user = JSON.parse(cachedUser);
+    // Voeg een controle toe of de elementen bestaan
+    if (cachedGuilds && cachedUser && userInfo && guildContainer) {
+        const guilds = JSON.parse(cachedGuilds);
+        const user = JSON.parse(cachedUser);
 
-    userInfo.innerHTML = `
-      <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
-      <span>${user.username}</span>
-    `;
-
-    renderGuilds(guilds);
-    renderNav(true, user);
-    return;
-  }
-
-  try {
-    const res = await apiFetch(`${API_URL}/api/me`);
-    const data = await res.json();
-
-    if (!data.logged_in) {
-      clearUserData();
-      renderNav(false);
-      const redirectUrl = encodeURIComponent(window.location.href);
-      window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
-      return;
+        userInfo.innerHTML = `
+            <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
+            <span>${user.username}</span>
+        `;
+        renderGuilds(guilds, guildContainer);
+        renderNav(true, user);
+        return;
     }
 
-    // Dashboard link toevoegen als die er nog niet is (voor zekerheid)
-    if (!document.querySelector("#dashboard-link")) {
-      renderNav(true, data.user);
+    try {
+        const res = await apiFetch(`${API_URL}/api/me`);
+        const data = await res.json();
+        
+        if (!data.logged_in) {
+            clearUserData();
+            renderNav(false);
+            const redirectUrl = encodeURIComponent(window.location.href);
+            window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
+            return;
+        }
+
+        const user = data.user;
+        sessionStorage.setItem("user_info", JSON.stringify(user));
+        sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
+
+        // Controleer opnieuw of de elementen bestaan voordat je ze gebruikt
+        if (userInfo && guildContainer) {
+            userInfo.innerHTML = `
+                <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
+                <span>${user.username}</span>
+            `;
+            renderGuilds(data.guilds, guildContainer);
+        }
+        renderNav(true, user);
+    } catch (err) {
+        const msg = "Error loading dashboard: " + (err && err.message ? err.message : err);
+        console.error(msg);
+        alert(msg);
+        clearUserData();
+        renderNav(false);
+        window.location.href = "/";
     }
-
-    const user = data.user;
-
-    sessionStorage.setItem("user_info", JSON.stringify(user));
-    sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
-
-    userInfo.innerHTML = `
-      <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
-      <span>${user.username}</span>
-    `;
-
-    renderGuilds(data.guilds);
-    renderNav(true, user);
-  } catch (err) {
-    const msg = "Error loading dashboard: " + (err && err.message ? err.message : err);
-    console.error(msg);
-    alert(msg); // zodat je het ook zonder console ziet
-    clearUserData();
-    renderNav(false);
-    window.location.href = "/";
-  }
 }
 
 // Start
