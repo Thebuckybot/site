@@ -286,7 +286,9 @@ footer {
 
 
 /* Algemene knopstijl voor Dashboard, Logout en Login links */
-a#dashboard-link, a[href*="logout"], a#login-link, #logout-btn {
+/* Styling van de knoppen in de nav */
+#nav-menu li a#dashboard-link,
+#nav-menu li button#logout-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -303,8 +305,9 @@ a#dashboard-link, a[href*="logout"], a#login-link, #logout-btn {
   text-decoration: none;
 }
 
-/* Hover effect voor de knop-links */
-a#dashboard-link:hover, a[href*="logout"]:hover, a#login-link:hover, #logout-btn:hover {
+/* Hover effect voor de knoppen */
+#nav-menu li a#dashboard-link:hover,
+#nav-menu li button#logout-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(230, 57, 71, 0.6);
 }
