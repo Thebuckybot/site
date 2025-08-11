@@ -12,18 +12,18 @@ function clearUserData() {
 }
 
 function renderNav(loggedIn, user = null) {
-  const navMenu = document.getElementById("nav-menu"); // Haal het element hier op.
+  // Haal navMenu op binnen de functie.
+  const navMenu = document.getElementById("nav-menu");
+
+  // Als navMenu niet bestaat, stoppen we de functie.
+  if (!navMenu) {
+    console.error("Error: The navigation menu element with ID 'nav-menu' was not found.");
+    return;
+  }
+
   const dashboardLink = document.querySelector("#dashboard-link");
   const loginLink = document.querySelector("#login-link");
   const logoutBtn = document.querySelector("#logout-btn");
-
-  // Check if navMenu exists before proceeding
-  if (!navMenu) {
-    const msg = "Error: The navigation menu element with ID 'nav-menu' was not found.";
-    console.error(msg);
-    alert(msg);
-    return;
-  }
 
   if (loggedIn && user) {
     if (!dashboardLink) {
