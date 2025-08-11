@@ -129,7 +129,9 @@ function createGuildCard(guild, botInGuild) {
 
   card.onclick = () => {
     if (botInGuild) {
-      window.location.href = `settings.html?guild_id=${guild.id}`;
+      // Pass the token along with the guild ID
+      const token = getStoredToken();
+      window.location.href = `settings.html?guild_id=${guild.id}&token=${encodeURIComponent(token)}`;
     } else {
       window.location.href = getInviteURL(guild.id);
     }
