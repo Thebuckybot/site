@@ -92,6 +92,7 @@ nav h1 a {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  z-index: 999;
 }
 
 /* Algemene linkstijl in de nav voor niet-knop-links */
