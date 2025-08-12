@@ -101,10 +101,10 @@ function renderSecuritySettings(securityData) {
 
         div.innerHTML = `
             <h3>${action.name}</h3>
-            <label>Limiet:
+            <label>Limit:
                 <input type="number" data-key="${action.limitKey}" value="${limitValue}" min="0" />
             </label>
-            <label>Straf:
+            <label>Punishment:
                 <select data-key="${action.punishmentKey}">
                     ${action.punishments.map(p => `<option value="${p}" ${p === punishmentValue ? 'selected' : ''}>${p.charAt(0).toUpperCase() + p.slice(1)}</option>`).join('')}
                 </select>
