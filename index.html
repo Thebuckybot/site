@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Welcome to Bucky</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="index.css" />
   <script src="js/nav-auth.js" type="module"></script>
 </head>
 <body>
@@ -21,24 +22,129 @@
         <div></div>
       </button>
 
-      <!-- Alleen vaste links -->
       <ul id="nav-menu">
         <li><a href="tos.html">Terms of Service</a></li>
         <li><a href="privacy.html">Privacy Policy</a></li>
-        <!-- Login of Dashboard knop wordt door nav-auth.js toegevoegd -->
       </ul>
     </nav>
 
     <main>
-      <h2>Welcome to Bucky!</h2>
-      <p>
-        Bucky is your trusted all-in-one Discord bot, featuring advanced economy systems,
-        engaging mini-games, robust moderation tools, and more. Built with performance and
-        user experience in mind, Bucky helps communities grow, play, and manage with ease.
-      </p>
-      <p>
-        Use the navigation links above to review our Terms of Service and Privacy Policy.
-      </p>
+      <!-- INTRO -->
+      <section class="intro-section">
+        <div class="intro-content">
+          <h2 class="title-with-wave">Meet Bucky — Your All-in-One Discord Companion</h2>
+          <p>
+            <br>
+            Bucky isn’t just another bot — it’s a carefully built, feature-packed tool to make your Discord server more fun, 
+            interactive, and secure. Whether you’re running a gaming community, a friend group, or a competitive server, 
+            Bucky offers tools that combine entertainment, security, and customization in one place.
+            <br>
+            <br>
+            From currency systems and games to moderation features and upcoming story missions, 
+            Bucky keeps your members engaged while giving you full control.
+          </p>
+          <a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&scope=bot%20applications.commands&permissions=8" class="cta-button">Invite Bucky Now</a>
+        </div>
+        <img src="pics/8arcOneIntro.png" alt="Bucky bot intro graphic" class="intro-image">
+      </section>
+
+      <hr>
+
+      <!-- SECURITY -->
+      <section class="feature-section security-section">
+        <div class="feature-content">
+          <h2>Security That Works While You Play</h2>
+          <p>
+            Keeping your server safe doesn’t have to be complicated or boring. 
+            Bucky’s built-in security features run quietly in the background but are always ready when you need them. 
+            Whether you’re dealing with spam, suspicious links, or sudden rule-breaking, 
+            Bucky can step in instantly to protect your community.
+          </p>
+          <ul>
+            <li>Automatic detection and blocking of suspicious or harmful links</li>
+            <li>One-command lockdowns for channels or categories</li>
+            <li>Custom moderation rules for specific roles and channels</li>
+            <li>Logging and reviewing incidents directly in Discord or via the dashboard</li>
+          </ul>
+          <p>
+            With Bucky, your server’s safety is always just one step away — 
+            but never at the cost of slowing down the fun.
+          </p>
+        </div>
+        <div class="gif-container">
+          <img src="pics/11securityUsageGif.gif" alt="Bucky security settings in action" class="security-gif">
+        </div>
+      </section>
+
+      <hr>
+
+      <!-- CURRENCY -->
+      <section class="feature-section currency-section">
+        <div class="currency-content">
+          <h2>Build a Thriving Server Economy</h2>
+          <p>
+            Bucky’s currency system transforms activity into rewards, 
+            giving members something to work towards every time they join your server. 
+            The economy is designed to be flexible and fun, so you can shape it to fit your community’s style.
+          </p>
+          <ul>
+            <li>Earn coins by chatting, playing games, or taking part in events</li>
+            <li>Purchase unique items, perks, and rare collectibles</li>
+            <li>Trade items with friends or run your own server marketplace</li>
+            <li>Climb the leaderboard and show off your wealth and achievements</li>
+          </ul>
+          <p>
+            From casual players to competitive collectors, 
+            Bucky’s economy gives everyone a reason to keep coming back.
+          </p>
+        </div>
+        <div class="currency-items-container">
+          <img src="pics/1currency.png" alt="Currency item" class="currency-item coin" data-item-id="1">
+          <img src="pics/2bank.png" alt="Bank item" class="currency-item bank" data-item-id="2">
+          <img src="pics/3luckychipCASINO.png" alt="Lucky casino chip" class="currency-item chip" data-item-id="3">
+          <img src="pics/4banknote.png" alt="Banknote" class="currency-item banknote" data-item-id="4">
+          <img src="pics/7collectable.png" alt="Collectable" class="currency-item collectable-1" data-item-id="5">
+        </div>
+      </section>
+
+      <hr>
+
+      <!-- EXTRA FEATURES -->
+      <section class="feature-section extra-features-section">
+        <div class="feature-content">
+          <h2>Games, Adventures & More</h2>
+          <p>
+            Bucky isn’t just about commands — it’s built to keep people entertained for hours. 
+            Play quick mini-games for fun, challenge friends, or look forward to the 
+            upcoming story-driven missions that will add a whole new layer of adventure to your server.
+          </p>
+          <ul>
+            <li>Mini-games like blackjack, coinflip, slots, and more</li>
+            <li>Seasonal events with unique rewards and collectibles</li>
+            <li>Highly customizable per-channel and per-role settings</li>
+            <li><strong>Story Missions — Yet to Come:</strong> A multi-arc adventure where your choices matter, 
+                complete with multiplayer support and server-wide progress tracking</li>
+          </ul>
+          <p>
+            Whether your community loves fast-paced fun or deep storytelling, 
+            Bucky brings both — and there’s always something new on the horizon.
+          </p>
+        </div>
+      </section>
+
+      <hr>
+
+      <!-- FINAL CTA -->
+      <section class="final-cta-section">
+        <div class="cta-content">
+          <h2>Ready to Bring Bucky to Your Server?</h2>
+          <p>
+            Get started in seconds — invite Bucky today and give your community the tools, 
+            games, and upcoming adventures it deserves.
+          </p>
+          <a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&scope=bot%20applications.commands&permissions=8" class="cta-button">Invite Bucky Now</a>
+        </div>
+      </section>
     </main>
 
     <footer>
@@ -46,6 +152,7 @@
     </footer>
   </div>
 
+  <script src="js/index.js"></script>
   <script>
     const hamburger = document.querySelector('.hamburger');
     const navMenu = document.getElementById('nav-menu');

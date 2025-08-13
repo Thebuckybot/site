@@ -1,0 +1,221 @@
+/* index.css */
+
+/* Algemene styling voor de indexpagina secties */
+.intro-section,
+.feature-section,
+.final-cta-section {
+  padding: 4rem 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4rem;
+  opacity: 0; /* Standaard onzichtbaar voor animaties */
+  transform: translateY(20px); /* Standaard iets naar beneden voor animaties */
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.intro-section.visible,
+.feature-section.visible,
+.final-cta-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.intro-section {
+  flex-direction: row;
+}
+
+.feature-section:nth-child(even) {
+  flex-direction: row-reverse;
+}
+
+.intro-content,
+.feature-content {
+  flex: 1;
+}
+
+h2 {
+  font-size: 2.5rem;
+  color: var(--accent-red);
+  margin-bottom: 1rem;
+}
+
+/* Speciale stijl voor de titel met wave */
+.title-with-wave {
+  position: relative;
+  display: inline-block;
+}
+
+.title-with-wave::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--accent-red);
+  border-radius: 2px;
+  transform-origin: bottom left;
+  animation: wave 2s infinite ease-in-out;
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.8); }
+}
+
+p {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--text-light);
+  margin-bottom: 1.5rem;
+}
+
+ul {
+  list-style-type: '- '; /* Speelse bullet points */
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+li {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.cta-button {
+  background: var(--accent-red);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: inline-block;
+  box-shadow: 0 4px 10px rgba(230, 57, 71, 0.4);
+}
+
+.cta-button:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 6px 15px rgba(230, 57, 71, 0.6);
+}
+
+/* Afbeeldingen en GIFS */
+.intro-image {
+  max-width: 45%;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  transform: rotate(-3deg);
+  transition: transform 0.3s ease;
+}
+
+.intro-image:hover {
+  transform: rotate(0deg) scale(1.05);
+}
+
+.gif-container {
+  max-width: 50%;
+}
+
+.security-gif {
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  transform: rotate(2deg);
+  transition: transform 0.3s ease;
+}
+
+.security-gif:hover {
+  transform: rotate(0deg) scale(1.05);
+}
+
+/* Valuta-sectie met zwevende items */
+.currency-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.currency-items-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.currency-item {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  opacity: 0.8;
+  animation: float 15s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes float {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+.coin { top: 3%; left: 5%; animation-duration: 14s; }
+.bank { bottom: 0%; left: 15%; animation-duration: 20s; }
+.chip { top: 3%; right: 4%; animation-duration: 8s; }
+.banknote { bottom: 30%; right: 5%; animation-duration: 20s; }
+.collectable-1 { bottom: 3%; left: 60%; animation-duration: 15s; }
+
+
+/* Final CTA */
+.final-cta-section {
+  text-align: center;
+  flex-direction: column;
+}
+
+.final-cta-section h2 {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.final-cta-section .cta-content {
+  max-width: 700px;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 4rem auto;
+  max-width: 800px;
+}
+
+/* Responsive design */
+@media (max-width: 992px) {
+  .intro-section,
+  .feature-section {
+    flex-direction: column !important;
+    text-align: left;
+  }
+
+  .intro-image,
+  .gif-container {
+    max-width: 80%;
+    margin-top: 2rem;
+    transform: rotate(0deg);
+  }
+
+  .currency-items-container {
+    display: none; /* Verberg zwevende items op kleinere schermen */
+  }
+
+  .cta-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  h2 {
+    font-size: 2rem;
+  }
+}
