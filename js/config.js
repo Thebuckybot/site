@@ -1,4 +1,4 @@
 // config.js
-const API_URL = "https://concrete-music-recall-jamie.trycloudflare.com";
+const API_URL = "https://prediction-iron-appeared-anyway.trycloudflare.com";
 
 export { API_URL };
