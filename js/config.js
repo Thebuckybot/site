@@ -1,4 +1,4 @@
 // config.js
-const API_URL = "https://prediction-iron-appeared-anyway.trycloudflare.com";
+const API_URL = "https://frederick-strange-creator-greensboro.trycloudflare.com";
 
 export { API_URL };
