@@ -259,5 +259,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // 👇 HIER TOEVOEGEN
+  const socLink = document.getElementById("soc-link");
+  if (socLink) {
+    socLink.href = `soc.html?guild_id=${guildId}`;
+  }
+
   loadSettings();
 });

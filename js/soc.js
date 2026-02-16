@@ -1,0 +1,96 @@
+import { API_URL } from "./config.js";
+import { apiFetch, storeTokenFromUrl } from "./dashboard.js";
+
+const params = new URLSearchParams(window.location.search);
+const guildId = params.get("guild_id");
+
+if (!guildId) {
+  alert("No guild selected.");
+  window.location.href = "dashboard.html";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  storeTokenFromUrl();
+  loadSOC();
+});
+
+async function loadSOC() {
+  await loadRisk();
+  await loadTimeline();
+  await loadSeverity();
+  await loadIncidents();
+}
+
+async function loadRisk() {
+  const res = await apiFetch(`${API_URL}/api/soc/${guildId}/risk`);
+  const data = await res.json();
+
+  document.getElementById("risk-score").textContent = data.risk_score.toFixed(2);
+  document.getElementById("server-locked").textContent = data.server_locked ? "Yes" : "No";
+  document.getElementById("raid-mode").textContent = data.raid_mode ? "Enabled" : "Disabled";
+
+  const badge = document.getElementById("risk-level");
+  badge.textContent = data.risk_level;
+
+  badge.className = "risk-badge " + data.risk_level.toLowerCase();
+}
+
+async function loadTimeline() {
+  const res = await apiFetch(`${API_URL}/api/soc/${guildId}/incidents/timeline?hours=24`);
+  const data = await res.json();
+
+  const labels = data.map(row => row.bucket);
+  const values = data.map(row => row.count);
+
+  new Chart(document.getElementById("timelineChart"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Incidents",
+        data: values,
+        borderWidth: 2,
+        fill: false
+      }]
+    }
+  });
+}
+
+async function loadSeverity() {
+  const res = await apiFetch(`${API_URL}/api/soc/${guildId}/incidents/severity`);
+  const data = await res.json();
+
+  const labels = data.map(row => "Severity " + row.severity);
+  const values = data.map(row => row.count);
+
+  new Chart(document.getElementById("severityChart"), {
+    type: "pie",
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values
+      }]
+    }
+  });
+}
+
+async function loadIncidents() {
+  const res = await apiFetch(`${API_URL}/api/soc/${guildId}/incidents`);
+  const data = await res.json();
+
+  const tbody = document.querySelector("#incident-table tbody");
+  tbody.innerHTML = "";
+
+  data.forEach(row => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${row.created_at}</td>
+      <td>${row.event_type}</td>
+      <td>${row.user_id || "-"}</td>
+      <td>${row.severity}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}

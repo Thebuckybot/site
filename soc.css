@@ -1,0 +1,35 @@
+.soc-container {
+  padding: 30px;
+}
+
+.card {
+  background: #1e1e1e;
+  padding: 20px;
+  margin-bottom: 25px;
+  border-radius: 12px;
+}
+
+.risk-badge {
+  font-size: 22px;
+  font-weight: bold;
+  padding: 8px 15px;
+  border-radius: 8px;
+  display: inline-block;
+  margin-bottom: 15px;
+}
+
+.risk-badge.low { background: #2ecc71; }
+.risk-badge.medium { background: #f1c40f; }
+.risk-badge.high { background: #e67e22; }
+.risk-badge.critical { background: #e74c3c; }
+
+#incident-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#incident-table th,
+#incident-table td {
+  padding: 8px;
+  border-bottom: 1px solid #333;
+}
