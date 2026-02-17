@@ -48,6 +48,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 let registry;
+const MAX_CONDITIONS = 3;
+const MAX_ACTIONS = 3;
+
 
 async function loadRegistry() {
   const res = await apiFetch(`${API_URL}/api/soc/rule-registry`);
@@ -72,10 +75,21 @@ document.getElementById("add-action").addEventListener("click", () => {
 });
 
 function addConditionBlock() {
+
   const container = document.getElementById("conditions-container");
+
+  if (container.children.length >= MAX_CONDITIONS) {
+    alert("Maximum conditions reached.");
+    return;
+  }
 
   const block = document.createElement("div");
   block.className = "condition-block";
+
+  const removeBtn = document.createElement("button");
+  removeBtn.textContent = "✕";
+  removeBtn.className = "remove-btn";
+  removeBtn.onclick = () => block.remove();
 
   const select = document.createElement("select");
 
@@ -86,10 +100,7 @@ function addConditionBlock() {
     select.appendChild(opt);
   });
 
-  block.appendChild(select);
-
   const fieldsContainer = document.createElement("div");
-  block.appendChild(fieldsContainer);
 
   select.addEventListener("change", () => {
     renderFields(select.value, fieldsContainer, "condition");
@@ -97,28 +108,43 @@ function addConditionBlock() {
 
   renderFields(select.value, fieldsContainer, "condition");
 
+  block.append(removeBtn, select, fieldsContainer);
   container.appendChild(block);
 }
 
+
 function addActionBlock() {
+
   const container = document.getElementById("actions-container");
+
+  if (container.children.length >= MAX_ACTIONS) {
+    alert("Maximum actions reached.");
+    return;
+  }
+
+  const eventType = document.getElementById("event-select").value;
+  const allowedActions = registry.event_action_map[eventType] || [];
 
   const block = document.createElement("div");
   block.className = "action-block";
 
+  const removeBtn = document.createElement("button");
+  removeBtn.textContent = "✕";
+  removeBtn.className = "remove-btn";
+  removeBtn.onclick = () => block.remove();
+
   const select = document.createElement("select");
 
-  registry.actions.forEach(act => {
-    const opt = document.createElement("option");
-    opt.value = act.action;
-    opt.textContent = act.label;
-    select.appendChild(opt);
-  });
-
-  block.appendChild(select);
+  registry.actions
+    .filter(a => allowedActions.includes(a.action))
+    .forEach(act => {
+      const opt = document.createElement("option");
+      opt.value = act.action;
+      opt.textContent = act.label;
+      select.appendChild(opt);
+    });
 
   const fieldsContainer = document.createElement("div");
-  block.appendChild(fieldsContainer);
 
   select.addEventListener("change", () => {
     renderFields(select.value, fieldsContainer, "action");
@@ -126,8 +152,10 @@ function addActionBlock() {
 
   renderFields(select.value, fieldsContainer, "action");
 
+  block.append(removeBtn, select, fieldsContainer);
   container.appendChild(block);
 }
+
 
 function renderFields(type, container, mode) {
   container.innerHTML = "";
@@ -219,6 +247,7 @@ document.getElementById("save-rule").addEventListener("click", async () => {
 });
 
 async function loadRules() {
+
   const res = await apiFetch(`${API_URL}/api/soc/${guildId}/rules`);
   const data = await res.json();
 
@@ -226,17 +255,52 @@ async function loadRules() {
   list.innerHTML = "";
 
   data.forEach(rule => {
-    const div = document.createElement("div");
-    div.innerHTML = `
-      <b>${rule.name}</b> (${rule.event_type})
-      <button data-id="${rule.id}">Delete</button>
+
+    const card = document.createElement("div");
+    card.className = "rule-card";
+
+    card.innerHTML = `
+      <div class="rule-header">
+        <div>
+          <div class="rule-title">${rule.name}</div>
+          <div class="rule-meta">${rule.event_type} • Severity ${rule.severity}</div>
+        </div>
+
+        <div class="rule-controls">
+          <label class="switch">
+            <input type="checkbox" ${rule.enabled ? "checked" : ""} data-id="${rule.id}">
+            <span class="slider"></span>
+          </label>
+          <button class="delete-btn" data-id="${rule.id}">⋮</button>
+        </div>
+      </div>
+
+      <div class="rule-details hidden">
+        Conditions & Actions configured
+      </div>
     `;
-    div.querySelector("button").addEventListener("click", async e => {
+
+    // Toggle enable
+    card.querySelector("input").addEventListener("change", async e => {
+      await apiFetch(`${API_URL}/api/soc/${guildId}/rules/${rule.id}/toggle`, {
+        method: "PATCH"
+      });
+    });
+
+    // Expand details
+    card.querySelector(".rule-header").addEventListener("click", () => {
+      card.querySelector(".rule-details").classList.toggle("hidden");
+    });
+
+    // Delete
+    card.querySelector(".delete-btn").addEventListener("click", async e => {
+      e.stopPropagation();
       await apiFetch(`${API_URL}/api/soc/${guildId}/rules/${rule.id}`, {
-        method:"DELETE"
+        method: "DELETE"
       });
       loadRules();
     });
-    list.appendChild(div);
+
+    list.appendChild(card);
   });
 }

@@ -282,3 +282,107 @@ body {
   padding: 12px;
   margin-bottom: 10px;
 }
+
+
+
+
+/* RULE CARDS */
+
+.rule-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #fff;
+  transition: box-shadow 0.2s;
+}
+
+.rule-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.rule-header {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.rule-title {
+  font-weight: 600;
+}
+
+.rule-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.rule-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.delete-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+/* Toggle switch */
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.switch input {
+  display: none;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  background: #ccc;
+  border-radius: 20px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: .3s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: .3s;
+}
+
+input:checked + .slider {
+  background: var(--blue);
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.hidden {
+  display: none;
+}
+
+.remove-btn {
+  float: right;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--red);
+  font-size: 14px;
+}
