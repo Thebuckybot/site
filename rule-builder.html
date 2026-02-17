@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rule Builder</title>
+  <link rel="stylesheet" href="rule-builder.css">
+  <script src="js/rule-builder.js" type="module"></script>
+</head>
+<body>
+
+<div class="rb-container">
+
+  <aside class="rb-sidebar">
+    <h2>Your Rules</h2>
+    <div id="rule-list"></div>
+    <button id="create-new-rule">+ New Rule</button>
+  </aside>
+
+  <main class="rb-main">
+
+    <div class="rb-step">
+      <h3>WHEN</h3>
+      <select id="event-type">
+        <option value="message_create">Message Created</option>
+        <option value="member_join">Member Join</option>
+      </select>
+      <p class="helper-text">
+        Choose when this rule should trigger.
+      </p>
+    </div>
+
+    <div class="rb-step">
+      <h3>IF</h3>
+      <div id="condition-builder"></div>
+      <button id="add-condition">+ Add Condition</button>
+    </div>
+
+    <div class="rb-step">
+      <h3>THEN</h3>
+      <div id="action-builder"></div>
+      <button id="add-action">+ Add Action</button>
+    </div>
+
+    <div class="rb-step">
+      <label>Severity</label>
+      <input type="number" id="severity" min="1" max="5" value="1">
+    </div>
+
+    <button id="save-rule" class="primary">Save Rule</button>
+
+  </main>
+
+</div>
+
+</body>
+</html>
