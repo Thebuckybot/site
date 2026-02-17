@@ -69,23 +69,39 @@ async function loadTimeline(hours = 24) {
     `${API_URL}/api/soc/${guildId}/incidents/timeline?hours=${hours}`
   );
 
-  const data = await res.json();
+  const rawData = await res.json();
 
+  const now = new Date();
+  const buckets = {};
   const labels = [];
   const values = [];
 
-  data.forEach(row => {
+  // Maak alle uren vooraf aan
+  for (let i = hours; i >= 0; i--) {
 
-    const date = new Date(row.bucket);
+    const d = new Date(now.getTime() - i * 60 * 60 * 1000);
 
-    if (isNaN(date)) return;
+    const key =
+      d.getFullYear() + "-" +
+      String(d.getMonth()+1).padStart(2,"0") + "-" +
+      String(d.getDate()).padStart(2,"0") + "T" +
+      String(d.getHours()).padStart(2,"0") + ":00:00";
+
+    buckets[key] = 0;
 
     labels.push(
-      date.getHours().toString().padStart(2, "0") + ":00"
+      String(d.getHours()).padStart(2, "0") + ":00"
     );
+  }
 
-    values.push(row.count);
+  // Vul echte data in
+  rawData.forEach(row => {
+    if (buckets[row.bucket] !== undefined) {
+      buckets[row.bucket] = row.count;
+    }
   });
+
+  values.push(...Object.values(buckets));
 
   if (timelineChart) timelineChart.destroy();
 
@@ -116,6 +132,7 @@ async function loadTimeline(hours = 24) {
     }
   );
 }
+
 
 
 
