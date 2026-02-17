@@ -1,27 +1,82 @@
-.soc-container {
-  padding: 30px;
+body {
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
 }
 
-.card {
-  background: #1e1e1e;
+.soc-wrapper {
+  max-width: 1200px;
+  margin: 40px auto;
   padding: 20px;
-  margin-bottom: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* TOP METRICS */
+.top-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.metric-card {
+  background: #1e293b;
+  padding: 20px;
   border-radius: 12px;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
-.risk-badge {
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+.metric-value {
   font-size: 22px;
-  font-weight: bold;
-  padding: 8px 15px;
-  border-radius: 8px;
-  display: inline-block;
-  margin-bottom: 15px;
+  font-weight: 600;
+  margin-top: 10px;
 }
 
-.risk-badge.low { background: #2ecc71; }
-.risk-badge.medium { background: #f1c40f; }
-.risk-badge.high { background: #e67e22; }
-.risk-badge.critical { background: #e74c3c; }
+/* RISK COLORS */
+.risk-badge {
+  font-weight: bold;
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.risk-badge.low { background: #16a34a; }
+.risk-badge.medium { background: #f59e0b; color: black; }
+.risk-badge.high { background: #f97316; }
+.risk-badge.critical { background: #dc2626; }
+
+/* CHART ROW */
+.charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+.chart-card {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+/* Logs */
+.logs-container {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.table-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 15px;
+}
 
 #incident-table {
   width: 100%;
@@ -30,6 +85,22 @@
 
 #incident-table th,
 #incident-table td {
-  padding: 8px;
-  border-bottom: 1px solid #333;
+  padding: 10px;
+  text-align: left;
+}
+
+#incident-table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: background 0.2s ease;
+}
+
+#incident-table tbody tr:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
 }
