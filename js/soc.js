@@ -64,6 +64,7 @@ async function loadRisk() {
 let timelineChart;
 
 async function loadTimeline(hours = 24) {
+  console.log("RAW DATA:", rawData);
 
   const res = await apiFetch(
     `${API_URL}/api/soc/${guildId}/incidents/timeline?hours=${hours}`
