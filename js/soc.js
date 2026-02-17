@@ -64,7 +64,6 @@ async function loadRisk() {
 let timelineChart;
 
 async function loadTimeline(hours = 24) {
-  console.log("RAW DATA:", rawData);
 
   const res = await apiFetch(
     `${API_URL}/api/soc/${guildId}/incidents/timeline?hours=${hours}`
@@ -73,36 +72,34 @@ async function loadTimeline(hours = 24) {
   const rawData = await res.json();
 
   const now = new Date();
-  const buckets = {};
   const labels = [];
   const values = [];
 
-  // Maak alle uren vooraf aan
+  // Maak map met echte data (timestamp als key)
+  const dataMap = {};
+
+  rawData.forEach(row => {
+    const date = new Date(row.bucket);
+    if (!isNaN(date)) {
+      const hourKey = date.setMinutes(0,0,0);
+      dataMap[hourKey] = row.count;
+    }
+  });
+
+  // Loop over alle uren
   for (let i = hours; i >= 0; i--) {
 
     const d = new Date(now.getTime() - i * 60 * 60 * 1000);
+    d.setMinutes(0,0,0);
 
-    const key =
-      d.getFullYear() + "-" +
-      String(d.getMonth()+1).padStart(2,"0") + "-" +
-      String(d.getDate()).padStart(2,"0") + "T" +
-      String(d.getHours()).padStart(2,"0") + ":00:00";
-
-    buckets[key] = 0;
+    const key = d.getTime();
 
     labels.push(
       String(d.getHours()).padStart(2, "0") + ":00"
     );
+
+    values.push(dataMap[key] || 0);
   }
-
-  // Vul echte data in
-  rawData.forEach(row => {
-    if (buckets[row.bucket] !== undefined) {
-      buckets[row.bucket] = row.count;
-    }
-  });
-
-  values.push(...Object.values(buckets));
 
   if (timelineChart) timelineChart.destroy();
 
@@ -133,6 +130,7 @@ async function loadTimeline(hours = 24) {
     }
   );
 }
+
 
 
 
