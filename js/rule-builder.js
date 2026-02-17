@@ -316,6 +316,7 @@ function openRuleModal(rule) {
   body.innerText = JSON.stringify({
     event: rule.event_type,
     severity: rule.severity,
+    created_at: rule.created_at,
     conditions: rule.conditions_json,
     actions: rule.actions_json
   }, null, 2);
@@ -324,8 +325,23 @@ function openRuleModal(rule) {
     await apiFetch(`${API_URL}/api/soc/${guildId}/rules/${rule.id}`, {
       method: "DELETE"
     });
+
     modal.classList.add("hidden");
     loadRules();
+  };
+
+  // Close on outside click
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      modal.classList.add("hidden");
+    }
+  };
+
+  // Close on ESC
+  document.onkeydown = (e) => {
+    if (e.key === "Escape") {
+      modal.classList.add("hidden");
+    }
   };
 
   modal.classList.remove("hidden");

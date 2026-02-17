@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (guildId) {
     if (overviewLink)
       overviewLink.href = `soc.html?guild_id=${guildId}`;
-    
+
     if (backLink)
       backLink.href = `settings.html?guild_id=${guildId}`;
 
@@ -70,7 +70,10 @@ async function loadTimeline(hours = 24) {
 
   const data = await res.json();
 
-  const labels = data.map(row => row.bucket);
+  const labels = data.map(row => {
+    const date = new Date(row.bucket);
+    return date.toLocaleString();
+  });
   const values = data.map(row => row.count);
 
   if (timelineChart) timelineChart.destroy();
@@ -128,10 +131,18 @@ async function loadIncidents() {
   tbody.innerHTML = "";
 
   data.forEach(row => {
+
     const tr = document.createElement("tr");
 
+    let formattedDate = "-";
+
+    if (row.created_at) {
+      const date = new Date(row.created_at);
+      formattedDate = date.toLocaleString();
+    }
+
     tr.innerHTML = `
-      <td>${row.created_at}</td>
+      <td>${formattedDate}</td>
       <td>${row.event_type}</td>
       <td>${row.user_id || "-"}</td>
       <td>${row.severity}</td>
@@ -139,6 +150,7 @@ async function loadIncidents() {
 
     tbody.appendChild(tr);
   });
+
 }
 
 const token = localStorage.getItem("api_token");
