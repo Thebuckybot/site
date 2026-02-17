@@ -293,14 +293,40 @@ async function loadRules() {
     });
 
     // Delete
-    card.querySelector(".delete-btn").addEventListener("click", async e => {
-      e.stopPropagation();
-      await apiFetch(`${API_URL}/api/soc/${guildId}/rules/${rule.id}`, {
-        method: "DELETE"
-      });
-      loadRules();
+    card.querySelector(".delete-btn").addEventListener("click", e => {
+    e.stopPropagation();
+    openRuleModal(rule);
     });
+
 
     list.appendChild(card);
   });
+}
+
+
+function openRuleModal(rule) {
+
+  const modal = document.getElementById("rule-modal");
+  const title = modal.querySelector(".modal-title");
+  const body = modal.querySelector(".modal-body");
+  const deleteBtn = modal.querySelector(".modal-delete");
+
+  title.innerText = rule.name;
+
+  body.innerText = JSON.stringify({
+    event: rule.event_type,
+    severity: rule.severity,
+    conditions: rule.conditions_json,
+    actions: rule.actions_json
+  }, null, 2);
+
+  deleteBtn.onclick = async () => {
+    await apiFetch(`${API_URL}/api/soc/${guildId}/rules/${rule.id}`, {
+      method: "DELETE"
+    });
+    modal.classList.add("hidden");
+    loadRules();
+  };
+
+  modal.classList.remove("hidden");
 }
