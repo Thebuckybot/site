@@ -72,34 +72,30 @@ async function loadTimeline(hours = 24) {
   const rawData = await res.json();
 
   const now = new Date();
-  const buckets = {};
   const labels = [];
   const values = [];
 
-  // Maak alle uren vooraf aan
-  for (let i = hours; i >= 0; i--) {
+  const bucketMap = {};
+  rawData.forEach(row => {
+    bucketMap[row.bucket] = row.count;
+  });
+
+  for (let i = hours - 1; i >= 0; i--) {
+
     const d = new Date(now.getTime() - i * 60 * 60 * 1000);
 
-    const key = d.getFullYear() + "-" +
+    const key =
+      d.getFullYear() + "-" +
       String(d.getMonth()+1).padStart(2,"0") + "-" +
       String(d.getDate()).padStart(2,"0") + " " +
       String(d.getHours()).padStart(2,"0") + ":00:00";
 
-    buckets[key] = 0;
-
     labels.push(
-      String(d.getHours()).padStart(2, "0") + ":00"
+      String(d.getHours()).padStart(2,"0") + ":00"
     );
+
+    values.push(bucketMap[key] || 0);
   }
-
-  // Vul echte data in
-  rawData.forEach(row => {
-    if (buckets[row.bucket] !== undefined) {
-      buckets[row.bucket] = row.count;
-    }
-  });
-
-  values.push(...Object.values(buckets));
 
   if (timelineChart) timelineChart.destroy();
 
@@ -112,7 +108,7 @@ async function loadTimeline(hours = 24) {
         datasets: [{
           data: values,
           borderColor: "#3b82f6",
-          tension: 0.4,
+          tension: 0.3,
           fill: true
         }]
       },
@@ -120,13 +116,17 @@ async function loadTimeline(hours = 24) {
         plugins: { legend: { display: false } },
         scales: {
           y: {
-            beginAtZero: true
+            beginAtZero: true,
+            ticks: {
+              precision: 0   // 🔥 FORCE whole numbers
+            }
           }
         }
       }
     }
   );
 }
+
 
 document.getElementById("time-filter").addEventListener("change", e => {
   loadTimeline(e.target.value);
