@@ -69,33 +69,21 @@ async function loadTimeline(hours = 24) {
     `${API_URL}/api/soc/${guildId}/incidents/timeline?hours=${hours}`
   );
 
-  const rawData = await res.json();
+  const data = await res.json();
 
-  const now = new Date();
   const labels = [];
   const values = [];
 
-  const bucketMap = {};
-  rawData.forEach(row => {
-    bucketMap[row.bucket] = row.count;
-  });
+  data.forEach(row => {
 
-  for (let i = hours - 1; i >= 0; i--) {
-
-    const d = new Date(now.getTime() - i * 60 * 60 * 1000);
-
-    const key =
-      d.getFullYear() + "-" +
-      String(d.getMonth()+1).padStart(2,"0") + "-" +
-      String(d.getDate()).padStart(2,"0") + " " +
-      String(d.getHours()).padStart(2,"0") + ":00:00";
+    const date = new Date(row.bucket);
 
     labels.push(
-      String(d.getHours()).padStart(2,"0") + ":00"
+      date.getHours().toString().padStart(2, "0") + ":00"
     );
 
-    values.push(bucketMap[key] || 0);
-  }
+    values.push(row.count);
+  });
 
   if (timelineChart) timelineChart.destroy();
 
@@ -118,7 +106,7 @@ async function loadTimeline(hours = 24) {
           y: {
             beginAtZero: true,
             ticks: {
-              precision: 0   // 🔥 FORCE whole numbers
+              precision: 0
             }
           }
         }
@@ -126,6 +114,7 @@ async function loadTimeline(hours = 24) {
     }
   );
 }
+
 
 
 document.getElementById("time-filter").addEventListener("change", e => {
