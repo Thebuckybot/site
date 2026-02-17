@@ -5,85 +5,104 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SOC Dashboard</title>
 
-  <!-- <link rel="stylesheet" href="style.css" /> -->
   <link rel="stylesheet" href="soc.css" />
 
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <script src="js/soc.js" type="module"></script>
 </head>
 <body>
 
-<header id="guild-header">
-  <div class="guild-info">
-    <h1>SOC Dashboard</h1>
-  </div>
-  <a href="settings.html" id="back-link" class="back-button">← Settings</a>
-</header>
+<div class="layout">
 
-<main class="soc-wrapper">
-
-  <section class="top-metrics">
-    <div class="metric-card">
-      <h3>Risk Level</h3>
-      <div id="risk-level" class="risk-badge">Loading...</div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>SOC</h2>
     </div>
 
-    <div class="metric-card">
-      <h3>Risk Score</h3>
-      <div class="metric-value" id="risk-score">-</div>
-    </div>
+    <nav class="sidebar-nav">
+      <a class="active">Overview</a>
+      <a id="rule-builder-link">Rule Builder</a>
+      <a id="logs-link">Logs</a>
+      <a id="settings-link">Settings</a>
+    </nav>
+  </aside>
 
-    <div class="metric-card">
-      <h3>Server Locked</h3>
-      <div class="metric-value" id="server-locked">-</div>
-    </div>
+  <!-- MAIN -->
+  <main class="main-content">
 
-    <div class="metric-card">
-      <h3>Raid Mode</h3>
-      <div class="metric-value" id="raid-mode">-</div>
-    </div>
-  </section>
+    <header class="top-bar">
+      <h1>Security Overview</h1>
+      <a id="back-link" class="back-button">Back to Settings</a>
+    </header>
 
-  <section class="charts-row">
-    <div class="card chart-card">
-      <div class="chart-header">
-        <h2>Incident Activity</h2>
-        <select id="time-filter">
-          <option value="24">Last 24h</option>
-          <option value="168">Last 7 days</option>
-          <option value="720">Last 30 days</option>
-        </select>
+    <!-- METRICS -->
+    <section class="metrics-row">
+      <div class="metric">
+        <div class="metric-label">Risk Level</div>
+        <div id="risk-level" class="risk-badge">-</div>
       </div>
-      <canvas id="timelineChart"></canvas>
-    </div>
 
-    <div class="card chart-card">
-      <h2>Severity Distribution</h2>
-      <canvas id="severityChart"></canvas>
-    </div>
-  </section>
+      <div class="metric">
+        <div class="metric-label">Risk Score</div>
+        <div id="risk-score" class="metric-value">-</div>
+      </div>
 
-  <section class="card logs-container">
-    <h2>Recent Incidents</h2>
-    <div class="table-wrapper">
-      <table id="incident-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Event</th>
-            <th>User</th>
-            <th>Severity</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
+      <div class="metric">
+        <div class="metric-label">Server Locked</div>
+        <div id="server-locked" class="metric-value">-</div>
+      </div>
 
-</main>
+      <div class="metric">
+        <div class="metric-label">Raid Mode</div>
+        <div id="raid-mode" class="metric-value">-</div>
+      </div>
+    </section>
 
+    <!-- CHARTS -->
+    <section class="charts-row">
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Incident Activity</h3>
+          <select id="time-filter">
+            <option value="24">Last 24h</option>
+            <option value="168">Last 7 days</option>
+            <option value="720">Last 30 days</option>
+          </select>
+        </div>
+        <canvas id="timelineChart"></canvas>
+      </div>
+
+      <div class="panel">
+        <h3>Severity Distribution</h3>
+        <canvas id="severityChart"></canvas>
+      </div>
+
+    </section>
+
+    <!-- INCIDENT TABLE -->
+    <section class="panel">
+      <h3>Recent Incidents</h3>
+
+      <div class="table-container">
+        <table id="incident-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Event</th>
+              <th>User</th>
+              <th>Severity</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+</div>
 
 </body>
 </html>

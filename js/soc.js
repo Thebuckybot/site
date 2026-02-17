@@ -14,6 +14,10 @@ if (backLink) {
   backLink.href = `settings.html?guild_id=${guildId}`;
 }
 
+document.getElementById("settings-link").href =
+  `settings.html?guild_id=${guildId}`;
+
+
 
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
@@ -85,14 +89,19 @@ async function loadSeverity() {
   const values = data.map(row => row.count);
 
   new Chart(document.getElementById("severityChart"), {
-    type: "pie",
+    type: "doughnut",
     data: {
-      labels: labels,
+      labels,
       datasets: [{
-        data: values
+        data: values,
+        backgroundColor: ["#16a34a", "#f59e0b", "#dc2626"]
       }]
+    },
+    options: {
+      plugins: { legend: { position: "bottom" } }
     }
   });
+
 }
 
 async function loadIncidents() {
