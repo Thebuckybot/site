@@ -78,6 +78,8 @@ async function loadTimeline(hours = 24) {
 
     const date = new Date(row.bucket);
 
+    if (isNaN(date)) return;
+
     labels.push(
       date.getHours().toString().padStart(2, "0") + ":00"
     );
