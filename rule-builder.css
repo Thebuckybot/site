@@ -1,40 +1,45 @@
+body {
+  background:#0f172a;
+  color:#e2e8f0;
+  font-family:Inter;
+}
+
 .rb-container {
-  display: flex;
-  height: 100vh;
-  background: #f3f4f6;
+  max-width:1000px;
+  margin:auto;
+  padding:40px;
 }
 
-.rb-sidebar {
-  width: 300px;
-  background: white;
-  border-right: 1px solid #e5e7eb;
-  padding: 20px;
+.rb-create, .rb-list {
+  background:#1e293b;
+  padding:25px;
+  border-radius:12px;
+  margin-bottom:30px;
 }
 
-.rb-main {
-  flex: 1;
-  padding: 40px;
-  overflow-y: auto;
+select, input {
+  background:#0f172a;
+  color:white;
+  border:1px solid #334155;
+  padding:8px;
+  margin:5px 0;
+  border-radius:6px;
+  width:100%;
 }
 
-.rb-step {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
-  border: 1px solid #e5e7eb;
+button {
+  background:#3b82f6;
+  border:none;
+  padding:10px 15px;
+  border-radius:8px;
+  cursor:pointer;
+  margin-top:10px;
 }
 
-.helper-text {
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin-top: 8px;
-}
-
-.primary {
-  background: #2563eb;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 6px;
-  border: none;
+.condition-block, .action-block {
+  background:#0f172a;
+  padding:15px;
+  margin:10px 0;
+  border-radius:8px;
+  border:1px solid #334155;
 }

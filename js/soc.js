@@ -9,20 +9,36 @@ if (!guildId) {
   window.location.href = "dashboard.html";
 }
 
-const backLink = document.getElementById("back-link");
-if (backLink) {
-  backLink.href = `settings.html?guild_id=${guildId}`;
-}
-
-document.getElementById("settings-link").href =
-  `settings.html?guild_id=${guildId}`;
-
-
-
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
+
+  // Sidebar links correct zetten
+  const backLink = document.getElementById("back-link");
+  const settingsLink = document.getElementById("settings-link");
+  const ruleLink = document.getElementById("rule-builder-link");
+  const logsLink = document.getElementById("logs-link");
+  const overviewLink = document.getElementById("overview-link");
+
+  if (guildId) {
+    if (overviewLink)
+      overviewLink.href = `soc.html?guild_id=${guildId}`;
+    
+    if (backLink)
+      backLink.href = `settings.html?guild_id=${guildId}`;
+
+    if (settingsLink)
+      settingsLink.href = `settings.html?guild_id=${guildId}`;
+
+    if (ruleLink)
+      ruleLink.href = `rule-builder.html?guild_id=${guildId}`;
+
+    if (logsLink)
+      logsLink.href = `soc.html?guild_id=${guildId}&view=logs`;
+  }
+
   loadSOC();
 });
+
 
 async function loadSOC() {
   await loadRisk();

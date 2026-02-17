@@ -1,55 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Rule Builder</title>
   <link rel="stylesheet" href="rule-builder.css">
   <script src="js/rule-builder.js" type="module"></script>
 </head>
 <body>
 
-<div class="rb-container">
+<header class="rb-header">
+  <h1>SOC Rule Builder</h1>
+  <a id="back-link">← Back</a>
+</header>
 
-  <aside class="rb-sidebar">
-    <h2>Your Rules</h2>
+<main class="rb-container">
+
+  <section class="rb-create">
+
+    <input id="rule-name" placeholder="Rule name">
+
+    <select id="event-select"></select>
+
+    <div id="conditions-container"></div>
+    <button id="add-condition">+ Add Condition</button>
+
+    <div id="actions-container"></div>
+    <button id="add-action">+ Add Action</button>
+
+    <select id="severity">
+      <option value="1">Low</option>
+      <option value="2">Medium</option>
+      <option value="3">High</option>
+      <option value="4">Critical</option>
+    </select>
+
+    <button id="save-rule">Create Rule</button>
+
+  </section>
+
+  <section class="rb-list">
+    <h2>Existing Rules</h2>
     <div id="rule-list"></div>
-    <button id="create-new-rule">+ New Rule</button>
-  </aside>
+  </section>
 
-  <main class="rb-main">
-
-    <div class="rb-step">
-      <h3>WHEN</h3>
-      <select id="event-type">
-        <option value="message_create">Message Created</option>
-        <option value="member_join">Member Join</option>
-      </select>
-      <p class="helper-text">
-        Choose when this rule should trigger.
-      </p>
-    </div>
-
-    <div class="rb-step">
-      <h3>IF</h3>
-      <div id="condition-builder"></div>
-      <button id="add-condition">+ Add Condition</button>
-    </div>
-
-    <div class="rb-step">
-      <h3>THEN</h3>
-      <div id="action-builder"></div>
-      <button id="add-action">+ Add Action</button>
-    </div>
-
-    <div class="rb-step">
-      <label>Severity</label>
-      <input type="number" id="severity" min="1" max="5" value="1">
-    </div>
-
-    <button id="save-rule" class="primary">Save Rule</button>
-
-  </main>
-
-</div>
+</main>
 
 </body>
 </html>
