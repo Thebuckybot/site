@@ -14,6 +14,23 @@ if (!guildId) {
 document.addEventListener("DOMContentLoaded", async () => {
     storeTokenFromUrl();
 
+    // Sidebar link fix
+    const overviewLink = document.getElementById("overview-link");
+    const settingsLink = document.getElementById("settings-link");
+    const logsLink = document.getElementById("logs-link");
+
+    if (guildId) {
+        if (overviewLink)
+            overviewLink.href = `soc.html?guild_id=${guildId}`;
+
+        if (settingsLink)
+            settingsLink.href = `settings.html?guild_id=${guildId}`;
+
+        if (logsLink)
+            logsLink.href = `soc.html?guild_id=${guildId}&view=logs`;
+    }
+
+
     const token = localStorage.getItem("api_token");
     if (!token) {
         alert("You are not logged in.");

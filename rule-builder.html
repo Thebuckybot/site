@@ -1,49 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Rule Builder</title>
-  <link rel="stylesheet" href="rule-builder.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOC Rule Builder</title>
+
+  <!-- Gebruik dezelfde styling als SOC -->
+  <link rel="stylesheet" href="soc.css" />
+
   <script src="js/rule-builder.js" type="module"></script>
 </head>
 <body>
 
-<header class="rb-header">
-  <h1>SOC Rule Builder</h1>
-  <a id="back-link">← Back</a>
-</header>
+<div class="layout">
 
-<main class="rb-container">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>SOC</h2>
+    </div>
 
-  <section class="rb-create">
+    <nav class="sidebar-nav">
+      <a id="overview-link">Overview</a>
+      <a class="active">Rule Builder</a>
+      <a id="logs-link">Logs</a>
+      <a id="settings-link">Settings</a>
+    </nav>
+  </aside>
 
-    <input id="rule-name" placeholder="Rule name">
+  <!-- MAIN -->
+  <main class="main-content">
 
-    <select id="event-select"></select>
+    <header class="top-bar">
+      <h1>Rule Builder</h1>
+      <a id="back-link" class="back-button">Back</a>
+    </header>
 
-    <div id="conditions-container"></div>
-    <button id="add-condition">+ Add Condition</button>
+    <!-- CREATE RULE PANEL -->
+    <section class="panel">
 
-    <div id="actions-container"></div>
-    <button id="add-action">+ Add Action</button>
+      <div class="form-group">
+        <label>Rule Name</label>
+        <input id="rule-name" class="input-field" placeholder="Example: Mention Spam Protection">
+      </div>
 
-    <select id="severity">
-      <option value="1">Low</option>
-      <option value="2">Medium</option>
-      <option value="3">High</option>
-      <option value="4">Critical</option>
-    </select>
+      <div class="form-group">
+        <label>Event</label>
+        <select id="event-select" class="input-field"></select>
+      </div>
 
-    <button id="save-rule">Create Rule</button>
+      <div class="form-group">
+        <label>Conditions</label>
+        <div id="conditions-container"></div>
+        <button id="add-condition" class="secondary-btn">+ Add Condition</button>
+      </div>
 
-  </section>
+      <div class="form-group">
+        <label>Actions</label>
+        <div id="actions-container"></div>
+        <button id="add-action" class="secondary-btn">+ Add Action</button>
+      </div>
 
-  <section class="rb-list">
-    <h2>Existing Rules</h2>
-    <div id="rule-list"></div>
-  </section>
+      <div class="form-group">
+        <label>Severity</label>
+        <select id="severity" class="input-field">
+          <option value="1">Low</option>
+          <option value="2">Medium</option>
+          <option value="3">High</option>
+          <option value="4">Critical</option>
+        </select>
+      </div>
 
-</main>
+      <button id="save-rule" class="primary-btn">Create Rule</button>
+
+    </section>
+
+    <!-- RULE LIST PANEL -->
+    <section class="panel">
+      <h3>Existing Rules</h3>
+      <div id="rule-list"></div>
+    </section>
+
+  </main>
+
+</div>
 
 </body>
 </html>
