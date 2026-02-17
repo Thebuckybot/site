@@ -313,13 +313,23 @@ function openRuleModal(rule) {
 
   title.innerText = rule.name;
 
-  body.innerText = JSON.stringify({
-    event: rule.event_type,
-    severity: rule.severity,
-    created_at: rule.created_at,
-    conditions: rule.conditions_json,
-    actions: rule.actions_json
-  }, null, 2);
+    const created = rule.created_at
+    ? new Date(rule.created_at).toLocaleString()
+    : "-";
+
+    body.innerHTML = `
+    <strong>Event:</strong> ${rule.event_type}<br>
+    <strong>Severity:</strong> ${rule.severity}<br>
+    <strong>Created:</strong> ${created}
+    <br><br>
+
+    <strong>Conditions:</strong>
+    <pre>${JSON.stringify(rule.conditions_json, null, 2)}</pre>
+
+    <strong>Actions:</strong>
+    <pre>${JSON.stringify(rule.actions_json, null, 2)}</pre>
+    `;
+
 
   deleteBtn.onclick = async () => {
     await apiFetch(`${API_URL}/api/soc/${guildId}/rules/${rule.id}`, {

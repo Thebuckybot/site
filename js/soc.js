@@ -64,35 +64,66 @@ async function loadRisk() {
 let timelineChart;
 
 async function loadTimeline(hours = 24) {
+
   const res = await apiFetch(
     `${API_URL}/api/soc/${guildId}/incidents/timeline?hours=${hours}`
   );
 
-  const data = await res.json();
+  const rawData = await res.json();
 
-  const labels = data.map(row => {
-    const date = new Date(row.bucket);
-    return date.toLocaleString();
+  const now = new Date();
+  const buckets = {};
+  const labels = [];
+  const values = [];
+
+  // Maak alle uren vooraf aan
+  for (let i = hours; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 60 * 60 * 1000);
+
+    const key = d.getFullYear() + "-" +
+      String(d.getMonth()+1).padStart(2,"0") + "-" +
+      String(d.getDate()).padStart(2,"0") + " " +
+      String(d.getHours()).padStart(2,"0") + ":00:00";
+
+    buckets[key] = 0;
+
+    labels.push(d.toLocaleString());
+  }
+
+  // Vul echte data in
+  rawData.forEach(row => {
+    if (buckets[row.bucket] !== undefined) {
+      buckets[row.bucket] = row.count;
+    }
   });
-  const values = data.map(row => row.count);
+
+  values.push(...Object.values(buckets));
 
   if (timelineChart) timelineChart.destroy();
 
-  timelineChart = new Chart(document.getElementById("timelineChart"), {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        borderColor: "#3b82f6",
-        tension: 0.3,
-        fill: false
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } }
+  timelineChart = new Chart(
+    document.getElementById("timelineChart"),
+    {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: "#3b82f6",
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
     }
-  });
+  );
 }
 
 document.getElementById("time-filter").addEventListener("change", e => {
