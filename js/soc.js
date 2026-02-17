@@ -87,7 +87,9 @@ async function loadTimeline(hours = 24) {
 
     buckets[key] = 0;
 
-    labels.push(d.toLocaleString());
+    labels.push(
+      String(d.getHours()).padStart(2, "0") + ":00"
+    );
   }
 
   // Vul echte data in
@@ -169,7 +171,10 @@ async function loadIncidents() {
 
     if (row.created_at) {
       const date = new Date(row.created_at);
-      formattedDate = date.toLocaleString();
+      formattedDate =
+        date.toLocaleDateString() + " " +
+        date.getHours().toString().padStart(2,"0") + ":" +
+        date.getMinutes().toString().padStart(2,"0");
     }
 
     tr.innerHTML = `
