@@ -222,13 +222,12 @@ body {
 
 
 
-
 /* =========================
    RULE BUILDER FORM
 ========================= */
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .form-group label {
@@ -236,6 +235,7 @@ body {
   font-size: 13px;
   margin-bottom: 6px;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .input-field {
@@ -244,8 +244,152 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 14px;
-  background: #fff;
+  background: #ffffff;
+  transition: border 0.2s, box-shadow 0.2s;
 }
+
+.input-field:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  outline: none;
+}
+
+/* =========================
+   FLOW LAYOUT (WHEN → IF → THEN)
+========================= */
+
+.rule-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.flow-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  background: #ffffff;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.flow-section:hover {
+  border-color: #d6dbe3;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.flow-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--blue);
+  margin-bottom: 12px;
+}
+
+.flow-connector {
+  text-align: center;
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+.flow-select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  font-size: 14px;
+}
+
+.flow-select:focus {
+  border-color: var(--blue);
+  outline: none;
+}
+
+/* =========================
+   CONDITION & ACTION BLOCKS
+========================= */
+
+.condition-block,
+.action-block {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: #f9fafb;
+  position: relative;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.condition-block:hover,
+.action-block:hover {
+  border-color: var(--blue);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+}
+
+.condition-block select,
+.action-block select,
+.condition-block input,
+.action-block input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  margin-top: 8px;
+  background: #ffffff;
+}
+
+.condition-block select:focus,
+.action-block select:focus,
+.condition-block input:focus,
+.action-block input:focus {
+  border-color: var(--blue);
+  outline: none;
+}
+
+/* Remove button inside block */
+.remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--red);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.remove-btn:hover {
+  opacity: 0.7;
+}
+
+/* =========================
+   ADD BUTTONS
+========================= */
+
+.flow-add-btn {
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+  background: #ffffff;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 13px;
+}
+
+.flow-add-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: #f0f6ff;
+}
+
+/* =========================
+   PRIMARY / SECONDARY BUTTONS
+========================= */
 
 .secondary-btn {
   background: #f3f4f6;
@@ -253,7 +397,7 @@ body {
   padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
-  margin-top: 8px;
+  transition: background 0.2s;
 }
 
 .secondary-btn:hover {
@@ -268,37 +412,30 @@ body {
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
+  transition: background 0.2s, box-shadow 0.2s;
 }
 
 .primary-btn:hover {
-  opacity: 0.9;
+  background: #1d4ed8;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
 }
 
-.condition-block,
-.action-block {
-  background: #f9fafb;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 10px;
-}
-
-
-
-
-/* RULE CARDS */
+/* =========================
+   RULE CARDS (Existing Rules)
+========================= */
 
 .rule-card {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
-  background: #fff;
-  transition: box-shadow 0.2s;
+  background: var(--bg-panel);
+  transition: box-shadow 0.2s, border 0.2s;
 }
 
 .rule-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  border-color: #d6dbe3;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .rule-header {
@@ -309,6 +446,7 @@ body {
 
 .rule-title {
   font-weight: 600;
+  font-size: 15px;
 }
 
 .rule-meta {
@@ -327,9 +465,16 @@ body {
   background: transparent;
   cursor: pointer;
   font-size: 18px;
+  color: var(--text-secondary);
 }
 
-/* Toggle switch */
+.delete-btn:hover {
+  color: var(--red);
+}
+
+/* =========================
+   TOGGLE SWITCH
+========================= */
 
 .switch {
   position: relative;
@@ -345,7 +490,7 @@ body {
 .slider {
   position: absolute;
   cursor: pointer;
-  background: #ccc;
+  background: #d1d5db;
   border-radius: 20px;
   top: 0;
   left: 0;
@@ -374,17 +519,9 @@ input:checked + .slider:before {
   transform: translateX(20px);
 }
 
-
-.remove-btn {
-  float: right;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--red);
-  font-size: 14px;
-}
-
-
+/* =========================
+   MODAL
+========================= */
 
 .modal {
   position: fixed;
@@ -397,7 +534,7 @@ input:checked + .slider:before {
 }
 
 .modal-content {
-  background: #fff;
+  background: #ffffff;
   padding: 24px;
   border-radius: 8px;
   width: 500px;
@@ -405,12 +542,13 @@ input:checked + .slider:before {
 }
 
 .modal-body {
-  background: #f3f4f6;
+  background: #f9fafb;
   padding: 12px;
   border-radius: 6px;
   max-height: 300px;
   overflow: auto;
   font-size: 12px;
+  border: 1px solid var(--border);
 }
 
 .modal-actions {

@@ -110,6 +110,7 @@ function addConditionBlock() {
 
   block.append(removeBtn, select, fieldsContainer);
   container.appendChild(block);
+  block.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 
@@ -154,6 +155,7 @@ function addActionBlock() {
 
   block.append(removeBtn, select, fieldsContainer);
   container.appendChild(block);
+  block.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 

@@ -36,6 +36,15 @@
       <a id="back-link" class="back-button">Back</a>
     </header>
 
+    <section class="panel builder-intro">
+      <h2>Build a Security Rule</h2>
+      <p>
+        Define WHEN an event occurs, apply IF conditions,
+        and execute THEN actions.
+        Each rule is evaluated in real-time by the SOC Engine.
+      </p>
+    </section>
+
     <!-- CREATE RULE PANEL -->
     <section class="panel">
 
@@ -44,21 +53,37 @@
         <input id="rule-name" class="input-field" placeholder="Example: Mention Spam Protection">
       </div>
 
-      <div class="form-group">
-        <label>Event</label>
-        <select id="event-select" class="input-field"></select>
-      </div>
+      <div class="rule-flow">
 
-      <div class="form-group">
-        <label>Conditions</label>
-        <div id="conditions-container"></div>
-        <button id="add-condition" class="secondary-btn">+ Add Condition</button>
-      </div>
+        <div class="flow-section when-block">
+          <div class="flow-label">WHEN</div>
+          <select id="event-select" class="flow-select"></select>
+        </div>
 
-      <div class="form-group">
-        <label>Actions</label>
-        <div id="actions-container"></div>
-        <button id="add-action" class="secondary-btn">+ Add Action</button>
+        <div class="flow-connector">↓</div>
+
+        <div class="flow-section if-block">
+          <div class="flow-label">IF</div>
+
+          <div id="conditions-container" class="flow-container"></div>
+
+          <button id="add-condition" class="flow-add-btn">
+            + Add Condition
+          </button>
+        </div>
+
+        <div class="flow-connector">↓</div>
+
+        <div class="flow-section then-block">
+          <div class="flow-label">THEN</div>
+
+          <div id="actions-container" class="flow-container"></div>
+
+          <button id="add-action" class="flow-add-btn">
+            + Add Action
+          </button>
+        </div>
+
       </div>
 
       <div class="form-group">
