@@ -200,7 +200,20 @@ document.getElementById("save-rule").addEventListener("click", async () => {
     const cond = { type };
 
     block.querySelectorAll("[data-field]").forEach(field => {
-      cond[field.dataset.field] = field.value;
+
+    let value = field.value;
+
+    // Fallback naar placeholder indien leeg
+    if (!value || value.trim() === "") {
+        value = field.placeholder || null;
+    }
+
+    // Convert numbers properly
+    if (field.type === "number" && value !== null) {
+        value = parseInt(value);
+    }
+
+    cond[field.dataset.field] = value;
     });
 
     conditions.push(cond);
@@ -212,8 +225,22 @@ document.getElementById("save-rule").addEventListener("click", async () => {
     const act = { action };
 
     block.querySelectorAll("[data-field]").forEach(field => {
-      act[field.dataset.field] = field.value;
+
+    let value = field.value;
+
+    // Fallback naar placeholder indien leeg
+    if (!value || value.trim() === "") {
+        value = field.placeholder || null;
+    }
+
+    // Convert numbers properly
+    if (field.type === "number" && value !== null) {
+        value = parseInt(value);
+    }
+
+    act[field.dataset.field] = value;
     });
+
 
     actions.push(act);
   });
