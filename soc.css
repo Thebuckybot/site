@@ -571,32 +571,53 @@ input:checked + .slider:before {
 .builder-intro {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 50px;
-  margin-bottom: 40px;
-  padding-bottom: 25px;
+  gap: 60px;
+  margin-bottom: 45px;
+  padding-bottom: 30px;
   border-bottom: 1px solid var(--border);
+}
+
+.intro-column {
+  display: flex;
+  flex-direction: column;
 }
 
 .builder-intro h2 {
   font-size: 18px;
-  margin-bottom: 12px;
+  margin-bottom: 18px;
   font-weight: 600;
 }
 
+/* Strakkere tekstblokken */
 .builder-intro p {
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.75;
   color: var(--text-secondary);
+  text-align: justify;
+  text-justify: inter-word;
 }
 
+/* Gelijke verticale spacing */
 .builder-intro p + p {
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
-/* Responsive fallback */
+/* Zorgt dat beide kolommen visueel gelijk aanvoelen */
+.builder-intro .intro-column {
+  min-height: 100%;
+}
+
+/* Keyword styling */
+.keyword {
+  color: var(--blue);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Responsive */
 @media (max-width: 900px) {
   .builder-intro {
     grid-template-columns: 1fr;
-    gap: 25px;
+    gap: 30px;
   }
 }
