@@ -36,14 +36,56 @@
       <a id="back-link" class="back-button">Back</a>
     </header>
 
-    <section class="panel builder-intro">
-      <h2>Build a Security Rule</h2>
-      <p>
-        Define WHEN an event occurs, apply IF conditions,
-        and execute THEN actions.
-        Each rule is evaluated in real-time by the SOC Engine.
-      </p>
+    <section class="builder-intro">
+      <div class="intro-column">
+        <h2>SOC Rule Engine</h2>
+
+        <p>
+          The Security Operations Engine continuously processes
+          server events in real-time. Every incoming event -
+          such as messages, member joins, role changes, or webhook activity -
+          is evaluated against active rules.
+        </p>
+
+        <p>
+          Each rule consists of a trigger (WHEN), a set of logical
+          conditions (IF), and one or more response actions (THEN).
+          Conditions are evaluated instantly to determine whether
+          mitigation or monitoring should be executed.
+        </p>
+
+        <p>
+          The engine is designed to operate with minimal latency,
+          ensuring rapid detection and response to suspicious behavior
+          or policy violations.
+        </p>
+      </div>
+
+      <div class="intro-column">
+        <h2>Logs & Automated Response</h2>
+
+        <p>
+          When a rule is matched, predefined actions can be executed
+          automatically. These actions include user moderation,
+          channel restrictions, risk score adjustments,
+          and real-time notifications.
+        </p>
+
+        <p>
+          Every rule execution is logged and stored as an incident.
+          This provides full traceability, allowing administrators
+          to review activity, monitor trends, and analyze patterns
+          over time.
+        </p>
+
+        <p>
+          Combined with the incident dashboard and risk scoring system,
+          the rule builder enables proactive security management
+          rather than reactive moderation.
+        </p>
+      </div>
     </section>
+
 
     <!-- CREATE RULE PANEL -->
     <section class="panel">
