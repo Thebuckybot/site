@@ -74,6 +74,11 @@ document.getElementById("add-action").addEventListener("click", () => {
   addActionBlock();
 });
 
+document.getElementById("event-select").addEventListener("change", () => {
+  document.getElementById("conditions-container").innerHTML = "";
+  document.getElementById("actions-container").innerHTML = "";
+});
+
 function addConditionBlock() {
 
   const container = document.getElementById("conditions-container");
@@ -91,14 +96,19 @@ function addConditionBlock() {
   removeBtn.className = "remove-btn";
   removeBtn.onclick = () => block.remove();
 
-  const select = document.createElement("select");
+    const select = document.createElement("select");
 
-  registry.conditions.forEach(cond => {
-    const opt = document.createElement("option");
-    opt.value = cond.type;
-    opt.textContent = cond.label;
-    select.appendChild(opt);
-  });
+    const eventType = document.getElementById("event-select").value;
+    const allowedConditions = registry.event_condition_map[eventType] || [];
+
+    registry.conditions
+    .filter(cond => allowedConditions.includes(cond.type))
+    .forEach(cond => {
+        const opt = document.createElement("option");
+        opt.value = cond.type;
+        opt.textContent = cond.label;
+        select.appendChild(opt);
+    });
 
   const fieldsContainer = document.createElement("div");
 
