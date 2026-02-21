@@ -1,310 +1,319 @@
-/* ==================================================
-   SETTINGS PAGE – SENTINEL / SOC STYLE
-   Consistent with soc.css
-================================================== */
-
+/* Globale stijlen & Variabelen */
 :root {
-    --bg-page: #f4f6f9;
-    --bg-panel: #ffffff;
-    --border: #e2e6ea;
-
-    --text-primary: #1f2937;
-    --text-secondary: #6b7280;
-
-    /* Bucky accents (subtle) */
-    --blue: #2563eb;
-    --red: #dc2626;
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #1a1a2e;
+    --card-bg: #1f203a;
+    --accent-red: #e63946;
+    --accent-blue: #4a82ff;
+    --text-light: #e0e0e0;
+    --text-muted: #a0a0a0;
+    --border-color: #3b3b5c;
 }
 
-/* Reset */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: "Segoe UI", Inter, sans-serif;
 }
 
 html, body {
-    background: var(--bg-page);
-    color: var(--text-primary);
-    min-height: 100vh;
+    height: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-light);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
 }
-
-/* ==================================================
-   MAIN LAYOUT
-================================================== */
 
 main {
-    flex: 1;
-    padding: 40px;
-    max-width: 1100px;
-    margin: 0 auto;
+    flex-grow: 1;
+    padding: 2rem 1rem;
+    max-width: 900px;
+    width: 100%;
+    margin: 2rem auto;
 }
 
-/* ==================================================
-   GUILD HEADER
-================================================== */
-
+/* --------------------
+   HEADER STIJLEN
+   -------------------- */
 #guild-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
-    margin-bottom: 30px;
+    background-color: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    margin: 2rem auto 2rem;
+    max-width: 900px;
+    width: 100%;
+    border: 1px solid var(--border-color);
 }
 
 .guild-info {
-    display: flex;
-    align-items: center;
-    gap: 20px;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
 }
 
 #guild-icon {
-    width: 70px;
-    height: 70px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
-    border: 3px solid var(--red);
+    object-fit: cover;
+    border: 4px solid var(--accent-red);
+    box-shadow: 0 0 10px rgba(230, 57, 71, 0.5);
 }
 
 #guild-name {
-    font-size: 22px;
-    font-weight: 600;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-light);
 }
 
-/* Back button */
-
 .back-button {
-    text-decoration: none;
-    color: var(--blue);
-    font-size: 14px;
-    font-weight: 500;
+  color: var(--text-light);
+  text-decoration: none;
+  font-weight: bold;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  background: linear-gradient(45deg, var(--accent-red), #ff6b6b);
+  box-shadow: 0 4px 10px rgba(230, 57, 71, 0.4);
+  transition: all 0.3s ease;
 }
 
 .back-button:hover {
-    text-decoration: underline;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(230, 57, 71, 0.6);
+  text-decoration: none;
 }
 
-/* ==================================================
-   CARDS
-================================================== */
-
+/* --------------------
+   ALGEMENE KAART- EN SECTIE STIJLEN
+   -------------------- */
 .card {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
-    margin-bottom: 25px;
+    background-color: var(--card-bg);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
 }
 
 .card h2 {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 18px;
+    color: var(--accent-red);
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid rgba(230, 57, 71, 0.2);
+    padding-bottom: 0.75rem;
 }
 
 .card h3 {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 12px;
-    color: var(--text-secondary);
+    font-size: 1.4rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--accent-blue);
 }
 
-/* ==================================================
-   ANTI MODE TOGGLES
-================================================== */
-
+/* --------------------
+   CONTROLES & INPUTS
+   -------------------- */
 #anti-mode-toggles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
 }
 
 #anti-mode-toggles label {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: #fafbfc;
+    gap: 0.75rem;
+    background-color: var(--bg-secondary);
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
     cursor: pointer;
-    transition: background 0.2s, border 0.2s;
-    font-size: 14px;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 #anti-mode-toggles label:hover {
-    background: #f0f2f5;
-    border-color: #d6dbe3;
+    background-color: #2a2a44;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
-
-/* Checkbox style */
 
 #anti-mode-toggles input[type="checkbox"] {
     appearance: none;
-    width: 18px;
-    height: 18px;
-    border: 1px solid var(--border);
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--text-muted);
     border-radius: 4px;
     position: relative;
     cursor: pointer;
-    transition: border 0.2s, background 0.2s;
+    transition: all 0.3s ease;
 }
 
 #anti-mode-toggles input[type="checkbox"]:checked {
-    background: var(--blue);
-    border-color: var(--blue);
+    background-color: var(--accent-red);
+    border-color: var(--accent-red);
 }
 
 #anti-mode-toggles input[type="checkbox"]:checked::after {
-    content: "";
+    content: '✓';
     position: absolute;
-    left: 5px;
-    top: 2px;
-    width: 5px;
-    height: 9px;
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
 }
 
-/* ==================================================
-   PUNISHMENT OPTIONS
-================================================== */
-
+/* Punishment Settings - raster layout */
 #punishment-options {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
 }
 
 .punishment-block {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 16px;
-    background: #fafbfc;
+    background-color: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.punishment-block h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: var(--accent-blue);
+    font-size: 1.2rem;
 }
 
 .punishment-block label {
     display: block;
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
+    margin-bottom: 1rem;
 }
 
 .punishment-block input[type="number"],
 .punishment-block select {
     width: 100%;
-    padding: 8px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: #ffffff;
-    font-size: 14px;
-    transition: border 0.2s, box-shadow 0.2s;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+    padding: 0.75rem;
+    border-radius: 4px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.punishment-block input:focus,
+.punishment-block input[type="number"]:focus,
 .punishment-block select:focus {
-    border-color: var(--blue);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(74, 130, 255, 0.4);
 }
 
-/* ==================================================
-   CHANNEL CARDS
-================================================== */
-
+/* --------------------
+   KANALEN STIJLEN
+   -------------------- */
 .channel-card {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    background: var(--bg-panel);
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
 }
 
 .channel-card h3 {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 8px;
+    font-size: 1.5rem;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.channel-card h4 {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
 }
 
 .channel-id {
-    font-size: 12px;
-    color: var(--text-secondary);
-    background: #f0f2f5;
-    padding: 4px 10px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    background-color: #2a2a44;
+    padding: 0.25rem 0.75rem;
     border-radius: 20px;
 }
 
-/* Disabled lists */
-
-.disabled-commands-list,
-.disabled-cogs-list {
+.disabled-commands-list, .disabled-cogs-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 10px;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
 }
 
-.disabled-commands-list label,
-.disabled-cogs-list label {
-    background: #f3f4f6;
-    border: 1px solid var(--border);
-    padding: 6px 12px;
+.disabled-commands-list label, .disabled-cogs-list label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    background-color: #2a2a44;
+    padding: 0.5rem 1rem;
     border-radius: 20px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.2s, border 0.2s;
+    transition: background-color 0.3s ease;
 }
 
-.disabled-commands-list label:hover,
-.disabled-cogs-list label:hover {
-    border-color: var(--blue);
-    background: #e8f0fe;
+.disabled-commands-list label:hover, .disabled-cogs-list label:hover {
+    background-color: #3b3b5c;
 }
 
-/* ==================================================
-   SAVE BUTTON
-================================================== */
-
+/* --------------------
+   OPSLAAN KNOP
+   -------------------- */
 #save-settings {
-    margin-top: 10px;
+    display: block;
     width: 100%;
-    padding: 14px;
-    font-size: 15px;
-    font-weight: 600;
-    background: var(--blue);
-    color: #fff;
+    padding: 1.25rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(90deg, #e63946, #c1272d);
     border: none;
-    border-radius: 6px;
+    border-radius: 12px;
     cursor: pointer;
-    transition: background 0.2s, box-shadow 0.2s;
+    transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: 0 6px 15px rgba(230, 57, 71, 0.4);
 }
 
 #save-settings:hover {
-    background: #1d4ed8;
-    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+    background: linear-gradient(90deg, #c1272d, #a8242a);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(230, 57, 71, 0.6);
 }
 
-/* ==================================================
-   RESPONSIVE
-================================================== */
-
+/* --------------------
+   RESPONSIVE DESIGN
+   -------------------- */
 @media (max-width: 768px) {
-    main {
-        padding: 25px;
-    }
-
     #guild-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 15px;
+        gap: 1rem;
+    }
+
+    .back-button {
+      align-self: flex-end;
     }
 }
