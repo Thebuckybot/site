@@ -81,22 +81,30 @@ document.getElementById("event-select").addEventListener("change", () => {
 
 function addConditionBlock() {
 
-  const container = document.getElementById("conditions-container");
+    const container = document.getElementById("conditions-container");
 
-  if (container.children.length >= MAX_CONDITIONS) {
-    alert("Maximum conditions reached.");
-    return;
-  }
+    if (container.children.length >= MAX_CONDITIONS) {
+        alert("Maximum conditions reached.");
+        return;
+    }
 
-  const block = document.createElement("div");
-  block.className = "condition-block";
+    const block = document.createElement("div");
+    block.className = "condition-block";
 
-  const removeBtn = document.createElement("button");
-  removeBtn.textContent = "✕";
-  removeBtn.className = "remove-btn";
-  removeBtn.onclick = () => block.remove();
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "✕";
+    removeBtn.className = "remove-btn";
+    removeBtn.onclick = () => block.remove();
 
     const select = document.createElement("select");
+
+    // Placeholder option
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select condition...";
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    select.appendChild(placeholder);
 
     const eventType = document.getElementById("event-select").value;
     const allowedConditions = registry.event_condition_map[eventType] || [];
@@ -110,13 +118,12 @@ function addConditionBlock() {
         select.appendChild(opt);
     });
 
-  const fieldsContainer = document.createElement("div");
+    const fieldsContainer = document.createElement("div");
 
-  select.addEventListener("change", () => {
-    renderFields(select.value, fieldsContainer, "condition");
+    select.addEventListener("change", () => {
+        if (!select.value) return;  // voorkomt render bij placeholder
+        renderFields(select.value, fieldsContainer, "condition");
   });
-
-  renderFields(select.value, fieldsContainer, "condition");
 
   block.append(removeBtn, select, fieldsContainer);
   container.appendChild(block);
@@ -126,46 +133,53 @@ function addConditionBlock() {
 
 function addActionBlock() {
 
-  const container = document.getElementById("actions-container");
+    const container = document.getElementById("actions-container");
 
-  if (container.children.length >= MAX_ACTIONS) {
-    alert("Maximum actions reached.");
-    return;
-  }
+    if (container.children.length >= MAX_ACTIONS) {
+        alert("Maximum actions reached.");
+        return;
+    }
 
-  const eventType = document.getElementById("event-select").value;
-  const allowedActions = registry.event_action_map[eventType] || [];
+    const eventType = document.getElementById("event-select").value;
+    const allowedActions = registry.event_action_map[eventType] || [];
 
-  const block = document.createElement("div");
-  block.className = "action-block";
+    const block = document.createElement("div");
+    block.className = "action-block";
 
-  const removeBtn = document.createElement("button");
-  removeBtn.textContent = "✕";
-  removeBtn.className = "remove-btn";
-  removeBtn.onclick = () => block.remove();
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "✕";
+    removeBtn.className = "remove-btn";
+    removeBtn.onclick = () => block.remove();
 
-  const select = document.createElement("select");
+    const select = document.createElement("select");
 
-  registry.actions
+    // Placeholder
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select action...";
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    select.appendChild(placeholder);
+
+    registry.actions
     .filter(a => allowedActions.includes(a.action))
     .forEach(act => {
-      const opt = document.createElement("option");
-      opt.value = act.action;
-      opt.textContent = act.label;
-      select.appendChild(opt);
+        const opt = document.createElement("option");
+        opt.value = act.action;
+        opt.textContent = act.label;
+        select.appendChild(opt);
     });
 
-  const fieldsContainer = document.createElement("div");
+    const fieldsContainer = document.createElement("div");
 
-  select.addEventListener("change", () => {
-    renderFields(select.value, fieldsContainer, "action");
-  });
+    select.addEventListener("change", () => {
+        if (!select.value) return;
+        renderFields(select.value, fieldsContainer, "action");
+    });
 
-  renderFields(select.value, fieldsContainer, "action");
-
-  block.append(removeBtn, select, fieldsContainer);
-  container.appendChild(block);
-  block.scrollIntoView({ behavior: "smooth", block: "center" });
+    block.append(removeBtn, select, fieldsContainer);
+    container.appendChild(block);
+    block.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 
