@@ -30,15 +30,16 @@ function renderNav(loggedIn, user = null) {
   navMenu.innerHTML = essentialLinksHTML; // toon eerst altijd cruciale links
 
   if (loggedIn && user) {
-    // Dashboard link
-    const dashLi = document.createElement("li");
-    dashLi.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
-    navMenu.appendChild(dashLi);
-
     // 🔥 Arcade (NIEUW)
     const arcadeLi = document.createElement("li");
     arcadeLi.innerHTML = `<a id="arcade-link" href="arcade.html">Arcade</a>`;
     navMenu.appendChild(arcadeLi);
+
+
+    // Dashboard link
+    const dashLi = document.createElement("li");
+    dashLi.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
+    navMenu.appendChild(dashLi);
 
     // Logout knop
     const logoutLi = document.createElement("li");
