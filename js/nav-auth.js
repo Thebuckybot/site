@@ -35,6 +35,11 @@ function renderNav(loggedIn, user = null) {
     dashLi.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
     navMenu.appendChild(dashLi);
 
+    // 🔥 Arcade (NIEUW)
+    const arcadeLi = document.createElement("li");
+    arcadeLi.innerHTML = `<a id="arcade-link" href="arcade.html">Arcade</a>`;
+    navMenu.appendChild(arcadeLi);
+
     // Logout knop
     const logoutLi = document.createElement("li");
     const logoutBtn = document.createElement("button");
