@@ -3,25 +3,50 @@ import { apiFetch } from "./dashboard.js";
 
 document.addEventListener("DOMContentLoaded", () => {
 
+    const opening = document.getElementById("arcade-opening");
     const segments = document.querySelectorAll(".segment");
 
-    segments.forEach((segment, index) => {
+    // 1️⃣ Eerst even blijven staan (cinematic pause)
+    setTimeout(() => {
 
-        const direction = Math.random() > 0.5 ? -1 : 1;
-        const delay = Math.random() * 400;
+        segments.forEach((segment, index) => {
+
+            const rect = segment.getBoundingClientRect();
+            const middleOfScreen = window.innerHeight / 2;
+
+            // Bepaal richting op basis van positie
+            let direction;
+
+            if (rect.top < middleOfScreen) {
+                direction = -1; // bovenste helft → omhoog
+            } else {
+                direction = 1;  // onderste helft → omlaag
+            }
+
+            // Rustige stagger
+            const delay = index * 70;
+
+            setTimeout(() => {
+                segment.style.transform = `translateY(${direction * 120}%)`;
+            }, delay);
+
+        });
+
+    }, 1200); // ⏳ tijd dat blokken zichtbaar blijven
+
+
+    // 2️⃣ Fade overlay uit na animatie
+    setTimeout(() => {
+        opening.style.transition = "opacity 0.6s ease";
+        opening.style.opacity = "0";
 
         setTimeout(() => {
-            segment.style.transform = `translateY(${direction * 120}%)`;
-        }, delay);
+            opening.style.display = "none";
+            document.body.style.overflow = "auto";
+        }, 600);
 
-    });
+    }, 3200); // totale tijd (hold + movement)
 
-    // Verwijder overlay na animatie
-    setTimeout(() => {
-        document.getElementById("arcade-opening").style.display = "none";
-        document.body.style.overflow = "auto";
-    }, 1800);
-    
     loadProfile();
 
     document.getElementById("heads-btn")
