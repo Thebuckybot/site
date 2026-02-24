@@ -17,10 +17,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // random tussen 30% en 70%
         const topHeight = 30 + Math.random() * 40;
 
-        topSegment.style.flex = `0 0 ${topHeight}%`;
-        bottomSegment.style.flex = `0 0 ${100 - topHeight}%`;
+        topSegment.style.flexBasis = `${topHeight}%`;
+        bottomSegment.style.flexBasis = `${100 - topHeight}%`;
     });
-
 
     // ==============================
     // 2️⃣ CINEMATIC PAUSE
@@ -33,8 +32,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const topSegment = column.querySelector(".segment.top");
             const bottomSegment = column.querySelector(".segment.bottom");
 
-            // random delay per kolom (0 – 600ms)
-            const delay = Math.random() * 600;
+            // grotere random delay voor zichtbare spreiding
+            const delay = Math.random() * 1200;
 
             setTimeout(() => {
                 topSegment.style.transform = "translateY(-120%)";
@@ -59,15 +58,23 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.style.overflow = "auto";
         }, 600);
 
-    }, 3800);
+    }, 4200); // iets langer door grotere delay
+
+
+    // ==============================
+    // 4️⃣ GAME LOGIC (blijft)
+    // ==============================
 
     loadProfile();
 
-    document.getElementById("heads-btn")
-        .addEventListener("click", () => playCoinflip("heads"));
+    const headsBtn = document.getElementById("heads-btn");
+    const tailsBtn = document.getElementById("tails-btn");
 
-    document.getElementById("tails-btn")
-        .addEventListener("click", () => playCoinflip("tails"));
+    if (headsBtn && tailsBtn) {
+        headsBtn.addEventListener("click", () => playCoinflip("heads"));
+        tailsBtn.addEventListener("click", () => playCoinflip("tails"));
+    }
+
 });
 
 async function loadProfile() {

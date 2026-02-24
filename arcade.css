@@ -34,7 +34,11 @@ body {
 }
 
 .segment {
-    flex: 1;
+    /* ❌ GEEN flex: 1 meer */
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: 50%; /* startwaarde, wordt overschreven door JS */
+
     background: linear-gradient(145deg, #0f2c66, #08132c);
     border: 1px solid rgba(0, 255, 255, 0.2);
 
@@ -43,7 +47,8 @@ body {
         0 0 8px rgba(0,255,255,0.4),
         inset 0 0 15px rgba(0,150,255,0.3);
 
-    transition: transform 1.8s cubic-bezier(.4,0,.2,1);}
+    transition: transform 1.8s cubic-bezier(.4,0,.2,1);
+}
 
 /* Subtiele schaduw tussen segmenten */
 .segment + .segment {
