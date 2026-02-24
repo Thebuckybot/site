@@ -50,10 +50,6 @@ body {
     transition: transform 1.8s cubic-bezier(.4,0,.2,1);
 }
 
-/* Subtiele schaduw tussen segmenten */
-.segment + .segment {
-    margin-top: 2px;
-}
 
 /* ===================== */
 /* ARCADE WORLD */
