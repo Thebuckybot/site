@@ -3,39 +3,29 @@ import { apiFetch } from "./dashboard.js";
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    const opening = document.getElementById("arcade-opening");
-    const segments = document.querySelectorAll(".segment");
 
-    // 1️⃣ Eerst even blijven staan (cinematic pause)
+    const opening = document.getElementById("arcade-opening");
+    const topSegments = document.querySelectorAll(".segment.top");
+    const bottomSegments = document.querySelectorAll(".segment.bottom");
+
+    // 1️⃣ Cinematic pause
     setTimeout(() => {
 
-        segments.forEach((segment, index) => {
-
-            const rect = segment.getBoundingClientRect();
-            const middleOfScreen = window.innerHeight / 2;
-
-            // Bepaal richting op basis van positie
-            let direction;
-
-            if (rect.top < middleOfScreen) {
-                direction = -1; // bovenste helft → omhoog
-            } else {
-                direction = 1;  // onderste helft → omlaag
-            }
-
-            // Rustige stagger
-            const delay = index * 70;
-
+        topSegments.forEach((segment, index) => {
             setTimeout(() => {
-                segment.style.transform = `translateY(${direction * 120}%)`;
-            }, delay);
-
+                segment.style.transform = "translateY(-120%)";
+            }, index * 120);
         });
 
-    }, 1200); // ⏳ tijd dat blokken zichtbaar blijven
+        bottomSegments.forEach((segment, index) => {
+            setTimeout(() => {
+                segment.style.transform = "translateY(120%)";
+            }, index * 120);
+        });
 
+    }, 1500); // iets langere pause
 
-    // 2️⃣ Fade overlay uit na animatie
+    // 2️⃣ Fade overlay uit
     setTimeout(() => {
         opening.style.transition = "opacity 0.6s ease";
         opening.style.opacity = "0";
@@ -45,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.style.overflow = "auto";
         }, 600);
 
-    }, 3200); // totale tijd (hold + movement)
+    }, 3800);
 
     loadProfile();
 
