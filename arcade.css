@@ -51,15 +51,6 @@ body {
 }
 
 
-/* ===================== */
-/* ARCADE WORLD */
-/* ===================== */
-
-#arcade-world {
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(circle at center, #121a35, #070b18);
-}
 
 /* ===================== */
 /* NAVIGATION */
@@ -126,4 +117,160 @@ body {
 #nav-menu a {
     color: white;
     text-decoration: none;
+}
+
+
+
+
+/* ===================== */
+/* ARCADE WORLD */
+/* ===================== */
+
+#arcade-world {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, #121a35, #070b18);
+}
+
+
+/* ================= HERO ================= */
+
+.arcade-hero {
+    position: relative;
+    height: 100vh;
+    padding: 120px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* LED */
+.hero-led {
+    position: absolute;
+    top: 60px;
+    left: 80px;
+}
+
+.led-bar {
+    width: 400px;
+    height: 14px;
+    border-radius: 20px;
+    background: linear-gradient(90deg, #ff00ff, #ff0066);
+    box-shadow:
+        0 0 20px #ff00ff,
+        0 0 40px #ff00ff;
+}
+
+.led-glow {
+    position: absolute;
+    top: 14px;
+    width: 500px;
+    height: 200px;
+    background: radial-gradient(
+        ellipse at top,
+        rgba(255,0,255,0.4),
+        transparent 70%
+    );
+    filter: blur(40px);
+}
+
+/* Layout */
+.hero-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Titel */
+.arcade-title {
+    font-size: 64px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 40px;
+    text-shadow:
+        0 0 15px #ff00ff,
+        0 0 30px #ff00ff;
+}
+
+/* Player Card */
+.player-hero-card {
+    width: 380px;
+    padding: 25px;
+    border-radius: 16px;
+    background: rgba(10,15,35,0.8);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 30px rgba(0,255,255,0.2);
+}
+
+.player-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.hero-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+}
+
+.hero-name {
+    font-size: 20px;
+    color: white;
+}
+
+.hero-stats {
+    display: flex;
+    justify-content: space-between;
+    color: white;
+    margin-bottom: 15px;
+}
+
+.xp-bar {
+    height: 6px;
+    background: #222;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.xp-progress {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00ffff, #ff00ff);
+}
+
+/* Bucky */
+.hero-right {
+    position: relative;
+}
+
+.bucky-hero {
+    width: 400px;
+    animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+    100% { transform: translateY(0px); }
+}
+
+/* Grid floor */
+.grid-floor {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 200px;
+    background:
+        linear-gradient(to top, rgba(0,255,255,0.3), transparent),
+        repeating-linear-gradient(
+            to right,
+            rgba(0,255,255,0.3) 0px,
+            rgba(0,255,255,0.3) 2px,
+            transparent 2px,
+            transparent 80px
+        );
+    perspective: 500px;
 }

@@ -78,18 +78,30 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function loadProfile() {
-    const res = await apiFetch(`${API_URL}/api/arcade/profile`);
+    const res = await apiFetch(`${API_URL}/api/me`);
     const data = await res.json();
 
-    if (data.error) {
-        alert(data.error);
-        return;
-    }
+    if (!data.logged_in) return;
 
-    document.getElementById("coins").innerText = data.coins;
-    document.getElementById("xp").innerText = data.xp;
-    document.getElementById("level").innerText = data.level;
+    const user = data.user;
+
+    document.getElementById("hero-username").innerText = user.username;
+    document.getElementById("hero-avatar").src =
+        `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
+
+    // Daarna arcade profile
+    const arcadeRes = await apiFetch(`${API_URL}/api/arcade/profile`);
+    const arcadeData = await arcadeRes.json();
+
+    document.getElementById("coins").innerText = arcadeData.coins;
+    document.getElementById("xp").innerText = arcadeData.xp;
+    document.getElementById("level").innerText = arcadeData.level;
+
+    // XP progress (voorbeeld)
+    const progress = (arcadeData.xp % 100) + "%";
+    document.getElementById("xp-progress").style.width = progress;
 }
+
 
 async function playCoinflip(choice) {
     const betInput = document.getElementById("bet");
