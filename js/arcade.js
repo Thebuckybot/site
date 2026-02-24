@@ -2,6 +2,26 @@ import { API_URL } from "./config.js";
 import { apiFetch } from "./dashboard.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    const segments = document.querySelectorAll(".segment");
+
+    segments.forEach((segment, index) => {
+
+        const direction = Math.random() > 0.5 ? -1 : 1;
+        const delay = Math.random() * 400;
+
+        setTimeout(() => {
+            segment.style.transform = `translateY(${direction * 120}%)`;
+        }, delay);
+
+    });
+
+    // Verwijder overlay na animatie
+    setTimeout(() => {
+        document.getElementById("arcade-opening").style.display = "none";
+        document.body.style.overflow = "auto";
+    }, 1800);
+    
     loadProfile();
 
     document.getElementById("heads-btn")
