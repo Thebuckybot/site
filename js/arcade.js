@@ -3,29 +3,53 @@ import { apiFetch } from "./dashboard.js";
 
 document.addEventListener("DOMContentLoaded", () => {
 
-
     const opening = document.getElementById("arcade-opening");
-    const topSegments = document.querySelectorAll(".segment.top");
-    const bottomSegments = document.querySelectorAll(".segment.bottom");
+    const columns = document.querySelectorAll(".column");
 
-    // 1️⃣ Cinematic pause
+    // ==============================
+    // 1️⃣ RANDOM HOOGTES PER KOLOM
+    // ==============================
+
+    columns.forEach(column => {
+        const topSegment = column.querySelector(".segment.top");
+        const bottomSegment = column.querySelector(".segment.bottom");
+
+        // random tussen 30% en 70%
+        const topHeight = 30 + Math.random() * 40;
+
+        topSegment.style.flex = `0 0 ${topHeight}%`;
+        bottomSegment.style.flex = `0 0 ${100 - topHeight}%`;
+    });
+
+
+    // ==============================
+    // 2️⃣ CINEMATIC PAUSE
+    // ==============================
+
     setTimeout(() => {
 
-        topSegments.forEach((segment, index) => {
+        columns.forEach(column => {
+
+            const topSegment = column.querySelector(".segment.top");
+            const bottomSegment = column.querySelector(".segment.bottom");
+
+            // random delay per kolom (0 – 600ms)
+            const delay = Math.random() * 600;
+
             setTimeout(() => {
-                segment.style.transform = "translateY(-120%)";
-            }, index * 120);
+                topSegment.style.transform = "translateY(-120%)";
+                bottomSegment.style.transform = "translateY(120%)";
+            }, delay);
+
         });
 
-        bottomSegments.forEach((segment, index) => {
-            setTimeout(() => {
-                segment.style.transform = "translateY(120%)";
-            }, index * 120);
-        });
+    }, 1500);
 
-    }, 1500); // iets langere pause
 
-    // 2️⃣ Fade overlay uit
+    // ==============================
+    // 3️⃣ FADE OUT
+    // ==============================
+
     setTimeout(() => {
         opening.style.transition = "opacity 0.6s ease";
         opening.style.opacity = "0";
