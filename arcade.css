@@ -125,112 +125,237 @@ body {
 /* ===================== */
 /* ARCADE WORLD */
 /* ===================== */
+/* ===================== */
+/* ARCADE WORLD */
+/* ===================== */
 
 #arcade-world {
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at center, #121a35, #070b18);
+    overflow: hidden;
 }
-
 
 /* ================= HERO ================= */
 
 .arcade-hero {
     position: relative;
     height: 100vh;
-    padding: 120px 80px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    width: 100%;
+    overflow: hidden;
 }
 
-/* LED */
-.hero-led {
+/* Background image */
+.hero-background {
     position: absolute;
-    top: 60px;
-    left: 80px;
+    inset: 0;
+    background: url("pics/arcadeIntroBG.png") center bottom / cover no-repeat;
+    z-index: 0;
 }
 
+/* ================= LED ================= */
+
+.hero-led-wrapper {
+    position: absolute;
+    top: 70px;
+    left: 100px;
+    z-index: 3;
+}
+
+/* Ophangstangen */
+.led-hanger {
+    position: absolute;
+    width: 4px;
+    height: 70px;
+    background: linear-gradient(to bottom, #777, #444);
+}
+
+.led-hanger.left {
+    left: 25px;
+    top: -70px;
+}
+
+.led-hanger.right {
+    right: 25px;
+    top: -70px;
+}
+
+/* LED Bar */
 .led-bar {
-    width: 400px;
-    height: 14px;
-    border-radius: 20px;
-    background: linear-gradient(90deg, #ff00ff, #ff0066);
+    width: 420px;
+    height: 18px;
+    border-radius: 50px;
+    background: linear-gradient(
+        90deg,
+        #ff00ff,
+        #ff66ff,
+        #ff0066
+    );
     box-shadow:
-        0 0 20px #ff00ff,
-        0 0 40px #ff00ff;
+        0 0 15px #ff00ff,
+        0 0 40px #ff00ff,
+        0 0 80px rgba(255,0,255,0.5);
+    position: relative;
+    animation: ledFlicker 6s infinite;
 }
 
+.led-bar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.4),
+        transparent 60%
+    );
+}
+
+/* Licht spill */
 .led-glow {
     position: absolute;
-    top: 14px;
+    top: 18px;
+    left: -40px;
     width: 500px;
-    height: 200px;
+    height: 240px;
     background: radial-gradient(
         ellipse at top,
-        rgba(255,0,255,0.4),
+        rgba(255,0,255,0.45),
         transparent 70%
     );
-    filter: blur(40px);
+    filter: blur(60px);
+    pointer-events: none;
 }
 
-/* Layout */
-.hero-layout {
+/* Subtiele flicker */
+@keyframes ledFlicker {
+    0%, 97%, 100% { opacity: 1; }
+    98% { opacity: 0.85; }
+    99% { opacity: 0.95; }
+}
+
+/* ================= CONTENT LAYOUT ================= */
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    height: 100%;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    padding: 180px 120px 0 120px;
 }
 
-/* Titel */
+.hero-left {
+    max-width: 520px;
+}
+
+/* ================= TITLE ================= */
+
 .arcade-title {
-    font-size: 64px;
-    font-weight: 800;
+    font-size: 76px;
+    font-weight: 900;
     color: white;
-    margin-bottom: 40px;
+    display: flex;
+    flex-direction: column;
+    line-height: 0.9;
+    margin-bottom: 60px;
     text-shadow:
         0 0 15px #ff00ff,
-        0 0 30px #ff00ff;
+        0 0 30px #ff00ff,
+        0 0 60px rgba(255,0,255,0.6);
 }
 
-/* Player Card */
-.player-hero-card {
-    width: 380px;
-    padding: 25px;
-    border-radius: 16px;
-    background: rgba(10,15,35,0.8);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 0 30px rgba(0,255,255,0.2);
+.arcade-title span:last-child {
+    color: #ff66ff;
 }
+
+/* ================= GLASS CARD ================= */
+
+.glass-card {
+  width: 380px;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  color: white;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.8),
+    transparent
+  );
+}
+
+.glass-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.8),
+    transparent,
+    rgba(255, 255, 255, 0.3)
+  );
+}
+
+/* ================= PLAYER INFO ================= */
 
 .player-header {
     display: flex;
     align-items: center;
     gap: 15px;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 
 .hero-avatar {
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
+    box-shadow: 0 0 15px rgba(255,255,255,0.5);
 }
 
 .hero-name {
-    font-size: 20px;
-    color: white;
+    font-size: 22px;
+    font-weight: 600;
 }
 
 .hero-stats {
     display: flex;
     justify-content: space-between;
-    color: white;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    font-size: 14px;
 }
 
+.hero-stats strong {
+    font-size: 18px;
+}
+
+/* XP BAR */
+
 .xp-bar {
-    height: 6px;
-    background: #222;
-    border-radius: 4px;
+    height: 8px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
     overflow: hidden;
 }
 
@@ -240,37 +365,15 @@ body {
     background: linear-gradient(90deg, #00ffff, #ff00ff);
 }
 
-/* Bucky */
+/* ================= BUCKY ================= */
+
 .hero-right {
     position: relative;
+    margin-right: 120px;
 }
 
 .bucky-hero {
-    width: 400px;
-    animation: float 4s ease-in-out infinite;
-}
-
-@keyframes float {
-    0% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
-    100% { transform: translateY(0px); }
-}
-
-/* Grid floor */
-.grid-floor {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 200px;
-    background:
-        linear-gradient(to top, rgba(0,255,255,0.3), transparent),
-        repeating-linear-gradient(
-            to right,
-            rgba(0,255,255,0.3) 0px,
-            rgba(0,255,255,0.3) 2px,
-            transparent 2px,
-            transparent 80px
-        );
-    perspective: 500px;
+    width: 420px;
+    transform: translateY(70px);
+    filter: drop-shadow(0 25px 45px rgba(0,0,0,0.6));
 }
