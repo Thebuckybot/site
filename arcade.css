@@ -41,6 +41,7 @@ body {
 
     background: linear-gradient(145deg, #0f2c66, #08132c);
     border: 1px solid rgba(0, 255, 255, 0.2);
+    backdrop-filter: blur(2px);
 
     /* Neon rand */
     /* box-shadow:
@@ -48,6 +49,7 @@ body {
         inset 0 0 15px rgba(0,150,255,0.3); */
 
     transition: transform 1.8s cubic-bezier(.4,0,.2,1);
+
 }
 
 
@@ -166,19 +168,28 @@ body {
 }
 
 
-/* ========== LOGOUT BUTTON (ARCADE STYLE) ========== */
+/* ========== LOGOUT BUTTON ========== */
 
-#nav-menu a[href*="logout"], #logout-btn {
-    background: linear-gradient(45deg, #ff004c, #ff2a6d);
-    text-align: center;
+#logout-btn {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
     font-weight: 600;
+    color: white;
+
+    background: linear-gradient(45deg, #ff004c, #ff2a6d);
+
     box-shadow:
         0 0 15px rgba(255,0,100,0.6),
         0 6px 20px rgba(255,0,100,0.4);
+
     transition: all 0.25s ease;
 }
 
-#nav-menu a[href*="logout"]:hover, #logout-btn:hover {
+#logout-btn:hover {
     transform: translateY(-2px);
     box-shadow:
         0 0 25px rgba(255,0,100,0.9),
@@ -197,6 +208,11 @@ body {
     position: fixed;
     inset: 0;
     overflow: hidden;
+    z-index: 0;
+}
+
+#arcade-opening {
+    z-index: 50;
 }
 
 /* ================= HERO ================= */
@@ -306,7 +322,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 180px 120px 0 120px;
+    padding: 140px 120px 0 120px;
 }
 
 .hero-left {
@@ -316,7 +332,6 @@ body {
 /* ================= TITLE ================= */
 
 .arcade-title {
-    transform: translateY(-100px); /* omhoog */
     font-size: 76px;
     font-weight: 900;
     color: white;
@@ -329,7 +344,6 @@ body {
         0 0 30px #ff00ff,
         0 0 60px rgba(255,0,255,0.6);
 }
-
 .arcade-title span:last-child {
     color: #ff66ff;
 }

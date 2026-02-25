@@ -49,16 +49,17 @@ document.addEventListener("DOMContentLoaded", () => {
     // 3️⃣ FADE OUT
     // ==============================
 
+    // Fade zodra laatste shutter ongeveer klaar is
     setTimeout(() => {
         opening.style.transition = "opacity 0.6s ease";
         opening.style.opacity = "0";
 
         setTimeout(() => {
-            opening.style.display = "none";
+            opening.remove();
             document.body.style.overflow = "auto";
         }, 600);
 
-    }, 4200); // iets langer door grotere delay
+    }, 3000);
 
 
     // ==============================
