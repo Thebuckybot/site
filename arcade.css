@@ -53,78 +53,142 @@ body {
 
 
 /* ===================== */
-/* NAVIGATION */
+/* ARCADE NAVIGATION */
 /* ===================== */
 
 .arcade-nav {
     position: absolute;
-    top: 20px;
-    right: 30px;
-    z-index: 10;
+    top: 30px;
+    right: 40px;
+    z-index: 20;
 }
 
+/* ========== HAMBURGER ========== */
+
 .hamburger {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  width: 28px;
-  height: 24px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  z-index: 200;
+    position: relative;
+    width: 34px;
+    height: 26px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
 }
 
 .hamburger div {
-  width: 28px;
-  height: 3px;
-  background: #ffffff;
-  border-radius: 2px;
-  transition: all 0.3s ease;
+    height: 3px;
+    width: 100%;
+    background: white;
+    border-radius: 4px;
+    transition: all 0.35s cubic-bezier(.22,1,.36,1);
+    box-shadow: 0 0 8px rgba(255,255,255,0.6);
 }
 
+/* Hamburger hover glow */
+.hamburger:hover div {
+    box-shadow: 0 0 12px #ff00ff;
+}
+
+/* Open animatie */
 .hamburger.open div:nth-child(1) {
-  transform: translateY(8px) rotate(45deg);
+    transform: translateY(11px) rotate(45deg);
 }
 
 .hamburger.open div:nth-child(2) {
-  opacity: 0;
+    opacity: 0;
+    transform: scaleX(0);
 }
 
 .hamburger.open div:nth-child(3) {
-  transform: translateY(-8px) rotate(-45deg);
+    transform: translateY(-11px) rotate(-45deg);
 }
+
+
+/* ========== DROPDOWN MENU ========== */
 
 #nav-menu {
     position: absolute;
     right: 0;
-    top: 40px;
+    top: 55px;
     list-style: none;
-    background: rgba(10,15,35,0.95);
-    padding: 10px 20px;
-    border-radius: 8px;
-    display: none;
+    min-width: 200px;
+    padding: 18px;
+    border-radius: 16px;
+
+    background: rgba(15, 20, 45, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255, 0, 255, 0.3);
+    box-shadow:
+        0 0 20px rgba(255,0,255,0.2),
+        0 10px 40px rgba(0,0,0,0.6);
+
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+    pointer-events: none;
+    transition: all 0.35s cubic-bezier(.22,1,.36,1);
 }
 
+/* Open state */
 #nav-menu.open {
-    display: block;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
 }
 
 #nav-menu li {
-    margin: 10px 0;
+    margin-bottom: 12px;
 }
+
+#nav-menu li:last-child {
+    margin-bottom: 0;
+}
+
+/* ========== LINKS ========== */
 
 #nav-menu a {
-    color: white;
+    display: block;
     text-decoration: none;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.25s ease;
+}
+
+/* Home hover */
+#nav-menu a:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+
+/* ========== LOGOUT BUTTON (ARCADE STYLE) ========== */
+
+#nav-menu a[href*="logout"] {
+    background: linear-gradient(45deg, #ff004c, #ff2a6d);
+    text-align: center;
+    font-weight: 600;
+    box-shadow:
+        0 0 15px rgba(255,0,100,0.6),
+        0 6px 20px rgba(255,0,100,0.4);
+    transition: all 0.25s ease;
+}
+
+#nav-menu a[href*="logout"]:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 0 25px rgba(255,0,100,0.9),
+        0 10px 25px rgba(255,0,100,0.6);
 }
 
 
 
 
-/* ===================== */
-/* ARCADE WORLD */
-/* ===================== */
+
 /* ===================== */
 /* ARCADE WORLD */
 /* ===================== */
@@ -252,14 +316,14 @@ body {
 /* ================= TITLE ================= */
 
 .arcade-title {
-    transform: translateY(-100px); /* omhoog */
+    transform: translateY(-200px); /* omhoog */
     font-size: 76px;
     font-weight: 900;
     color: white;
     display: flex;
     flex-direction: column;
     line-height: 0.9;
-    margin-bottom: 60px;
+    margin-bottom: 160px;
     text-shadow:
         0 0 15px #ff00ff,
         0 0 30px #ff00ff,
