@@ -168,7 +168,7 @@ body {
 
 /* ========== LOGOUT BUTTON (ARCADE STYLE) ========== */
 
-#nav-menu a[href*="logout"] {
+#nav-menu a[href*="logout-btn"] {
     background: linear-gradient(45deg, #ff004c, #ff2a6d);
     text-align: center;
     font-weight: 600;
@@ -178,7 +178,7 @@ body {
     transition: all 0.25s ease;
 }
 
-#nav-menu a[href*="logout"]:hover {
+#nav-menu a[href*="logout-btn"]:hover {
     transform: translateY(-2px);
     box-shadow:
         0 0 25px rgba(255,0,100,0.9),
@@ -316,14 +316,14 @@ body {
 /* ================= TITLE ================= */
 
 .arcade-title {
-    transform: translateY(-200px); /* omhoog */
+    transform: translateY(-100px); /* omhoog */
     font-size: 76px;
     font-weight: 900;
     color: white;
     display: flex;
     flex-direction: column;
     line-height: 0.9;
-    margin-bottom: 160px;
+    margin-bottom: 60px;
     text-shadow:
         0 0 15px #ff00ff,
         0 0 30px #ff00ff,
