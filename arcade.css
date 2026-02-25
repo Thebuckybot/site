@@ -252,6 +252,7 @@ body {
 /* ================= TITLE ================= */
 
 .arcade-title {
+    transform: translateY(-100px); /* omhoog */
     font-size: 76px;
     font-weight: 900;
     color: white;
@@ -275,8 +276,8 @@ body {
   width: 380px;
   padding: 30px;
   background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 
