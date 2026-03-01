@@ -1,427 +1,862 @@
+/* ================= ROOT ================= */
+
 :root {
-  --accent-red: #e63946;
-  --accent-blue: #4a82ff;
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #1a1a2e;
-  --card-bg: #1f203a;
-  --text-light: #e0e0e0;
-  --text-muted: #a0a0a0;
-  --border-color: #3b3b5c;
-  --link-color: var(--accent-red);
-  --link-hover: #ff6b6b;
-  --nav-bg: var(--bg-secondary);
-  --footer-bg: var(--bg-secondary);
+  --bucky-red: #8B1E3F;
+  --bucky-red-light: #a3264d;
+
+  --bg-soft: #F4F5F7;
+  --text-dark: #111111;
+  --text-muted: #555;
+
+  --glass-bg: rgba(255,255,255,0.7);
+  --glass-border: rgba(0,0,0,0.05);
 }
 
+/* ================= RESET ================= */
+
 * {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
 html, body {
   height: 100%;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  background-color: var(--bg-primary);
-  color: var(--text-light);
-  line-height: 1.6;
+  font-family: 'Manrope', sans-serif;
+  background: var(--bg-soft);
+  color: var(--text-dark);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
+/* ================= NAVBAR ================= */
 
-.container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  max-width: 1200px;
+.navbar {
+  position: fixed;
+  top: 0;
   width: 100%;
-  margin: 0 auto;
-  padding: 0 1.5rem;
+  z-index: 1000;
+
+  backdrop-filter: blur(18px);
+  background: var(--glass-bg);
+  border-bottom: 1px solid var(--glass-border);
+
+  transition: all 0.3s ease;
 }
 
+.nav-inner {
+  max-width: 1300px;
+  margin: auto;
+  padding: 1.4rem 2rem;
 
-/* NAVBAR - Verbeterde styling */
-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--nav-bg);
-  padding: 1rem 1.5rem;
-  border-radius: 6px 6px 0 0;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  flex-wrap: wrap;
-  gap: 1rem;
-  position: relative;
 }
+
+/* Logo */
 
 .nav-left {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 12px;
 }
 
-.nav-pfp {
-  width: 40px;
-  height: 40px;
+.logo-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--bucky-red);
   border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--accent-red);
 }
 
-nav h1 {
-  margin: 0;
-  font-weight: 700;
-  font-size: 1.5rem;
+.logo-text {
+  font-weight: 600;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
 }
 
-nav h1 a {
-  color: var(--text-light);
-  text-decoration: none;
-  line-height: 1;
-}
+/* NAV MENU */
 
-/* Menu */
 #nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
   list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  z-index: 999;
 }
 
-/* Algemene linkstijl in de nav voor niet-knop-links */
-#nav-menu li a:not(#dashboard-link):not(a[href*="logout"]):not(#login-link) {
-  color: var(--text-light);
+/* Standard nav links */
+
+#nav-menu li a:not(#dashboard-link):not(#login-link),
+#nav-menu li button:not(#logout-btn) {
   text-decoration: none;
+  color: var(--text-dark);
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: 6px;
+  transition: all 0.25s ease;
+}
+
+#nav-menu li a:not(#dashboard-link):not(#login-link):hover {
+  background: rgba(0,0,0,0.05);
+  color: var(--bucky-red);
+}
+
+/* LOGIN / DASHBOARD / LOGOUT */
+
+a#dashboard-link,
+a#login-link,
+#logout-btn {
+  padding: 10px 20px;
+  border-radius: 30px;
   font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  transition: background-color 0.3s ease, color 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-}
-
-/* Hover-effect voor niet-knop-links */
-#nav-menu li a:not(#dashboard-link):not(a[href*="logout"]):not(#login-link):hover {
-  color: var(--accent-red);
-  background-color: rgba(230, 57, 71, 0.1);
-}
-
-/* Hamburger button */
-.hamburger {
-  display: none;
-  flex-direction: column;
-  justify-content: space-around;
-  width: 24px;
-  height: 24px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  z-index: 200;
-  transition: transform 0.3s ease;
-}
-
-.hamburger div {
-  width: 24px;
-  height: 3px;
-  background: var(--text-light);
-  border-radius: 2px;
-  transition: all 0.3s ease;
-  position: relative;
-  transform-origin: center;
-}
-
-.hamburger.open div:nth-child(1) {
-  transform: translateY(7px) rotate(45deg);
-}
-
-.hamburger.open div:nth-child(2) {
-  opacity: 0;
-}
-
-.hamburger.open div:nth-child(3) {
-  transform: translateY(-8.5px) rotate(-45deg);
-}
-
-/* Responsive nav */
-@media (max-width: 768px) {
-  #nav-menu {
-    flex-direction: column;
-    background-color: var(--nav-bg);
-    position: absolute;
-    top: 100%;
-    right: 0;
-    width: 220px;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.35s ease-out, padding 0.35s ease;
-  }
-
-  #nav-menu.open {
-    max-height: 400px;
-    padding: 0.5rem 0;
-  }
-
-  #nav-menu li {
-    width: 100%;
-    padding: 0.5rem 1.2rem;
-  }
-  
-  #nav-menu li a {
-    padding: 0.75rem 1rem;
-  }
-  
-  #nav-menu li a button {
-    width: 100%;
-    padding: 0;
-  }
-
-  .hamburger {
-    display: flex;
-  }
-}
-
-/* Main content */
-/* Algemene styling voor gewone pagina's */
-main:not(.dashboard-main) {
-  padding: 2rem 1.5rem;
-  max-width: 720px;
-  margin: 2rem auto;
-  flex-grow: 1;
-  text-align: left;
-}
-
-
-/* Specifieke styling voor dashboard main */
-.dashboard-main {
-  max-width: 100%;
-  margin: 2rem auto;
-  padding: 2rem 1.5rem;
-}
-
-/* Link color */
-a {
-  color: var(--link-color);
-  text-decoration: none;
-}
-
-/* De container voor de header en de knop */
-.header-with-button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-/* Algemene stijl voor de "Add to server" knop */
-#invite-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0;
-  background-color: var(--card-bg);
-  color: var(--text-light);
-  text-decoration: none;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-  overflow: hidden;
-  font-weight: 600;
-  border: 1px solid var(--border-color);
-  line-height: 1; /* Zorgt ervoor dat de tekst netjes in het midden staat */
-}
-
-/* Hover-effect voor de hele knop */
-#invite-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-}
-
-/* Het plus-icoon gedeelte */
-#invite-button .icon-part {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 40px;
-  height: 40px;
-  background-color: var(--accent-red);
-  color: var(--text-light);
-  font-size: 1.5rem;
-  font-weight: 700;
-  border-radius: 8px 0 0 8px;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-/* Hover-effect voor het plus-icoon met een 'glow' */
-#invite-button:hover .icon-part {
-  background-color: #ff6b6b; /* Iets lichtere kleur bij hover */
-  box-shadow: 0 0 10px var(--accent-red), 0 0 20px var(--accent-red);
-}
-
-/* Het tekstgedeelte van de knop */
-#invite-button .text-part {
-  padding: 0 1rem;
-}
-
-/* Verwijder de oude .add-server-icon stijl die je niet meer gebruikt */
-.add-server-icon {
-  display: none; /* of verwijder de hele regel */
-}
-
-
-
-/* Header styling blijft gelijk */
-main h2 {
-  color: var(--accent-red);
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-/* Paragraaf styling voor normale main */
-main:not(.dashboard-main) p {
-  font-size: 1.1rem;
-  margin-bottom: 1.25rem;
-  line-height: 1.7;
-}
-
-
-
-/* Footer */
-footer {
-  background-color: var(--footer-bg);
-  padding: 1rem 0;
-  text-align: center;
-  border-radius: 0 0 6px 6px;
-  margin-top: auto;
   font-size: 0.9rem;
-}
 
-/* Dashboard grid layout */
-.dashboard-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.5rem;
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 0;
-}
+  background: var(--bucky-red);
+  color: white !important;
 
-
-/* Serverkaart styling */
-.guild-card {
-  background-color: var(--card-bg);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  cursor: pointer;
-  text-align: center;
-  border: 3px solid transparent;
-}
-
-.guild-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-  border-color: var(--accent-red);
-}
-
-.guild-card img {
-  border-radius: 50%;
-  width: 90px;
-  height: 90px;
-  object-fit: cover;
-  margin-bottom: 1rem;
-}
-
-.guild-card h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-/* Status kleuren */
-.guild-card.green-border {
-  border-color: limegreen;
-}
-.guild-card.red-border {
-  border-color: crimson;
-}
-
-
-
-
-/* Algemene knopstijl voor Dashboard, Logout en Login links */
-a#dashboard-link, a[href*="logout"], a#login-link, #logout-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 120px;
-  padding: 0.75rem 1.25rem;
-  font-weight: bold;
-  color: white;
-  background: linear-gradient(45deg, var(--accent-red), #ff6b6b);
   border: none;
-  border-radius: 8px;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(230, 57, 71, 0.4);
+
   transition: all 0.3s ease;
-  text-decoration: none;
+  box-shadow: 0 6px 20px rgba(139,30,63,0.25);
 }
 
-/* Hover effect voor de knop-links */
-a#dashboard-link:hover, a[href*="logout"]:hover, a#login-link:hover, #logout-btn:hover {
+a#dashboard-link:hover,
+a#login-link:hover,
+#logout-btn:hover {
+  background: var(--bucky-red-light);
   transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(230, 57, 71, 0.6);
+  box-shadow: 0 10px 30px rgba(139,30,63,0.35);
 }
 
-/* Styling van de button in de login link */
+/* Fix login button inside link */
 a#login-link button {
   background: none;
   border: none;
   color: inherit;
-  font-weight: inherit;
-  font-size: inherit;
-  padding: 0;
-  width: 100%;
-  height: 100%;
+  font: inherit;
   cursor: pointer;
 }
 
+/* ================= HERO ================= */
 
-
-/* User info container */
-#user-info {
+.hero {
+  position: relative;
+  height: 100vh;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  background: var(--bg-secondary);
-  padding: 1rem 1.5rem;
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(255, 255, 255, 0.168);
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background: url("pics/hpBG1.png") center/cover no-repeat;
+  opacity: 0.95;
+  z-index: 0;
+}
+
+/* HERO CONTENT */
+
+.hero-content {
+  position: relative;
+  z-index: 5;
+
+  max-width: 1300px;
+  margin: auto;
+  padding: 0 2rem;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 4rem;
+}
+
+/* TEXT */
+
+.hero-text h1 {
+  font-size: 4.8rem;
+  font-weight: 300;
+  letter-spacing: -1px;
   margin-bottom: 2rem;
-  max-width: 400px;
 }
 
-/* Avatar styling */
-#user-info .avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--accent-red);
+.hero-text p {
+  font-size: 1.25rem;
+  line-height: 1.9;
+  color: var(--text-muted);
+  margin-bottom: 2.5rem;
+  max-width: 520px;
 }
 
-/* Username styling */
-#user-info span {
-  font-size: 1rem;
+/* CTA */
+
+.cta-btn {
+  display: inline-block;
+  padding: 16px 36px;
+  background: var(--bucky-red);
+  color: white;
+  border-radius: 40px;
+  text-decoration: none;
   font-weight: 600;
-  color: var(--text-light);
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(139,30,63,0.25);
+}
+
+.cta-btn:hover {
+  background: var(--bucky-red-light);
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(139,30,63,0.35);
+}
+
+/* BUCKY */
+
+.hero-visual {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bucky {
+  width: 480px;
+  max-width: 90%;
+  filter: drop-shadow(0 40px 80px rgba(0,0,0,0.2));
+}
+
+/* ================= SPACER ================= */
+
+.spacer {
+  height: 200vh;
+  background: #0F1115;
+}
+
+
+
+
+
+
+
+
+
+
+/* ================= HORIZONTAL CORE ================= */
+
+.horizontal-section {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.horizontal-wrapper {
+  display: flex;
+  height: 100%;
+  width: 400vw;
+}
+
+/* FIXED PANEL STRUCTURE */
+.panel {
+  width: 100vw;
+  min-height: 100vh;       /* belangrijk */
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 8rem 6rem;
+}
+
+/* ================= PANEL BACKGROUNDS ================= */
+
+.panel-security {
+  background:
+    radial-gradient(circle at 20% 30%, rgba(139,30,63,0.15), transparent 60%),
+    linear-gradient(135deg, #0b0f16, #141a26);
+  color: #fff;
+}
+
+.panel-economy {
+  background:
+    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08), transparent 60%),
+    linear-gradient(135deg, #6f1733, #3b0d1b);
+  color: #fff;
+}
+
+.panel-adventures {
+  background:
+    radial-gradient(circle at 30% 80%, rgba(139,30,63,0.2), transparent 60%),
+    linear-gradient(135deg, #141a26, #1f2636);
+  color: #fff;
+}
+
+.panel-arcade {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(139,30,63,0.12), transparent 70%),
+    linear-gradient(135deg, #0f0f12, #18181f);
+  color: #fff;
+}
+
+/* ================= CONTENT LAYOUT ================= */
+
+.panel-content {
+  width: 100%;
+  max-width: 1300px;
+  z-index: 2;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 7rem;
+  align-items: center;
+}
+
+/* ================= TYPOGRAPHY ================= */
+
+.text-col h2 {
+  font-size: 3.4rem;
+  font-weight: 300;
+  line-height: 1.1;
+  margin-bottom: 2.5rem;
+  letter-spacing: -0.5px;
+}
+
+.text-col p {
+  font-size: 1.15rem;
+  line-height: 1.9;
+  opacity: 0.9;
+  margin-bottom: 1.8rem;
+  max-width: 620px;
+}
+
+.lead {
+  font-size: 1.35rem;
+  font-weight: 500;
+  opacity: 1;
+}
+
+/* ================= FEATURE LIST ================= */
+
+.text-col ul {
+  list-style: none;
+  margin-top: 2rem;
+}
+
+.text-col ul li {
+  position: relative;
+  padding-left: 24px;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.text-col ul li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bucky-red);
+  box-shadow: 0 0 10px rgba(139,30,63,0.6);
+}
+
+/* ================= PANEL LINKS ================= */
+
+.panel-link {
+  display: inline-block;
+  margin-top: 2.5rem;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: 0.4px;
+  position: relative;
+  transition: 0.3s ease;
+}
+
+.panel-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  height: 2px;
+  width: 0;
+  background: var(--bucky-red);
+  transition: width 0.3s ease;
+}
+
+.panel-link:hover::after {
+  width: 100%;
+}
+
+/* ================= IMAGES ================= */
+
+.image-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.panel-image {
+  width: 100%;
+  max-width: 540px;
+  border-radius: 22px;
+  box-shadow:
+    0 40px 80px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,255,255,0.05);
+}
+
+/* ================= CURRENCY LAYOUT ================= */
+
+.currency-stage {
+  position: relative;
+  width: 100%;
+  height: 420px;
+}
+
+.currency-item {
+  position: absolute;
+  width: 140px;
+  filter: drop-shadow(0 30px 60px rgba(0,0,0,0.5));
+}
+
+.currency-a { top: 70px; left: 8%; }
+.currency-b { top: 190px; left: 42%; }
+.currency-c { top: 20px; left: 70%; }
+
+/* ================= ARCADE ================= */
+
+.panel-arcade .panel-content {
+  text-align: center;
+  max-width: 1000px;
+}
+
+.panel-arcade h2 {
+  font-size: 3.4rem;
+  font-weight: 300;
+  margin-bottom: 2rem;
+}
+
+.arcade-intro {
+  margin-bottom: 3rem;
+  opacity: 0.85;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+}
+
+.game-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 3rem 1rem;
+  border-radius: 18px;
+  font-size: 1.05rem;
+  font-weight: 500;
+  backdrop-filter: blur(12px);
+  transition: all 0.3s ease;
+}
+
+.game-card:hover {
+  background: rgba(255,255,255,0.09);
+  transform: translateY(-10px);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.45);
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 1100px) {
+
+  .panel {
+    padding: 6rem 3rem;
+  }
+
+  .two-col {
+    grid-template-columns: 1fr;
+    gap: 4rem;
+    text-align: center;
+  }
+
+  .text-col p {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+}
+
+@media (max-width: 600px) {
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .text-col h2 {
+    font-size: 2.2rem;
+  }
+
+}
+
+/* ================= NAV HORIZONTAL MODE ================= */
+
+.navbar.nav-horizontal {
+
+  background: rgba(15, 17, 25, 0) !important;
+  backdrop-filter: blur(2px);
+
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
+
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Subtiel compacter */
+.navbar.nav-horizontal .nav-inner {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+    #nav-menu li a:not(#dashboard-link):not(#login-link),
+    #nav-menu li button:not(#logout-btn){
+    color: white;
+    }
+    .logo-text {
+    color: white;
+    }
+}
+
+
+
+
+
+
+
+
+/* ================= FINAL SECTION UPGRADE ================= */
+
+.final-section {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% 100%, rgba(139,30,63,0.2), transparent 70%),
+    linear-gradient(135deg, #0f1118, #141a26);
+  color: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  padding: 6rem 2rem;
+}
+
+.final-content {
+  max-width: 900px;
+}
+
+.final-section h2 {
+  font-size: 3.2rem;
+  font-weight: 300;
+  margin-bottom: 1.5rem;
+}
+
+.final-lead {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 1.2rem;
+  opacity: 0.9;
+}
+
+.final-description {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  opacity: 0.75;
+  margin-bottom: 3rem;
+}
+
+.final-buttons {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Secondary CTA */
+.secondary-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: none;
+}
+
+.secondary-btn:hover {
+  background: rgba(255,255,255,0.08);
+  transform: translateY(-3px);
+}
+
+
+
+
+
+/* ================= HAMBURGER ================= */
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 26px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 2000;
+}
+
+.hamburger span {
+  width: 100%;
+  height: 2px;
+  background: var(--text-dark);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+/* Animate to X */
+.hamburger.open span:nth-child(1) {
+  transform: translateY(9px) rotate(45deg);
+}
+
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.open span:nth-child(3) {
+  transform: translateY(-9px) rotate(-45deg);
+}
+
+/* ================= AUTH BUTTONS ================= */
+
+a#dashboard-link,
+a#login-link,
+#logout-btn {
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 110px;
+  padding: 0.65rem 1.3rem;
+
+  font-weight: 600;
+  font-size: 0.9rem;
+
+  color: white !important;
+  background: linear-gradient(
+      135deg,
+      var(--bucky-red),
+      var(--bucky-red-light)
+  );
+
+  border: none;
+  border-radius: 999px;
+
+  cursor: pointer;
+  text-decoration: none;
+
+  box-shadow: 0 8px 20px rgba(139,30,63,0.28);
+  transition: all 0.25s ease;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ================= MOBILE NAV ================= */
+
+@media (max-width: 768px) {
+
+    .hero-content {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-text h1 {
+        font-size: 2rem;
+    }
+
+    .bucky {
+        width: 360px;
+    }
+
+    h2 {
+        font-size: 2rem;
+    }
+
+    /* Hide desktop nav */
+    #nav-menu {
+        position: absolute;
+        top: 100%;
+        right: 2rem;
+        width: 240px;
+
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+
+        background: white;
+        border-radius: 14px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+
+        padding: 0;
+        max-height: 0;
+        overflow: hidden;
+
+        transition: all 0.35s ease;
+    }
+
+    #nav-menu.open {
+        padding: 0.8rem 0;
+        max-height: 500px;
+    }
+
+    #nav-menu li {
+        width: 100%;
+    }
+
+    /* Normale links full width */
+    #nav-menu li a:not(#dashboard-link):not(#login-link),
+    #nav-menu li button:not(#logout-btn) {
+        display: block;
+        width: 100%;
+        padding: 0.9rem 1.4rem;
+    }
+
+    /* Show hamburger */
+    .hamburger {
+        display: flex;
+    }
+
+    /* Compacte login button in mobile */
+    a#dashboard-link,
+    a#login-link,
+    #logout-btn {
+
+        width: auto;                /* 👈 geen full width */
+        display: inline-block;      /* 👈 geen block */
+
+        padding: 0.55rem 1.2rem;    /* 👈 kleiner */
+        font-size: 0.85rem;         /* 👈 subtiel kleiner */
+
+        border-radius: 999px;       /* 👈 mooie pill */
+        box-shadow: 0 6px 18px rgba(139,30,63,0.25);
+
+        align-self: center;     /* 👈 links uitlijnen */
+    }
+
+    a#dashboard-link:hover,
+    a#login-link:hover,
+    #logout-btn:hover {
+        background: rgba(0,0,0,0.05);
+        transform: none;
+    }
+
+}
+
+
+/* ================= MOBILE: DISABLE HORIZONTAL ================= */
+
+@media (max-width: 768px) {
+
+  .horizontal-section {
+    height: auto;
+    overflow: visible;
+  }
+
+  .horizontal-wrapper {
+    display: block;
+    width: 100%;
+  }
+
+  .panel {
+    width: 100%;
+    min-height: auto;
+    padding: 6rem 2rem;
+  }
+
+}
+
+
+/* ================= TABLET (769px – 1200px) ================= */
+
+@media (min-width: 769px) and (max-width: 1200px) {
+
+  .panel {
+    padding: 6rem 4rem;
+  }
+
+  .two-col {
+    grid-template-columns: 1fr 1fr;  /* 👈 blijf 2 kolommen */
+    gap: 4rem;
+  }
+
+  .text-col h2 {
+    font-size: 2.4rem;
+  }
+
+  .text-col p {
+    font-size: 1rem;
+    max-width: 480px;
+  }
+
+  .lead {
+    font-size: 1.1rem;
+  }
+
+  .panel-image {
+    max-width: 380px;
+  }
+
+  .currency-stage {
+    height: 300px;
+  }
+
+  .currency-item {
+    width: 100px;
+  }
+
+  .panel-arcade h2 {
+    font-size: 2.4rem;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
 }
