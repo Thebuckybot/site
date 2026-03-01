@@ -324,36 +324,51 @@ function initHorizontalNavbar(horizontalTween) {
 
 
 /* =====================================================
-   INIT
+   INIT (RESPONSIVE VIA MATCHMEDIA)
 ===================================================== */
 
 function init() {
 
-  const isMobile = window.innerWidth <= 768;
-
+  // Algemene animaties (altijd)
   initNavbar();
   initHeroIntro();
   initHeroParallax();
 
-  if (!isMobile) {
+  // Voorkomt iOS resize chaos
+  ScrollTrigger.config({
+    ignoreMobileResize: true
+  });
 
-    const horizontalTween = initHorizontal();
+  ScrollTrigger.matchMedia({
 
-    initHorizontalNavbar(horizontalTween);
-    initBackgroundTransitions(horizontalTween);
-    initPanelDepth(horizontalTween);
-    initPanelLinks(horizontalTween);
+    /* ================= MOBILE ================= */
+    "(max-width: 768px)": function() {
 
-  }
+      // Geen horizontal scroll
+      initCurrencyFloat();
+      initCurrencyChaos();
+      initArcadeCards();
 
-  // Deze mogen altijd draaien
-  initCurrencyFloat();
-  initCurrencyChaos();
-  initArcadeCards();
+    },
+
+    /* ================= TABLET + DESKTOP ================= */
+    "(min-width: 769px)": function() {
+
+      const horizontalTween = initHorizontal();
+
+      initHorizontalNavbar(horizontalTween);
+      initBackgroundTransitions(horizontalTween);
+      initPanelDepth(horizontalTween);
+      initPanelLinks(horizontalTween);
+
+      initCurrencyFloat();
+      initCurrencyChaos();
+      initArcadeCards();
+
+    }
+
+  });
+
 }
 
 window.addEventListener("load", init);
-
-window.addEventListener("resize", () => {
-  location.reload(); // simpel & veilig voor layout switch
-});
