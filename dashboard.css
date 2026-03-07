@@ -33,13 +33,14 @@ html,body{
   min-height:100vh;
 
   background-image:url("pics/hpBG1.png");
-  background-repeat:repeat;
-  background-size:600px;
+
+  background-repeat:no-repeat;
+  background-size:cover;
+  background-position:center;
 
   animation:bgScroll 40s linear infinite;
 
 }
-
 /* overlay boven pattern maar onder content */
 
 body::before{
@@ -61,11 +62,11 @@ body::before{
 @keyframes bgScroll{
 
   from{
-    background-position:0 0;
+    background-position:center 0;
   }
 
   to{
-    background-position:0 1200px;
+    background-position:center 800px;
   }
 
 }
@@ -354,8 +355,6 @@ nav h1 a{
   -webkit-filter:url(#glass-distortion);
 
   pointer-events:none;
-
-  z-index:-1;
 
 }
 
