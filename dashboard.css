@@ -28,11 +28,45 @@ html,body{
 
   font-family:'Manrope',sans-serif;
 
-  background:var(--bg-soft);
-
   color:var(--text-dark);
 
   min-height:100vh;
+
+  background-image:url("pics/hpBG1.png");
+  background-repeat:repeat;
+  background-size:600px;
+
+  animation:bgScroll 40s linear infinite;
+
+}
+
+/* overlay boven pattern maar onder content */
+
+body::before{
+
+  content:"";
+
+  position:fixed;
+
+  inset:0;
+
+  background:rgba(255,255,255,0.65);
+
+  pointer-events:none;
+
+  z-index:-1;
+
+}
+
+@keyframes bgScroll{
+
+  from{
+    background-position:0 0;
+  }
+
+  to{
+    background-position:0 1200px;
+  }
 
 }
 
