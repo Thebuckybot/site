@@ -28,46 +28,11 @@ html,body{
 
   font-family:'Manrope',sans-serif;
 
+  background:var(--bg-soft);
+
   color:var(--text-dark);
 
   min-height:100vh;
-
-  background-image:url("pics/hpBG1.png");
-
-  background-repeat:repeat-y;
-  background-size:100%;
-  background-position:center 0;
-
-  animation:bgScroll 40s linear infinite;
-
-}
-/* overlay boven pattern maar onder content */
-
-body::before{
-
-  content:"";
-
-  position:fixed;
-
-  inset:0;
-
-  background:rgba(255,255,255,0.65);
-
-  pointer-events:none;
-
-  z-index:-1;
-
-}
-
-@keyframes bgScroll{
-
-  from{
-    background-position:center 0;
-  }
-
-  to{
-    background-position:center 800px;
-  }
 
 }
 
@@ -343,7 +308,7 @@ nav h1 a{
 
 .guild-card::after{
 
-  content:"";
+  content:'';
 
   position:absolute;
 
@@ -351,12 +316,12 @@ nav h1 a{
 
   border-radius:22px;
 
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-
   filter:url(#glass-distortion);
+  -webkit-filter:url(#glass-distortion);
 
   pointer-events:none;
+
+  z-index:-1;
 
 }
 
