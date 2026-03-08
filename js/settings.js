@@ -14,32 +14,96 @@ if (!guildId) {
 
 
 // settings.js - loadSettings function
-async function loadSettings() {
-  try {
-    const res = await apiFetch(`${API_URL}/api/guild-settings/${guildId}`);
+async function loadSettings(){
 
-    if (res.status === 403) {
-      alert("You do not have permission to view or change these settings.");
-      window.location.href = "dashboard.html";
-      return;
-    }
-    if (!res.ok) {
-      // De foutmelding verfijnen om de statuscode te tonen
-      throw new Error(`Could not fetch guild settings. Status: ${res.status}`);
-    }
-    const data = await res.json();
-    if (!data.guild_id) return;
+  try{
 
-    renderGuildHeader(data);
-    renderSecuritySettings(data.security);
-    renderCommandSettings(data.server_commands);
-  } catch (err) {
-    const msg = `Error loading settings: ${err.message}\n\nStack:\n${err.stack}`;
-    console.error(msg);
-    alert(msg); // toont het hele bericht en de stack
-    }
+    const [settingsRes, commandsRes] = await Promise.all([
+      apiFetch(`${API_URL}/api/guild-settings/${guildId}`),
+      apiFetch(`${API_URL}/api/bot/commands`)
+    ])
+
+    const settings = await settingsRes.json()
+    const commands = await commandsRes.json()
+
+    renderGuildHeader(settings)
+    renderSecuritySettings(settings.security)
+
+    renderCommandTree(commands, settings.server_commands)
+
+  }
+  catch(err){
+
+    console.error(err)
+
+  }
+
 }
 
+function renderCommandTree(allCommands, disabledData){
+
+  const container = document.getElementById("command-tree")
+
+  container.innerHTML = ""
+
+  const disabledCommands = disabledData?.disabled_commands || []
+  const disabledCogs = disabledData?.disabled_cogs || []
+
+  for(const cog in allCommands){
+
+    const cogDiv = document.createElement("div")
+    cogDiv.className = "cog-block"
+
+    const cogDisabled = disabledCogs.includes(cog)
+
+    cogDiv.innerHTML = `
+    
+    <div class="cog-header">
+
+      <button class="cog-toggle">▶</button>
+
+      <span class="cog-name">${cog}</span>
+
+      <label class="switch">
+        <input type="checkbox" data-type="cog" value="${cog}" ${!cogDisabled ? "checked":""}>
+        <span class="slider"></span>
+      </label>
+
+    </div>
+
+    <div class="command-list"></div>
+    
+    `
+
+    const commandList = cogDiv.querySelector(".command-list")
+
+    allCommands[cog].forEach(cmd => {
+
+      const disabled = disabledCommands.includes(cmd)
+
+      const row = document.createElement("div")
+      row.className = "command-row"
+
+      row.innerHTML = `
+
+        <span>${cmd}</span>
+
+        <label class="switch">
+          <input type="checkbox" data-type="command" value="${cmd}" ${!disabled ? "checked":""}>
+          <span class="slider"></span>
+        </label>
+
+      `
+
+      commandList.appendChild(row)
+
+    })
+
+    container.appendChild(cogDiv)
+
+  }
+
+}
 
 
 
@@ -234,21 +298,51 @@ function getSecurityPayload() {
 
 function getServerCommandsPayload(){
 
-    const disabledCommands = Array.from(
-        document.querySelectorAll('#disabled-commands input:checked')
-    ).map(el => el.value);
+  const disabledCommands = []
+  const disabledCogs = []
 
-    const disabledCogs = Array.from(
-        document.querySelectorAll('#disabled-cogs input:checked')
-    ).map(el => el.value);
+  document.querySelectorAll('input[data-type="command"]').forEach(el=>{
 
-    return {
-        disabled_commands: disabledCommands,
-        disabled_cogs: disabledCogs
-    };
+    if(!el.checked){
+
+      disabledCommands.push(el.value)
+
+    }
+
+  })
+
+  document.querySelectorAll('input[data-type="cog"]').forEach(el=>{
+
+    if(!el.checked){
+
+      disabledCogs.push(el.value)
+
+    }
+
+  })
+
+  return{
+
+    disabled_commands: disabledCommands,
+    disabled_cogs: disabledCogs
+
+  }
 
 }
 
+
+document.addEventListener("click", e => {
+
+  if(e.target.classList.contains("cog-toggle")){
+
+    const block = e.target.closest(".cog-block")
+    const list = block.querySelector(".command-list")
+
+    list.classList.toggle("open")
+
+  }
+
+})
 
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
