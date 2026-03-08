@@ -258,6 +258,119 @@ input[type="checkbox"] {
   color: var(--text-muted);
 }
 
+/* ================= COMMAND CONTROLS ================= */
+
+.card-subtitle{
+
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.command-grid{
+
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:40px;
+}
+
+.command-column h3{
+
+  margin-bottom:12px;
+}
+
+/* Toggle list */
+
+.toggle-list{
+
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+/* Toggle item */
+
+.toggle-item{
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:12px 14px;
+
+  background:var(--bg-soft);
+  border-radius:10px;
+
+  cursor:pointer;
+  position:relative;
+}
+
+.toggle-name{
+
+  font-weight:600;
+}
+
+/* Hide checkbox */
+
+.toggle-item input{
+
+  display:none;
+}
+
+/* Slider */
+
+.toggle-slider{
+
+  width:46px;
+  height:24px;
+
+  background:#ccc;
+  border-radius:999px;
+
+  position:relative;
+  transition:0.25s;
+}
+
+.toggle-slider::after{
+
+  content:"";
+
+  width:18px;
+  height:18px;
+
+  background:white;
+  border-radius:50%;
+
+  position:absolute;
+  top:3px;
+  left:3px;
+
+  transition:0.25s;
+}
+
+/* active */
+
+.toggle-item input:checked + .toggle-slider{
+
+  background:var(--bucky-red);
+}
+
+.toggle-item input:checked + .toggle-slider::after{
+
+  transform:translateX(22px);
+}
+
+/* responsive */
+
+@media(max-width:768px){
+
+  .command-grid{
+
+    grid-template-columns:1fr;
+  }
+
+}
+
+
 /* ================= SAVE BUTTON ================= */
 
 #save-settings {

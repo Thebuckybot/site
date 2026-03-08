@@ -32,7 +32,7 @@ async function loadSettings() {
 
     renderGuildHeader(data);
     renderSecuritySettings(data.security);
-    renderChannelSettings(data.channel_commands);
+    renderCommandSettings(data.server_commands);
   } catch (err) {
     const msg = `Error loading settings: ${err.message}\n\nStack:\n${err.stack}`;
     console.error(msg);
@@ -114,51 +114,57 @@ function renderSecuritySettings(securityData) {
     });
 }
 
-function renderChannelSettings(channelCommandsData) {
-    const container = document.getElementById("channel-settings-container");
-    container.innerHTML = "";
+function renderCommandSettings(data){
 
-    channelCommandsData.forEach(channel => {
-        const channelDiv = document.createElement("div");
-        channelDiv.className = "channel-card";
-        channelDiv.dataset.channelId = channel.channel_id;
-        channelDiv.dataset.channelName = channel.channel_name || 'Unknown channel';
+    const commandsDiv = document.getElementById("disabled-commands");
+    const cogsDiv = document.getElementById("disabled-cogs");
 
-        const disabledCommandsHTML = channel.disabled_commands.map(cmd => `
-            <label>
-                <input type="checkbox" name="command" value="${cmd}" checked /> ${cmd}
-            </label>
-        `).join('');
+    commandsDiv.innerHTML = "";
+    cogsDiv.innerHTML = "";
 
-        const disabledCogsHTML = channel.disabled_cogs.map(cog => `
-            <label>
-                <input type="checkbox" name="cog" value="${cog}" checked /> ${cog}
-            </label>
-        `).join('');
+    const disabledCommands = data?.disabled_commands || [];
+    const disabledCogs = data?.disabled_cogs || [];
 
-        channelDiv.innerHTML = `
-            <h3># ${channel.channel_name || 'Unknown Channel'} <span class="channel-id">(${channel.channel_id})</span></h3>
-            <h4>Disabled Commands</h4>
-            <div class="disabled-commands-list">
-                ${disabledCommandsHTML || '<i>No command\'s disabled in this channel.</i>'}
-            </div>
-            <h4>Disabled Cogs</h4>
-            <div class="disabled-cogs-list">
-                ${disabledCogsHTML || '<i>No cogs disabled in this channel.</i>'}
-            </div>
+    disabledCommands.forEach(cmd => {
+
+        const toggle = document.createElement("label");
+        toggle.className = "toggle-item";
+
+        toggle.innerHTML = `
+            <span class="toggle-name">${cmd}</span>
+            <input type="checkbox" value="${cmd}" checked>
+            <span class="toggle-slider"></span>
         `;
-        container.appendChild(channelDiv);
+
+        commandsDiv.appendChild(toggle);
+
     });
+
+    disabledCogs.forEach(cog => {
+
+        const toggle = document.createElement("label");
+        toggle.className = "toggle-item";
+
+        toggle.innerHTML = `
+            <span class="toggle-name">${cog}</span>
+            <input type="checkbox" value="${cog}" checked>
+            <span class="toggle-slider"></span>
+        `;
+
+        cogsDiv.appendChild(toggle);
+
+    });
+
 }
 
 document.getElementById("save-settings").addEventListener("click", async () => {
-  const security = getSecurityPayload();
-  const channelCommands = getChannelCommandsPayload();
+    const security = getSecurityPayload();
+    const serverCommands = getServerCommandsPayload();
 
-  const payload = {
+    const payload = {
     security: security,
-    channel_commands: channelCommands
-  };
+    server_commands: serverCommands
+    };
 
   console.log("Payload die naar de backend wordt gestuurd:", JSON.stringify(payload, null, 2));
 
@@ -226,26 +232,21 @@ function getSecurityPayload() {
     };
 }
 
-function getChannelCommandsPayload() {
-    const channelCommandsData = [];
-    document.querySelectorAll('.channel-card').forEach(card => {
-        const channelId = card.dataset.channelId;
-        const channelName = card.dataset.channelName;
-        
-        const disabledCommands = Array.from(card.querySelectorAll('.disabled-commands-list input:checked'))
-            .map(input => input.value);
-        
-        const disabledCogs = Array.from(card.querySelectorAll('.disabled-cogs-list input:checked'))
-            .map(input => input.value);
-        
-        channelCommandsData.push({
-            channel_id: channelId,
-            channel_name: channelName,
-            disabled_commands: disabledCommands,
-            disabled_cogs: disabledCogs
-        });
-    });
-    return channelCommandsData;
+function getServerCommandsPayload(){
+
+    const disabledCommands = Array.from(
+        document.querySelectorAll('#disabled-commands input:checked')
+    ).map(el => el.value);
+
+    const disabledCogs = Array.from(
+        document.querySelectorAll('#disabled-cogs input:checked')
+    ).map(el => el.value);
+
+    return {
+        disabled_commands: disabledCommands,
+        disabled_cogs: disabledCogs
+    };
+
 }
 
 
