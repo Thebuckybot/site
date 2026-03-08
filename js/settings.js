@@ -178,48 +178,7 @@ function renderSecuritySettings(securityData) {
     });
 }
 
-function renderCommandSettings(data){
 
-    const commandsDiv = document.getElementById("disabled-commands");
-    const cogsDiv = document.getElementById("disabled-cogs");
-
-    commandsDiv.innerHTML = "";
-    cogsDiv.innerHTML = "";
-
-    const disabledCommands = data?.disabled_commands || [];
-    const disabledCogs = data?.disabled_cogs || [];
-
-    disabledCommands.forEach(cmd => {
-
-        const toggle = document.createElement("label");
-        toggle.className = "toggle-item";
-
-        toggle.innerHTML = `
-            <span class="toggle-name">${cmd}</span>
-            <input type="checkbox" value="${cmd}" checked>
-            <span class="toggle-slider"></span>
-        `;
-
-        commandsDiv.appendChild(toggle);
-
-    });
-
-    disabledCogs.forEach(cog => {
-
-        const toggle = document.createElement("label");
-        toggle.className = "toggle-item";
-
-        toggle.innerHTML = `
-            <span class="toggle-name">${cog}</span>
-            <input type="checkbox" value="${cog}" checked>
-            <span class="toggle-slider"></span>
-        `;
-
-        cogsDiv.appendChild(toggle);
-
-    });
-
-}
 
 document.getElementById("save-settings").addEventListener("click", async () => {
     const security = getSecurityPayload();
@@ -339,6 +298,12 @@ document.addEventListener("click", e => {
     const list = block.querySelector(".command-list")
 
     list.classList.toggle("open")
+
+    if(list.classList.contains("open")){
+      e.target.style.transform = "rotate(90deg)"
+    }else{
+      e.target.style.transform = "rotate(0deg)"
+    }
 
   }
 
