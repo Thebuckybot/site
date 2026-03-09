@@ -315,21 +315,26 @@ document.addEventListener("change", e => {
   // COG TOGGLE
   // -----------------------------
 
-  if(e.target.dataset.type === "cog"){
+    if(e.target.dataset.type === "cog"){
 
     const cog = e.target.value
     const enabled = e.target.checked
 
     const commands = document.querySelectorAll(`input[data-type="command"][data-cog="${cog}"]`)
 
-    // Cog OFF → alle commands uit
+    // Cog OFF → alles uit
     if(!enabled){
-      commands.forEach(cmd=>{
+        commands.forEach(cmd=>{
         cmd.checked = false
-      })
+        })
     }
 
-    // Cog ON → commands blijven zoals ze waren
+    // Cog ON → alles aan
+    if(enabled){
+        commands.forEach(cmd=>{
+        cmd.checked = true
+        })
+    }
 
     const block = e.target.closest(".cog-block")
     const list = block.querySelector(".command-list")
@@ -337,7 +342,7 @@ document.addEventListener("change", e => {
 
     list.classList.add("open")
     arrow.style.transform = "rotate(90deg)"
-  }
+    }
 
 
   // -----------------------------
