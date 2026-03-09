@@ -89,7 +89,7 @@ function renderCommandTree(allCommands, disabledData){
         <span>${cmd}</span>
 
         <label class="switch">
-          <input type="checkbox" data-type="command" value="${cmd}" ${!disabled ? "checked":""}>
+          <input type="checkbox" data-type="command" data-cog="${cog}" value="${cmd}" ${!disabled ? "checked":""}>
           <span class="slider"></span>
         </label>
 
@@ -306,6 +306,41 @@ document.addEventListener("click", e => {
     }
 
   }
+
+})
+
+document.addEventListener("change", e => {
+
+    if(e.target.dataset.type === "cog"){
+        const cog = e.target.value
+        const enabled = e.target.checked
+
+        const commands = document.querySelectorAll(`input[data-type="command"][data-cog="${cog}"]`)
+
+        commands.forEach(cmd => {
+            cmd.checked = enabled
+        })
+
+        // open cog zodat user ziet wat er gebeurt
+        const block = e.target.closest(".cog-block")
+        const list = block.querySelector(".command-list")
+        const arrow = block.querySelector(".cog-toggle")
+
+        list.classList.add("open")
+        arrow.style.transform = "rotate(90deg)"
+    }
+
+    if(e.target.dataset.type === "command"){
+
+        const cog = e.target.dataset.cog
+
+        const commands = document.querySelectorAll(`input[data-type="command"][data-cog="${cog}"]`)
+        const cogSwitch = document.querySelector(`input[data-type="cog"][value="${cog}"]`)
+
+        const allEnabled = [...commands].every(cmd => cmd.checked)
+
+        cogSwitch.checked = allEnabled
+    }
 
 })
 

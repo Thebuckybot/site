@@ -411,6 +411,15 @@ input[type="checkbox"] {
 
   font-weight:600;
 
+  background:white;
+
+  position:sticky;
+  top:0.5rem;
+
+  z-index:2;
+
+  border-bottom:1px solid rgba(0,0,0,0.05);
+
 }
 
 
@@ -453,7 +462,9 @@ input[type="checkbox"] {
   flex-direction:column;
   gap:6px;
 
-  padding:10px 0 12px 36px; /* indent voor tree */
+  padding:10px 0 12px 36px;
+
+  border-left:2px solid rgba(0,0,0,0.08);
 
 }
 
@@ -468,6 +479,8 @@ input[type="checkbox"] {
 
 .command-row{
 
+  position:relative;
+
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -477,6 +490,38 @@ input[type="checkbox"] {
   border-radius:8px;
 
   transition:background 0.2s;
+
+}
+
+.command-row::before{
+
+  content:"";
+
+  position:absolute;
+
+  left:-18px;
+  top:50%;
+
+  width:18px;
+  height:2px;
+
+  background:rgba(0,0,0,0.15);
+
+}
+
+.command-row:last-child::after{
+
+  content:"";
+
+  position:absolute;
+
+  left:-18px;
+  top:0;
+
+  width:2px;
+  height:50%;
+
+  background:var(--bg-soft);
 
 }
 
