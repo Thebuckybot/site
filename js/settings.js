@@ -311,24 +311,53 @@ document.addEventListener("click", e => {
 
 document.addEventListener("change", e => {
 
-    if(e.target.dataset.type === "cog"){
+  // -----------------------------
+  // COG TOGGLE
+  // -----------------------------
 
-        const cog = e.target.value
-        const enabled = e.target.checked
+  if(e.target.dataset.type === "cog"){
 
-        const commands = document.querySelectorAll(`input[data-type="command"][data-cog="${cog}"]`)
+    const cog = e.target.value
+    const enabled = e.target.checked
 
-        commands.forEach(cmd => {
-            cmd.checked = enabled
-        })
+    const commands = document.querySelectorAll(`input[data-type="command"][data-cog="${cog}"]`)
 
-        const block = e.target.closest(".cog-block")
-        const list = block.querySelector(".command-list")
-        const arrow = block.querySelector(".cog-toggle")
-
-        list.classList.add("open")
-        arrow.style.transform = "rotate(90deg)"
+    // Cog OFF → alle commands uit
+    if(!enabled){
+      commands.forEach(cmd=>{
+        cmd.checked = false
+      })
     }
+
+    // Cog ON → commands blijven zoals ze waren
+
+    const block = e.target.closest(".cog-block")
+    const list = block.querySelector(".command-list")
+    const arrow = block.querySelector(".cog-toggle")
+
+    list.classList.add("open")
+    arrow.style.transform = "rotate(90deg)"
+  }
+
+
+  // -----------------------------
+  // COMMAND TOGGLE
+  // -----------------------------
+
+  if(e.target.dataset.type === "command"){
+
+    const cog = e.target.dataset.cog
+    const cogToggle = document.querySelector(`input[data-type="cog"][value="${cog}"]`)
+
+    // Command ON → cog automatisch ON
+    if(e.target.checked){
+      if(cogToggle && !cogToggle.checked){
+        cogToggle.checked = true
+      }
+    }
+
+    // Command OFF → niets met cog doen
+  }
 
 })
 
