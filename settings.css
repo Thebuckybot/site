@@ -380,7 +380,11 @@ input[type="checkbox"] {
   flex-direction:column;
   gap:14px;
 
-  align-items:flex-start; /* alles links */
+  max-height:600px;
+  overflow-y:auto;
+
+  padding-right:6px;
+
 }
 
 
@@ -414,9 +418,9 @@ input[type="checkbox"] {
   background:white;
 
   position:sticky;
-  top:0.5rem;
+  top:0;
 
-  z-index:2;
+  z-index:5;
 
   border-bottom:1px solid rgba(0,0,0,0.05);
 
