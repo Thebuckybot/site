@@ -14,32 +14,96 @@ if (!guildId) {
 
 
 // settings.js - loadSettings function
-async function loadSettings() {
-  try {
-    const res = await apiFetch(`${API_URL}/api/guild-settings/${guildId}`);
+async function loadSettings(){
 
-    if (res.status === 403) {
-      alert("You do not have permission to view or change these settings.");
-      window.location.href = "dashboard.html";
-      return;
-    }
-    if (!res.ok) {
-      // De foutmelding verfijnen om de statuscode te tonen
-      throw new Error(`Could not fetch guild settings. Status: ${res.status}`);
-    }
-    const data = await res.json();
-    if (!data.guild_id) return;
+  try{
 
-    renderGuildHeader(data);
-    renderSecuritySettings(data.security);
-    renderChannelSettings(data.channel_commands);
-  } catch (err) {
-    const msg = `Error loading settings: ${err.message}\n\nStack:\n${err.stack}`;
-    console.error(msg);
-    alert(msg); // toont het hele bericht en de stack
-    }
+    const [settingsRes, commandsRes] = await Promise.all([
+      apiFetch(`${API_URL}/api/guild-settings/${guildId}`),
+      apiFetch(`${API_URL}/api/bot/commands`)
+    ])
+
+    const settings = await settingsRes.json()
+    const commands = await commandsRes.json()
+
+    renderGuildHeader(settings)
+    renderSecuritySettings(settings.security)
+
+    renderCommandTree(commands, settings.server_commands)
+
+  }
+  catch(err){
+
+    console.error(err)
+
+  }
+
 }
 
+function renderCommandTree(allCommands, disabledData){
+
+  const container = document.getElementById("command-tree")
+
+  container.innerHTML = ""
+
+  const disabledCommands = disabledData?.disabled_commands || []
+  const disabledCogs = disabledData?.disabled_cogs || []
+
+  for(const cog in allCommands){
+
+    const cogDiv = document.createElement("div")
+    cogDiv.className = "cog-block"
+
+    const cogDisabled = disabledCogs.includes(cog)
+
+    cogDiv.innerHTML = `
+    
+    <div class="cog-header">
+
+      <button class="cog-toggle">▶</button>
+
+      <span class="cog-name">${cog}</span>
+
+      <label class="switch">
+        <input type="checkbox" data-type="cog" value="${cog}" ${!cogDisabled ? "checked":""}>
+        <span class="slider"></span>
+      </label>
+
+    </div>
+
+    <div class="command-list"></div>
+    
+    `
+
+    const commandList = cogDiv.querySelector(".command-list")
+
+    allCommands[cog].forEach(cmd => {
+
+      const disabled = disabledCommands.includes(cmd)
+
+      const row = document.createElement("div")
+      row.className = "command-row"
+
+      row.innerHTML = `
+
+        <span>${cmd}</span>
+
+        <label class="switch">
+          <input type="checkbox" data-type="command" data-cog="${cog}" value="${cmd}" ${!disabled ? "checked":""}>
+          <span class="slider"></span>
+        </label>
+
+      `
+
+      commandList.appendChild(row)
+
+    })
+
+    container.appendChild(cogDiv)
+
+  }
+
+}
 
 
 
@@ -114,51 +178,16 @@ function renderSecuritySettings(securityData) {
     });
 }
 
-function renderChannelSettings(channelCommandsData) {
-    const container = document.getElementById("channel-settings-container");
-    container.innerHTML = "";
 
-    channelCommandsData.forEach(channel => {
-        const channelDiv = document.createElement("div");
-        channelDiv.className = "channel-card";
-        channelDiv.dataset.channelId = channel.channel_id;
-        channelDiv.dataset.channelName = channel.channel_name || 'Unknown channel';
-
-        const disabledCommandsHTML = channel.disabled_commands.map(cmd => `
-            <label>
-                <input type="checkbox" name="command" value="${cmd}" checked /> ${cmd}
-            </label>
-        `).join('');
-
-        const disabledCogsHTML = channel.disabled_cogs.map(cog => `
-            <label>
-                <input type="checkbox" name="cog" value="${cog}" checked /> ${cog}
-            </label>
-        `).join('');
-
-        channelDiv.innerHTML = `
-            <h3># ${channel.channel_name || 'Unknown Channel'} <span class="channel-id">(${channel.channel_id})</span></h3>
-            <h4>Disabled Commands</h4>
-            <div class="disabled-commands-list">
-                ${disabledCommandsHTML || '<i>No command\'s disabled in this channel.</i>'}
-            </div>
-            <h4>Disabled Cogs</h4>
-            <div class="disabled-cogs-list">
-                ${disabledCogsHTML || '<i>No cogs disabled in this channel.</i>'}
-            </div>
-        `;
-        container.appendChild(channelDiv);
-    });
-}
 
 document.getElementById("save-settings").addEventListener("click", async () => {
-  const security = getSecurityPayload();
-  const channelCommands = getChannelCommandsPayload();
+    const security = getSecurityPayload();
+    const serverCommands = getServerCommandsPayload();
 
-  const payload = {
+    const payload = {
     security: security,
-    channel_commands: channelCommands
-  };
+    server_commands: serverCommands
+    };
 
   console.log("Payload die naar de backend wordt gestuurd:", JSON.stringify(payload, null, 2));
 
@@ -226,28 +255,116 @@ function getSecurityPayload() {
     };
 }
 
-function getChannelCommandsPayload() {
-    const channelCommandsData = [];
-    document.querySelectorAll('.channel-card').forEach(card => {
-        const channelId = card.dataset.channelId;
-        const channelName = card.dataset.channelName;
-        
-        const disabledCommands = Array.from(card.querySelectorAll('.disabled-commands-list input:checked'))
-            .map(input => input.value);
-        
-        const disabledCogs = Array.from(card.querySelectorAll('.disabled-cogs-list input:checked'))
-            .map(input => input.value);
-        
-        channelCommandsData.push({
-            channel_id: channelId,
-            channel_name: channelName,
-            disabled_commands: disabledCommands,
-            disabled_cogs: disabledCogs
-        });
-    });
-    return channelCommandsData;
+function getServerCommandsPayload(){
+
+  const disabledCommands = []
+  const disabledCogs = []
+
+  document.querySelectorAll('input[data-type="command"]').forEach(el=>{
+
+    if(!el.checked){
+
+      disabledCommands.push(el.value)
+
+    }
+
+  })
+
+  document.querySelectorAll('input[data-type="cog"]').forEach(el=>{
+
+    if(!el.checked){
+
+      disabledCogs.push(el.value)
+
+    }
+
+  })
+
+  return{
+
+    disabled_commands: disabledCommands,
+    disabled_cogs: disabledCogs
+
+  }
+
 }
 
+
+document.addEventListener("click", e => {
+
+  if(e.target.classList.contains("cog-toggle")){
+
+    const block = e.target.closest(".cog-block")
+    const list = block.querySelector(".command-list")
+
+    list.classList.toggle("open")
+
+    if(list.classList.contains("open")){
+      e.target.style.transform = "rotate(90deg)"
+    }else{
+      e.target.style.transform = "rotate(0deg)"
+    }
+
+  }
+
+})
+
+document.addEventListener("change", e => {
+
+  // -----------------------------
+  // COG TOGGLE
+  // -----------------------------
+
+    if(e.target.dataset.type === "cog"){
+
+    const cog = e.target.value
+    const enabled = e.target.checked
+
+    const commands = document.querySelectorAll(`input[data-type="command"][data-cog="${cog}"]`)
+
+    // Cog OFF → alles uit
+    if(!enabled){
+        commands.forEach(cmd=>{
+        cmd.checked = false
+        })
+    }
+
+    // Cog ON → alles aan
+    if(enabled){
+        commands.forEach(cmd=>{
+        cmd.checked = true
+        })
+    }
+
+    const block = e.target.closest(".cog-block")
+    const list = block.querySelector(".command-list")
+    const arrow = block.querySelector(".cog-toggle")
+
+    list.classList.add("open")
+    arrow.style.transform = "rotate(90deg)"
+    }
+
+
+  // -----------------------------
+  // COMMAND TOGGLE
+  // -----------------------------
+
+  if(e.target.dataset.type === "command"){
+
+    const cog = e.target.dataset.cog
+    const cogToggle = document.querySelector(`input[data-type="cog"][value="${cog}"]`)
+
+    // Command ON → cog automatisch ON
+    if(e.target.checked){
+      if(cogToggle && !cogToggle.checked){
+        cogToggle.checked = true
+      }
+    }
+
+    // Command OFF → niets met cog doen
+  }
+
+})
 
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
