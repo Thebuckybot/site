@@ -1,4 +1,4 @@
 // config.js
-const API_URL = "https://unavailable-cleaner-starts-pvc.trycloudflare.com";
+const API_URL = "https://many-cherry-introduces-determines.trycloudflare.com";
 
 export { API_URL };
