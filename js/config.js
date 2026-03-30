@@ -1,4 +1,4 @@
 // config.js
-const API_URL = "https://acdbentity-upon-salad-ddr.trycloudflare.com";
+const API_URL = "https://upc-attach-tabs-chemistry.trycloudflare.com";
 
 export { API_URL };
