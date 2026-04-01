@@ -1,4 +1,4 @@
 // config.js
-const API_URL = "https://diet-planner-ticket-initially.trycloudflare.com";
+const API_URL = "https://employed-plastic-programmer-pas.trycloudflare.com";
 
 export { API_URL };
