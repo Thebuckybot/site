@@ -1,4 +1,4 @@
 // config.js
-const API_URL = "https://none-munich-sail-pools.trycloudflare.com";
+const API_URL = "https://api.buckybot.app";
 
 export { API_URL };
