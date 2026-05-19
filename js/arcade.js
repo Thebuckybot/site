@@ -60,7 +60,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         setTimeout(() => {
             opening.remove();
-            document.body.style.overflow = "auto";
         }, 600);
 
     }, 3000);
@@ -160,8 +159,10 @@ function initArcadeScrollEffects() {
             heroBackground.style.transform = `translate3d(0, ${scrollY * 0.12}px, 0) scale(${1 + Math.min(scrollY, 700) * 0.00008})`;
         }
 
-        if (heroLeft && scrollY < window.innerHeight) {
+        if (heroLeft && scrollY <= 260) {
             heroLeft.style.transform = `translate3d(0, ${scrollY * -0.035}px, 0)`;
+        } else if (heroLeft) {
+            heroLeft.style.transform = "";
         }
 
         ticking = false;

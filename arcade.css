@@ -1,3 +1,20 @@
+:root {
+    --arcade-bg: #040611;
+    --arcade-surface: rgba(7, 9, 24, .68);
+    --arcade-surface-strong: rgba(7, 10, 26, .78);
+    --arcade-border: rgba(255, 255, 255, .14);
+    --arcade-cyan: #52fff3;
+    --arcade-pink: #ff3fd1;
+    --arcade-magenta: #ff00ff;
+    --arcade-green: #84ff9b;
+    --arcade-text: #ffffff;
+    --arcade-muted: rgba(255, 255, 255, .72);
+    --arcade-radius: 18px;
+    --arcade-ease: cubic-bezier(.16, 1, .3, 1);
+    --arcade-shadow: 0 24px 70px rgba(0, 0, 0, .38), inset 0 1px 0 rgba(255,255,255,.12);
+    --arcade-glow: 0 0 34px rgba(255, 0, 255, .18), 0 0 26px rgba(82, 255, 243, .1);
+}
+
 /* RESET */
 * {
     margin: 0;
@@ -5,10 +22,31 @@
     box-sizing: border-box;
 }
 
+html {
+    min-height: 100%;
+    background: var(--arcade-bg);
+    scroll-behavior: smooth;
+}
+
 body {
-    background: #040611;
-    overflow: hidden;
+    min-height: 100%;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(255, 0, 255, .16), transparent 30rem),
+        radial-gradient(circle at 84% 54%, rgba(82, 255, 243, .1), transparent 34rem),
+        linear-gradient(180deg, #060714 0%, var(--arcade-bg) 52%, #070617 100%);
+    overflow-x: hidden;
+    overflow-y: auto;
     font-family: sans-serif;
+    color: var(--arcade-text);
+}
+
+body.vm-focus-active {
+    overflow: hidden;
+}
+
+button,
+a {
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* ===================== */
@@ -24,7 +62,7 @@ body {
 
 .shutter-grid {
     display: flex;
-    height: 100vh;
+    height: 100dvh;
 }
 
 .column {
@@ -37,16 +75,11 @@ body {
     /* Keep segment heights controlled by JS. */
     flex-grow: 0;
     flex-shrink: 0;
-    flex-basis: 50%; /* startwaarde, wordt overschreven door JS */
+    flex-basis: 50%;
 
     background: linear-gradient(145deg, #0f2c66, #08132c);
     border: 1px solid rgba(0, 255, 255, 0.2);
-        backdrop-filter: blur(2px);
-
-    /* Neon rand */
-    /* box-shadow:
-        0 0 8px rgba(0,255,255,0.4),
-        inset 0 0 15px rgba(0,150,255,0.3); */
+    backdrop-filter: blur(2px);
 
     transition: transform 1.8s cubic-bezier(.4,0,.2,1);
     will-change: transform;
@@ -60,8 +93,8 @@ body {
 
 .arcade-nav {
     position: fixed;
-    top: 30px;
-    right: 40px;
+    top: clamp(18px, 3vw, 30px);
+    right: clamp(18px, 4vw, 40px);
     z-index: 70;
 }
 
@@ -85,13 +118,13 @@ body {
     width: 100%;
     background: white;
     border-radius: 4px;
-    transition: all 0.35s cubic-bezier(.22,1,.36,1);
+    transition: transform .34s var(--arcade-ease), opacity .34s var(--arcade-ease), box-shadow .34s var(--arcade-ease);
     box-shadow: 0 0 8px rgba(255,255,255,0.6);
 }
 
 /* Hamburger hover glow */
 .hamburger:hover div {
-    box-shadow: 0 0 12px #ff00ff;
+    box-shadow: 0 0 12px var(--arcade-magenta);
 }
 
 /* Open animatie */
@@ -132,7 +165,7 @@ body {
     opacity: 0;
     transform: translateY(-10px) scale(0.95);
     pointer-events: none;
-    transition: all 0.35s cubic-bezier(.22,1,.36,1);
+    transition: opacity .35s var(--arcade-ease), transform .35s var(--arcade-ease);
 }
 
 /* Open state */
@@ -159,12 +192,13 @@ body {
     padding: 10px 14px;
     border-radius: 8px;
     font-weight: 500;
-    transition: all 0.25s ease;
+    transition: background .24s var(--arcade-ease), color .24s var(--arcade-ease), transform .24s var(--arcade-ease);
 }
 
 /* Home hover */
 #nav-menu a:hover {
     background: rgba(255,255,255,0.08);
+    transform: translateX(-2px);
 }
 
 
@@ -271,12 +305,13 @@ body {
 #arcade-world {
     position: relative;
     min-height: 100vh;
+    isolation: isolate;
     overflow: visible;
     z-index: 0;
     background:
-        radial-gradient(circle at 20% 28%, rgba(255, 0, 255, .14), transparent 28%),
-        radial-gradient(circle at 82% 62%, rgba(0, 255, 255, .1), transparent 30%),
-        #040611;
+        radial-gradient(circle at 20% 18%, rgba(255, 0, 255, .14), transparent 32rem),
+        radial-gradient(circle at 82% 44%, rgba(0, 255, 255, .1), transparent 36rem),
+        linear-gradient(180deg, #070817 0%, var(--arcade-bg) 46%, #070617 100%);
 }
 
 
@@ -284,9 +319,9 @@ body {
 
 .arcade-hero {
     position: relative;
-    min-height: 100vh;
+    min-height: clamp(680px, 100svh, 980px);
     width: 100%;
-    overflow: hidden;
+    overflow: clip;
 }
 
 /* Background image */
@@ -306,7 +341,7 @@ body {
     z-index: 1;
     pointer-events: none;
     background:
-        linear-gradient(180deg, rgba(4, 6, 17, .08), rgba(4, 6, 17, .22) 52%, #040611 100%),
+        linear-gradient(180deg, rgba(4, 6, 17, .08), rgba(4, 6, 17, .28) 58%, var(--arcade-bg) 100%),
         radial-gradient(circle at 48% 78%, rgba(255, 0, 255, .16), transparent 30%);
 }
 
@@ -396,13 +431,13 @@ body {
 .hero-content {
     position: relative;
     z-index: 2;
-    min-height: 100vh;
+    min-height: clamp(680px, 100svh, 980px);
     display: grid;
     grid-template-columns: minmax(280px, 440px) minmax(260px, 520px);
     align-items: center;
     justify-content: space-between;
     gap: 70px;
-    padding: 118px min(8vw, 120px) 110px;
+    padding: clamp(104px, 12vh, 140px) min(8vw, 120px) clamp(96px, 14vh, 150px);
 }
 
 .hero-left {
@@ -422,8 +457,8 @@ body {
     line-height: 0.9;
     margin-bottom: 44px;
     text-shadow:
-        0 0 15px #ff00ff,
-        0 0 30px #ff00ff,
+        0 0 15px var(--arcade-magenta),
+        0 0 30px var(--arcade-magenta),
         0 0 60px rgba(255,0,255,0.6);
 }
 .arcade-title span:last-child {
@@ -630,11 +665,12 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 .arcade-scroll {
     position: relative;
     z-index: 3;
-    padding: 90px min(6vw, 90px) 120px;
+    margin-top: -1px;
+    padding: clamp(64px, 9vw, 112px) min(6vw, 90px) clamp(96px, 12vw, 150px);
     background:
-        linear-gradient(180deg, #040611 0%, #08071a 34%, #040611 100%),
-        radial-gradient(circle at 16% 20%, rgba(255, 0, 255, .14), transparent 28%),
-        radial-gradient(circle at 86% 46%, rgba(0, 255, 255, .12), transparent 32%);
+        linear-gradient(180deg, var(--arcade-bg) 0%, #08071a 34%, #050611 72%, #070617 100%),
+        radial-gradient(circle at 16% 16%, rgba(255, 0, 255, .14), transparent 32rem),
+        radial-gradient(circle at 86% 48%, rgba(0, 255, 255, .12), transparent 38rem);
 }
 
 .arcade-scroll::before {
@@ -649,6 +685,18 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
     mask-image: linear-gradient(180deg, transparent, black 12%, black 88%, transparent);
 }
 
+.arcade-scroll::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 50% 24%, rgba(255, 63, 209, .1), transparent 42rem),
+        radial-gradient(ellipse at 48% 62%, rgba(82, 255, 243, .08), transparent 46rem);
+    filter: blur(2px);
+}
+
 .arcade-intro-band,
 .arcade-vm-section,
 .arcade-coming-soon {
@@ -658,11 +706,10 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 }
 
 .arcade-intro-band {
-    min-height: 46vh;
     display: grid;
     align-content: center;
-    gap: 24px;
-    padding: 50px 0 120px;
+    gap: clamp(18px, 3vw, 28px);
+    padding: clamp(28px, 5vw, 54px) 0 clamp(88px, 12vw, 150px);
 }
 
 .arcade-section-kicker,
@@ -686,7 +733,7 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 .arcade-machine-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px;
+    gap: clamp(14px, 2vw, 22px);
     margin-top: 18px;
 }
 
@@ -700,14 +747,26 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
     box-shadow: 0 24px 70px rgba(0, 0, 0, .38), inset 0 1px 0 rgba(255,255,255,.12);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+    transition:
+        transform .34s var(--arcade-ease),
+        border-color .34s var(--arcade-ease),
+        box-shadow .34s var(--arcade-ease),
+        background .34s var(--arcade-ease);
 }
 
 .arcade-machine-card {
     min-height: 164px;
-    padding: 22px;
-    border-radius: 18px;
+    padding: clamp(18px, 2.4vw, 24px);
+    border-radius: var(--arcade-radius);
     color: white;
     overflow: hidden;
+}
+
+.arcade-machine-card:hover,
+.arcade-coming-soon > div:hover {
+    transform: translateY(-5px);
+    border-color: rgba(82, 255, 243, .32);
+    box-shadow: var(--arcade-shadow), var(--arcade-glow);
 }
 
 .arcade-machine-card span {
@@ -741,17 +800,16 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 
 .arcade-vm-section {
     display: grid;
-    grid-template-columns: minmax(290px, 420px) minmax(560px, 1fr);
+    grid-template-columns: minmax(290px, 420px) minmax(0, 1fr);
     align-items: center;
     gap: min(5vw, 70px);
-    min-height: 92vh;
-    padding: 80px 0 120px;
+    padding: clamp(58px, 8vw, 96px) 0 clamp(90px, 11vw, 140px);
 }
 
 .arcade-vm-section::before {
     content: "";
     position: absolute;
-    inset: 4% -5% 0;
+    inset: 4% -5% 1%;
     z-index: -1;
     border-radius: 34px;
     background:
@@ -763,9 +821,14 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 .vm-feature-panel {
     position: relative;
     overflow: hidden;
-    padding: 30px;
+    padding: clamp(22px, 3vw, 34px);
     border-radius: 22px;
     color: white;
+}
+
+.vm-feature-panel:hover {
+    border-color: rgba(255, 63, 209, .36);
+    box-shadow: var(--arcade-shadow), 0 0 38px rgba(255, 63, 209, .16);
 }
 
 .vm-feature-panel::before {
@@ -844,6 +907,7 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 .arcade-vm-stage {
     position: relative;
     min-width: 0;
+    width: 100%;
 }
 
 .arcade-vm-stage::before {
@@ -861,8 +925,8 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 .arcade-coming-soon {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px;
-    padding: 30px 0 20px;
+    gap: clamp(14px, 2vw, 22px);
+    padding: clamp(24px, 4vw, 44px) 0 20px;
 }
 
 .arcade-coming-soon > div {
@@ -870,8 +934,8 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
     display: grid;
     align-content: center;
     gap: 10px;
-    padding: 22px;
-    border-radius: 18px;
+    padding: clamp(18px, 2.4vw, 24px);
+    border-radius: var(--arcade-radius);
     color: white;
 }
 
@@ -888,7 +952,8 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 
 @media (max-width: 980px) {
     body {
-        overflow: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 
     #arcade-world {
@@ -932,5 +997,49 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
     .arcade-vm-section {
         min-height: auto;
         padding: 70px 0 90px;
+    }
+
+    body.arcade-profile-pinned .player-hero-card {
+        top: 18px;
+        left: 18px;
+        width: 190px;
+    }
+}
+
+@media (max-width: 767px) {
+    .arcade-nav {
+        top: 18px;
+        right: 18px;
+    }
+
+    body.arcade-profile-pinned .player-hero-card {
+        position: relative;
+        top: auto;
+        left: auto;
+        width: min(100%, 360px);
+        padding: 22px;
+        transform: none;
+    }
+
+    body.arcade-profile-pinned .player-hero-card .player-header {
+        margin-bottom: 18px;
+    }
+
+    body.arcade-profile-pinned .player-hero-card .hero-stats,
+    body.arcade-profile-pinned .player-hero-card .xp-bar {
+        max-height: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .001ms !important;
     }
 }

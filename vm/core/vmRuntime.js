@@ -46,12 +46,18 @@ export class BuckyVMRuntime {
             this.apps.database,
             this.apps.osint
         ];
+        this.resizeHandler = () => {
+            if (this.phase !== "desktop") return;
+            this.constrainWindows();
+            this.render();
+        };
     }
 
     start() {
         this.render();
         this.tickClock();
         this.clockTimer = window.setInterval(() => this.tickClock(), 1000);
+        window.addEventListener("resize", this.resizeHandler);
         this.runBootSequence();
     }
 
@@ -79,6 +85,7 @@ export class BuckyVMRuntime {
     }
 
     render() {
+        this.constrainWindows();
         this.root.innerHTML = renderVMContainer(this);
         this.bind();
     }
@@ -108,8 +115,13 @@ export class BuckyVMRuntime {
     setMode(mode) {
         this.mode = mode;
         document.body.classList.toggle("vm-focus-active", mode === "expanded");
-        document.body.style.overflow = mode === "expanded" ? "hidden" : "auto";
         this.render();
+        if (this.phase === "desktop") {
+            window.requestAnimationFrame(() => {
+                this.constrainWindows();
+                this.render();
+            });
+        }
     }
 
     startDesktopBoot() {
@@ -169,6 +181,23 @@ export class BuckyVMRuntime {
             x: Math.min(iconRail + index * 18, Math.max(12, vmWidth - width - 12)),
             y: Math.min(62 + index * 18, Math.max(46, vmHeight - height - 66))
         };
+    }
+
+    constrainWindows() {
+        if (!this.windows.length) return;
+        const vmRect = this.root.querySelector(".bucky-vm")?.getBoundingClientRect();
+        const vmWidth = vmRect?.width || 900;
+        const vmHeight = vmRect?.height || 520;
+        const maxWidth = Math.max(330, vmWidth - 112);
+        const maxHeight = Math.max(230, vmHeight - 118);
+
+        this.windows.forEach((windowState) => {
+            if (windowState.maximized) return;
+            windowState.width = Math.min(windowState.width, maxWidth);
+            windowState.height = Math.min(windowState.height, maxHeight);
+            windowState.x = clamp(windowState.x, 10, Math.max(10, vmWidth - windowState.width - 12));
+            windowState.y = clamp(windowState.y, 46, Math.max(46, vmHeight - windowState.height - 66));
+        });
     }
 
     getWindow(id) {
@@ -309,4 +338,8 @@ function normalizeUser(user) {
         : FALLBACK_AVATAR);
 
     return { ...user, username, avatarUrl };
+}
+
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
 }
