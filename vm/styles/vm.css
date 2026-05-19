@@ -602,11 +602,17 @@ body.vm-focus-active .arcade-vm-bay {
     backdrop-filter: blur(18px);
     animation: vmWindowOpen 260ms cubic-bezier(.16,1,.3,1);
     transition:
+        left 240ms var(--vm-ease),
+        top 240ms var(--vm-ease),
+        width 240ms var(--vm-ease),
+        height 240ms var(--vm-ease),
         border-color 180ms ease,
         box-shadow 180ms ease,
         opacity 220ms ease,
         transform 220ms var(--vm-ease);
     pointer-events: auto;
+    transform-origin: center center;
+    will-change: left, top, width, height, transform, opacity;
 }
 
 @keyframes vmWindowOpen {
@@ -623,17 +629,31 @@ body.vm-focus-active .arcade-vm-bay {
 }
 
 .vm-window.is-minimized {
-    transform: translateY(32px) scale(.92);
+    transform: translate3d(0, 34px, 0) scale(.9);
     opacity: 0;
     pointer-events: none;
 }
 
 .vm-window.is-maximized {
-    inset: 14px 14px 8px clamp(82px, 10vw, 96px);
-    width: auto;
-    height: auto;
     max-width: none;
     max-height: none;
+    border-radius: 12px;
+    transform: translate3d(0, 0, 0) scale(1);
+}
+
+.vm-window.is-dragging {
+    transition: none;
+    cursor: grabbing;
+}
+
+.vm-window.is-dragging .vm-window-titlebar {
+    cursor: grabbing;
+}
+
+.vm-window.is-closing {
+    transform: translate3d(0, 12px, 0) scale(.96);
+    opacity: 0;
+    pointer-events: none;
 }
 
 .vm-window-titlebar {

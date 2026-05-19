@@ -2,8 +2,9 @@ export function renderTaskbar(runtime) {
     const activeApps = runtime.windows.map((windowState) => {
         const active = runtime.activeWindowId === windowState.id ? " is-active" : "";
         const minimized = windowState.minimized ? " is-minimized" : "";
+        const closing = windowState.closing ? " is-closing" : "";
         return `
-            <button class="vm-task-app${active}${minimized}" type="button" data-task-window="${windowState.id}">
+            <button class="vm-task-app${active}${minimized}${closing}" type="button" data-task-window="${windowState.id}">
                 <span>${windowState.icon}</span>${windowState.title}
             </button>
         `;

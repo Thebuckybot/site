@@ -146,7 +146,9 @@ export function bindTerminalApp(runtime, windowState, element) {
     const screen = element.querySelector(".vm-terminal-screen");
     if (!input) return;
 
-    input.focus({ preventScroll: true });
+    if (runtime.activeWindowId === windowState.id && !windowState.minimized && !windowState.closing) {
+        input.focus({ preventScroll: true });
+    }
     if (screen) screen.scrollTop = screen.scrollHeight;
 
     input.addEventListener("input", (event) => {

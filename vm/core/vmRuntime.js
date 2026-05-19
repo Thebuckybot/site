@@ -169,7 +169,12 @@ export class BuckyVMRuntime {
         const windowState = createWindow(app, this.windows.length, appState);
         const metrics = this.getInitialWindowMetrics(app, this.windows.length);
         Object.assign(windowState, metrics);
+        windowState.restoreBounds = { ...metrics };
         windowState.z = ++this.nextZ;
+        windowState.focused = true;
+        this.windows.forEach((item) => {
+            item.focused = false;
+        });
         this.windows = [...this.windows, windowState];
         this.activeWindowId = windowState.id;
         this.render();
@@ -180,9 +185,9 @@ export class BuckyVMRuntime {
     }
 
     getInitialWindowMetrics(app, index) {
-        const vmRect = this.root.querySelector(".bucky-vm")?.getBoundingClientRect();
-        const vmWidth = vmRect?.width || 900;
-        const vmHeight = vmRect?.height || 520;
+        const bounds = this.getDesktopBounds();
+        const vmWidth = bounds.width;
+        const vmHeight = bounds.height + 54;
         const iconRail = 98;
         const availableWidth = Math.max(330, vmWidth - iconRail - 26);
         const availableHeight = Math.max(230, vmHeight - 118);
@@ -197,16 +202,40 @@ export class BuckyVMRuntime {
         };
     }
 
+    getDesktopBounds() {
+        const layerRect = this.root.querySelector(".vm-window-layer")?.getBoundingClientRect();
+        const vmRect = this.root.querySelector(".bucky-vm")?.getBoundingClientRect();
+        return {
+            width: layerRect?.width || vmRect?.width || 900,
+            height: layerRect?.height || Math.max(360, (vmRect?.height || 520) - 54)
+        };
+    }
+
+    getMaximizedBounds() {
+        const bounds = this.getDesktopBounds();
+        const leftInset = bounds.width < 720 ? 86 : 102;
+
+        return {
+            x: leftInset,
+            y: 12,
+            width: Math.max(330, bounds.width - leftInset - 14),
+            height: Math.max(230, bounds.height - 22)
+        };
+    }
+
     constrainWindows() {
         if (!this.windows.length) return;
-        const vmRect = this.root.querySelector(".bucky-vm")?.getBoundingClientRect();
-        const vmWidth = vmRect?.width || 900;
-        const vmHeight = vmRect?.height || 520;
+        const bounds = this.getDesktopBounds();
+        const vmWidth = bounds.width;
+        const vmHeight = bounds.height + 54;
         const maxWidth = Math.max(330, vmWidth - 112);
         const maxHeight = Math.max(230, vmHeight - 118);
 
         this.windows.forEach((windowState) => {
-            if (windowState.maximized) return;
+            if (windowState.maximized) {
+                Object.assign(windowState, this.getMaximizedBounds());
+                return;
+            }
             windowState.width = Math.min(windowState.width, maxWidth);
             windowState.height = Math.min(windowState.height, maxHeight);
             windowState.x = clamp(windowState.x, 10, Math.max(10, vmWidth - windowState.width - 12));
@@ -220,16 +249,31 @@ export class BuckyVMRuntime {
 
     focusWindow(id, shouldRender = true) {
         const windowState = this.getWindow(id);
-        if (!windowState) return;
+        if (!windowState || windowState.closing) return;
+        this.windows.forEach((item) => {
+            item.focused = item.id === id;
+        });
         windowState.z = ++this.nextZ;
-        windowState.minimized = false;
         this.activeWindowId = id;
-        if (shouldRender) this.render();
+        if (shouldRender) {
+            this.render();
+        } else {
+            this.syncWindowDomFocus(id);
+        }
+    }
+
+    syncWindowDomFocus(id) {
+        this.root.querySelectorAll(".vm-window").forEach((element) => {
+            const isActive = element.dataset.windowId === id;
+            element.classList.toggle("is-active", isActive);
+            const windowState = this.getWindow(element.dataset.windowId);
+            if (windowState) element.style.zIndex = windowState.z;
+        });
     }
 
     moveWindow(id, x, y) {
         const windowState = this.getWindow(id);
-        if (!windowState) return;
+        if (!windowState || windowState.maximized || windowState.minimized || windowState.closing) return;
         windowState.x = x;
         windowState.y = y;
         const element = this.root.querySelector(`[data-window-id="${id}"]`);
@@ -240,40 +284,96 @@ export class BuckyVMRuntime {
     }
 
     windowAction(id, action) {
-        const windowState = this.getWindow(id);
-        if (!windowState) return;
-
         if (action === "minimize") {
-            windowState.minimized = true;
-            this.activeWindowId = null;
+            this.minimizeWindow(id);
+            return;
         }
 
         if (action === "maximize") {
-            windowState.maximized = !windowState.maximized;
-            windowState.z = ++this.nextZ;
-            this.activeWindowId = id;
+            this.toggleMaximizeWindow(id);
+            return;
         }
 
         if (action === "close") {
-            this.windows = this.windows.filter((item) => item.id !== id);
-            if (this.activeWindowId === id) {
-                const nextWindow = this.windows
-                    .filter((item) => !item.minimized)
-                    .sort((a, b) => b.z - a.z)[0];
-                this.activeWindowId = nextWindow?.id || null;
-            }
+            this.closeWindow(id);
+            return;
+        }
+    }
+
+    minimizeWindow(id) {
+        const windowState = this.getWindow(id);
+        if (!windowState || windowState.closing) return;
+
+        windowState.minimized = true;
+        windowState.focused = false;
+
+        if (this.activeWindowId === id) {
+            const nextWindow = this.getTopVisibleWindow(id);
+            this.activeWindowId = nextWindow?.id || null;
+            if (nextWindow) nextWindow.focused = true;
         }
 
         this.render();
     }
 
+    toggleMaximizeWindow(id) {
+        const windowState = this.getWindow(id);
+        if (!windowState || windowState.closing) return;
+
+        if (windowState.minimized) {
+            windowState.minimized = false;
+        }
+
+        if (!windowState.maximized) {
+            windowState.restoreBounds = {
+                x: windowState.x,
+                y: windowState.y,
+                width: windowState.width,
+                height: windowState.height
+            };
+            Object.assign(windowState, this.getMaximizedBounds());
+            windowState.maximized = true;
+        } else {
+            const restoreBounds = windowState.restoreBounds || this.getInitialWindowMetrics(this.apps[windowState.appId] || {}, 0);
+            Object.assign(windowState, restoreBounds);
+            windowState.maximized = false;
+            this.constrainWindows();
+        }
+
+        this.focusWindow(id, false);
+        this.render();
+    }
+
+    closeWindow(id) {
+        const windowState = this.getWindow(id);
+        if (!windowState || windowState.closing) return;
+
+        windowState.closing = true;
+        windowState.focused = false;
+        if (this.activeWindowId === id) {
+            const nextWindow = this.getTopVisibleWindow(id);
+            this.activeWindowId = nextWindow?.id || null;
+            if (nextWindow) nextWindow.focused = true;
+        }
+
+        this.render();
+        window.setTimeout(() => {
+            this.windows = this.windows.filter((item) => item.id !== id);
+            this.render();
+        }, 220);
+    }
+
+    getTopVisibleWindow(exceptId = null) {
+        return this.windows
+            .filter((item) => item.id !== exceptId && !item.minimized && !item.closing)
+            .sort((a, b) => b.z - a.z)[0];
+    }
+
     restoreWindow(id) {
         const windowState = this.getWindow(id);
-        if (!windowState) return;
+        if (!windowState || windowState.closing) return;
         windowState.minimized = false;
-        windowState.z = ++this.nextZ;
-        this.activeWindowId = id;
-        this.render();
+        this.focusWindow(id);
     }
 
     updateWindowAppState(id, patch) {
