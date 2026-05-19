@@ -12,19 +12,26 @@ export function renderFilesApp(runtime) {
         </button>
     `).join("");
 
-    const files = homeEntries.map((entry) => `
+    const files = homeEntries.length
+        ? homeEntries.map((entry) => `
         <div class="vm-file-tile">
             <div class="vm-file-icon">${entry.type === "dir" ? "DIR" : "TXT"}</div>
             <span>${entry.name}</span>
         </div>
-    `).join("");
+    `).join("")
+        : `
+        <div class="vm-files-empty">
+            <strong>Directory empty</strong>
+            <span>No files found in this simulated folder.</span>
+        </div>
+    `;
 
     return `
         <div class="vm-files-app">
             <aside class="vm-files-sidebar">${sidebar}</aside>
             <section class="vm-files-main">
                 <div class="vm-files-path">${home}</div>
-                <div class="vm-files-grid">${files}</div>
+                <div class="vm-files-grid${homeEntries.length ? "" : " is-empty"}">${files}</div>
             </section>
         </div>
     `;

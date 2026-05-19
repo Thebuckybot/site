@@ -67,27 +67,41 @@ export function bindWindows(runtime) {
             const startY = event.clientY;
             const initialX = windowState.x;
             const initialY = windowState.y;
+            let nextX = initialX;
+            let nextY = initialY;
+            let frameId = null;
+
+            const applyPosition = () => {
+                frameId = null;
+                windowElement.style.left = `${nextX}px`;
+                windowElement.style.top = `${nextY}px`;
+            };
 
             const move = (moveEvent) => {
                 const dx = moveEvent.clientX - startX;
                 const dy = moveEvent.clientY - startY;
                 const maxX = Math.max(10, bounds.width - windowState.width - 12);
                 const maxY = Math.max(46, bounds.height - windowState.height - 12);
+                nextX = clamp(initialX + dx, 10, maxX);
+                nextY = clamp(initialY + dy, 46, maxY);
 
-                runtime.moveWindow(
-                    id,
-                    clamp(initialX + dx, 10, maxX),
-                    clamp(initialY + dy, 46, maxY)
-                );
+                if (frameId === null) {
+                    frameId = window.requestAnimationFrame(applyPosition);
+                }
             };
 
             const up = () => {
+                if (frameId !== null) {
+                    window.cancelAnimationFrame(frameId);
+                    applyPosition();
+                }
+
                 handle.removeEventListener("pointermove", move);
                 handle.removeEventListener("pointerup", up);
                 handle.removeEventListener("pointercancel", up);
                 windowState.dragging = false;
+                runtime.commitWindowPosition(id, nextX, nextY);
                 windowElement.classList.remove("is-dragging");
-                runtime.render();
             };
 
             handle.addEventListener("pointermove", move);

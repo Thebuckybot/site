@@ -1,4 +1,4 @@
-import { getNode, listNode, resolvePath } from "../core/filesystem.js";
+import { getNode, getParentNode, listNode, resolvePath } from "../core/filesystem.js";
 
 const COMMANDS = [
     "help",
@@ -6,6 +6,8 @@ const COMMANDS = [
     "cd",
     "clear",
     "cat",
+    "mkdir",
+    "touch",
     "scan",
     "decrypt",
     "connect",
@@ -38,7 +40,7 @@ export function createPrompt(state, user) {
 
 export function runTerminalCommand(runtime, state, rawCommand) {
     const commandLine = rawCommand.trim();
-    const [command = "", ...args] = commandLine.split(/\s+/);
+    const [command = "", ...args] = tokenizeCommand(commandLine);
     const next = {
         ...state,
         input: "",
@@ -53,7 +55,8 @@ export function runTerminalCommand(runtime, state, rawCommand) {
     switch (command.toLowerCase()) {
         case "help":
             next.lines.push({ type: "output", text: `Commands: ${COMMANDS.join(", ")}` });
-            next.lines.push({ type: "output", text: "Everything here is simulated in frontend state only." });
+            next.lines.push({ type: "output", text: "Navigation: cd /logs, cd .., ls ./folder, cat file.txt" });
+            next.lines.push({ type: "output", text: "Filesystem writes are mock frontend state only: mkdir and touch never leave the browser." });
             return next;
         case "pwd":
             next.lines.push({ type: "output", text: state.cwd });
@@ -62,7 +65,7 @@ export function runTerminalCommand(runtime, state, rawCommand) {
             const targetPath = resolvePath(state.cwd, args[0] || ".");
             const node = getNode(runtime.filesystem.tree, targetPath);
             if (!node) {
-                next.lines.push({ type: "error", text: `ls: cannot access '${args[0] || "."}'` });
+                next.lines.push({ type: "error", text: `ls: cannot access '${args[0] || "."}': No such file or directory` });
                 return next;
             }
             if (typeof node !== "object") {
@@ -79,20 +82,54 @@ export function runTerminalCommand(runtime, state, rawCommand) {
             const targetPath = resolvePath(state.cwd, args[0] || runtime.filesystem.cwd);
             const node = getNode(runtime.filesystem.tree, targetPath);
             if (!node || typeof node !== "object") {
-                next.lines.push({ type: "error", text: `cd: no such directory '${args[0] || ""}'` });
+                next.lines.push({ type: "error", text: `cd: no such directory: ${args[0] || ""}` });
                 return next;
             }
             next.cwd = targetPath;
             return next;
         }
         case "cat": {
-            const targetPath = resolvePath(state.cwd, args[0] || "");
-            const node = getNode(runtime.filesystem.tree, targetPath);
-            if (typeof node !== "string") {
-                next.lines.push({ type: "error", text: "cat: choose a text file" });
+            if (!args[0]) {
+                next.lines.push({ type: "error", text: "cat: missing file operand" });
                 return next;
             }
-            next.lines.push({ type: "output", text: node });
+            const targetPath = resolvePath(state.cwd, args[0] || "");
+            const node = getNode(runtime.filesystem.tree, targetPath);
+            if (node === null) {
+                next.lines.push({ type: "error", text: `cat: ${args[0]}: No such file` });
+                return next;
+            }
+            if (typeof node === "object") {
+                next.lines.push({ type: "error", text: `cat: ${args[0]}: Is a directory` });
+                return next;
+            }
+            next.lines.push({ type: "output", text: node || "(empty file)" });
+            return next;
+        }
+        case "mkdir": {
+            if (!args[0]) {
+                next.lines.push({ type: "error", text: "mkdir: missing directory operand" });
+                return next;
+            }
+
+            const result = createFsEntry(runtime.filesystem.tree, state.cwd, args[0], "dir");
+            next.lines.push(result.ok
+                ? { type: "success", text: `created directory ${result.path}` }
+                : { type: "error", text: `mkdir: ${result.error}` });
+            return next;
+        }
+        case "touch": {
+            if (!args[0]) {
+                next.lines.push({ type: "error", text: "touch: missing file operand" });
+                return next;
+            }
+
+            const results = args.map((name) => createFsEntry(runtime.filesystem.tree, state.cwd, name, "file"));
+            results.forEach((result) => {
+                next.lines.push(result.ok
+                    ? { type: "success", text: `touched ${result.path}` }
+                    : { type: "error", text: `touch: ${result.error}` });
+            });
             return next;
         }
         case "clear":
@@ -110,6 +147,12 @@ export function runTerminalCommand(runtime, state, rawCommand) {
             next.lines.push({ type: "success", text: "SIMULATED LINK ESTABLISHED" });
             return next;
         case "open":
+            if (args[0] && args[0] !== "files") {
+                next.lines.push({ type: "output", text: `open: routing '${args[0]}' through Files runtime...` });
+            }
+            runtime.openApp("files");
+            next.lines.push({ type: "success", text: "Opening Files runtime..." });
+            return next;
         case "files":
             runtime.openApp("files");
             next.lines.push({ type: "success", text: "Opening Files runtime..." });
@@ -118,6 +161,36 @@ export function runTerminalCommand(runtime, state, rawCommand) {
             next.lines.push({ type: "error", text: `${command}: command not found` });
             return next;
     }
+}
+
+function tokenizeCommand(commandLine) {
+    if (!commandLine) return [];
+    const matches = commandLine.match(/"([^"]*)"|'([^']*)'|\S+/g) || [];
+    return matches.map((item) => item.replace(/^["']|["']$/g, ""));
+}
+
+function createFsEntry(tree, cwd, rawPath, type) {
+    const targetPath = resolvePath(cwd, rawPath);
+    const { parent, name } = getParentNode(tree, targetPath);
+
+    if (!name || name === "." || name === "..") {
+        return { ok: false, error: `invalid path '${rawPath}'` };
+    }
+
+    if (!parent || typeof parent !== "object") {
+        return { ok: false, error: `cannot create '${rawPath}': parent directory does not exist` };
+    }
+
+    if (Object.prototype.hasOwnProperty.call(parent, name)) {
+        if (type === "file" && typeof parent[name] === "string") {
+            return { ok: true, path: targetPath };
+        }
+
+        return { ok: false, error: `cannot create '${rawPath}': File exists` };
+    }
+
+    parent[name] = type === "dir" ? {} : "";
+    return { ok: true, path: targetPath };
 }
 
 export function renderTerminalApp(runtime, windowState) {

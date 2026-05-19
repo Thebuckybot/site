@@ -139,19 +139,10 @@ body.vm-focus-active .arcade-vm-bay {
     opacity: .34;
 }
 
-.vm-corner-hotspot {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 35;
-    width: 84px;
-    height: 84px;
-}
-
 .vm-expand-button,
 .vm-minimize-button {
     position: absolute;
-    z-index: 36;
+    z-index: 26;
     display: grid;
     place-items: center;
     width: 32px;
@@ -161,8 +152,8 @@ body.vm-focus-active .arcade-vm-bay {
     background: rgba(4, 12, 20, 0.72);
     box-shadow: 0 0 18px rgba(82, 255, 243, 0.24);
     cursor: pointer;
-    opacity: 0;
-    transform: translate(8px, -8px) scale(.82);
+    opacity: .22;
+    transform: translate(0, 0) scale(.94);
     transition: opacity 240ms var(--vm-ease), transform 240ms var(--vm-ease), background 240ms var(--vm-ease), border-color 240ms var(--vm-ease);
 }
 
@@ -172,7 +163,7 @@ body.vm-focus-active .arcade-vm-bay {
     border-radius: 9px;
 }
 
-.vm-corner-hotspot:hover .vm-expand-button,
+.vm-expand-button:hover,
 .vm-expand-button:focus-visible,
 .vm-minimize-button {
     opacity: 1;
@@ -485,7 +476,7 @@ body.vm-focus-active .arcade-vm-bay {
 
 .vm-desktop-brand {
     position: absolute;
-    top: 24px;
+    top: 26px;
     right: 28px;
     display: grid;
     gap: 4px;
@@ -508,7 +499,7 @@ body.vm-focus-active .arcade-vm-bay {
 .vm-desktop-icons {
     position: absolute;
     left: clamp(14px, 2vw, 24px);
-    top: clamp(16px, 2.4vw, 26px);
+    top: clamp(86px, 12vw, 118px);
     bottom: 64px;
     z-index: 18;
     display: grid;
@@ -822,6 +813,34 @@ body.vm-focus-active .arcade-vm-bay {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
     gap: 12px;
+}
+
+.vm-files-grid.is-empty {
+    display: grid;
+    min-height: 180px;
+    place-items: center;
+}
+
+.vm-files-empty {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 22px;
+    color: rgba(232,255,255,.68);
+    border: 1px dashed rgba(82,255,243,.24);
+    border-radius: 12px;
+    background: rgba(82,255,243,.045);
+    text-align: center;
+}
+
+.vm-files-empty strong {
+    color: var(--vm-cyan);
+    font-size: 13px;
+    letter-spacing: 1.2px;
+}
+
+.vm-files-empty span {
+    font-size: 12px;
 }
 
 .vm-file-tile {

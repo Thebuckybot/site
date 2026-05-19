@@ -11,9 +11,7 @@ export function renderVMContainer(runtime) {
             <div class="bucky-vm${phaseClass}" role="application" aria-label="Bucky VM">
                 <div class="vm-reflection"></div>
                 <div class="vm-scanlines"></div>
-                <div class="vm-corner-hotspot" title="Expand focus mode">
-                    <button class="vm-expand-button" type="button" data-vm-expand aria-label="Expand Bucky VM">[]</button>
-                </div>
+                <button class="vm-expand-button" type="button" data-vm-expand aria-label="Expand Bucky VM" title="Expand focus mode">[]</button>
                 ${runtime.mode === "expanded" ? `<button class="vm-minimize-button" type="button" data-vm-minimize aria-label="Minimize Bucky VM">-</button>` : ""}
                 ${renderPhase(runtime)}
                 ${renderNotifications(runtime)}

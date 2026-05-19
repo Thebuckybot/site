@@ -283,6 +283,19 @@ export class BuckyVMRuntime {
         }
     }
 
+    commitWindowPosition(id, x, y) {
+        const windowState = this.getWindow(id);
+        if (!windowState || windowState.maximized || windowState.minimized || windowState.closing) return;
+        windowState.x = x;
+        windowState.y = y;
+        windowState.restoreBounds = {
+            x,
+            y,
+            width: windowState.width,
+            height: windowState.height
+        };
+    }
+
     windowAction(id, action) {
         if (action === "minimize") {
             this.minimizeWindow(id);

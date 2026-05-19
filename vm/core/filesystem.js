@@ -67,6 +67,15 @@ export function getNode(tree, path) {
     return node;
 }
 
+export function getParentNode(tree, path) {
+    const parts = path.split("/").filter(Boolean);
+    const name = parts.pop();
+    const parentPath = `/${parts.join("/")}`;
+    const parent = getNode(tree, parentPath);
+
+    return { parent, name, parentPath };
+}
+
 export function listNode(node) {
     if (!node || typeof node !== "object") return [];
     return Object.entries(node).map(([name, value]) => ({
