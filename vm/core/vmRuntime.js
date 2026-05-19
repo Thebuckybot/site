@@ -16,6 +16,7 @@ export class BuckyVMRuntime {
         this.mode = "embedded";
         this.phase = "boot";
         this.bootLines = [];
+        this.sessionLines = [];
         this.windows = [];
         this.notifications = [];
         this.activeWindowId = null;
@@ -27,6 +28,12 @@ export class BuckyVMRuntime {
             "LOADING MEMORY",
             "CONNECTING SECURE NODE",
             "BOOTING BUCKY OS"
+        ];
+        this.sessionQueue = [
+            "INITIALIZING VM",
+            "CONNECTING SECURE NODE",
+            "LOADING USER SESSION",
+            "BOOTING DESKTOP ENVIRONMENT"
         ];
         this.apps = createAppRegistry();
         this.desktopApps = [
@@ -80,7 +87,7 @@ export class BuckyVMRuntime {
         this.root.querySelector("[data-vm-expand]")?.addEventListener("click", () => this.setMode("expanded"));
         this.root.querySelector("[data-vm-minimize]")?.addEventListener("click", () => this.setMode("embedded"));
         this.root.querySelector("[data-vm-backdrop]")?.addEventListener("click", () => this.setMode("embedded"));
-        this.root.querySelector("[data-vm-login]")?.addEventListener("click", () => this.enterDesktop());
+        this.root.querySelector("[data-vm-login]")?.addEventListener("click", () => this.startDesktopBoot());
 
         this.root.querySelectorAll("[data-open-app]").forEach((button) => {
             button.addEventListener("dblclick", () => this.openApp(button.dataset.openApp));
@@ -101,14 +108,29 @@ export class BuckyVMRuntime {
     setMode(mode) {
         this.mode = mode;
         document.body.classList.toggle("vm-focus-active", mode === "expanded");
+        document.body.style.overflow = mode === "expanded" ? "hidden" : "auto";
         this.render();
     }
 
-    enterDesktop() {
-        this.phase = "desktop";
-        this.notify("Bucky OS ready", "Terminal runtime is available");
-        this.openApp("terminal");
+    startDesktopBoot() {
+        this.phase = "session";
+        this.sessionLines = [];
+        this.windows = [];
+        this.activeWindowId = null;
         this.render();
+
+        this.sessionQueue.forEach((line, index) => {
+            window.setTimeout(() => {
+                this.sessionLines = [...this.sessionLines, line];
+                this.render();
+            }, 180 + index * 430);
+        });
+
+        window.setTimeout(() => {
+            this.phase = "desktop";
+            this.notify("Desktop ready", "Open Terminal from the desktop");
+            this.render();
+        }, 2300);
     }
 
     openApp(appId) {
@@ -153,13 +175,13 @@ export class BuckyVMRuntime {
         return this.windows.find((windowState) => windowState.id === id);
     }
 
-    focusWindow(id) {
+    focusWindow(id, shouldRender = true) {
         const windowState = this.getWindow(id);
         if (!windowState) return;
         windowState.z = ++this.nextZ;
         windowState.minimized = false;
         this.activeWindowId = id;
-        this.render();
+        if (shouldRender) this.render();
     }
 
     moveWindow(id, x, y) {
@@ -191,7 +213,12 @@ export class BuckyVMRuntime {
 
         if (action === "close") {
             this.windows = this.windows.filter((item) => item.id !== id);
-            if (this.activeWindowId === id) this.activeWindowId = null;
+            if (this.activeWindowId === id) {
+                const nextWindow = this.windows
+                    .filter((item) => !item.minimized)
+                    .sort((a, b) => b.z - a.z)[0];
+                this.activeWindowId = nextWindow?.id || null;
+            }
         }
 
         this.render();

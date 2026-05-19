@@ -32,7 +32,10 @@ export function bindWindows(runtime) {
         const id = windowElement.dataset.windowId;
         const handle = windowElement.querySelector("[data-drag-handle]");
 
-        windowElement.addEventListener("pointerdown", () => runtime.focusWindow(id));
+        windowElement.addEventListener("pointerdown", (event) => {
+            if (event.target.closest("[data-drag-handle]")) return;
+            runtime.focusWindow(id);
+        });
 
         windowElement.querySelectorAll("[data-window-action]").forEach((button) => {
             button.addEventListener("click", (event) => {
@@ -49,7 +52,7 @@ export function bindWindows(runtime) {
 
             event.preventDefault();
             handle.setPointerCapture(event.pointerId);
-            runtime.focusWindow(id);
+            runtime.focusWindow(id, false);
 
             const rect = vm.getBoundingClientRect();
             const startX = event.clientX;
@@ -74,6 +77,7 @@ export function bindWindows(runtime) {
                 handle.removeEventListener("pointermove", move);
                 handle.removeEventListener("pointerup", up);
                 handle.removeEventListener("pointercancel", up);
+                runtime.render();
             };
 
             handle.addEventListener("pointermove", move);

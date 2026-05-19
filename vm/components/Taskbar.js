@@ -31,7 +31,15 @@ export function renderTaskbar(runtime) {
 export function bindTaskbar(runtime) {
     runtime.root.querySelectorAll("[data-task-window]").forEach((button) => {
         button.addEventListener("click", () => {
-            runtime.restoreWindow(button.dataset.taskWindow);
+            const windowState = runtime.getWindow(button.dataset.taskWindow);
+            if (!windowState) return;
+
+            if (windowState.minimized) {
+                runtime.restoreWindow(windowState.id);
+                return;
+            }
+
+            runtime.focusWindow(windowState.id);
         });
     });
 }

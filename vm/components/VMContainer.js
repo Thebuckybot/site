@@ -59,5 +59,17 @@ function renderPhase(runtime) {
         `;
     }
 
+    if (runtime.phase === "session") {
+        return `
+            <div class="vm-session-loader">
+                <div class="vm-session-frame">
+                    <span>USER SESSION HANDSHAKE</span>
+                    ${runtime.sessionLines.map((line) => `<strong>${line}</strong>`).join("")}
+                    <em>_</em>
+                </div>
+            </div>
+        `;
+    }
+
     return renderDesktop(runtime);
 }

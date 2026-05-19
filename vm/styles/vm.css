@@ -12,7 +12,7 @@
 .arcade-vm-bay {
     position: relative;
     z-index: 5;
-    width: min(58vw, 920px);
+    width: min(100%, 980px);
     min-width: 560px;
     align-self: center;
     justify-self: center;
@@ -36,10 +36,14 @@
 
 .bucky-vm-shell.is-expanded {
     position: fixed;
-    inset: 5vh 5vw;
-    width: 90vw;
+    left: 50%;
+    top: 50%;
+    width: min(90vw, 1480px);
+    height: min(90vh, 900px);
     z-index: 80;
-    transform: rotateX(0deg) scale(1);
+    transform: translate(-50%, -50%) rotateX(0deg) scale(1);
+    display: grid;
+    place-items: center;
 }
 
 .bucky-vm-backdrop {
@@ -63,6 +67,10 @@
 
 body.vm-focus-active .arcade-hero {
     overflow: visible;
+}
+
+body.vm-focus-active {
+    overflow: hidden;
 }
 
 .bucky-vm {
@@ -89,7 +97,11 @@ body.vm-focus-active .arcade-hero {
 }
 
 .bucky-vm-shell.is-expanded .bucky-vm {
-    height: 90vh;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-width: 100%;
+    max-height: 100%;
     aspect-ratio: auto;
     border-radius: 24px;
     animation: vmFocusIn 700ms cubic-bezier(.16,1,.3,1);
@@ -180,6 +192,7 @@ body.vm-focus-active .arcade-hero {
 
 .vm-boot,
 .vm-login,
+.vm-session-loader,
 .vm-desktop {
     position: absolute;
     inset: 0;
@@ -297,6 +310,67 @@ body.vm-focus-active .arcade-hero {
     box-shadow: 0 0 28px rgba(82,255,243,.26);
 }
 
+.vm-session-loader {
+    display: grid;
+    place-items: center;
+    background:
+        radial-gradient(circle at 50% 48%, rgba(82,255,243,.14), transparent 34%),
+        radial-gradient(circle at 28% 72%, rgba(255,63,209,.12), transparent 28%),
+        linear-gradient(180deg, rgba(1, 4, 10, .86), rgba(1, 2, 7, .98));
+}
+
+.vm-session-frame {
+    position: relative;
+    width: min(560px, 76%);
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    padding: 28px;
+    border: 1px solid rgba(82,255,243,.28);
+    border-radius: 16px;
+    background: rgba(1, 5, 12, .62);
+    box-shadow: 0 0 44px rgba(82,255,243,.13), inset 0 0 42px rgba(82,255,243,.04);
+    font-family: Consolas, "Courier New", monospace;
+    overflow: hidden;
+}
+
+.vm-session-frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(255,255,255,.035), rgba(255,255,255,.035) 1px, transparent 1px, transparent 5px);
+}
+
+.vm-session-frame span {
+    color: var(--vm-pink);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.vm-session-frame strong {
+    color: #e8ffff;
+    font-size: 15px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 14px rgba(82,255,243,.45);
+    animation: vmLineFade 360ms ease both;
+}
+
+.vm-session-frame em {
+    width: 10px;
+    color: var(--vm-green);
+    font-style: normal;
+    animation: vmBlink 900ms steps(2, start) infinite;
+}
+
+@keyframes vmLineFade {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .vm-desktop {
     overflow: hidden;
     background: #020611;
@@ -307,8 +381,15 @@ body.vm-focus-active .arcade-hero {
     inset: 0;
     overflow: hidden;
     background:
-        radial-gradient(circle at 50% 34%, rgba(255, 63, 209, .2), transparent 30%),
+        radial-gradient(circle at 48% 34%, rgba(255, 63, 209, .16), transparent 30%),
+        radial-gradient(circle at 68% 58%, rgba(82, 255, 243, .08), transparent 34%),
         linear-gradient(180deg, #061225 0%, #050813 48%, #120618 100%);
+    animation: vmAmbientDrift 28s ease-in-out infinite alternate;
+}
+
+@keyframes vmAmbientDrift {
+    from { filter: hue-rotate(0deg) brightness(1); transform: scale(1); }
+    to { filter: hue-rotate(4deg) brightness(1.05); transform: scale(1.012); }
 }
 
 .vm-sun {
@@ -321,7 +402,8 @@ body.vm-focus-active .arcade-hero {
     transform: translateX(-50%);
     background: linear-gradient(180deg, #ff5bd7, #ffcc70);
     box-shadow: 0 0 70px rgba(255, 63, 209, .45);
-    opacity: .52;
+    opacity: .42;
+    animation: vmSoftPulse 12s ease-in-out infinite;
 }
 
 .vm-grid-horizon {
@@ -336,12 +418,16 @@ body.vm-focus-active .arcade-hero {
     background-size: 100% 38px, 54px 100%;
     transform: perspective(420px) rotateX(62deg);
     transform-origin: top;
-    animation: vmGridMove 8s linear infinite;
+    animation: vmGridMove 42s linear infinite;
 }
 
 @keyframes vmGridMove {
-    from { background-position: 0 0, 0 0; }
-    to { background-position: 0 38px, 54px 0; }
+    from { background-position: 0 0, 0 0; opacity: .82; }
+    to { background-position: 0 38px, 20px 0; opacity: .68; }
+}
+
+@keyframes vmSoftPulse {
+    50% { opacity: .48; box-shadow: 0 0 82px rgba(255, 63, 209, .34); }
 }
 
 .vm-cityline {
@@ -440,6 +526,11 @@ body.vm-focus-active .arcade-hero {
     box-shadow: 0 24px 50px rgba(0,0,0,.52), 0 0 28px rgba(82,255,243,.14);
     backdrop-filter: blur(18px);
     animation: vmWindowOpen 260ms cubic-bezier(.16,1,.3,1);
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        opacity 220ms ease,
+        transform 220ms ease;
 }
 
 @keyframes vmWindowOpen {
@@ -449,7 +540,10 @@ body.vm-focus-active .arcade-hero {
 
 .vm-window.is-active {
     border-color: rgba(255,63,209,.62);
-    box-shadow: 0 28px 62px rgba(0,0,0,.58), 0 0 34px rgba(255,63,209,.22);
+    box-shadow:
+        0 30px 70px rgba(0,0,0,.66),
+        0 0 38px rgba(255,63,209,.24),
+        inset 0 1px 0 rgba(255,255,255,.1);
 }
 
 .vm-window.is-minimized {
@@ -462,6 +556,8 @@ body.vm-focus-active .arcade-hero {
     inset: 14px 14px 8px 96px;
     width: auto;
     height: auto;
+    max-width: none;
+    max-height: none;
 }
 
 .vm-window-titlebar {
@@ -758,6 +854,7 @@ body.vm-focus-active .arcade-hero {
     border-radius: 8px;
     background: rgba(255,255,255,.06);
     cursor: pointer;
+    position: relative;
 }
 
 .vm-task-app span {
@@ -769,6 +866,22 @@ body.vm-focus-active .arcade-hero {
 .vm-task-app.is-active {
     border-color: rgba(255,63,209,.58);
     box-shadow: 0 0 14px rgba(255,63,209,.18);
+}
+
+.vm-task-app::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: -3px;
+    height: 2px;
+    border-radius: 999px;
+    background: rgba(82,255,243,.5);
+}
+
+.vm-task-app.is-active::after {
+    background: linear-gradient(90deg, var(--vm-cyan), var(--vm-pink));
+    box-shadow: 0 0 10px rgba(255,63,209,.55);
 }
 
 .vm-task-app.is-minimized {
@@ -831,7 +944,7 @@ body.vm-focus-active .arcade-hero {
 @media (max-width: 1120px) {
     .arcade-vm-bay {
         min-width: 500px;
-        width: min(68vw, 760px);
+        width: 100%;
     }
 
     .bucky-vm {
@@ -840,6 +953,17 @@ body.vm-focus-active .arcade-hero {
 
     .vm-window {
         width: min(570px, calc(100% - 118px)) !important;
+    }
+}
+
+@media (max-width: 900px) and (min-width: 768px) {
+    .bucky-vm-shell.is-expanded {
+        width: 94vw;
+        height: min(88vh, 760px);
+    }
+
+    .vm-window.is-maximized {
+        inset: 12px 12px 8px 84px;
     }
 }
 

@@ -8,9 +8,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const opening = document.getElementById("arcade-opening");
     const columns = document.querySelectorAll(".column");
+    initArcadeScrollEffects();
 
     // ==============================
-    // 1️⃣ RANDOM HOOGTES PER KOLOM
+    // Random heights per column.
     // ==============================
 
     columns.forEach(column => {
@@ -25,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ==============================
-    // 2️⃣ CINEMATIC PAUSE
+    // Cinematic pause.
     // ==============================
 
     setTimeout(() => {
@@ -49,7 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==============================
-    // 3️⃣ FADE OUT
+    // Fade out.
     // ==============================
 
     // Fade zodra laatste shutter ongeveer klaar is
@@ -66,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==============================
-    // 4️⃣ GAME LOGIC (blijft)
+    // Game logic.
     // ==============================
 
     loadProfile();
@@ -144,6 +145,35 @@ function getDiscordAvatar(user) {
     }
 
     return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
+}
+
+function initArcadeScrollEffects() {
+    const heroBackground = document.querySelector(".hero-background");
+    const heroLeft = document.querySelector(".hero-left");
+    let ticking = false;
+
+    const update = () => {
+        const scrollY = window.scrollY || 0;
+        document.body.classList.toggle("arcade-profile-pinned", scrollY > 260);
+
+        if (heroBackground) {
+            heroBackground.style.transform = `translate3d(0, ${scrollY * 0.12}px, 0) scale(${1 + Math.min(scrollY, 700) * 0.00008})`;
+        }
+
+        if (heroLeft && scrollY < window.innerHeight) {
+            heroLeft.style.transform = `translate3d(0, ${scrollY * -0.035}px, 0)`;
+        }
+
+        ticking = false;
+    };
+
+    window.addEventListener("scroll", () => {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(update);
+    }, { passive: true });
+
+    update();
 }
 
 
