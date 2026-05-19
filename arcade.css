@@ -95,7 +95,7 @@ a {
     position: fixed;
     top: clamp(18px, 3vw, 30px);
     right: clamp(18px, 4vw, 40px);
-    z-index: 70;
+    z-index: 72;
 }
 
 /* ========== HAMBURGER ========== */
@@ -589,7 +589,7 @@ body.arcade-profile-pinned .player-hero-card {
     position: fixed;
     top: 24px;
     left: 24px;
-    z-index: 65;
+    z-index: 78;
     width: 212px;
     padding: 14px;
     border-radius: 16px;
@@ -1013,23 +1013,46 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
     }
 
     body.arcade-profile-pinned .player-hero-card {
-        position: relative;
-        top: auto;
-        left: auto;
-        width: min(100%, 360px);
-        padding: 22px;
-        transform: none;
+        position: fixed;
+        top: 18px;
+        left: 14px;
+        width: min(182px, calc(100vw - 88px));
+        padding: 12px;
+        transform: translate3d(0, 0, 0);
     }
 
     body.arcade-profile-pinned .player-hero-card .player-header {
-        margin-bottom: 18px;
+        margin-bottom: 0;
     }
 
     body.arcade-profile-pinned .player-hero-card .hero-stats,
     body.arcade-profile-pinned .player-hero-card .xp-bar {
-        max-height: none;
+        max-height: 0;
+        margin: 0;
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    body.arcade-profile-pinned .player-hero-card:hover {
+        width: min(320px, calc(100vw - 28px));
+        padding: 18px;
+    }
+
+    body.arcade-profile-pinned .player-hero-card:hover .player-header {
+        margin-bottom: 16px;
+    }
+
+    body.arcade-profile-pinned .player-hero-card:hover .hero-stats {
+        max-height: 70px;
+        margin-bottom: 16px;
         opacity: 1;
-        transform: none;
+        transform: translateY(0);
+    }
+
+    body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
+        max-height: 8px;
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 

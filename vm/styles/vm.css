@@ -18,7 +18,10 @@
     max-width: 100%;
     align-self: center;
     justify-self: center;
-    perspective: 1600px;
+}
+
+body.vm-focus-active .arcade-vm-bay {
+    z-index: 95;
 }
 
 #bucky-vm-root {
@@ -30,6 +33,7 @@
     position: relative;
     width: 100%;
     transition: transform 700ms var(--vm-ease), filter 700ms var(--vm-ease);
+    transform-origin: center center;
 }
 
 .bucky-vm-shell.is-embedded {
@@ -38,14 +42,15 @@
 
 .bucky-vm-shell.is-expanded {
     position: fixed;
-    left: 50%;
-    top: 50%;
+    left: 50dvw;
+    top: 50dvh;
     width: min(92dvw, calc(100dvw - 32px), 1480px);
     height: min(88dvh, calc(100dvh - 32px), 900px);
     z-index: 90;
-    transform: translate(-50%, -50%) rotateX(0deg) scale(1);
+    transform: translate3d(-50%, -50%, 0) rotateX(0deg) scale(1);
     display: grid;
     place-items: center;
+    transform-origin: center center;
 }
 
 .bucky-vm-backdrop {
@@ -55,8 +60,8 @@
     pointer-events: none;
     opacity: 0;
     background:
-        radial-gradient(circle at 50% 45%, rgba(82, 255, 243, 0.12), transparent 34%),
-        rgba(0, 0, 0, 0.68);
+        radial-gradient(circle at 50% 45%, rgba(82, 255, 243, 0.14), transparent 34%),
+        linear-gradient(180deg, rgba(3, 4, 12, .72), rgba(0, 0, 0, .78));
     backdrop-filter: blur(0);
     transition: opacity 500ms ease, backdrop-filter 500ms ease;
 }
@@ -99,12 +104,12 @@
     max-height: 100%;
     aspect-ratio: auto;
     border-radius: 24px;
-    animation: vmFocusIn 700ms var(--vm-ease);
+    animation: vmFocusIn 680ms var(--vm-ease);
 }
 
 @keyframes vmFocusIn {
-    from { transform: scale(.86) translateY(28px); opacity: .76; }
-    to { transform: scale(1) translateY(0); opacity: 1; }
+    from { transform: scale(.9) translate3d(0, 18px, 0); opacity: .78; }
+    to { transform: scale(1) translate3d(0, 0, 0); opacity: 1; }
 }
 
 .vm-reflection,
@@ -368,7 +373,9 @@
 
 .vm-desktop {
     overflow: hidden;
-    background: #020611;
+    background:
+        radial-gradient(circle at 48% 32%, rgba(255, 63, 209, .11), transparent 36%),
+        linear-gradient(180deg, #061225 0%, #050813 54%, #100517 100%);
     contain: layout paint;
 }
 
@@ -377,10 +384,32 @@
     inset: 0;
     overflow: hidden;
     background:
-        radial-gradient(circle at 48% 34%, rgba(255, 63, 209, .16), transparent 30%),
-        radial-gradient(circle at 68% 58%, rgba(82, 255, 243, .08), transparent 34%),
-        linear-gradient(180deg, #061225 0%, #050813 48%, #120618 100%);
+        linear-gradient(180deg, rgba(6, 18, 37, .96) 0%, rgba(5, 8, 19, .98) 54%, rgba(16, 5, 23, .98) 100%),
+        radial-gradient(circle at 48% 34%, rgba(255, 63, 209, .13), transparent 34%),
+        radial-gradient(circle at 70% 58%, rgba(82, 255, 243, .07), transparent 40%);
     animation: vmAmbientDrift 28s ease-in-out infinite alternate;
+}
+
+.vm-wallpaper::before,
+.vm-wallpaper::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.vm-wallpaper::before {
+    background:
+        radial-gradient(ellipse at 50% 42%, rgba(255, 63, 209, .08), transparent 38%),
+        radial-gradient(ellipse at 52% 82%, rgba(82, 255, 243, .1), transparent 48%);
+    filter: blur(8px);
+}
+
+.vm-wallpaper::after {
+    background:
+        linear-gradient(to bottom, transparent 0 58%, rgba(0, 0, 0, .18) 76%, rgba(0, 0, 0, .42) 100%),
+        repeating-linear-gradient(to bottom, rgba(255,255,255,.018), rgba(255,255,255,.018) 1px, transparent 1px, transparent 5px);
+    opacity: .62;
 }
 
 @keyframes vmAmbientDrift {
@@ -392,29 +421,32 @@
     position: absolute;
     left: 50%;
     top: 18%;
-    width: 210px;
-    height: 210px;
+    width: clamp(150px, 22vw, 230px);
+    height: clamp(150px, 22vw, 230px);
     border-radius: 50%;
     transform: translateX(-50%);
     background: linear-gradient(180deg, #ff5bd7, #ffcc70);
     box-shadow: 0 0 70px rgba(255, 63, 209, .45);
-    opacity: .42;
+    opacity: .34;
     animation: vmSoftPulse 12s ease-in-out infinite;
 }
 
 .vm-grid-horizon {
     position: absolute;
-    left: -10%;
-    right: -10%;
-    bottom: -20%;
-    height: 50%;
+    left: -18%;
+    right: -18%;
+    bottom: -24%;
+    height: 56%;
     background:
-        linear-gradient(rgba(82,255,243,.24) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(82,255,243,.18) 1px, transparent 1px);
-    background-size: 100% 38px, 54px 100%;
-    transform: perspective(420px) rotateX(62deg);
+        linear-gradient(rgba(82,255,243,.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(82,255,243,.12) 1px, transparent 1px);
+    background-repeat: repeat;
+    background-size: 100% 42px, 58px 100%;
+    transform: perspective(520px) rotateX(64deg);
     transform-origin: top;
     animation: vmGridMove 42s linear infinite;
+    opacity: .62;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 74%, transparent 100%);
 }
 
 @keyframes vmGridMove {
@@ -430,12 +462,25 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 28%;
-    height: 90px;
+    bottom: 31%;
+    height: 76px;
     background:
-        linear-gradient(to top, rgba(0,0,0,.86), rgba(0,0,0,.28)),
-        repeating-linear-gradient(90deg, #02040a 0 32px, transparent 32px 44px, #02040a 44px 86px);
-    filter: drop-shadow(0 0 14px rgba(82,255,243,.18));
+        linear-gradient(to top, rgba(1, 3, 9, .74), rgba(1, 3, 9, .22)),
+        linear-gradient(90deg,
+            transparent 0 5%,
+            rgba(0,0,0,.42) 5% 10%,
+            transparent 10% 16%,
+            rgba(0,0,0,.48) 16% 22%,
+            transparent 22% 32%,
+            rgba(0,0,0,.4) 32% 38%,
+            transparent 38% 50%,
+            rgba(0,0,0,.5) 50% 56%,
+            transparent 56% 70%,
+            rgba(0,0,0,.36) 70% 76%,
+            transparent 76% 100%);
+    filter: drop-shadow(0 0 14px rgba(82,255,243,.12));
+    opacity: .82;
+    clip-path: polygon(0 100%, 0 54%, 8% 54%, 8% 34%, 15% 34%, 15% 62%, 23% 62%, 23% 28%, 31% 28%, 31% 58%, 40% 58%, 40% 42%, 51% 42%, 51% 22%, 58% 22%, 58% 64%, 68% 64%, 68% 38%, 74% 38%, 74% 56%, 84% 56%, 84% 30%, 91% 30%, 91% 66%, 100% 66%, 100% 100%);
 }
 
 .vm-desktop-brand {
@@ -462,24 +507,53 @@
 
 .vm-desktop-icons {
     position: absolute;
-    left: 20px;
-    top: 24px;
-    z-index: 4;
+    left: clamp(14px, 2vw, 24px);
+    top: clamp(16px, 2.4vw, 26px);
+    bottom: 64px;
+    z-index: 18;
     display: grid;
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, 76px);
+    grid-auto-rows: 78px;
+    grid-auto-flow: column;
+    align-content: start;
+    justify-content: start;
+    gap: 12px 10px;
+    max-width: min(250px, 34%);
+    pointer-events: auto;
 }
 
 .vm-desktop-icon {
-    width: 74px;
+    width: 76px;
+    min-height: 78px;
     display: grid;
+    align-content: start;
     justify-items: center;
-    gap: 5px;
+    gap: 6px;
+    padding: 4px 3px;
     color: white;
-    border: 0;
-    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: rgba(1, 5, 12, 0);
     font-size: 11px;
     text-shadow: 0 2px 8px black;
     cursor: pointer;
+    transition: background 180ms var(--vm-ease), border-color 180ms var(--vm-ease), transform 180ms var(--vm-ease);
+}
+
+.vm-desktop-icon > span:last-child {
+    display: block;
+    max-width: 70px;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vm-desktop-icon:hover,
+.vm-desktop-icon:focus-visible {
+    background: rgba(82, 255, 243, .08);
+    border-color: rgba(82, 255, 243, .16);
+    outline: none;
 }
 
 .vm-desktop-icon-glyph {
@@ -506,9 +580,10 @@
 .vm-window-layer {
     position: absolute;
     inset: 0 0 54px 0;
-    z-index: 10;
+    z-index: 20;
     overflow: hidden;
     contain: layout paint;
+    pointer-events: none;
 }
 
 .vm-window {
@@ -531,6 +606,7 @@
         box-shadow 180ms ease,
         opacity 220ms ease,
         transform 220ms var(--vm-ease);
+    pointer-events: auto;
 }
 
 @keyframes vmWindowOpen {

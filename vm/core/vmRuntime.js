@@ -39,8 +39,8 @@ export class BuckyVMRuntime {
         this.desktopApps = [
             this.apps.terminal,
             this.apps.files,
-            this.apps.notes,
             this.apps.textfile,
+            this.apps.notes,
             this.apps.browser,
             this.apps.mail,
             this.apps.database,
@@ -147,7 +147,10 @@ export class BuckyVMRuntime {
 
     openApp(appId) {
         const app = this.apps[appId];
-        if (!app) return;
+        if (!this.isLaunchableApp(app)) {
+            this.notify("Application unavailable", `${appId || "Unknown"} is not registered yet`);
+            return;
+        }
 
         const existing = this.windows.find((item) => item.appId === appId && app.singleInstance);
         if (existing) {
@@ -155,7 +158,14 @@ export class BuckyVMRuntime {
             return;
         }
 
-        const appState = app.createState ? app.createState(this.user, this.filesystem) : {};
+        let appState = {};
+        try {
+            appState = app.createState ? app.createState(this.user, this.filesystem) : {};
+        } catch (error) {
+            console.error("Failed to create app state:", appId, error);
+            this.notify("Application paused", `${app.title || appId} could not start`);
+            return;
+        }
         const windowState = createWindow(app, this.windows.length, appState);
         const metrics = this.getInitialWindowMetrics(app, this.windows.length);
         Object.assign(windowState, metrics);
@@ -163,6 +173,10 @@ export class BuckyVMRuntime {
         this.windows = [...this.windows, windowState];
         this.activeWindowId = windowState.id;
         this.render();
+    }
+
+    isLaunchableApp(app) {
+        return Boolean(app && app.id && app.title && typeof app.render === "function");
     }
 
     getInitialWindowMetrics(app, index) {
@@ -272,7 +286,22 @@ export class BuckyVMRuntime {
 
     renderApp(windowState) {
         const app = this.apps[windowState.appId];
-        return app?.render ? app.render(this, windowState) : "";
+        if (!this.isLaunchableApp(app)) {
+            return renderPlaceholderApp({
+                title: "Application Under Construction",
+                description: "This runtime slot is not available yet."
+            });
+        }
+
+        try {
+            return app.render(this, windowState);
+        } catch (error) {
+            console.error("Failed to render app:", windowState.appId, error);
+            return renderPlaceholderApp({
+                title: "Application Under Construction",
+                description: "This app hit a simulated runtime fault and has been safely contained."
+            });
+        }
     }
 
     notify(title, message) {
@@ -309,12 +338,12 @@ function createAppRegistry() {
             singleInstance: true,
             render: renderFilesApp
         },
-        notes: placeholder("notes", "Apps", "Future app launcher and runtime registry."),
-        textfile: placeholder("textfile", "TextFile", "Encrypted note viewer placeholder."),
-        browser: placeholder("browser", "Browser", "Future internal browser sandbox."),
-        mail: placeholder("mail", "Mail", "Future secure mailbox."),
-        database: placeholder("database", "Database", "Future database viewer."),
-        osint: placeholder("osint", "OSINT", "Future investigation toolkit.")
+        textfile: placeholder("textfile", "TextFile", "Encrypted note viewer under construction."),
+        notes: placeholder("notes", "Apps", "Future app launcher and runtime registry under construction."),
+        browser: placeholder("browser", "Browser", "Internal browser sandbox under construction."),
+        mail: placeholder("mail", "Mail", "Secure mailbox under construction."),
+        database: placeholder("database", "Database", "Database viewer under construction."),
+        osint: placeholder("osint", "OSINT", "Investigation toolkit under construction.")
     };
 }
 
@@ -327,6 +356,7 @@ function placeholder(id, label, description) {
         icon: label.slice(0, 3).toUpperCase(),
         width: 470,
         height: 300,
+        singleInstance: true,
         render: (runtime) => renderPlaceholderApp(runtime.apps[id])
     };
 }
