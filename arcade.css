@@ -380,26 +380,30 @@ body {
     position: relative;
     z-index: 2;
     height: 100%;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(260px, 360px) minmax(560px, 920px) minmax(180px, 300px);
     align-items: center;
-    justify-content: space-between;
-    padding: 140px 120px 0 120px;
+    justify-content: center;
+    gap: 28px;
+    padding: 112px 46px 42px 56px;
 }
 
 .hero-left {
-    max-width: 520px;
+    max-width: 360px;
+    position: relative;
+    z-index: 6;
 }
 
 /* ================= TITLE ================= */
 
 .arcade-title {
-    font-size: 76px;
+    font-size: clamp(44px, 4.3vw, 66px);
     font-weight: 900;
     color: white;
     display: flex;
     flex-direction: column;
     line-height: 0.9;
-    margin-bottom: 60px;
+    margin-bottom: 34px;
     text-shadow:
         0 0 15px #ff00ff,
         0 0 30px #ff00ff,
@@ -412,7 +416,7 @@ body {
 /* ================= GLASS CARD ================= */
 
 .glass-card {
-  width: 380px;
+  width: min(360px, 100%);
   padding: 30px;
   background: rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(8px);
@@ -509,11 +513,54 @@ body {
 
 .hero-right {
     position: relative;
-    margin-right: 120px;
+    margin-right: 0;
+    z-index: 4;
 }
 
 .bucky-hero {
-    width: 420px;
+    width: min(300px, 22vw);
     transform: translateY(70px);
     filter: drop-shadow(0 25px 45px rgba(0,0,0,0.6));
+}
+
+@media (max-width: 1280px) {
+    .hero-content {
+        grid-template-columns: minmax(240px, 320px) minmax(500px, 1fr);
+        padding: 104px 32px 34px;
+    }
+
+    .hero-right {
+        display: none;
+    }
+}
+
+@media (max-width: 980px) {
+    body {
+        overflow: auto;
+    }
+
+    #arcade-world {
+        overflow: auto;
+    }
+
+    .arcade-hero {
+        min-height: 100vh;
+        height: auto;
+    }
+
+    .hero-content {
+        grid-template-columns: 1fr;
+        align-content: start;
+        justify-items: center;
+        padding: 118px 22px 44px;
+    }
+
+    .hero-left {
+        max-width: 560px;
+        justify-self: start;
+    }
+
+    .arcade-title {
+        margin-bottom: 24px;
+    }
 }

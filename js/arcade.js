@@ -1,5 +1,8 @@
 import { API_URL } from "./config.js";
 import { apiFetch } from "./dashboard.js";
+import { BuckyVMRuntime } from "../vm/core/vmRuntime.js";
+
+let buckyVM = null;
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -79,20 +82,44 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function loadProfile() {
-    const res = await apiFetch(`${API_URL}/api/me`);
-    const data = await res.json();
+    let data;
 
-    if (!data.logged_in) return;
+    try {
+        const res = await apiFetch(`${API_URL}/api/me`);
+        data = await res.json();
+    } catch (error) {
+        console.error("Arcade profile load failed:", error);
+        mountBuckyVM({
+            username: "operator",
+            avatarUrl: "https://cdn.discordapp.com/embed/avatars/0.png"
+        });
+        return;
+    }
+
+    if (!data.logged_in) {
+        mountBuckyVM({
+            username: "operator",
+            avatarUrl: "https://cdn.discordapp.com/embed/avatars/0.png"
+        });
+        return;
+    }
 
     const user = data.user;
+    user.avatarUrl = getDiscordAvatar(user);
 
     document.getElementById("hero-username").innerText = user.username;
-    document.getElementById("hero-avatar").src =
-        `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
+    document.getElementById("hero-avatar").src = user.avatarUrl;
+    mountBuckyVM(user);
 
-    // Daarna arcade profile
-    const arcadeRes = await apiFetch(`${API_URL}/api/arcade/profile`);
-    const arcadeData = await arcadeRes.json();
+    let arcadeData;
+
+    try {
+        const arcadeRes = await apiFetch(`${API_URL}/api/arcade/profile`);
+        arcadeData = await arcadeRes.json();
+    } catch (error) {
+        console.error("Arcade stats load failed:", error);
+        return;
+    }
 
     document.getElementById("coins").innerText = arcadeData.coins;
     document.getElementById("xp").innerText = arcadeData.xp;
@@ -101,6 +128,22 @@ async function loadProfile() {
     // XP progress (voorbeeld)
     const progress = (arcadeData.xp % 100) + "%";
     document.getElementById("xp-progress").style.width = progress;
+}
+
+function mountBuckyVM(user) {
+    const root = document.getElementById("bucky-vm-root");
+    if (!root || buckyVM) return;
+
+    buckyVM = new BuckyVMRuntime(root, user);
+    buckyVM.start();
+}
+
+function getDiscordAvatar(user) {
+    if (!user?.id || !user?.avatar) {
+        return "https://cdn.discordapp.com/embed/avatars/0.png";
+    }
+
+    return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`;
 }
 
 
