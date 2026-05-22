@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bucky VM — Phase 1 standalone test harness</title>
+    <link rel="stylesheet" href="styles/vm.css">
+    <style>
+        /*
+         * Standalone dev harness for the Bucky VM. Mounts the runtime with a
+         * stub user so Phase 1 (filesystem foundation) can be verified without
+         * the Discord backend. Not part of the production page — safe to delete.
+         */
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 32px 16px;
+            background: radial-gradient(circle at 50% 0%, #0a1830, #02050d 70%);
+            font-family: "Segoe UI", system-ui, sans-serif;
+            color: #e8ffff;
+            box-sizing: border-box;
+        }
+
+        .harness {
+            width: min(100%, 960px);
+        }
+
+        .harness h1 {
+            margin: 0 0 4px;
+            font-size: 15px;
+            letter-spacing: 1.5px;
+            color: #52fff3;
+        }
+
+        .harness p {
+            margin: 0 0 16px;
+            font-size: 12px;
+            color: rgba(232, 255, 255, 0.6);
+        }
+
+        .harness-blocked {
+            padding: 40px 28px;
+            border: 1px solid rgba(255, 79, 109, 0.5);
+            border-radius: 14px;
+            background: rgba(255, 79, 109, 0.08);
+            text-align: center;
+        }
+
+        .harness-blocked h1 {
+            margin: 0 0 8px;
+            color: #ff4f6d;
+        }
+
+        .harness-blocked p {
+            margin: 0;
+            max-width: 420px;
+            margin-inline: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="harness">
+        <h1>BUCKY VM · PHASE 1 TEST HARNESS</h1>
+        <p>
+            Filesystem foundation: terminal, Files and BuckyCode share one runtime filesystem.
+            Try <code>mkdir scans</code>, <code>touch notes.txt</code>, <code>edit notes.txt</code>.
+        </p>
+        <div id="bucky-vm-root"></div>
+    </div>
+
+    <script type="module">
+        /*
+         * Local-only guard. This harness is a development tool and must never
+         * run on a hosted environment (GitHub Pages, etc.). The check is fully
+         * self-contained — it does not depend on any backend. On a non-local
+         * host the VM runtime is never even imported, so boot cannot start.
+         */
+        const LOCAL_HOSTS = ["localhost", "127.0.0.1", "::1", "[::1]"];
+        const isLocal = LOCAL_HOSTS.includes(location.hostname);
+
+        if (!isLocal) {
+            document.querySelector(".harness").innerHTML = `
+                <div class="harness-blocked">
+                    <h1>DEVELOPMENT ONLY</h1>
+                    <p>The Bucky VM test harness runs on localhost only and is
+                    disabled on hosted environments. Open it from a local
+                    development server to use it.</p>
+                </div>`;
+        } else {
+            const { BuckyVMRuntime } = await import("./core/vmRuntime.js");
+            const root = document.getElementById("bucky-vm-root");
+            const vm = new BuckyVMRuntime(root, { username: "Tommy" }, { debug: true });
+            vm.start();
+
+            // Exposed for manual inspection in the devtools console.
+            window.buckyVM = vm;
+        }
+    </script>
+</body>
+</html>

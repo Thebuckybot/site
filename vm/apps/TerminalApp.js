@@ -1,36 +1,40 @@
-import { getNode, getParentNode, listNode, resolvePath } from "../core/filesystem.js";
+/**
+ * Terminal app.
+ *
+ * A command line over the shared FileSystemService. Filesystem commands
+ * mutate the one runtime filesystem, so directories and files created here
+ * appear immediately in the Files app and BuckyCode (they observe fs:* events).
+ *
+ * Rendering: the terminal is a live app. After mount it appends scrollback
+ * lines to its own DOM imperatively — it never triggers a full rerender and
+ * never re-attaches its input listeners.
+ */
+import { escapeHtml } from "../core/util.js";
+import { logError } from "../core/diagnostics.js";
 
-const COMMANDS = [
-    "help",
-    "ls",
-    "cd",
-    "clear",
-    "cat",
-    "mkdir",
-    "touch",
-    "scan",
-    "decrypt",
-    "connect",
-    "open",
-    "files",
-    "pwd"
-];
+const COMMANDS = ["help", "ls", "cd", "pwd", "mkdir", "touch", "cat", "edit", "open", "files", "clear"];
+
+// ----- State -----------------------------------------------------------------
 
 export function createTerminalState(user, filesystem) {
     return {
-        cwd: filesystem.cwd,
+        cwd: filesystem.homePath,
         input: "",
+        history: [],
+        historyIndex: 0,
         lines: [
-            { type: "system", text: "Bucky VM terminal linked to local simulation layer." },
+            { type: "system", text: "Bucky VM terminal linked to the shared filesystem runtime." },
             { type: "system", text: `Authenticated profile: ${user.username || "operator"}` },
             { type: "system", text: "Type 'help' for available commands." }
         ]
     };
 }
 
+// ----- Prompt ----------------------------------------------------------------
+
 export function windowsPath(path, username) {
-    const safeUser = (username || "operator").replace(/[^\w.-]/g, "_");
-    const relative = path.replace(`/users/${safeUser}`, "").replace(/\//g, "\\");
+    const safeUser = String(username || "operator").replace(/[^\w.-]/g, "_");
+    const relative = String(path).replace(`/users/${safeUser}`, "").replace(/\//g, "\\");
     return `C:\\Users\\${safeUser}${relative || "\\home"}`;
 }
 
@@ -38,175 +42,202 @@ export function createPrompt(state, user) {
     return `${windowsPath(state.cwd, user.username)}> `;
 }
 
-export function runTerminalCommand(runtime, state, rawCommand) {
-    const commandLine = rawCommand.trim();
-    const [command = "", ...args] = tokenizeCommand(commandLine);
-    const next = {
-        ...state,
-        input: "",
-        lines: [
-            ...state.lines,
-            { type: "prompt", text: `${createPrompt(state, runtime.user)}${commandLine}` }
-        ]
-    };
+// ----- Command parsing -------------------------------------------------------
 
-    if (!commandLine) return next;
-
-    switch (command.toLowerCase()) {
-        case "help":
-            next.lines.push({ type: "output", text: `Commands: ${COMMANDS.join(", ")}` });
-            next.lines.push({ type: "output", text: "Navigation: cd /logs, cd .., ls ./folder, cat file.txt" });
-            next.lines.push({ type: "output", text: "Filesystem writes are mock frontend state only: mkdir and touch never leave the browser." });
-            return next;
-        case "pwd":
-            next.lines.push({ type: "output", text: state.cwd });
-            return next;
-        case "ls": {
-            const targetPath = resolvePath(state.cwd, args[0] || ".");
-            const node = getNode(runtime.filesystem.tree, targetPath);
-            if (!node) {
-                next.lines.push({ type: "error", text: `ls: cannot access '${args[0] || "."}': No such file or directory` });
-                return next;
-            }
-            if (typeof node !== "object") {
-                next.lines.push({ type: "output", text: targetPath.split("/").pop() });
-                return next;
-            }
-            const entries = listNode(node)
-                .map((entry) => `${entry.type === "dir" ? "<DIR>" : "     "} ${entry.name}`)
-                .join("\n");
-            next.lines.push({ type: "output", text: entries || "(empty)" });
-            return next;
-        }
-        case "cd": {
-            const targetPath = resolvePath(state.cwd, args[0] || runtime.filesystem.cwd);
-            const node = getNode(runtime.filesystem.tree, targetPath);
-            if (!node || typeof node !== "object") {
-                next.lines.push({ type: "error", text: `cd: no such directory: ${args[0] || ""}` });
-                return next;
-            }
-            next.cwd = targetPath;
-            return next;
-        }
-        case "cat": {
-            if (!args[0]) {
-                next.lines.push({ type: "error", text: "cat: missing file operand" });
-                return next;
-            }
-            const targetPath = resolvePath(state.cwd, args[0] || "");
-            const node = getNode(runtime.filesystem.tree, targetPath);
-            if (node === null) {
-                next.lines.push({ type: "error", text: `cat: ${args[0]}: No such file` });
-                return next;
-            }
-            if (typeof node === "object") {
-                next.lines.push({ type: "error", text: `cat: ${args[0]}: Is a directory` });
-                return next;
-            }
-            next.lines.push({ type: "output", text: node || "(empty file)" });
-            return next;
-        }
-        case "mkdir": {
-            if (!args[0]) {
-                next.lines.push({ type: "error", text: "mkdir: missing directory operand" });
-                return next;
-            }
-
-            const result = createFsEntry(runtime.filesystem.tree, state.cwd, args[0], "dir");
-            next.lines.push(result.ok
-                ? { type: "success", text: `created directory ${result.path}` }
-                : { type: "error", text: `mkdir: ${result.error}` });
-            return next;
-        }
-        case "touch": {
-            if (!args[0]) {
-                next.lines.push({ type: "error", text: "touch: missing file operand" });
-                return next;
-            }
-
-            const results = args.map((name) => createFsEntry(runtime.filesystem.tree, state.cwd, name, "file"));
-            results.forEach((result) => {
-                next.lines.push(result.ok
-                    ? { type: "success", text: `touched ${result.path}` }
-                    : { type: "error", text: `touch: ${result.error}` });
-            });
-            return next;
-        }
-        case "clear":
-            return { ...next, lines: [] };
-        case "scan":
-            next.lines.push({ type: "output", text: "SCANNING LOCAL ARCADE NODE..." });
-            next.lines.push({ type: "success", text: "2 open simulation channels, 0 real system calls, relay stable." });
-            return next;
-        case "decrypt":
-            next.lines.push({ type: "output", text: "DECRYPTING SAMPLE PAYLOAD..." });
-            next.lines.push({ type: "success", text: "HELLO BUCKY" });
-            return next;
-        case "connect":
-            next.lines.push({ type: "output", text: `CONNECTING ${args[0] || "secure-node"}...` });
-            next.lines.push({ type: "success", text: "SIMULATED LINK ESTABLISHED" });
-            return next;
-        case "open":
-            if (args[0] && args[0] !== "files") {
-                next.lines.push({ type: "output", text: `open: routing '${args[0]}' through Files runtime...` });
-            }
-            runtime.openApp("files");
-            next.lines.push({ type: "success", text: "Opening Files runtime..." });
-            return next;
-        case "files":
-            runtime.openApp("files");
-            next.lines.push({ type: "success", text: "Opening Files runtime..." });
-            return next;
-        default:
-            next.lines.push({ type: "error", text: `${command}: command not found` });
-            return next;
-    }
-}
-
-function tokenizeCommand(commandLine) {
+function tokenize(commandLine) {
     if (!commandLine) return [];
     const matches = commandLine.match(/"([^"]*)"|'([^']*)'|\S+/g) || [];
     return matches.map((item) => item.replace(/^["']|["']$/g, ""));
 }
 
-function createFsEntry(tree, cwd, rawPath, type) {
-    const targetPath = resolvePath(cwd, rawPath);
-    const { parent, name } = getParentNode(tree, targetPath);
+/**
+ * Run one command line. Mutates `state` (cwd, lines, history) and the shared
+ * filesystem. Returns { cleared, lines } where `lines` are the new scrollback
+ * entries to append to the DOM.
+ */
+function execCommand(runtime, state, raw) {
+    const commandLine = raw.trim();
+    const promptLine = { type: "prompt", text: `${createPrompt(state, runtime.user)}${commandLine}` };
+    state.lines.push(promptLine);
+    const appended = [promptLine];
+    const out = (type, text) => {
+        const line = { type, text };
+        state.lines.push(line);
+        appended.push(line);
+    };
 
-    if (!name || name === "." || name === "..") {
-        return { ok: false, error: `invalid path '${rawPath}'` };
-    }
+    if (!commandLine) return { cleared: false, lines: appended };
 
-    if (!parent || typeof parent !== "object") {
-        return { ok: false, error: `cannot create '${rawPath}': parent directory does not exist` };
-    }
+    state.history.push(commandLine);
+    state.historyIndex = state.history.length;
 
-    if (Object.prototype.hasOwnProperty.call(parent, name)) {
-        if (type === "file" && typeof parent[name] === "string") {
-            return { ok: true, path: targetPath };
+    const [command = "", ...args] = tokenize(commandLine);
+    const fs = runtime.filesystem;
+
+    switch (command.toLowerCase()) {
+        case "clear":
+            state.lines = [];
+            return { cleared: true, lines: [] };
+
+        case "help":
+            out("output", `Commands: ${COMMANDS.join(", ")}`);
+            out("output", "Filesystem: ls, cd, pwd, mkdir, touch, cat, edit, open");
+            out("output", "Shared state: files created here appear in Files and BuckyCode instantly.");
+            break;
+
+        case "pwd":
+            out("output", state.cwd);
+            break;
+
+        case "ls": {
+            const targetPath = fs.resolve(state.cwd, args[0] || ".");
+            const node = fs.get(targetPath);
+            if (!node) {
+                out("error", `ls: cannot access '${args[0] || "."}': No such file or directory`);
+                break;
+            }
+            if (node.type !== "dir") {
+                out("output", node.name);
+                break;
+            }
+            const entries = fs.list(targetPath);
+            out("output", entries.length
+                ? entries.map((entry) => `${entry.type === "dir" ? "<DIR>" : "     "} ${entry.name}`).join("\n")
+                : "(empty)");
+            break;
         }
 
-        return { ok: false, error: `cannot create '${rawPath}': File exists` };
+        case "cd": {
+            const targetPath = fs.resolve(state.cwd, args[0] || fs.homePath);
+            const node = fs.get(targetPath);
+            if (!node || node.type !== "dir") {
+                out("error", `cd: no such directory: ${args[0] || ""}`);
+                break;
+            }
+            state.cwd = targetPath;
+            break;
+        }
+
+        case "cat": {
+            if (!args[0]) {
+                out("error", "cat: missing file operand");
+                break;
+            }
+            const result = fs.read(fs.resolve(state.cwd, args[0]));
+            if (!result.ok) {
+                out("error", `cat: ${args[0]}: ${result.error}`);
+                break;
+            }
+            out("output", result.content || "(empty file)");
+            break;
+        }
+
+        case "mkdir": {
+            if (!args[0]) {
+                out("error", "mkdir: missing directory operand");
+                break;
+            }
+            args.forEach((name) => {
+                const result = fs.mkdir(fs.resolve(state.cwd, name), {
+                    owner: "terminal",
+                    source: "mkdir",
+                    recursive: true
+                });
+                if (result.ok) out("success", `created directory ${result.path}`);
+                else out("error", `mkdir: ${result.error}`);
+            });
+            break;
+        }
+
+        case "touch": {
+            if (!args[0]) {
+                out("error", "touch: missing file operand");
+                break;
+            }
+            args.forEach((name) => {
+                const result = fs.touch(fs.resolve(state.cwd, name), {
+                    owner: "terminal",
+                    source: "touch"
+                });
+                if (result.ok) out("success", `touched ${result.path}`);
+                else out("error", `touch: ${result.error}`);
+            });
+            break;
+        }
+
+        case "edit": {
+            if (!args[0]) {
+                out("error", "edit: missing file operand");
+                break;
+            }
+            const targetPath = fs.resolve(state.cwd, args[0]);
+            const node = fs.get(targetPath);
+            if (node && node.type === "dir") {
+                out("error", `edit: ${args[0]}: Is a directory`);
+                break;
+            }
+            if (!node) {
+                const created = fs.touch(targetPath, { owner: "terminal", source: "edit" });
+                if (!created.ok) {
+                    out("error", `edit: ${created.error}`);
+                    break;
+                }
+            }
+            runtime.openApp("buckycode", { path: targetPath });
+            out("success", `opening ${targetPath} in BuckyCode`);
+            break;
+        }
+
+        case "open": {
+            if (!args[0] || args[0] === "files") {
+                runtime.openApp("files");
+                out("success", "Opening Files runtime...");
+                break;
+            }
+            const targetPath = fs.resolve(state.cwd, args[0]);
+            const node = fs.get(targetPath);
+            if (!node) {
+                out("error", `open: ${args[0]}: No such file or directory`);
+                break;
+            }
+            if (node.type === "dir") {
+                runtime.openApp("files");
+                out("success", "Opening Files runtime...");
+                break;
+            }
+            runtime.openApp("buckycode", { path: targetPath });
+            out("success", `opening ${targetPath} in BuckyCode`);
+            break;
+        }
+
+        case "files":
+            runtime.openApp("files");
+            out("success", "Opening Files runtime...");
+            break;
+
+        default:
+            out("error", `${command}: command not found`);
     }
 
-    parent[name] = type === "dir" ? {} : "";
-    return { ok: true, path: targetPath };
+    return { cleared: false, lines: appended };
+}
+
+// ----- Rendering -------------------------------------------------------------
+
+function lineMarkup(line) {
+    return `<div class="vm-terminal-line is-${line.type}">${escapeHtml(line.text).replace(/\n/g, "<br>")}</div>`;
 }
 
 export function renderTerminalApp(runtime, windowState) {
-    const terminal = windowState.appState;
-    const lines = terminal.lines.map((line) => {
-        const text = escapeHtml(line.text).replace(/\n/g, "<br>");
-        return `<div class="vm-terminal-line is-${line.type}">${text}</div>`;
-    }).join("");
-
+    const state = windowState.appState;
+    const lines = state.lines.map(lineMarkup).join("");
     return `
         <div class="vm-terminal" data-terminal-window="${windowState.id}">
             <div class="vm-terminal-screen">
                 ${lines}
                 <div class="vm-terminal-input-row">
-                    <span class="vm-terminal-prompt">${escapeHtml(createPrompt(terminal, runtime.user))}</span>
-                    <input class="vm-terminal-input" value="${escapeHtml(terminal.input)}" spellcheck="false" autocomplete="off" aria-label="Terminal command">
+                    <span class="vm-terminal-prompt">${escapeHtml(createPrompt(state, runtime.user))}</span>
+                    <input class="vm-terminal-input" value="${escapeHtml(state.input)}" spellcheck="false" autocomplete="off" aria-label="Terminal command">
                     <span class="vm-terminal-cursor"></span>
                 </div>
             </div>
@@ -214,35 +245,83 @@ export function renderTerminalApp(runtime, windowState) {
     `;
 }
 
-export function bindTerminalApp(runtime, windowState, element) {
-    const input = element.querySelector(".vm-terminal-input");
-    const screen = element.querySelector(".vm-terminal-screen");
-    if (!input) return;
+function appendLines(view, lineObjects) {
+    if (!view.screen || !view.inputRow) return;
+    lineObjects.forEach((line) => {
+        const element = document.createElement("div");
+        element.className = `vm-terminal-line is-${line.type}`;
+        element.innerHTML = escapeHtml(line.text).replace(/\n/g, "<br>");
+        view.screen.insertBefore(element, view.inputRow);
+    });
+    view.screen.scrollTop = view.screen.scrollHeight;
+}
 
-    if (runtime.activeWindowId === windowState.id && !windowState.minimized && !windowState.closing) {
-        input.focus({ preventScroll: true });
-    }
-    if (screen) screen.scrollTop = screen.scrollHeight;
+// ----- Lifecycle -------------------------------------------------------------
 
-    input.addEventListener("input", (event) => {
-        runtime.updateWindowAppState(windowState.id, { input: event.target.value });
+export function mountTerminalApp(runtime, windowState, element) {
+    const view = windowState.view;
+    view.input = element.querySelector(".vm-terminal-input");
+    view.screen = element.querySelector(".vm-terminal-screen");
+    view.inputRow = element.querySelector(".vm-terminal-input-row");
+    view.promptEl = element.querySelector(".vm-terminal-prompt");
+    if (!view.input || !view.screen) return;
+
+    view.input.addEventListener("input", (event) => {
+        windowState.appState.input = event.target.value;
     });
 
-    input.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
-        const current = runtime.getWindow(windowState.id);
-        if (!current) return;
-        const nextState = runTerminalCommand(runtime, current.appState, event.target.value);
-        runtime.updateWindowAppState(windowState.id, nextState);
-        runtime.render();
+    view.input.addEventListener("keydown", (event) => {
+        const state = windowState.appState;
+
+        if (event.key === "Enter") {
+            event.preventDefault();
+            const result = execCommand(runtime, state, view.input.value);
+            state.input = "";
+            view.input.value = "";
+            if (result.cleared) {
+                view.screen.querySelectorAll(".vm-terminal-line").forEach((node) => node.remove());
+            } else {
+                appendLines(view, result.lines);
+            }
+            view.promptEl.textContent = createPrompt(state, runtime.user);
+            return;
+        }
+
+        if (event.key === "ArrowUp") {
+            event.preventDefault();
+            if (!state.history.length) return;
+            state.historyIndex = Math.max(0, state.historyIndex - 1);
+            view.input.value = state.history[state.historyIndex] || "";
+            state.input = view.input.value;
+            return;
+        }
+
+        if (event.key === "ArrowDown") {
+            event.preventDefault();
+            if (!state.history.length) return;
+            state.historyIndex = Math.min(state.history.length, state.historyIndex + 1);
+            view.input.value = state.history[state.historyIndex] || "";
+            state.input = view.input.value;
+        }
+    });
+
+    if (runtime.activeWindowId === windowState.id) {
+        view.input.focus({ preventScroll: true });
+    }
+    view.screen.scrollTop = view.screen.scrollHeight;
+}
+
+export function unmountTerminalApp(runtime, windowState) {
+    (windowState.view.cleanups || []).forEach((cleanup) => {
+        try {
+            cleanup();
+        } catch (error) {
+            logError("Terminal cleanup", error);
+        }
     });
 }
 
-function escapeHtml(value) {
-    return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+export function focusTerminalApp(runtime, windowState) {
+    const input = windowState.view && windowState.view.input;
+    if (input && !windowState.minimized) input.focus({ preventScroll: true });
 }

@@ -1,5 +1,4 @@
 import { renderTaskbar } from "./Taskbar.js";
-import { renderWindows } from "./WindowManager.js";
 
 export function renderDesktop(runtime) {
     const icons = runtime.desktopApps.filter(Boolean).map((app) => `
@@ -21,7 +20,7 @@ export function renderDesktop(runtime) {
                 <strong>ARCADE WORKSTATION ONLINE</strong>
             </div>
             <div class="vm-desktop-icons">${icons}</div>
-            <div class="vm-window-layer">${renderWindows(runtime)}</div>
+            <div class="vm-window-layer"></div>
             ${renderTaskbar(runtime)}
         </div>
     `;

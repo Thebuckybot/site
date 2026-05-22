@@ -176,6 +176,13 @@ body.vm-focus-active .arcade-vm-bay {
     border-radius: 9px;
 }
 
+/* The minimize control is only meaningful in expanded (focus) mode. It is
+   always present in the DOM so mode changes stay targeted (no full rerender);
+   embedded mode simply hides it. */
+.bucky-vm-shell.is-embedded .vm-minimize-button {
+    display: none;
+}
+
 .vm-expand-button:hover,
 .vm-minimize-button:hover {
     background: rgba(82, 255, 243, 0.2);
@@ -1143,4 +1150,246 @@ body.vm-focus-active .arcade-vm-bay {
         animation-iteration-count: 1 !important;
         transition-duration: .001ms !important;
     }
+}
+
+/* ===================================================================
+   Phase 1 — filesystem foundation: Files interaction + BuckyCode
+   =================================================================== */
+
+/* --- Files app: scroll + sidebar ---------------------------------- */
+.vm-files-sidebar {
+    overflow: auto;
+    min-height: 0;
+}
+
+.vm-files-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: auto;
+}
+
+.vm-file-source {
+    cursor: pointer;
+    font: inherit;
+    transition: background 160ms var(--vm-ease);
+}
+
+.vm-file-source.is-active {
+    background: rgba(82,255,243,.16);
+}
+
+/* --- Files app: breadcrumb ---------------------------------------- */
+.vm-files-path {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+}
+
+.vm-files-crumb {
+    color: var(--vm-cyan);
+    border: 0;
+    border-radius: 5px;
+    padding: 3px 6px;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+    transition: background 160ms var(--vm-ease);
+}
+
+.vm-files-crumb:hover {
+    background: rgba(82,255,243,.14);
+}
+
+.vm-files-crumb-sep {
+    color: rgba(232,255,255,.4);
+}
+
+/* --- Files app: clickable tiles ----------------------------------- */
+.vm-file-tile {
+    cursor: pointer;
+    font: inherit;
+    color: #e8ffff;
+    transition: border-color 160ms var(--vm-ease), background 160ms var(--vm-ease), transform 160ms var(--vm-ease);
+}
+
+.vm-file-tile:hover {
+    border-color: rgba(82,255,243,.55);
+    background: rgba(82,255,243,.1);
+    transform: translateY(-2px);
+}
+
+.vm-file-tile.is-selected {
+    border-color: var(--vm-cyan);
+    background: rgba(82,255,243,.16);
+}
+
+/* --- Files app: file preview -------------------------------------- */
+.vm-files-preview {
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid rgba(82,255,243,.22);
+    border-radius: 10px;
+    background: rgba(82,255,243,.045);
+}
+
+.vm-files-preview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.vm-files-preview-head strong {
+    color: var(--vm-cyan);
+    font-size: 13px;
+}
+
+.vm-files-open-btn {
+    color: #02050d;
+    border: 0;
+    border-radius: 6px;
+    padding: 6px 12px;
+    background: var(--vm-cyan);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter 160ms var(--vm-ease), transform 160ms var(--vm-ease);
+}
+
+.vm-files-open-btn:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+}
+
+.vm-files-preview-meta {
+    margin-bottom: 8px;
+    color: rgba(232,255,255,.55);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 11px;
+}
+
+.vm-files-preview-body {
+    margin: 0;
+    max-height: 160px;
+    overflow: auto;
+    padding: 10px;
+    color: #c8ffd2;
+    border-radius: 7px;
+    background: #020704;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* --- BuckyCode editor --------------------------------------------- */
+.vm-buckycode {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #020407;
+}
+
+.vm-code-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(82,255,243,.18);
+    background: rgba(255,255,255,.03);
+}
+
+.vm-code-file {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #e8ffff;
+    font-size: 12px;
+}
+
+.vm-code-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: rgba(132,255,155,.5);
+    transition: background 160ms var(--vm-ease);
+}
+
+.vm-code-dot.is-dirty {
+    background: var(--vm-amber);
+    box-shadow: 0 0 8px rgba(255,209,102,.6);
+}
+
+.vm-code-save {
+    color: #02050d;
+    border: 0;
+    border-radius: 6px;
+    padding: 6px 14px;
+    background: var(--vm-cyan);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter 160ms var(--vm-ease), transform 160ms var(--vm-ease);
+}
+
+.vm-code-save:hover:not([disabled]) {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+}
+
+.vm-code-save[disabled] {
+    opacity: .4;
+    cursor: default;
+}
+
+.vm-code-area {
+    flex: 1;
+    min-height: 0;
+    resize: none;
+    padding: 14px;
+    color: #d9ffe8;
+    border: 0;
+    outline: 0;
+    background:
+        repeating-linear-gradient(to bottom, rgba(255,255,255,.025), rgba(255,255,255,.025) 1px, transparent 1px, transparent 4px),
+        #020704;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.vm-code-status {
+    padding: 5px 12px;
+    color: rgba(232,255,255,.5);
+    border-top: 1px solid rgba(82,255,243,.14);
+    background: rgba(255,255,255,.02);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 11px;
+}
+
+.vm-code-empty {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 8px;
+    height: 100%;
+    padding: 22px;
+    text-align: center;
+    color: rgba(232,255,255,.7);
+}
+
+.vm-code-empty strong {
+    color: var(--vm-cyan);
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+
+.vm-code-empty span {
+    font-size: 12px;
+    max-width: 320px;
 }

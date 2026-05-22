@@ -1,28 +1,77 @@
+/**
+ * BuckyVMRuntime — the Bucky VM kernel.
+ *
+ * Owns the lifecycle, the shared runtime services (event bus + filesystem),
+ * the window collection and the render orchestration. See
+ * docs/architecture/vm-runtime.md and docs/architecture/render-system.md.
+ *
+ * Rendering model (Phase 1):
+ *   - render()        full shell rebuild — used only for phase/mode changes.
+ *   - syncWindows()   targeted window-layer reconciliation — create / patch /
+ *                     remove window elements without rebuilding the desktop.
+ *   - updateTaskbar() / updateNotifications() — targeted region updates.
+ * Filesystem mutations never trigger a full rerender: apps subscribe to the
+ * event bus and update their own DOM in place.
+ */
+import { createEventBus } from "./eventBus.js";
 import { createVirtualFilesystem } from "./filesystem.js";
 import { createWindow } from "./windowManager.js";
+import { clamp, elementFromHtml } from "./util.js";
+import { setDebugMode, debugLog, logError } from "./diagnostics.js";
 import { renderVMContainer } from "../components/VMContainer.js";
-import { bindWindows } from "../components/WindowManager.js";
-import { bindTaskbar } from "../components/Taskbar.js";
-import { bindTerminalApp, createTerminalState, renderTerminalApp } from "../apps/TerminalApp.js";
-import { renderFilesApp } from "../apps/FilesApp.js";
+import {
+    renderWindowElement,
+    patchWindowElement,
+    bindWindowElement
+} from "../components/WindowManager.js";
+import { renderTaskApps, bindTaskbar } from "../components/Taskbar.js";
+import { renderNotificationItems } from "../components/Notifications.js";
+import {
+    createTerminalState,
+    renderTerminalApp,
+    mountTerminalApp,
+    unmountTerminalApp,
+    focusTerminalApp
+} from "../apps/TerminalApp.js";
+import {
+    createFilesState,
+    renderFilesApp,
+    mountFilesApp,
+    unmountFilesApp
+} from "../apps/FilesApp.js";
+import {
+    createBuckyCodeState,
+    renderBuckyCodeApp,
+    mountBuckyCodeApp,
+    unmountBuckyCodeApp,
+    applyBuckyCodeIntent
+} from "../apps/BuckyCodeApp.js";
 import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
 
 const FALLBACK_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
 
 export class BuckyVMRuntime {
-    constructor(root, user = {}) {
+    constructor(root, user = {}, options = {}) {
         this.root = root;
         this.user = normalizeUser(user);
+        this.debug = Boolean(options.debug);
+        setDebugMode(this.debug);
         this.mode = "embedded";
         this.phase = "boot";
         this.bootLines = [];
         this.sessionLines = [];
         this.windows = [];
+        // id -> windowState for windows that currently have a mounted element.
+        this.windowRegistry = new Map();
         this.notifications = [];
         this.activeWindowId = null;
         this.nextZ = 20;
         this.clock = "--:--";
-        this.filesystem = createVirtualFilesystem(this.user.username);
+
+        // Shared runtime services.
+        this.bus = createEventBus();
+        this.filesystem = createVirtualFilesystem(this.user.username, this.bus);
+
         this.bootQueue = [
             "INITIALIZING VM",
             "LOADING MEMORY",
@@ -35,23 +84,27 @@ export class BuckyVMRuntime {
             "LOADING USER SESSION",
             "BOOTING DESKTOP ENVIRONMENT"
         ];
+
         this.apps = createAppRegistry();
         this.desktopApps = [
             this.apps.terminal,
             this.apps.files,
-            this.apps.textfile,
+            this.apps.buckycode,
             this.apps.notes,
             this.apps.browser,
             this.apps.mail,
             this.apps.database,
             this.apps.osint
         ];
+
         this.resizeHandler = () => {
             if (this.phase !== "desktop") return;
             this.constrainWindows();
-            this.render();
+            this.syncWindows();
         };
     }
+
+    // ----- Lifecycle ---------------------------------------------------------
 
     start() {
         this.render();
@@ -76,54 +129,6 @@ export class BuckyVMRuntime {
         }, 3100);
     }
 
-    tickClock() {
-        this.clock = new Intl.DateTimeFormat([], {
-            hour: "2-digit",
-            minute: "2-digit"
-        }).format(new Date());
-        this.root.querySelector("[data-vm-clock]")?.replaceChildren(this.clock);
-    }
-
-    render() {
-        this.constrainWindows();
-        this.root.innerHTML = renderVMContainer(this);
-        this.bind();
-    }
-
-    bind() {
-        this.root.querySelector("[data-vm-expand]")?.addEventListener("click", () => this.setMode("expanded"));
-        this.root.querySelector("[data-vm-minimize]")?.addEventListener("click", () => this.setMode("embedded"));
-        this.root.querySelector("[data-vm-backdrop]")?.addEventListener("click", () => this.setMode("embedded"));
-        this.root.querySelector("[data-vm-login]")?.addEventListener("click", () => this.startDesktopBoot());
-
-        this.root.querySelectorAll("[data-open-app]").forEach((button) => {
-            button.addEventListener("dblclick", () => this.openApp(button.dataset.openApp));
-            button.addEventListener("click", () => this.openApp(button.dataset.openApp));
-        });
-
-        bindWindows(this);
-        bindTaskbar(this);
-
-        this.windows.forEach((windowState) => {
-            const element = this.root.querySelector(`[data-window-id="${windowState.id}"]`);
-            if (!element) return;
-            const app = this.apps[windowState.appId];
-            if (app?.bind) app.bind(this, windowState, element);
-        });
-    }
-
-    setMode(mode) {
-        this.mode = mode;
-        document.body.classList.toggle("vm-focus-active", mode === "expanded");
-        this.render();
-        if (this.phase === "desktop") {
-            window.requestAnimationFrame(() => {
-                this.constrainWindows();
-                this.render();
-            });
-        }
-    }
-
     startDesktopBoot() {
         this.phase = "session";
         this.sessionLines = [];
@@ -140,12 +145,161 @@ export class BuckyVMRuntime {
 
         window.setTimeout(() => {
             this.phase = "desktop";
-            this.notify("Desktop ready", "Open Terminal from the desktop");
             this.render();
+            this.notify("Desktop ready", "Open Terminal or Files from the desktop");
         }, 2300);
     }
 
-    openApp(appId) {
+    tickClock() {
+        this.clock = new Intl.DateTimeFormat([], {
+            hour: "2-digit",
+            minute: "2-digit"
+        }).format(new Date());
+        this.root.querySelector("[data-vm-clock]")?.replaceChildren(this.clock);
+    }
+
+    // ----- Rendering ---------------------------------------------------------
+
+    /** Full shell rebuild. Reserved for phase and mode changes. */
+    render() {
+        this.teardownWindows();
+        this.constrainWindows();
+        this.root.innerHTML = renderVMContainer(this);
+        this.bindShell();
+        if (this.phase === "desktop") this.syncWindows();
+    }
+
+    /** Bind the static shell controls. Runs once per full render. */
+    bindShell() {
+        const root = this.root;
+        root.querySelector("[data-vm-expand]")?.addEventListener("click", () => this.setMode("expanded"));
+        root.querySelector("[data-vm-minimize]")?.addEventListener("click", () => this.setMode("embedded"));
+        root.querySelector("[data-vm-backdrop]")?.addEventListener("click", () => this.setMode("embedded"));
+        root.querySelector("[data-vm-login]")?.addEventListener("click", () => this.startDesktopBoot());
+        root.querySelectorAll("[data-open-app]").forEach((button) => {
+            button.addEventListener("click", () => this.openApp(button.dataset.openApp));
+        });
+        bindTaskbar(this);
+    }
+
+    /**
+     * Reconcile the window layer against `this.windows`.
+     * Creates missing windows (and mounts their apps), patches existing ones
+     * in place (no body rebuild), and drops orphaned elements.
+     */
+    syncWindows() {
+        if (this.phase !== "desktop") return;
+        const layer = this.root.querySelector(".vm-window-layer");
+        if (!layer) return;
+
+        // Remove window elements with no runtime state, fully unmounting their
+        // app first so bus subscriptions never leak. syncWindows is the single
+        // owner of window element create/remove.
+        layer.querySelectorAll(".vm-window").forEach((element) => {
+            const id = element.dataset.windowId;
+            if (!this.windows.some((windowState) => windowState.id === id)) {
+                const stale = this.windowRegistry.get(id);
+                if (stale) this.unmountWindow(stale, element);
+                this.windowRegistry.delete(id);
+                element.remove();
+                debugLog("window removed", id);
+            }
+        });
+
+        // Create missing windows (mounting their apps); patch the rest in
+        // place — an existing window's app body is never rebuilt here.
+        this.windows.forEach((windowState) => {
+            let element = layer.querySelector(`[data-window-id="${windowState.id}"]`);
+            if (!element) {
+                element = elementFromHtml(renderWindowElement(this, windowState));
+                layer.appendChild(element);
+                bindWindowElement(this, windowState, element);
+                this.mountWindow(windowState, element);
+            } else {
+                patchWindowElement(this, windowState, element);
+            }
+        });
+    }
+
+    mountWindow(windowState, element) {
+        const app = this.apps[windowState.appId];
+        windowState.view = windowState.view || {};
+        windowState.view.cleanups = windowState.view.cleanups || [];
+        if (app && typeof app.mount === "function") {
+            try {
+                app.mount(this, windowState, element);
+            } catch (error) {
+                logError(`mount(${windowState.appId})`, error);
+            }
+        }
+        this.windowRegistry.set(windowState.id, windowState);
+        debugLog("window mounted", windowState.appId, windowState.id);
+    }
+
+    unmountWindow(windowState, element) {
+        const app = this.apps[windowState.appId];
+        if (app && typeof app.unmount === "function") {
+            try {
+                app.unmount(this, windowState, element);
+            } catch (error) {
+                logError(`unmount(${windowState.appId})`, error);
+            }
+        }
+        windowState.view = {};
+    }
+
+    /** Unmount every currently mounted window (before a full render). */
+    teardownWindows() {
+        this.windows.forEach((windowState) => {
+            const element = this.root.querySelector(`[data-window-id="${windowState.id}"]`);
+            if (element) this.unmountWindow(windowState, element);
+        });
+        this.windowRegistry.clear();
+    }
+
+    /** Targeted update of the taskbar running-app region. */
+    updateTaskbar() {
+        const slot = this.root.querySelector(".vm-task-apps");
+        if (!slot) return;
+        slot.innerHTML = renderTaskApps(this);
+        bindTaskbar(this);
+    }
+
+    /** Targeted update of the notification stack. */
+    updateNotifications() {
+        const layer = this.root.querySelector(".vm-notifications");
+        if (layer) layer.innerHTML = renderNotificationItems(this);
+    }
+
+    setMode(mode) {
+        this.mode = mode;
+        const expanded = mode === "expanded";
+        document.body.classList.toggle("vm-focus-active", expanded);
+
+        // Targeted update: a mode change only toggles shell classes. Windows
+        // and their apps are never torn down or rebuilt — no full rerender.
+        const shell = this.root.querySelector(".bucky-vm-shell");
+        if (shell) {
+            shell.classList.toggle("is-expanded", expanded);
+            shell.classList.toggle("is-embedded", !expanded);
+        }
+        const backdrop = this.root.querySelector(".bucky-vm-backdrop");
+        if (backdrop) backdrop.classList.toggle("is-visible", expanded);
+
+        if (this.phase === "desktop") {
+            this.constrainWindows();
+            this.syncWindows();
+            window.requestAnimationFrame(() => {
+                this.constrainWindows();
+                this.syncWindows();
+            });
+        }
+        debugLog("mode changed", mode);
+    }
+
+    // ----- Apps & windows ----------------------------------------------------
+
+    openApp(appId, payload) {
         const app = this.apps[appId];
         if (!this.isLaunchableApp(app)) {
             this.notify("Application unavailable", `${appId || "Unknown"} is not registered yet`);
@@ -154,18 +308,26 @@ export class BuckyVMRuntime {
 
         const existing = this.windows.find((item) => item.appId === appId && app.singleInstance);
         if (existing) {
+            if (payload && typeof app.applyIntent === "function") {
+                try {
+                    app.applyIntent(this, existing, payload);
+                } catch (error) {
+                    logError(`applyIntent(${appId})`, error);
+                }
+            }
             this.restoreWindow(existing.id);
             return;
         }
 
         let appState = {};
         try {
-            appState = app.createState ? app.createState(this.user, this.filesystem) : {};
+            appState = app.createState ? app.createState(this.user, this.filesystem, payload) : {};
         } catch (error) {
-            console.error("Failed to create app state:", appId, error);
+            logError(`createState(${appId})`, error);
             this.notify("Application paused", `${app.title || appId} could not start`);
             return;
         }
+
         const windowState = createWindow(app, this.windows.length, appState);
         const metrics = this.getInitialWindowMetrics(app, this.windows.length);
         Object.assign(windowState, metrics);
@@ -177,7 +339,19 @@ export class BuckyVMRuntime {
         });
         this.windows = [...this.windows, windowState];
         this.activeWindowId = windowState.id;
-        this.render();
+        this.syncWindows();
+        this.updateTaskbar();
+        debugLog("app opened", appId, windowState.id);
+
+        const element = this.root.querySelector(`[data-window-id="${windowState.id}"]`);
+        const launched = this.apps[windowState.appId];
+        if (element && launched && typeof launched.onFocus === "function") {
+            try {
+                launched.onFocus(this, windowState, element);
+            } catch (error) {
+                logError(`onFocus(${windowState.appId})`, error);
+            }
+        }
     }
 
     isLaunchableApp(app) {
@@ -214,7 +388,6 @@ export class BuckyVMRuntime {
     getMaximizedBounds() {
         const bounds = this.getDesktopBounds();
         const leftInset = bounds.width < 720 ? 86 : 102;
-
         return {
             x: leftInset,
             y: 12,
@@ -247,7 +420,7 @@ export class BuckyVMRuntime {
         return this.windows.find((windowState) => windowState.id === id);
     }
 
-    focusWindow(id, shouldRender = true) {
+    focusWindow(id) {
         const windowState = this.getWindow(id);
         if (!windowState || windowState.closing) return;
         this.windows.forEach((item) => {
@@ -255,20 +428,18 @@ export class BuckyVMRuntime {
         });
         windowState.z = ++this.nextZ;
         this.activeWindowId = id;
-        if (shouldRender) {
-            this.render();
-        } else {
-            this.syncWindowDomFocus(id);
-        }
-    }
+        this.syncWindows();
+        this.updateTaskbar();
 
-    syncWindowDomFocus(id) {
-        this.root.querySelectorAll(".vm-window").forEach((element) => {
-            const isActive = element.dataset.windowId === id;
-            element.classList.toggle("is-active", isActive);
-            const windowState = this.getWindow(element.dataset.windowId);
-            if (windowState) element.style.zIndex = windowState.z;
-        });
+        const element = this.root.querySelector(`[data-window-id="${id}"]`);
+        const app = this.apps[windowState.appId];
+        if (element && app && typeof app.onFocus === "function") {
+            try {
+                app.onFocus(this, windowState, element);
+            } catch (error) {
+                logError(`onFocus(${windowState.appId})`, error);
+            }
+        }
     }
 
     moveWindow(id, x, y) {
@@ -297,20 +468,9 @@ export class BuckyVMRuntime {
     }
 
     windowAction(id, action) {
-        if (action === "minimize") {
-            this.minimizeWindow(id);
-            return;
-        }
-
-        if (action === "maximize") {
-            this.toggleMaximizeWindow(id);
-            return;
-        }
-
-        if (action === "close") {
-            this.closeWindow(id);
-            return;
-        }
+        if (action === "minimize") this.minimizeWindow(id);
+        else if (action === "maximize") this.toggleMaximizeWindow(id);
+        else if (action === "close") this.closeWindow(id);
     }
 
     minimizeWindow(id) {
@@ -326,16 +486,15 @@ export class BuckyVMRuntime {
             if (nextWindow) nextWindow.focused = true;
         }
 
-        this.render();
+        this.syncWindows();
+        this.updateTaskbar();
     }
 
     toggleMaximizeWindow(id) {
         const windowState = this.getWindow(id);
         if (!windowState || windowState.closing) return;
 
-        if (windowState.minimized) {
-            windowState.minimized = false;
-        }
+        if (windowState.minimized) windowState.minimized = false;
 
         if (!windowState.maximized) {
             windowState.restoreBounds = {
@@ -347,14 +506,14 @@ export class BuckyVMRuntime {
             Object.assign(windowState, this.getMaximizedBounds());
             windowState.maximized = true;
         } else {
-            const restoreBounds = windowState.restoreBounds || this.getInitialWindowMetrics(this.apps[windowState.appId] || {}, 0);
+            const restoreBounds = windowState.restoreBounds
+                || this.getInitialWindowMetrics(this.apps[windowState.appId] || {}, 0);
             Object.assign(windowState, restoreBounds);
             windowState.maximized = false;
             this.constrainWindows();
         }
 
-        this.focusWindow(id, false);
-        this.render();
+        this.focusWindow(id);
     }
 
     closeWindow(id) {
@@ -369,10 +528,16 @@ export class BuckyVMRuntime {
             if (nextWindow) nextWindow.focused = true;
         }
 
-        this.render();
+        // Patch in the closing animation, then drop the window from state.
+        // syncWindows owns the actual element unmount + removal.
+        this.syncWindows();
+        this.updateTaskbar();
+
         window.setTimeout(() => {
             this.windows = this.windows.filter((item) => item.id !== id);
-            this.render();
+            this.syncWindows();
+            this.updateTaskbar();
+            debugLog("window closed", id);
         }, 220);
     }
 
@@ -389,14 +554,6 @@ export class BuckyVMRuntime {
         this.focusWindow(id);
     }
 
-    updateWindowAppState(id, patch) {
-        const windowState = this.getWindow(id);
-        if (!windowState) return;
-        windowState.appState = typeof patch === "function"
-            ? patch(windowState.appState)
-            : { ...windowState.appState, ...patch };
-    }
-
     renderApp(windowState) {
         const app = this.apps[windowState.appId];
         if (!this.isLaunchableApp(app)) {
@@ -405,11 +562,10 @@ export class BuckyVMRuntime {
                 description: "This runtime slot is not available yet."
             });
         }
-
         try {
             return app.render(this, windowState);
         } catch (error) {
-            console.error("Failed to render app:", windowState.appId, error);
+            logError(`render(${windowState.appId})`, error);
             return renderPlaceholderApp({
                 title: "Application Under Construction",
                 description: "This app hit a simulated runtime fault and has been safely contained."
@@ -418,11 +574,12 @@ export class BuckyVMRuntime {
     }
 
     notify(title, message) {
-        const id = Date.now();
+        const id = `${Date.now()}-${Math.random()}`;
         this.notifications = [{ id, title, message }, ...this.notifications].slice(0, 2);
+        this.updateNotifications();
         window.setTimeout(() => {
             this.notifications = this.notifications.filter((item) => item.id !== id);
-            this.render();
+            this.updateNotifications();
         }, 3600);
     }
 }
@@ -439,19 +596,37 @@ function createAppRegistry() {
             singleInstance: true,
             createState: createTerminalState,
             render: renderTerminalApp,
-            bind: bindTerminalApp
+            mount: mountTerminalApp,
+            unmount: unmountTerminalApp,
+            onFocus: focusTerminalApp
         },
         files: {
             id: "files",
             title: "Files",
             label: "Files",
             icon: "FIL",
-            width: 600,
-            height: 370,
+            width: 620,
+            height: 400,
             singleInstance: true,
-            render: renderFilesApp
+            createState: createFilesState,
+            render: renderFilesApp,
+            mount: mountFilesApp,
+            unmount: unmountFilesApp
         },
-        textfile: placeholder("textfile", "TextFile", "Encrypted note viewer under construction."),
+        buckycode: {
+            id: "buckycode",
+            title: "BuckyCode",
+            label: "BuckyCode",
+            icon: "COD",
+            width: 640,
+            height: 430,
+            singleInstance: true,
+            createState: createBuckyCodeState,
+            render: renderBuckyCodeApp,
+            mount: mountBuckyCodeApp,
+            unmount: unmountBuckyCodeApp,
+            applyIntent: applyBuckyCodeIntent
+        },
         notes: placeholder("notes", "Apps", "Future app launcher and runtime registry under construction."),
         browser: placeholder("browser", "Browser", "Internal browser sandbox under construction."),
         mail: placeholder("mail", "Mail", "Secure mailbox under construction."),
@@ -481,8 +656,4 @@ function normalizeUser(user) {
         : FALLBACK_AVATAR);
 
     return { ...user, username, avatarUrl };
-}
-
-function clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
 }

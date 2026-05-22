@@ -14,13 +14,15 @@ export function createWindow(app, index = 0, appState = {}) {
         width,
         height,
         z: 10 + index,
-        visible: true,
         focused: false,
         dragging: false,
         minimized: false,
         maximized: false,
         restoreBounds: { x, y, width, height },
         closing: false,
-        appState
+        appState,
+        // Transient per-window view state: DOM refs and lifecycle cleanups.
+        // Owned by the app's mount/update/unmount hooks, never serialized.
+        view: {}
     };
 }

@@ -1,5 +1,14 @@
-export function renderTaskbar(runtime) {
-    const activeApps = runtime.windows.map((windowState) => {
+/**
+ * Taskbar component.
+ *
+ * Renders the persistent desktop foot strip. The running-app zone is a
+ * targeted-update region: the runtime re-renders only `.vm-task-apps` when
+ * the window collection changes (see vmRuntime.updateTaskbar).
+ */
+
+/** Render the running-app buttons (the contents of `.vm-task-apps`). */
+export function renderTaskApps(runtime) {
+    return runtime.windows.map((windowState) => {
         const active = runtime.activeWindowId === windowState.id ? " is-active" : "";
         const minimized = windowState.minimized ? " is-minimized" : "";
         const closing = windowState.closing ? " is-closing" : "";
@@ -9,7 +18,9 @@ export function renderTaskbar(runtime) {
             </button>
         `;
     }).join("");
+}
 
+export function renderTaskbar(runtime) {
     return `
         <footer class="vm-taskbar">
             <div class="vm-task-user">
@@ -19,7 +30,7 @@ export function renderTaskbar(runtime) {
                     <span>${runtime.user.username}</span>
                 </div>
             </div>
-            <div class="vm-task-apps">${activeApps}</div>
+            <div class="vm-task-apps">${renderTaskApps(runtime)}</div>
             <div class="vm-task-status">
                 <span class="vm-status-icon" title="Secure network">NET</span>
                 <span class="vm-status-icon" title="Battery">89%</span>
@@ -29,17 +40,18 @@ export function renderTaskbar(runtime) {
     `;
 }
 
+/** Bind the running-app buttons. Safe to call repeatedly after a targeted update. */
 export function bindTaskbar(runtime) {
     runtime.root.querySelectorAll("[data-task-window]").forEach((button) => {
+        if (button.dataset.bound === "1") return;
+        button.dataset.bound = "1";
         button.addEventListener("click", () => {
             const windowState = runtime.getWindow(button.dataset.taskWindow);
             if (!windowState) return;
-
             if (windowState.minimized) {
                 runtime.restoreWindow(windowState.id);
                 return;
             }
-
             runtime.focusWindow(windowState.id);
         });
     });
