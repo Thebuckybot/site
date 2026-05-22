@@ -1393,3 +1393,86 @@ body.vm-focus-active .arcade-vm-bay {
     font-size: 12px;
     max-width: 320px;
 }
+
+/* ===================================================================
+   Phase 1.1 — interaction completion: touch support + UI polish
+   =================================================================== */
+
+/* --- Touch interaction (iPad and touch laptops) ------------------- */
+/* The titlebar is the window drag surface — block native touch gestures
+   so dragging a window never scrolls or zooms the page instead. */
+.vm-window-titlebar {
+    touch-action: none;
+}
+
+/* Interactive controls: remove the tap delay and double-tap zoom. */
+.vm-window-controls button,
+.vm-desktop-icon,
+.vm-task-app,
+.vm-file-tile,
+.vm-file-source,
+.vm-files-crumb,
+.vm-files-up,
+.vm-files-open-btn,
+.vm-code-save,
+.vm-expand-button,
+.vm-minimize-button {
+    touch-action: manipulation;
+}
+
+/* Allow the terminal scrollback to pan vertically on touch. */
+.vm-terminal-screen {
+    touch-action: pan-y;
+}
+
+/* --- Larger window controls (comfortable touch targets) ----------- */
+.vm-window-controls {
+    gap: 8px;
+}
+
+.vm-window-controls button {
+    width: 32px;
+    height: 26px;
+}
+
+/* --- Files app: parent-folder (Up) button ------------------------- */
+.vm-files-path {
+    gap: 5px;
+}
+
+.vm-files-up {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 24px;
+    color: var(--vm-cyan);
+    border: 1px solid rgba(82, 255, 243, .32);
+    border-radius: 6px;
+    background: rgba(82, 255, 243, .08);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 160ms var(--vm-ease), border-color 160ms var(--vm-ease);
+}
+
+.vm-files-up:hover:not([disabled]) {
+    border-color: rgba(82, 255, 243, .6);
+    background: rgba(82, 255, 243, .16);
+}
+
+.vm-files-up[disabled] {
+    opacity: .35;
+    cursor: default;
+}
+
+/* --- BuckyCode: inline save-state text ---------------------------- */
+.vm-code-state {
+    margin-left: 4px;
+    color: rgba(232, 255, 255, .45);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.vm-code-state.is-dirty {
+    color: var(--vm-amber);
+}

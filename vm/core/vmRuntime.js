@@ -44,7 +44,8 @@ import {
     renderBuckyCodeApp,
     mountBuckyCodeApp,
     unmountBuckyCodeApp,
-    applyBuckyCodeIntent
+    applyBuckyCodeIntent,
+    focusBuckyCodeApp
 } from "../apps/BuckyCodeApp.js";
 import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
 
@@ -269,6 +270,20 @@ export class BuckyVMRuntime {
     updateNotifications() {
         const layer = this.root.querySelector(".vm-notifications");
         if (layer) layer.innerHTML = renderNotificationItems(this);
+    }
+
+    /**
+     * Targeted update of a window's chrome title (and its taskbar entry).
+     * Lets an app reflect document state — e.g. BuckyCode showing the open
+     * filename — without a rerender.
+     */
+    setWindowTitle(id, title) {
+        const windowState = this.getWindow(id);
+        if (!windowState || windowState.title === title) return;
+        windowState.title = title;
+        const strong = this.root.querySelector(`[data-window-id="${id}"] .vm-window-title strong`);
+        if (strong) strong.textContent = title;
+        this.updateTaskbar();
     }
 
     setMode(mode) {
@@ -625,6 +640,7 @@ function createAppRegistry() {
             render: renderBuckyCodeApp,
             mount: mountBuckyCodeApp,
             unmount: unmountBuckyCodeApp,
+            onFocus: focusBuckyCodeApp,
             applyIntent: applyBuckyCodeIntent
         },
         notes: placeholder("notes", "Apps", "Future app launcher and runtime registry under construction."),

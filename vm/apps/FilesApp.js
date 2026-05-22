@@ -56,12 +56,17 @@ function renderBreadcrumb(cwd) {
     return crumbs.join('<span class="vm-files-crumb-sep">›</span>');
 }
 
+function renderUpButton(cwd) {
+    const atRoot = cwd === "/";
+    return `<button class="vm-files-up" type="button" data-files-up${atRoot ? " disabled" : ""} aria-label="Go to parent folder" title="Parent folder">↑</button>`;
+}
+
 function renderGrid(entries, selected) {
     if (!entries.length) {
         return `
             <div class="vm-files-empty">
-                <strong>Directory empty</strong>
-                <span>No files in this folder yet. Create some with mkdir or touch.</span>
+                <strong>This folder is empty</strong>
+                <span>Create files and folders from the terminal with mkdir and touch — they appear here instantly.</span>
             </div>
         `;
     }
@@ -104,7 +109,7 @@ function renderFilesInner(runtime, windowState) {
     return `
         <aside class="vm-files-sidebar">${renderSidebar(fs, cwd)}</aside>
         <section class="vm-files-main">
-            <div class="vm-files-path">${renderBreadcrumb(cwd)}</div>
+            <div class="vm-files-path">${renderUpButton(cwd)}${renderBreadcrumb(cwd)}</div>
             <div class="vm-files-grid${entries.length ? "" : " is-empty"}">${renderGrid(entries, selected)}</div>
             ${renderPreview(fs, selected)}
         </section>
@@ -119,6 +124,18 @@ export function renderFilesApp(runtime, windowState) {
 
 function handleClick(runtime, windowState, event) {
     const state = windowState.appState;
+
+    const up = event.target.closest("[data-files-up]");
+    if (up) {
+        if (state.cwd !== "/") {
+            const parts = state.cwd.split("/").filter(Boolean);
+            parts.pop();
+            state.cwd = parts.length ? `/${parts.join("/")}` : "/";
+            state.selected = null;
+            windowState.view.refresh();
+        }
+        return;
+    }
 
     const nav = event.target.closest("[data-files-nav]");
     if (nav) {
@@ -163,6 +180,15 @@ export function mountFilesApp(runtime, windowState, element) {
     };
 
     appElement.addEventListener("click", (event) => handleClick(runtime, windowState, event));
+
+    // Double-click a file to open it directly in BuckyCode.
+    appElement.addEventListener("dblclick", (event) => {
+        const file = event.target.closest("[data-files-file]");
+        if (!file) return;
+        windowState.appState.selected = file.dataset.path;
+        view.refresh();
+        runtime.openApp("buckycode", { path: file.dataset.path });
+    });
 
     // Live updates: re-render only when a filesystem change affects this
     // window's view — its current directory, the root sidebar, or the

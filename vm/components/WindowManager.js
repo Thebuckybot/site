@@ -89,6 +89,12 @@ export function bindWindowElement(runtime, windowState, element) {
 
     if (!handle) return;
 
+    // Double-click the titlebar to toggle maximize (standard desktop behaviour).
+    handle.addEventListener("dblclick", (event) => {
+        if (event.target.closest("[data-window-action]")) return;
+        runtime.windowAction(id, "maximize");
+    });
+
     handle.addEventListener("pointerdown", (event) => {
         const current = runtime.getWindow(id);
         if (!current || current.maximized || current.minimized || current.closing) return;

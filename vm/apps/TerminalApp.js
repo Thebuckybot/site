@@ -12,8 +12,6 @@
 import { escapeHtml } from "../core/util.js";
 import { logError } from "../core/diagnostics.js";
 
-const COMMANDS = ["help", "ls", "cd", "pwd", "mkdir", "touch", "cat", "edit", "open", "files", "clear"];
-
 // ----- State -----------------------------------------------------------------
 
 export function createTerminalState(user, filesystem) {
@@ -80,9 +78,20 @@ function execCommand(runtime, state, raw) {
             return { cleared: true, lines: [] };
 
         case "help":
-            out("output", `Commands: ${COMMANDS.join(", ")}`);
-            out("output", "Filesystem: ls, cd, pwd, mkdir, touch, cat, edit, open");
-            out("output", "Shared state: files created here appear in Files and BuckyCode instantly.");
+            out("system", "Bucky VM terminal — command reference");
+            out("output", "  help            show this command list");
+            out("output", "  ls [path]       list a directory's contents");
+            out("output", "  cd [path]       change the working directory");
+            out("output", "  pwd             print the working directory");
+            out("output", "  mkdir <dir>     create a directory (nested paths supported)");
+            out("output", "  touch <file>    create an empty file");
+            out("output", "  cat <file>      print a file's contents");
+            out("output", "  edit <file>     open a file in BuckyCode (creates it if missing)");
+            out("output", "  open <target>   open a file in BuckyCode, or open the Files app");
+            out("output", "  files           open the Files app");
+            out("output", "  clear           clear the terminal screen");
+            out("system", "Files and folders you create are shared live with Files and BuckyCode.");
+            out("system", "Use the up and down arrows to recall previous commands.");
             break;
 
         case "pwd":
@@ -303,6 +312,14 @@ export function mountTerminalApp(runtime, windowState, element) {
             view.input.value = state.history[state.historyIndex] || "";
             state.input = view.input.value;
         }
+    });
+
+    // Tapping anywhere on the screen focuses the prompt — important on touch
+    // devices where the input row is a small target at the bottom.
+    view.screen.addEventListener("click", () => {
+        const selection = window.getSelection && String(window.getSelection());
+        if (selection) return;
+        view.input.focus({ preventScroll: true });
     });
 
     if (runtime.activeWindowId === windowState.id) {

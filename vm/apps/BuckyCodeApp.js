@@ -12,6 +12,8 @@
 import { escapeHtml } from "../core/util.js";
 import { logError } from "../core/diagnostics.js";
 
+const INDENT = "  ";
+
 // ----- State -----------------------------------------------------------------
 
 export function createBuckyCodeState(user, filesystem, payload) {
@@ -35,8 +37,9 @@ function renderToolbar(state) {
         <div class="vm-code-file">
             <span class="vm-code-dot${state.dirty ? " is-dirty" : ""}"></span>
             <strong>${escapeHtml(name)}</strong>
+            <span class="vm-code-state${state.dirty ? " is-dirty" : ""}">${state.dirty ? "unsaved changes" : "all changes saved"}</span>
         </div>
-        <button class="vm-code-save" type="button" data-code-save${state.dirty ? "" : " disabled"}>Save</button>
+        <button class="vm-code-save" type="button" data-code-save${state.dirty ? "" : " disabled"}>${state.dirty ? "Save" : "Saved"}</button>
     `;
 }
 
@@ -61,6 +64,36 @@ export function renderBuckyCodeApp(runtime, windowState) {
     return `<div class="vm-buckycode">${renderInner(windowState)}</div>`;
 }
 
+// ----- Helpers ---------------------------------------------------------------
+
+/** Reflect the open file (and its dirty state) in the window title. */
+function syncWindowTitle(runtime, windowState) {
+    const state = windowState.appState;
+    const title = state.path
+        ? `${state.path.split("/").pop()}${state.dirty ? " ●" : ""}`
+        : "BuckyCode";
+    runtime.setWindowTitle(windowState.id, title);
+}
+
+/** Apply edited content to state, updating the dirty indicator + title. */
+function applyContent(runtime, windowState, content) {
+    const state = windowState.appState;
+    state.content = content;
+    const dirty = state.content !== state.savedContent;
+    if (dirty !== state.dirty) {
+        state.dirty = dirty;
+        if (windowState.view.refreshToolbar) windowState.view.refreshToolbar();
+        syncWindowTitle(runtime, windowState);
+    }
+}
+
+/** Focus the editor textarea, if one is mounted. */
+function focusEditor(windowState) {
+    const appElement = windowState.view && windowState.view.appElement;
+    const area = appElement && appElement.querySelector(".vm-code-area");
+    if (area) area.focus({ preventScroll: true });
+}
+
 // ----- Actions ---------------------------------------------------------------
 
 function saveFile(runtime, windowState) {
@@ -77,10 +110,20 @@ function saveFile(runtime, windowState) {
         state.savedContent = state.content;
         state.dirty = false;
         if (windowState.view.refreshToolbar) windowState.view.refreshToolbar();
-        runtime.notify("File saved", state.path);
+        syncWindowTitle(runtime, windowState);
+        runtime.notify("Saved", state.path.split("/").pop());
     } else {
         runtime.notify("Save failed", result.error);
     }
+}
+
+/** Insert an indent at the caret (Tab key) and keep state in sync. */
+function indentSelection(runtime, windowState, textarea) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.value = textarea.value.slice(0, start) + INDENT + textarea.value.slice(end);
+    textarea.selectionStart = textarea.selectionEnd = start + INDENT.length;
+    applyContent(runtime, windowState, textarea.value);
 }
 
 // ----- Lifecycle -------------------------------------------------------------
@@ -104,13 +147,7 @@ export function mountBuckyCodeApp(runtime, windowState, element) {
 
     appElement.addEventListener("input", (event) => {
         if (!event.target.classList.contains("vm-code-area")) return;
-        const state = windowState.appState;
-        state.content = event.target.value;
-        const dirty = state.content !== state.savedContent;
-        if (dirty !== state.dirty) {
-            state.dirty = dirty;
-            view.refreshToolbar();
-        }
+        applyContent(runtime, windowState, event.target.value);
     });
 
     appElement.addEventListener("click", (event) => {
@@ -121,6 +158,11 @@ export function mountBuckyCodeApp(runtime, windowState, element) {
         if ((event.ctrlKey || event.metaKey) && (event.key === "s" || event.key === "S")) {
             event.preventDefault();
             saveFile(runtime, windowState);
+            return;
+        }
+        if (event.key === "Tab" && event.target.classList.contains("vm-code-area")) {
+            event.preventDefault();
+            indentSelection(runtime, windowState, event.target);
         }
     });
 
@@ -133,6 +175,7 @@ export function mountBuckyCodeApp(runtime, windowState, element) {
             state.content = incoming;
             state.savedContent = incoming;
             view.refreshAll();
+            syncWindowTitle(runtime, windowState);
         }
     }));
 
@@ -144,8 +187,12 @@ export function mountBuckyCodeApp(runtime, windowState, element) {
             state.savedContent = "";
             state.dirty = false;
             view.refreshAll();
+            syncWindowTitle(runtime, windowState);
         }
     }));
+
+    syncWindowTitle(runtime, windowState);
+    if (runtime.activeWindowId === windowState.id) focusEditor(windowState);
 }
 
 export function unmountBuckyCodeApp(runtime, windowState) {
@@ -156,6 +203,10 @@ export function unmountBuckyCodeApp(runtime, windowState) {
             logError("BuckyCode cleanup", error);
         }
     });
+}
+
+export function focusBuckyCodeApp(runtime, windowState) {
+    if (!windowState.minimized) focusEditor(windowState);
 }
 
 /** Load a different file into an already-open BuckyCode window (intent). */
@@ -171,5 +222,9 @@ export function applyBuckyCodeIntent(runtime, windowState, payload) {
     state.content = result.content;
     state.savedContent = result.content;
     state.dirty = false;
-    if (windowState.view && windowState.view.refreshAll) windowState.view.refreshAll();
+    if (windowState.view && windowState.view.refreshAll) {
+        windowState.view.refreshAll();
+        focusEditor(windowState);
+    }
+    syncWindowTitle(runtime, windowState);
 }
