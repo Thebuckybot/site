@@ -1476,3 +1476,40 @@ body.vm-focus-active .arcade-vm-bay {
 .vm-code-state.is-dirty {
     color: var(--vm-amber);
 }
+
+/* ===================================================================
+   Phase 1.2 — filesystem-backed desktop icons
+   =================================================================== */
+
+/* Selected desktop icon. */
+.vm-desktop-icon.is-selected {
+    background: rgba(82, 255, 243, .14);
+    border-color: rgba(82, 255, 243, .5);
+}
+
+.vm-desktop-icon.is-selected .vm-desktop-icon-glyph {
+    border-color: rgba(82, 255, 243, .85);
+    box-shadow: 0 0 20px rgba(82, 255, 243, .3), inset 0 1px 0 rgba(255, 255, 255, .14);
+}
+
+/* Glyph tint per desktop item kind (folder / app shortcut / file). */
+.vm-desktop-icon-glyph.vm-glyph-dir {
+    color: var(--vm-amber);
+    border-color: rgba(255, 209, 102, .42);
+}
+
+.vm-desktop-icon-glyph.vm-glyph-link {
+    color: var(--vm-pink);
+    border-color: rgba(255, 63, 209, .42);
+}
+
+/* Empty-desktop hint (rare — the desktop is seeded with app shortcuts). */
+.vm-desktop-empty {
+    grid-column: 1 / -1;
+    margin: 0;
+    max-width: 220px;
+    color: rgba(232, 255, 255, .5);
+    font-size: 11px;
+    line-height: 1.7;
+    text-shadow: 0 2px 8px black;
+}

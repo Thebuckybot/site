@@ -109,15 +109,15 @@ function buildSeedTree(username) {
                         `Welcome ${username || "operator"}.\n` +
                         "This is the Bucky VM virtual filesystem.\n" +
                         "Files and directories you create live for this session only.\n" +
-                        "Try: mkdir scans, touch notes.txt, edit notes.txt",
+                        "Try: mkdir ~/Desktop/intel and touch ~/Desktop/notes.txt — they appear on the desktop.",
                     "mission.txt":
                         "Objective: keep the arcade node warm.\n" +
-                        "Inspect /logs, organise /downloads, and document findings."
-                },
-                desktop: {
-                    "terminal.link": "terminal",
-                    "files.link": "files",
-                    "buckycode.link": "buckycode"
+                        "Inspect /logs, organise /downloads, and document findings.",
+                    Desktop: {
+                        "terminal.link": "terminal",
+                        "files.link": "files",
+                        "buckycode.link": "buckycode"
+                    }
                 }
             }
         },
@@ -155,20 +155,29 @@ function buildSeedTree(username) {
 export function createVirtualFilesystem(username, bus) {
     const user = safeUserName(username);
     const homePath = `/users/${user}/home`;
+    const desktopPath = `${homePath}/Desktop`;
     const tree = buildSeedTree(username);
 
     function emit(eventName, payload) {
         if (bus && typeof bus.emit === "function") bus.emit(eventName, payload);
     }
 
-    /** Resolve an input path against a working directory to an absolute path. */
+    /**
+     * Resolve an input path against a working directory to an absolute path.
+     * A leading "~" expands to the user's home directory (so "~/Desktop"
+     * resolves to the desktop directory).
+     */
     function resolve(cwd, input = "") {
         if (!input || input === ".") return cwd || "/";
-        const parts = input.startsWith("/")
+        let raw = String(input);
+        if (raw === "~" || raw.startsWith("~/")) {
+            raw = homePath + raw.slice(1);
+        }
+        const parts = raw.startsWith("/")
             ? []
             : String(cwd || "/").split("/").filter(Boolean);
 
-        String(input).split("/").filter(Boolean).forEach((part) => {
+        raw.split("/").filter(Boolean).forEach((part) => {
             if (part === ".") return;
             if (part === "..") {
                 parts.pop();
@@ -369,6 +378,7 @@ export function createVirtualFilesystem(username, bus) {
         // metadata
         username: user,
         homePath,
+        desktopPath,
         // path engine
         resolve,
         normalize,

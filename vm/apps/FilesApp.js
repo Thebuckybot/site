@@ -10,26 +10,24 @@
  * content is re-rendered on navigation and on fs:* events (live updates),
  * which never touches the rest of the desktop.
  */
-import { escapeHtml } from "../core/util.js";
+import { escapeHtml, fileIcon } from "../core/util.js";
 import { debugLog, logError } from "../core/diagnostics.js";
 
 const FS_EVENTS = ["fs:node-created", "fs:node-updated", "fs:node-deleted"];
 
 // ----- State -----------------------------------------------------------------
 
-export function createFilesState(user, filesystem) {
+export function createFilesState(user, filesystem, payload) {
+    const start = payload && payload.path && filesystem.isDir(payload.path)
+        ? filesystem.normalize(payload.path)
+        : filesystem.homePath;
     return {
-        cwd: filesystem.homePath,
+        cwd: start,
         selected: null
     };
 }
 
 // ----- Rendering -------------------------------------------------------------
-
-function fileIcon(name) {
-    const extension = String(name).split(".").pop().toUpperCase();
-    return extension && extension.length <= 4 ? extension : "TXT";
-}
 
 function renderSidebar(fs, cwd) {
     const rootButton = `
@@ -217,4 +215,13 @@ export function unmountFilesApp(runtime, windowState) {
             logError("Files cleanup", error);
         }
     });
+}
+
+/** Navigate an already-open Files window to a directory (intent). */
+export function applyFilesIntent(runtime, windowState, payload) {
+    if (!payload || !payload.path || !runtime.filesystem.isDir(payload.path)) return;
+    const state = windowState.appState;
+    state.cwd = runtime.filesystem.normalize(payload.path);
+    state.selected = null;
+    if (windowState.view && windowState.view.refresh) windowState.view.refresh();
 }

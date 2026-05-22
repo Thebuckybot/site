@@ -25,3 +25,9 @@ export function elementFromHtml(html) {
     template.innerHTML = html.trim();
     return template.content.firstElementChild;
 }
+
+/** Short uppercase glyph for a file, derived from its extension. */
+export function fileIcon(name) {
+    const extension = String(name).split(".").pop().toUpperCase();
+    return extension && extension.length <= 4 ? extension : "TXT";
+}

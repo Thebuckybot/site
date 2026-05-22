@@ -27,6 +27,11 @@ import {
 import { renderTaskApps, bindTaskbar } from "../components/Taskbar.js";
 import { renderNotificationItems } from "../components/Notifications.js";
 import {
+    renderDesktopIcons,
+    handleDesktopClick,
+    handleDesktopDblClick
+} from "../components/DesktopManager.js";
+import {
     createTerminalState,
     renderTerminalApp,
     mountTerminalApp,
@@ -37,7 +42,8 @@ import {
     createFilesState,
     renderFilesApp,
     mountFilesApp,
-    unmountFilesApp
+    unmountFilesApp,
+    applyFilesIntent
 } from "../apps/FilesApp.js";
 import {
     createBuckyCodeState,
@@ -64,6 +70,9 @@ export class BuckyVMRuntime {
         this.windows = [];
         // id -> windowState for windows that currently have a mounted element.
         this.windowRegistry = new Map();
+        // Desktop (filesystem-backed) view state.
+        this.desktopSelection = null;
+        this.desktopCleanups = [];
         this.notifications = [];
         this.activeWindowId = null;
         this.nextZ = 20;
@@ -87,16 +96,6 @@ export class BuckyVMRuntime {
         ];
 
         this.apps = createAppRegistry();
-        this.desktopApps = [
-            this.apps.terminal,
-            this.apps.files,
-            this.apps.buckycode,
-            this.apps.notes,
-            this.apps.browser,
-            this.apps.mail,
-            this.apps.database,
-            this.apps.osint
-        ];
 
         this.resizeHandler = () => {
             if (this.phase !== "desktop") return;
@@ -164,10 +163,14 @@ export class BuckyVMRuntime {
     /** Full shell rebuild. Reserved for phase and mode changes. */
     render() {
         this.teardownWindows();
+        this.teardownDesktopView();
         this.constrainWindows();
         this.root.innerHTML = renderVMContainer(this);
         this.bindShell();
-        if (this.phase === "desktop") this.syncWindows();
+        if (this.phase === "desktop") {
+            this.syncWindows();
+            this.mountDesktopView();
+        }
     }
 
     /** Bind the static shell controls. Runs once per full render. */
@@ -177,9 +180,6 @@ export class BuckyVMRuntime {
         root.querySelector("[data-vm-minimize]")?.addEventListener("click", () => this.setMode("embedded"));
         root.querySelector("[data-vm-backdrop]")?.addEventListener("click", () => this.setMode("embedded"));
         root.querySelector("[data-vm-login]")?.addEventListener("click", () => this.startDesktopBoot());
-        root.querySelectorAll("[data-open-app]").forEach((button) => {
-            button.addEventListener("click", () => this.openApp(button.dataset.openApp));
-        });
         bindTaskbar(this);
     }
 
@@ -270,6 +270,44 @@ export class BuckyVMRuntime {
     updateNotifications() {
         const layer = this.root.querySelector(".vm-notifications");
         if (layer) layer.innerHTML = renderNotificationItems(this);
+    }
+
+    /** Targeted update of the desktop icon area from the filesystem. */
+    updateDesktopIcons() {
+        const container = this.root.querySelector(".vm-desktop-icons");
+        if (!container) return;
+        if (this.desktopSelection && !this.filesystem.exists(this.desktopSelection)) {
+            this.desktopSelection = null;
+        }
+        container.innerHTML = renderDesktopIcons(this);
+    }
+
+    /** Bind desktop-icon interaction and subscribe the desktop to fs:* events. */
+    mountDesktopView() {
+        const container = this.root.querySelector(".vm-desktop-icons");
+        if (!container) return;
+        container.addEventListener("click", (event) => handleDesktopClick(this, event));
+        container.addEventListener("dblclick", (event) => handleDesktopDblClick(this, event));
+
+        const desktopPath = this.filesystem.desktopPath;
+        const onFsChange = (payload) => {
+            if (!payload || payload.parentPath === desktopPath) this.updateDesktopIcons();
+        };
+        ["fs:node-created", "fs:node-updated", "fs:node-deleted"].forEach((eventName) => {
+            this.desktopCleanups.push(this.bus.on(eventName, onFsChange));
+        });
+    }
+
+    /** Release the desktop's fs:* subscriptions before a full render. */
+    teardownDesktopView() {
+        this.desktopCleanups.forEach((cleanup) => {
+            try {
+                cleanup();
+            } catch (error) {
+                logError("desktop teardown", error);
+            }
+        });
+        this.desktopCleanups = [];
     }
 
     /**
@@ -626,7 +664,8 @@ function createAppRegistry() {
             createState: createFilesState,
             render: renderFilesApp,
             mount: mountFilesApp,
-            unmount: unmountFilesApp
+            unmount: unmountFilesApp,
+            applyIntent: applyFilesIntent
         },
         buckycode: {
             id: "buckycode",
