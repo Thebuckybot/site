@@ -65,21 +65,31 @@ export function patchWindowElement(runtime, windowState, element) {
     element.style.zIndex = String(windowState.z);
 }
 
-/** Bind drag + window controls for a single window element. */
+/** Minimum pointer travel (px) before a titlebar press becomes a drag. */
+const DRAG_THRESHOLD = 4;
+
+/**
+ * Bind drag + window controls for a single window element.
+ *
+ * Runs exactly once, when the element is created (vmRuntime.syncWindows).
+ * Listeners live on the element and its children, so they are released
+ * automatically when the element is removed — no manual teardown, no leaks.
+ */
 export function bindWindowElement(runtime, windowState, element) {
     const id = windowState.id;
     const handle = element.querySelector("[data-drag-handle]");
 
-    element.addEventListener("pointerdown", (event) => {
-        if (event.target.closest("[data-window-action]")) return;
-        runtime.focusWindow(id);
-    });
+    // Any pointer press inside the window focuses it. A control press stops
+    // propagation (below) so this never runs for a control — the control just
+    // performs its action.
+    element.addEventListener("pointerdown", () => runtime.focusWindow(id));
 
+    // ----- Window controls: minimize / maximize / close ---------------------
     element.querySelectorAll("[data-window-action]").forEach((button) => {
-        button.addEventListener("pointerdown", (event) => {
-            event.stopPropagation();
-            runtime.focusWindow(id);
-        });
+        // Stop the press here: it must not bubble to the titlebar (drag) or the
+        // window (focus). Without this a press on a control could be read as a
+        // drag start, which is what made the controls feel unreliable.
+        button.addEventListener("pointerdown", (event) => event.stopPropagation());
         button.addEventListener("click", (event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -89,31 +99,37 @@ export function bindWindowElement(runtime, windowState, element) {
 
     if (!handle) return;
 
-    // Double-click the titlebar to toggle maximize (standard desktop behaviour).
+    // Double-click the titlebar toggles maximize (standard desktop behaviour).
     handle.addEventListener("dblclick", (event) => {
         if (event.target.closest("[data-window-action]")) return;
         runtime.windowAction(id, "maximize");
     });
 
+    // ----- Titlebar drag ----------------------------------------------------
     handle.addEventListener("pointerdown", (event) => {
+        // A press on a control is never a drag (defence-in-depth: the control
+        // also stops propagation, but the titlebar must not assume that).
+        if (event.target.closest("[data-window-action]")) return;
+        event.stopPropagation();
+
         const current = runtime.getWindow(id);
+        runtime.focusWindow(id);
         if (!current || current.maximized || current.minimized || current.closing) return;
 
-        event.preventDefault();
-        event.stopPropagation();
-        handle.setPointerCapture(event.pointerId);
-        runtime.focusWindow(id);
-        current.dragging = true;
-        element.classList.add("is-dragging");
-
-        const bounds = runtime.getDesktopBounds();
         const startX = event.clientX;
         const startY = event.clientY;
         const initialX = current.x;
         const initialY = current.y;
         let nextX = initialX;
         let nextY = initialY;
+        let dragging = false;
         let frameId = null;
+        let bounds = runtime.getDesktopBounds();
+
+        // Pointer capture keeps events flowing to the handle even when the
+        // pointer leaves the VM; the move/up listeners on `window` are the
+        // robust fallback if capture is unavailable.
+        try { handle.setPointerCapture(event.pointerId); } catch (_) { /* non-fatal */ }
 
         const applyPosition = () => {
             frameId = null;
@@ -124,6 +140,17 @@ export function bindWindowElement(runtime, windowState, element) {
         const move = (moveEvent) => {
             const dx = moveEvent.clientX - startX;
             const dy = moveEvent.clientY - startY;
+
+            if (!dragging) {
+                if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+                const live = runtime.getWindow(id);
+                if (!live || live.maximized || live.minimized || live.closing) return;
+                dragging = true;
+                live.dragging = true;
+                element.classList.add("is-dragging");
+                bounds = runtime.getDesktopBounds();
+            }
+
             const maxX = Math.max(10, bounds.width - current.width - 12);
             const maxY = Math.max(46, bounds.height - current.height - 12);
             nextX = clamp(initialX + dx, 10, maxX);
@@ -131,21 +158,25 @@ export function bindWindowElement(runtime, windowState, element) {
             if (frameId === null) frameId = window.requestAnimationFrame(applyPosition);
         };
 
-        const up = () => {
+        const finish = () => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", finish);
+            window.removeEventListener("pointercancel", finish);
+            try { handle.releasePointerCapture(event.pointerId); } catch (_) { /* non-fatal */ }
             if (frameId !== null) {
                 window.cancelAnimationFrame(frameId);
                 applyPosition();
             }
-            handle.removeEventListener("pointermove", move);
-            handle.removeEventListener("pointerup", up);
-            handle.removeEventListener("pointercancel", up);
-            current.dragging = false;
-            element.classList.remove("is-dragging");
-            runtime.commitWindowPosition(id, nextX, nextY);
+            if (dragging) {
+                const live = runtime.getWindow(id);
+                if (live) live.dragging = false;
+                element.classList.remove("is-dragging");
+                runtime.commitWindowPosition(id, nextX, nextY);
+            }
         };
 
-        handle.addEventListener("pointermove", move);
-        handle.addEventListener("pointerup", up);
-        handle.addEventListener("pointercancel", up);
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", finish);
+        window.addEventListener("pointercancel", finish);
     });
 }

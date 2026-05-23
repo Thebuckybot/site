@@ -51,7 +51,8 @@ import {
     mountBuckyCodeApp,
     unmountBuckyCodeApp,
     applyBuckyCodeIntent,
-    focusBuckyCodeApp
+    focusBuckyCodeApp,
+    matchBuckyCodeWindow
 } from "../apps/BuckyCodeApp.js";
 import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
 
@@ -359,7 +360,7 @@ export class BuckyVMRuntime {
             return;
         }
 
-        const existing = this.windows.find((item) => item.appId === appId && app.singleInstance);
+        const existing = this.findReusableWindow(app, payload);
         if (existing) {
             if (payload && typeof app.applyIntent === "function") {
                 try {
@@ -396,11 +397,43 @@ export class BuckyVMRuntime {
         this.updateTaskbar();
         debugLog("app opened", appId, windowState.id);
 
+        this.invokeOnFocus(windowState);
+    }
+
+    /**
+     * Find an already-open window a launch should reuse instead of opening a
+     * new one. A single-instance app reuses its sole window; a multi-instance
+     * app that defines `matchWindow` reuses a window matching the payload
+     * (e.g. BuckyCode keyed on the open file path). Closing windows are never
+     * reused — reopening an app mid-close-animation must spawn a fresh window,
+     * not silently target a window about to vanish (the cause of an app
+     * appearing to need repeated clicks to reopen).
+     */
+    findReusableWindow(app, payload) {
+        if (app.singleInstance) {
+            return this.windows.find((item) => item.appId === app.id && !item.closing) || null;
+        }
+        if (typeof app.matchWindow === "function") {
+            return this.windows.find((item) => {
+                if (item.appId !== app.id || item.closing) return false;
+                try {
+                    return Boolean(app.matchWindow(this, item, payload));
+                } catch (error) {
+                    logError(`matchWindow(${app.id})`, error);
+                    return false;
+                }
+            }) || null;
+        }
+        return null;
+    }
+
+    /** Re-assert an app's keyboard focus when its window becomes active. */
+    invokeOnFocus(windowState) {
         const element = this.root.querySelector(`[data-window-id="${windowState.id}"]`);
-        const launched = this.apps[windowState.appId];
-        if (element && launched && typeof launched.onFocus === "function") {
+        const app = this.apps[windowState.appId];
+        if (element && app && typeof app.onFocus === "function") {
             try {
-                launched.onFocus(this, windowState, element);
+                app.onFocus(this, windowState, element);
             } catch (error) {
                 logError(`onFocus(${windowState.appId})`, error);
             }
@@ -476,6 +509,16 @@ export class BuckyVMRuntime {
     focusWindow(id) {
         const windowState = this.getWindow(id);
         if (!windowState || windowState.closing) return;
+
+        // Already the active, top, visible window: skip window-layer and
+        // taskbar reconciliation and only re-assert app focus. Every click
+        // inside the active window's body routes here; without this guard each
+        // one would needlessly patch every window and rebuild the taskbar.
+        if (this.activeWindowId === id && windowState.focused && !windowState.minimized) {
+            this.invokeOnFocus(windowState);
+            return;
+        }
+
         this.windows.forEach((item) => {
             item.focused = item.id === id;
         });
@@ -483,16 +526,7 @@ export class BuckyVMRuntime {
         this.activeWindowId = id;
         this.syncWindows();
         this.updateTaskbar();
-
-        const element = this.root.querySelector(`[data-window-id="${id}"]`);
-        const app = this.apps[windowState.appId];
-        if (element && app && typeof app.onFocus === "function") {
-            try {
-                app.onFocus(this, windowState, element);
-            } catch (error) {
-                logError(`onFocus(${windowState.appId})`, error);
-            }
-        }
+        this.invokeOnFocus(windowState);
     }
 
     moveWindow(id, x, y) {
@@ -674,7 +708,11 @@ function createAppRegistry() {
             icon: "COD",
             width: 640,
             height: 430,
-            singleInstance: true,
+            // Multi-instance: several files can be edited side by side. Opening
+            // a file that is already open focuses that window (matchWindow)
+            // instead of spawning a duplicate.
+            singleInstance: false,
+            matchWindow: matchBuckyCodeWindow,
             createState: createBuckyCodeState,
             render: renderBuckyCodeApp,
             mount: mountBuckyCodeApp,

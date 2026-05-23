@@ -5,6 +5,13 @@
  * are clickable; navigation is nested with a breadcrumb path; selecting a
  * file shows a live preview and an "open in BuckyCode" action.
  *
+ * Interaction model (stabilized in Phase 1.2): a single click on a directory
+ * navigates into it; a click on an unselected file selects it (showing its
+ * preview); a click on the already-selected file opens it in BuckyCode. A
+ * fast mouse double-click is therefore naturally select-then-open, and a
+ * touch user taps twice — neither path depends on `dblclick` timing. A
+ * `dblclick` handler remains purely as a convenience accelerator.
+ *
  * Rendering: the app holds only `cwd` + `selected` in its state. A single
  * delegated click listener lives on the `.vm-files-app` element; the inner
  * content is re-rendered on navigation and on fs:* events (live updates),
@@ -12,6 +19,7 @@
  */
 import { escapeHtml, fileIcon } from "../core/util.js";
 import { debugLog, logError } from "../core/diagnostics.js";
+import { renderMarkdown, isMarkdownName } from "../core/markdown.js";
 
 const FS_EVENTS = ["fs:node-created", "fs:node-updated", "fs:node-deleted"];
 
@@ -36,7 +44,7 @@ function renderSidebar(fs, cwd) {
         </button>
     `;
     const entries = fs.list("/").map((entry) => `
-        <button class="vm-file-source${cwd === entry.path ? " is-active" : ""}" type="button" data-files-nav data-path="${entry.path}">
+        <button class="vm-file-source${cwd === entry.path ? " is-active" : ""}" type="button" data-files-nav data-path="${escapeHtml(entry.path)}">
             <span>${entry.type === "dir" ? "DIR" : "TXT"}</span>${escapeHtml(entry.name)}
         </button>
     `).join("");
@@ -49,7 +57,7 @@ function renderBreadcrumb(cwd) {
     let accumulated = "";
     segments.forEach((segment) => {
         accumulated += `/${segment}`;
-        crumbs.push(`<button class="vm-files-crumb" type="button" data-files-nav data-path="${accumulated}">${escapeHtml(segment)}</button>`);
+        crumbs.push(`<button class="vm-files-crumb" type="button" data-files-nav data-path="${escapeHtml(accumulated)}">${escapeHtml(segment)}</button>`);
     });
     return crumbs.join('<span class="vm-files-crumb-sep">›</span>');
 }
@@ -73,9 +81,12 @@ function renderGrid(entries, selected) {
         const marker = isFile ? "data-files-file" : "data-files-dir";
         const active = isFile && entry.path === selected ? " is-selected" : "";
         const icon = isFile ? fileIcon(entry.name) : "DIR";
+        const kindClass = isFile
+            ? (isMarkdownName(entry.name) ? " vm-file-icon-md" : "")
+            : " vm-file-icon-dir";
         return `
-            <button class="vm-file-tile${active}" type="button" ${marker} data-path="${entry.path}">
-                <div class="vm-file-icon">${icon}</div>
+            <button class="vm-file-tile${active}" type="button" ${marker} data-path="${escapeHtml(entry.path)}">
+                <div class="vm-file-icon${kindClass}">${escapeHtml(icon)}</div>
                 <span>${escapeHtml(entry.name)}</span>
             </button>
         `;
@@ -87,14 +98,18 @@ function renderPreview(fs, selected) {
     const result = fs.read(selected);
     if (!result.ok) return "";
     const stat = fs.stat(selected);
+    const name = stat ? stat.name : selected;
+    const body = isMarkdownName(name)
+        ? `<div class="vm-files-preview-body vm-files-preview-md">${renderMarkdown(result.content)}</div>`
+        : `<pre class="vm-files-preview-body">${escapeHtml(result.content) || "(empty file)"}</pre>`;
     return `
         <div class="vm-files-preview">
             <div class="vm-files-preview-head">
-                <strong>${escapeHtml(stat ? stat.name : selected)}</strong>
+                <strong>${escapeHtml(name)}</strong>
                 <button class="vm-files-open-btn" type="button" data-files-open>Open in BuckyCode</button>
             </div>
             <div class="vm-files-preview-meta">owner: ${escapeHtml(stat ? stat.owner : "?")} · ${result.content.length} chars</div>
-            <pre class="vm-files-preview-body">${escapeHtml(result.content) || "(empty file)"}</pre>
+            ${body}
         </div>
     `;
 }
@@ -102,7 +117,17 @@ function renderPreview(fs, selected) {
 /** Render the inner content of the Files app for the current state. */
 function renderFilesInner(runtime, windowState) {
     const fs = runtime.filesystem;
-    const { cwd, selected } = windowState.appState;
+    const state = windowState.appState;
+    // Drop a selection whose file no longer exists, so a deleted file never
+    // lingers as a stale highlight or a dead preview.
+    if (state.selected && !fs.exists(state.selected)) {
+        state.selected = null;
+    }
+    // Fall back to root if the current directory was removed underneath us.
+    if (!fs.isDir(state.cwd)) {
+        state.cwd = "/";
+    }
+    const { cwd, selected } = state;
     const entries = fs.list(cwd);
     return `
         <aside class="vm-files-sidebar">${renderSidebar(fs, cwd)}</aside>
@@ -153,8 +178,14 @@ function handleClick(runtime, windowState, event) {
 
     const file = event.target.closest("[data-files-file]");
     if (file) {
-        state.selected = state.selected === file.dataset.path ? null : file.dataset.path;
-        windowState.view.refresh();
+        const path = file.dataset.path;
+        if (state.selected === path) {
+            // Second activation of the selected file opens it.
+            runtime.openApp("buckycode", { path });
+        } else {
+            state.selected = path;
+            windowState.view.refresh();
+        }
         return;
     }
 
@@ -179,7 +210,9 @@ export function mountFilesApp(runtime, windowState, element) {
 
     appElement.addEventListener("click", (event) => handleClick(runtime, windowState, event));
 
-    // Double-click a file to open it directly in BuckyCode.
+    // Double-click a file is a convenience accelerator: open immediately.
+    // Opening BuckyCode is de-duplicated by path, so this is idempotent even
+    // when it follows the click-to-open above.
     appElement.addEventListener("dblclick", (event) => {
         const file = event.target.closest("[data-files-file]");
         if (!file) return;

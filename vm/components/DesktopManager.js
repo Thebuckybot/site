@@ -6,15 +6,25 @@
  * `fs.list(desktopPath)`, so anything created there (in the terminal, by an
  * app, anywhere) appears instantly.
  *
- * Rendering: `renderDesktop` paints the scaffold once. After that the runtime
- * updates only the `.vm-desktop-icons` container (see vmRuntime.updateDesktopIcons)
- * in response to fs:* events — never a full desktop rerender.
+ * Rendering: `renderDesktop` paints the scaffold once. The runtime updates
+ * only the `.vm-desktop-icons` container (see vmRuntime.updateDesktopIcons) in
+ * response to fs:* events — never a full desktop rerender.
+ *
+ * Interaction model (stabilized in Phase 1.2):
+ *   The desktop is driven entirely by `click`. A click on an unselected icon
+ *   selects it; a click on an already-selected icon opens it. A fast mouse
+ *   double-click is naturally select-then-open; a touch user taps once to
+ *   select and once to open. This avoids depending on `dblclick` timing and,
+ *   crucially, never rebuilds the icon DOM between the two interactions —
+ *   selection is a targeted class patch, so the element a user is double-
+ *   tapping is never destroyed mid-gesture (the old root cause of unreliable
+ *   "spam clicking required" opening).
  *
  * Desktop item kinds:
- *   - dir   a directory          → double-click opens it in the Files app
+ *   - dir   a directory          → opens it in the Files app
  *   - link  an application shortcut (.link file, content = app id)
- *                                → double-click launches that app
- *   - file  any other file       → double-click opens it in BuckyCode
+ *                                → launches that app
+ *   - file  any other file       → opens it in BuckyCode
  */
 import { renderTaskbar } from "./Taskbar.js";
 import { escapeHtml, fileIcon } from "../core/util.js";
@@ -78,7 +88,7 @@ export function renderDesktop(runtime) {
                 <span>BUCKY x ${escapeHtml(runtime.user.username)} VM</span>
                 <strong>ARCADE WORKSTATION ONLINE</strong>
             </div>
-            <div class="vm-desktop-icons">${renderDesktopIcons(runtime)}</div>
+            <div class="vm-desktop-icons" role="listbox" aria-label="Desktop">${renderDesktopIcons(runtime)}</div>
             <div class="vm-window-layer"></div>
             ${renderTaskbar(runtime)}
         </div>
@@ -87,25 +97,65 @@ export function renderDesktop(runtime) {
 
 // ----- Interaction -----------------------------------------------------------
 
-/** Single click: select an icon (or clear the selection on empty space). */
-export function handleDesktopClick(runtime, event) {
-    const item = event.target.closest("[data-desktop-item]");
-    const nextSelection = item ? item.dataset.path : null;
-    if (runtime.desktopSelection === nextSelection) return;
-    runtime.desktopSelection = nextSelection;
-    runtime.updateDesktopIcons();
-}
-
-/** Double click: open the item — folders in Files, links as apps, files in BuckyCode. */
-export function handleDesktopDblClick(runtime, event) {
-    const item = event.target.closest("[data-desktop-item]");
-    if (!item) return;
+/** Open a desktop item — folders in Files, links as apps, files in BuckyCode. */
+function openDesktopItem(runtime, item) {
     const { kind, path, target } = item.dataset;
     if (kind === "dir") {
         runtime.openApp("files", { path });
     } else if (kind === "link") {
-        runtime.openApp(target);
-    } else {
+        if (target) runtime.openApp(target);
+    } else if (path) {
         runtime.openApp("buckycode", { path });
     }
+}
+
+/**
+ * Apply the desktop selection as a targeted class patch.
+ * Never rebuilds the icon container, so a double-tap gesture is never
+ * interrupted by DOM replacement.
+ */
+function setDesktopSelection(runtime, container, path, itemEl) {
+    if (runtime.desktopSelection === path) return;
+    if (container) {
+        const previous = container.querySelector(".vm-desktop-icon.is-selected");
+        if (previous) previous.classList.remove("is-selected");
+        if (itemEl) itemEl.classList.add("is-selected");
+    }
+    runtime.desktopSelection = path;
+}
+
+/**
+ * Desktop click handler (delegated, bound once on the icon container).
+ * First click selects an icon; a second click on the same icon opens it.
+ * A click on empty desktop space clears the selection.
+ */
+export function handleDesktopClick(runtime, event) {
+    const container = event.currentTarget;
+    const item = event.target.closest("[data-desktop-item]");
+
+    if (!item) {
+        setDesktopSelection(runtime, container, null, null);
+        return;
+    }
+
+    const path = item.dataset.path;
+    if (runtime.desktopSelection === path) {
+        openDesktopItem(runtime, item);
+        return;
+    }
+    setDesktopSelection(runtime, container, path, item);
+}
+
+/**
+ * Double-click is a convenience accelerator: open immediately regardless of
+ * prior selection. The click handler already makes two taps open reliably;
+ * this simply lets an eager mouse double-click open an unselected icon in one
+ * gesture. Re-opening an app is idempotent (single-instance focuses; file
+ * apps de-duplicate), so the extra activation is harmless.
+ */
+export function handleDesktopDblClick(runtime, event) {
+    const item = event.target.closest("[data-desktop-item]");
+    if (!item) return;
+    setDesktopSelection(runtime, event.currentTarget, item.dataset.path, item);
+    openDesktopItem(runtime, item);
 }

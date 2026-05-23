@@ -157,9 +157,15 @@ body.vm-focus-active .arcade-vm-bay {
     transition: opacity 240ms var(--vm-ease), transform 240ms var(--vm-ease), background 240ms var(--vm-ease), border-color 240ms var(--vm-ease);
 }
 
+/* The VM frame controls live top-LEFT. Window control buttons (minimize /
+   maximize / close) are always at a window's top-RIGHT and, because windows
+   start at x >= 98 and never narrower than 330px, never reach x < ~230. Keeping
+   the frame controls in the top-left corner therefore guarantees they can never
+   sit over — and intercept clicks meant for — a window's own controls, even
+   when a window is maximized. */
 .vm-expand-button {
     top: 14px;
-    right: 14px;
+    left: 14px;
     border-radius: 9px;
 }
 
@@ -172,7 +178,7 @@ body.vm-focus-active .arcade-vm-bay {
 
 .vm-minimize-button {
     top: 16px;
-    right: 58px;
+    left: 54px;
     border-radius: 9px;
 }
 
@@ -381,6 +387,7 @@ body.vm-focus-active .arcade-vm-bay {
     position: absolute;
     inset: 0;
     overflow: hidden;
+    pointer-events: none;
     background:
         linear-gradient(180deg, rgba(6, 18, 37, .96) 0%, rgba(5, 8, 19, .98) 54%, rgba(16, 5, 23, .98) 100%),
         radial-gradient(circle at 48% 34%, rgba(255, 63, 209, .13), transparent 34%),
@@ -485,6 +492,7 @@ body.vm-focus-active .arcade-vm-bay {
     position: absolute;
     top: 26px;
     right: 28px;
+    pointer-events: none;
     display: grid;
     gap: 4px;
     text-align: right;
@@ -1513,3 +1521,158 @@ body.vm-focus-active .arcade-vm-bay {
     line-height: 1.7;
     text-shadow: 0 2px 8px black;
 }
+
+/* ===================================================================
+   Phase 1.2 — BuckyCode editor body, markdown preview + rendering
+   =================================================================== */
+
+/* The editor body host: the textarea or the markdown preview fills it. */
+.vm-code-main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.vm-code-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Preview / Edit mode toggle (markdown files only). */
+.vm-code-preview-toggle {
+    color: var(--vm-cyan);
+    border: 1px solid rgba(82, 255, 243, .4);
+    border-radius: 6px;
+    padding: 6px 12px;
+    background: rgba(82, 255, 243, .08);
+    font: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 160ms var(--vm-ease), border-color 160ms var(--vm-ease), color 160ms var(--vm-ease);
+}
+
+.vm-code-preview-toggle:hover {
+    border-color: rgba(82, 255, 243, .7);
+    background: rgba(82, 255, 243, .16);
+}
+
+.vm-code-preview-toggle.is-active {
+    color: #02050d;
+    background: var(--vm-cyan);
+    border-color: var(--vm-cyan);
+}
+
+/* Rendered markdown surface. */
+.vm-code-preview {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 16px 20px;
+    color: #d9ffe8;
+    background:
+        repeating-linear-gradient(to bottom, rgba(255,255,255,.02), rgba(255,255,255,.02) 1px, transparent 1px, transparent 4px),
+        #020704;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.62;
+    touch-action: pan-y;
+}
+
+.vm-md-h {
+    margin: 16px 0 8px;
+    color: var(--vm-cyan);
+    line-height: 1.3;
+    text-shadow: 0 0 12px rgba(82, 255, 243, .35);
+}
+
+.vm-md-h1 { font-size: 22px; }
+.vm-md-h2 { font-size: 18px; }
+.vm-md-h3 { font-size: 15px; }
+.vm-md-h4,
+.vm-md-h5,
+.vm-md-h6 { font-size: 13px; color: var(--vm-pink); }
+
+.vm-code-preview > .vm-md-h:first-child,
+.vm-code-preview > .vm-md-p:first-child { margin-top: 0; }
+
+.vm-md-p { margin: 0 0 10px; }
+
+.vm-md-list {
+    margin: 0 0 10px;
+    padding-left: 22px;
+}
+
+.vm-md-list li { margin: 3px 0; }
+
+.vm-md-code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(82, 255, 243, .12);
+    color: var(--vm-cyan);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: .92em;
+}
+
+.vm-md-pre {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    overflow: auto;
+    border: 1px solid rgba(82, 255, 243, .2);
+    border-radius: 8px;
+    background: #010306;
+}
+
+.vm-md-pre code {
+    color: #c8ffd2;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre;
+}
+
+.vm-md-link {
+    color: var(--vm-pink);
+    text-decoration: underline;
+}
+
+.vm-md-hr {
+    margin: 14px 0;
+    border: 0;
+    border-top: 1px solid rgba(82, 255, 243, .24);
+}
+
+.vm-md-empty {
+    color: rgba(232, 255, 255, .5);
+    font-style: italic;
+}
+
+/* ===================================================================
+   Phase 1.2 — Files app polish: file-kind icons + markdown preview
+   =================================================================== */
+
+.vm-file-icon-dir {
+    background: rgba(255, 209, 102, .14);
+    color: var(--vm-amber);
+}
+
+.vm-file-icon-md {
+    background: rgba(255, 63, 209, .14);
+    color: var(--vm-pink);
+}
+
+/* Markdown rendered inside the Files preview pane — normal prose flow,
+   overriding the monospace pre-wrap of the raw-text preview body. */
+.vm-files-preview-md {
+    padding: 12px 14px;
+    color: #d9ffe8;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 12.5px;
+    line-height: 1.6;
+    white-space: normal;
+    word-break: normal;
+}
+
+.vm-files-preview-md .vm-md-h { margin: 12px 0 6px; }
+.vm-files-preview-md > :first-child { margin-top: 0; }

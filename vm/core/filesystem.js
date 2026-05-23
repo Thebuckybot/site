@@ -27,6 +27,8 @@ const MIME_BY_EXTENSION = {
     log: "text/log",
     json: "application/json",
     md: "text/markdown",
+    markdown: "text/markdown",
+    py: "text/x-python",
     sys: "text/plain",
     link: "application/bucky-link",
     pkg: "application/bucky-package",
@@ -43,6 +45,7 @@ function safeUserName(username) {
     return String(username || "operator").replace(/[^\w.-]/g, "_");
 }
 
+/** Current session-clock timestamp (see filesystem.md section 7.1). */
 function now() {
     return Date.now();
 }
@@ -116,7 +119,22 @@ function buildSeedTree(username) {
                     Desktop: {
                         "terminal.link": "terminal",
                         "files.link": "files",
-                        "buckycode.link": "buckycode"
+                        "buckycode.link": "buckycode",
+                        "welcome.md":
+                            "# Bucky VM\n\n" +
+                            "Welcome to the **Bucky VM** — a fictional cybersecurity workstation.\n\n" +
+                            "## Getting started\n\n" +
+                            "- Open the *Terminal* and type `help`\n" +
+                            "- Create files with `touch ~/Desktop/notes.txt`\n" +
+                            "- Edit any file in *BuckyCode*\n\n" +
+                            "## Markdown\n\n" +
+                            "BuckyCode renders `.md` files. Use the **Preview** toggle in the\n" +
+                            "toolbar to switch between editing and reading.\n\n" +
+                            "```\nstatus: online\nnode: arcade-01\n```\n\n" +
+                            "More intel lives in [the Warren wiki](bnet://warren).\n",
+                        projects: {
+                            "scratch.txt": "Scratch notes for the arcade node.\n"
+                        }
                     }
                 }
             }
