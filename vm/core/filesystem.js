@@ -120,6 +120,7 @@ function buildSeedTree(username) {
                         "terminal.link": "terminal",
                         "files.link": "files",
                         "buckycode.link": "buckycode",
+                        "browser.link": "browser",
                         "welcome.md":
                             "# Bucky VM\n\n" +
                             "Welcome to the **Bucky VM** — a fictional cybersecurity workstation.\n\n" +
@@ -131,7 +132,7 @@ function buildSeedTree(username) {
                             "BuckyCode renders `.md` files. Use the **Preview** toggle in the\n" +
                             "toolbar to switch between editing and reading.\n\n" +
                             "```\nstatus: online\nnode: arcade-01\n```\n\n" +
-                            "More intel lives in [the Warren wiki](bnet://warren).\n",
+                            "More intel lives in [BuckyWiki](bucky://wiki).\n",
                         projects: {
                             "scratch.txt": "Scratch notes for the arcade node.\n"
                         }
@@ -154,7 +155,7 @@ function buildSeedTree(username) {
         },
         system: {
             "version.sys": "Bucky OS 0.2 filesystem runtime",
-            "apps.sys": "terminal files buckycode"
+            "apps.sys": "terminal files buckycode browser"
         }
     };
 

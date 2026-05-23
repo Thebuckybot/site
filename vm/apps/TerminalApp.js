@@ -132,6 +132,7 @@ function execCommand(runtime, state, raw) {
             out("output", "  edit <file>     open a file in BuckyCode (creates it if missing)");
             out("output", "  open <target>   open a file in BuckyCode, or open the Files app");
             out("output", "  files           open the Files app");
+            out("output", "  browser [url]   open the BuckyNet browser (optionally at a bucky:// url)");
             out("output", "  chmod +x <file> mark a file executable (VM metadata only)");
             out("output", "  python <file>   run a Python file in the simulated VM runtime");
             out("output", "  ./<file>        run an executable script directly");
@@ -269,6 +270,15 @@ function execCommand(runtime, state, raw) {
             runtime.openApp("files");
             out("success", "Opening Files runtime...");
             break;
+
+        case "browser": {
+            const target = args.join(" ").trim();
+            runtime.openApp("browser", target ? { url: target } : undefined);
+            out("success", target
+                ? `Opening BuckyNet browser → ${target}`
+                : "Opening BuckyNet browser...");
+            break;
+        }
 
         case "chmod": {
             const mode = args[0];

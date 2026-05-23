@@ -54,6 +54,12 @@ import {
     focusBuckyCodeApp,
     matchBuckyCodeWindow
 } from "../apps/BuckyCodeApp.js";
+import {
+    createBrowserState,
+    renderBrowserApp,
+    mountBrowserApp,
+    unmountBrowserApp
+} from "../apps/browser/BrowserApp.js";
 import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
 
 const FALLBACK_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
@@ -725,8 +731,23 @@ function createAppRegistry() {
             onFocus: focusBuckyCodeApp,
             applyIntent: applyBuckyCodeIntent
         },
+        browser: {
+            id: "browser",
+            title: "Browser",
+            label: "Browser",
+            icon: "NET",
+            width: 760,
+            height: 520,
+            // Multi-instance: each browser window is an independent browsing
+            // context with its own history and viewport. No matchWindow —
+            // every launch opens a fresh window (Phase 3A; tabs are Phase 3B).
+            singleInstance: false,
+            createState: createBrowserState,
+            render: renderBrowserApp,
+            mount: mountBrowserApp,
+            unmount: unmountBrowserApp
+        },
         notes: placeholder("notes", "Apps", "Future app launcher and runtime registry under construction."),
-        browser: placeholder("browser", "Browser", "Internal browser sandbox under construction."),
         mail: placeholder("mail", "Mail", "Secure mailbox under construction."),
         database: placeholder("database", "Database", "Database viewer under construction."),
         osint: placeholder("osint", "OSINT", "Investigation toolkit under construction.")
