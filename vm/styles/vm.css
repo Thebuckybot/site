@@ -1676,3 +1676,229 @@ body.vm-focus-active .arcade-vm-bay {
 
 .vm-files-preview-md .vm-md-h { margin: 12px 0 6px; }
 .vm-files-preview-md > :first-child { margin-top: 0; }
+
+/* ===================================================================
+   Phase 2A — BuckyCode dev environment: highlight overlay, Run panel
+   =================================================================== */
+
+/* The editor body host. */
+.vm-code-main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.vm-code-workarea {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.vm-code-outwrap {
+    flex: none;
+}
+
+/* --- Syntax-highlight overlay -------------------------------------- */
+/* A transparent <textarea> sits exactly over a highlighted <pre>. Both
+   share identical text metrics so the caret tracks the coloured text. */
+.vm-code-editor {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    background:
+        repeating-linear-gradient(to bottom, rgba(255,255,255,.022), rgba(255,255,255,.022) 1px, transparent 1px, transparent 4px),
+        #020704;
+}
+
+.vm-code-highlight,
+.vm-code-area {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 14px 16px;
+    border: 0;
+    box-sizing: border-box;
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    letter-spacing: .01em;
+    tab-size: 4;
+    white-space: pre;
+    word-wrap: normal;
+    overflow-wrap: normal;
+}
+
+.vm-code-highlight {
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+    color: #d9ffe8;
+}
+
+.vm-code-area {
+    overflow: auto;
+    resize: none;
+    outline: 0;
+    z-index: 2;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    caret-color: var(--vm-cyan);
+    background: transparent;
+}
+
+.vm-code-area::selection {
+    background: rgba(82, 255, 243, .26);
+}
+
+.vm-code-area::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.vm-code-area::-webkit-scrollbar-thumb {
+    border-radius: 8px;
+    background: rgba(82, 255, 243, .22);
+}
+
+/* --- Syntax tokens ------------------------------------------------- */
+.tok-comment { color: #5f7d6e; font-style: italic; }
+.tok-string  { color: #84ff9b; }
+.tok-number  { color: #ffd166; }
+.tok-keyword { color: #ff5fd6; font-weight: 600; }
+.tok-const   { color: #ff8a5c; }
+.tok-builtin { color: #52fff3; }
+.tok-fn      { color: #6fd3ff; }
+.tok-key     { color: #52fff3; }
+.tok-punct   { color: rgba(232, 255, 255, .5); }
+.tok-md-heading { color: #52fff3; font-weight: 700; }
+.tok-md-quote   { color: #9fb6c9; font-style: italic; }
+.tok-md-fence   { color: #ff8a5c; }
+.tok-md-marker  { color: #ff5fd6; font-weight: 700; }
+.tok-md-code    { color: #84ff9b; }
+.tok-md-strong  { color: #ffd166; font-weight: 700; }
+.tok-md-link    { color: #ff5fd6; }
+.tok-log-error  { color: #ff4f6d; font-weight: 700; }
+.tok-log-warn   { color: #ffd166; }
+.tok-log-info   { color: #84ff9b; }
+.tok-log-time   { color: #52fff3; }
+
+/* --- Run button + output panel ------------------------------------ */
+.vm-code-run {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #02120a;
+    border: 0;
+    border-radius: 6px;
+    padding: 6px 13px;
+    background: var(--vm-green);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: filter 160ms var(--vm-ease), transform 160ms var(--vm-ease);
+}
+
+.vm-code-run:hover {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+}
+
+.vm-code-output {
+    display: flex;
+    flex-direction: column;
+    max-height: 220px;
+    border-top: 1px solid rgba(82, 255, 243, .26);
+    background: #01040a;
+}
+
+.vm-code-output-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 12px;
+    color: var(--vm-green);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    border-bottom: 1px solid rgba(132, 255, 155, .16);
+    background: rgba(132, 255, 155, .05);
+}
+
+.vm-code-output.is-error .vm-code-output-head {
+    color: var(--vm-red);
+    border-bottom-color: rgba(255, 79, 109, .22);
+    background: rgba(255, 79, 109, .07);
+}
+
+.vm-code-output-clear {
+    color: inherit;
+    border: 1px solid currentColor;
+    border-radius: 5px;
+    padding: 2px 9px;
+    background: transparent;
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    touch-action: manipulation;
+    opacity: .8;
+}
+
+.vm-code-output-clear:hover { opacity: 1; }
+
+.vm-code-output-body {
+    margin: 0;
+    overflow: auto;
+    padding: 10px 14px;
+    color: #c8ffd2;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.vm-code-output-error { color: var(--vm-red); }
+.vm-code-output-dim { color: rgba(232, 255, 255, .45); font-style: italic; }
+
+/* --- Markdown additions: blockquote, details, fence label --------- */
+.vm-md-quote {
+    margin: 0 0 10px;
+    padding: 6px 12px;
+    border-left: 3px solid rgba(82, 255, 243, .5);
+    border-radius: 0 6px 6px 0;
+    background: rgba(82, 255, 243, .06);
+    color: rgba(232, 255, 255, .82);
+}
+
+.vm-md-fence-lang {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--vm-pink);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+.vm-md-list .vm-md-list { margin: 4px 0; }
+
+.vm-code-preview details,
+.vm-files-preview-md details {
+    margin: 0 0 10px;
+    padding: 6px 12px;
+    border: 1px solid rgba(82, 255, 243, .22);
+    border-radius: 8px;
+    background: rgba(82, 255, 243, .04);
+}
+
+.vm-code-preview summary,
+.vm-files-preview-md summary {
+    cursor: pointer;
+    color: var(--vm-cyan);
+    font-weight: 600;
+}

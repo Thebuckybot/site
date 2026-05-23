@@ -11,6 +11,7 @@
  */
 import { escapeHtml } from "../core/util.js";
 import { logError } from "../core/diagnostics.js";
+import { executeFile, isRunnable, runtimeForName } from "../core/execution.js";
 
 // ----- State -----------------------------------------------------------------
 
@@ -46,6 +47,48 @@ function tokenize(commandLine) {
     if (!commandLine) return [];
     const matches = commandLine.match(/"([^"]*)"|'([^']*)'|\S+/g) || [];
     return matches.map((item) => item.replace(/^["']|["']$/g, ""));
+}
+
+/**
+ * Execute a VM file through the simulated execution layer and stream its
+ * result into the terminal scrollback. No real code ever runs — see
+ * core/execution.js and core/pseudoPython.js.
+ */
+function runScriptFile(runtime, path, out) {
+    const result = executeFile(runtime.filesystem, path);
+    (result.output || []).forEach((line) => out("output", line));
+    if (result.error) {
+        out("error", result.error);
+    } else if (!result.output || !result.output.length) {
+        out("system", "(no output)");
+    }
+}
+
+/**
+ * Run a path invoked directly (./script.py, ~/bin/tool.py, /abs/path). Like a
+ * real shell this requires the executable flag — set it with `chmod +x`.
+ */
+function runDirectPath(runtime, state, command, out) {
+    const fs = runtime.filesystem;
+    const targetPath = fs.resolve(state.cwd, command);
+    const node = fs.get(targetPath);
+    if (!node) {
+        out("error", `${command}: No such file or directory`);
+        return;
+    }
+    if (node.type === "dir") {
+        out("error", `${command}: Is a directory`);
+        return;
+    }
+    if (!node.flags || !node.flags.executable) {
+        out("error", `${command}: Permission denied — run: chmod +x ${command}`);
+        return;
+    }
+    if (!isRunnable(node.name)) {
+        out("error", `${command}: no VM runtime can execute this file`);
+        return;
+    }
+    runScriptFile(runtime, targetPath, out);
 }
 
 /**
@@ -89,6 +132,9 @@ function execCommand(runtime, state, raw) {
             out("output", "  edit <file>     open a file in BuckyCode (creates it if missing)");
             out("output", "  open <target>   open a file in BuckyCode, or open the Files app");
             out("output", "  files           open the Files app");
+            out("output", "  chmod +x <file> mark a file executable (VM metadata only)");
+            out("output", "  python <file>   run a Python file in the simulated VM runtime");
+            out("output", "  ./<file>        run an executable script directly");
             out("output", "  clear           clear the terminal screen");
             out("system", "Files and folders you create are shared live with Files and BuckyCode.");
             out("system", "Use the up and down arrows to recall previous commands.");
@@ -224,7 +270,66 @@ function execCommand(runtime, state, raw) {
             out("success", "Opening Files runtime...");
             break;
 
+        case "chmod": {
+            const mode = args[0];
+            const fileArg = args[1];
+            if (!mode || !fileArg) {
+                out("error", "chmod: usage: chmod +x <file>");
+                break;
+            }
+            if (mode !== "+x" && mode !== "-x") {
+                out("error", `chmod: unsupported mode '${mode}' (use +x or -x)`);
+                break;
+            }
+            const targetPath = fs.resolve(state.cwd, fileArg);
+            const node = fs.get(targetPath);
+            if (!node) {
+                out("error", `chmod: cannot access '${fileArg}': No such file or directory`);
+                break;
+            }
+            if (node.type === "dir") {
+                out("error", `chmod: '${fileArg}': Is a directory`);
+                break;
+            }
+            const result = fs.setFlag(targetPath, "executable", mode === "+x");
+            if (result.ok) {
+                out("success", `${mode === "+x" ? "marked executable" : "cleared executable bit"}: ${result.path}`);
+            } else {
+                out("error", `chmod: ${result.error}`);
+            }
+            break;
+        }
+
+        case "python":
+        case "python3": {
+            if (!args[0]) {
+                out("error", "python: usage: python <file.py>");
+                break;
+            }
+            const targetPath = fs.resolve(state.cwd, args[0]);
+            const node = fs.get(targetPath);
+            if (!node) {
+                out("error", `python: can't open file '${args[0]}': No such file or directory`);
+                break;
+            }
+            if (node.type === "dir") {
+                out("error", `python: '${args[0]}': is a directory`);
+                break;
+            }
+            if (runtimeForName(node.name) !== "python") {
+                out("error", `python: '${args[0]}': not a Python (.py) file`);
+                break;
+            }
+            runScriptFile(runtime, targetPath, out);
+            break;
+        }
+
         default:
+            // A path invoked directly — ./script.py, ~/tool.py, /abs/path.
+            if (/^(\.\/|\.\.\/|\/|~\/)/.test(command)) {
+                runDirectPath(runtime, state, command, out);
+                break;
+            }
             out("error", `${command}: command not found`);
     }
 

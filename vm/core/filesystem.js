@@ -392,6 +392,24 @@ export function createVirtualFilesystem(username, bus) {
         return { ok: true, path: target };
     }
 
+    /**
+     * Set a behaviour flag on a node (e.g. `executable`). This is the data
+     * layer behind the terminal's `chmod` — it mutates VM metadata only and
+     * never touches the host OS. Emits fs:node-updated so views can react.
+     */
+    function setFlag(path, flag, value) {
+        const target = normalize(path);
+        const node = nodeAt(target);
+        if (!node) return fail("setFlag", `No such file or directory '${path}'`);
+        node.flags = node.flags || {};
+        node.flags[flag] = value;
+        node.modifiedAt = now();
+        const { parentPath } = parentOf(target);
+        debugLog("fs setFlag", target, flag, value);
+        emit("fs:node-updated", { path: target, parentPath, node });
+        return { ok: true, path: target, node };
+    }
+
     return {
         // metadata
         username: user,
@@ -412,6 +430,7 @@ export function createVirtualFilesystem(username, bus) {
         mkdir,
         touch,
         write,
-        remove
+        remove,
+        setFlag
     };
 }

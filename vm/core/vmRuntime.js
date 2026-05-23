@@ -600,7 +600,12 @@ export class BuckyVMRuntime {
             this.constrainWindows();
         }
 
+        // focusWindow may early-return without reconciling when this window is
+        // already active; syncWindows then guarantees the new maximize/restore
+        // geometry is patched to the DOM. Without this, clicking maximize on
+        // the already-focused window changed state but never re-rendered.
         this.focusWindow(id);
+        this.syncWindows();
     }
 
     closeWindow(id) {
