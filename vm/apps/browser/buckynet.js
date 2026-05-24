@@ -22,6 +22,9 @@ import { registerWikiSite } from "./sites/wiki.js";
 import { registerTubeSite } from "./sites/tube.js";
 import { registerDevSite } from "./sites/dev.js";
 import { registerLeaksSite } from "./sites/leaks.js";
+import { registerBuckySite } from "./sites/bucky.js";
+import { registerCommunitySite } from "./sites/community.js";
+import { registerHiddenSites } from "./sites/hidden.js";
 
 /** @type {ReturnType<typeof createSiteRegistry>|null} */
 let registry = null;
@@ -37,10 +40,15 @@ export function getBuckyNet() {
 
     // Order is cosmetic — resolution is keyed by URL, search is keyed by score.
     registerSearchSite(registry);
+    registerBuckySite(registry);
     registerWikiSite(registry);
     registerTubeSite(registry);
     registerDevSite(registry);
     registerLeaksSite(registry);
+    registerCommunitySite(registry);
+    // Hidden pages are searchable:false — present for direct routing, absent
+    // from PulseSearch. Registered last; order does not affect resolution.
+    registerHiddenSites(registry);
 
     return registry;
 }
