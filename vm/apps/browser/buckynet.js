@@ -21,6 +21,7 @@ import { registerSearchSite } from "./sites/search.js";
 import { registerWikiSite } from "./sites/wiki.js";
 import { registerTubeSite } from "./sites/tube.js";
 import { registerDevSite } from "./sites/dev.js";
+import { registerNewsSite } from "./sites/news.js";
 import { registerLeaksSite } from "./sites/leaks.js";
 import { registerBuckySite } from "./sites/bucky.js";
 import { registerCommunitySite } from "./sites/community.js";
@@ -44,6 +45,7 @@ export function getBuckyNet() {
     registerWikiSite(registry);
     registerTubeSite(registry);
     registerDevSite(registry);
+    registerNewsSite(registry);
     registerLeaksSite(registry);
     registerCommunitySite(registry);
     // Hidden pages are searchable:false — present for direct routing, absent
