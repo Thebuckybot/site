@@ -4169,7 +4169,8 @@ body.vm-focus-active .arcade-vm-bay {
 @media (prefers-reduced-motion: reduce) {
     .vm-browser-viewport > *,
     .vm-pulse-dot,
-    .vm-browser-tab.is-loading .vm-browser-tab-dot {
+    .vm-browser-tab.is-loading .vm-browser-tab-dot,
+    .vm-dev-feedstatus .vm-dev-feeddot {
         animation: none !important;
     }
     .vm-bucky-btn:hover,
@@ -4179,3 +4180,79 @@ body.vm-focus-active .arcade-vm-bay {
         transform: none;
     }
 }
+
+/* === Phase 4.1 — Bucky Dev live feed ================================ */
+/* Additive only: new selectors for the backend-connected dev feed.     */
+
+/* Live-feed status banner on bucky://dev */
+.vm-dev-feedstatus {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 14px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    letter-spacing: .3px;
+    border: 1px solid rgba(82, 255, 243, .14);
+    background: rgba(255, 255, 255, .02);
+    color: rgba(214, 230, 245, .7);
+}
+
+.vm-dev-feeddot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.vm-dev-feedstatus.is-live { color: var(--vm-green); border-color: rgba(132, 255, 155, .26); }
+.vm-dev-feedstatus.is-idle { color: var(--vm-cyan); border-color: rgba(82, 255, 243, .24); }
+.vm-dev-feedstatus.is-offline { color: rgba(214, 230, 245, .55); }
+.vm-dev-feedstatus.is-loading { color: var(--vm-amber); border-color: rgba(255, 209, 102, .22); }
+.vm-dev-feedstatus.is-loading .vm-dev-feeddot { animation: vm-dev-pulse 1.4s var(--vm-ease) infinite; }
+
+@keyframes vm-dev-pulse {
+    0%, 100% { opacity: .35; }
+    50% { opacity: 1; }
+}
+
+/* Featured / priority markers in a post's meta row */
+.vm-dev-featured {
+    flex: none;
+    padding: 1px 8px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: var(--vm-amber);
+    background: rgba(255, 209, 102, .14);
+    border: 1px solid rgba(255, 209, 102, .3);
+}
+
+.vm-dev-priority {
+    flex: none;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
+
+.vm-dev-priority-high { color: var(--vm-amber); background: rgba(255, 209, 102, .14); }
+.vm-dev-priority-critical { color: var(--vm-red); background: rgba(255, 79, 109, .16); }
+
+/* A featured post card stands out in the feed */
+.vm-dev-card-featured {
+    border-color: rgba(255, 209, 102, .3);
+    box-shadow: inset 2px 0 0 var(--vm-amber);
+}
+
+/* Markdown body of a live dev post (markdown.js emits .vm-md-* children) */
+.vm-dev-md { font-size: 13px; color: rgba(222, 234, 246, .88); }
+.vm-dev-md > :first-child { margin-top: 0; }
+.vm-dev-md > :last-child { margin-bottom: 0; }
+
