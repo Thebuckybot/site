@@ -22,7 +22,10 @@ import { registerWikiSite } from "./sites/wiki.js";
 import { registerTubeSite } from "./sites/tube.js";
 import { registerDevSite } from "./sites/dev.js";
 import { registerNewsSite } from "./sites/news.js";
+import { registerIncidentsSite } from "./sites/incidents.js";
+import { registerMaintenanceSite } from "./sites/maintenance.js";
 import { registerLeaksSite } from "./sites/leaks.js";
+import { registerLeaksLive } from "./sites/leaksLive.js";
 import { registerBuckySite } from "./sites/bucky.js";
 import { registerCommunitySite } from "./sites/community.js";
 import { registerHiddenSites } from "./sites/hidden.js";
@@ -46,7 +49,10 @@ export function getBuckyNet() {
     registerTubeSite(registry);
     registerDevSite(registry);
     registerNewsSite(registry);
+    registerIncidentsSite(registry);
+    registerMaintenanceSite(registry);
     registerLeaksSite(registry);
+    registerLeaksLive(registry);
     registerCommunitySite(registry);
     // Hidden pages are searchable:false — present for direct routing, absent
     // from PulseSearch. Registered last; order does not affect resolution.
