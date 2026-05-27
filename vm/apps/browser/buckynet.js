@@ -29,6 +29,11 @@ import { registerLeaksLive } from "./sites/leaksLive.js";
 import { registerBuckySite } from "./sites/bucky.js";
 import { registerCommunitySite } from "./sites/community.js";
 import { registerHiddenSites } from "./sites/hidden.js";
+// Phase 4.3 — identity-aware player & world pages.
+import { registerProfileSite } from "./sites/profile.js";
+import { registerOrganizationsSite } from "./sites/organizations.js";
+import { registerLeaderboardsSite } from "./sites/leaderboards.js";
+import { registerPulseSite } from "./sites/pulse.js";
 
 /** @type {ReturnType<typeof createSiteRegistry>|null} */
 let registry = null;
@@ -54,6 +59,12 @@ export function getBuckyNet() {
     registerLeaksSite(registry);
     registerLeaksLive(registry);
     registerCommunitySite(registry);
+    // Phase 4.3 — identity-aware pages (registered AFTER the world-content
+    // pages so the new pages can cross-link to their canonical URLs).
+    registerProfileSite(registry);
+    registerOrganizationsSite(registry);
+    registerLeaderboardsSite(registry);
+    registerPulseSite(registry);
     // Hidden pages are searchable:false — present for direct routing, absent
     // from PulseSearch. Registered last; order does not affect resolution.
     registerHiddenSites(registry);

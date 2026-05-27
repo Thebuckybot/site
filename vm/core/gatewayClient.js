@@ -188,6 +188,74 @@ function fetchWorldContentItem(domain, ref) {
     );
 }
 
+// ---------------------------------------------------------------------------
+// Phase 4.3 — player identity surface (read-only)
+// ---------------------------------------------------------------------------
+// All identity-aware VM pages (bucky://profile, bucky://organizations,
+// bucky://leaderboards, bucky://pulse) consume this surface. Two flavours:
+//   * unauthenticated public projections — `/api/player/public/<id>`, the
+//     `/api/player/organizations` list, the per-org views;
+//   * the self view — `/api/player/me`, which requires the OAuth session.
+// The self-view request uses `credentials: "include"` so the browser sends
+// the existing session cookie. Public reads stay credential-free for
+// cacheability and to keep the architecture's read-only contract obvious.
+
+/** Fetch the current operator's self-view (login required, sensitive fields). */
+function fetchSelfPlayer() {
+    return request("/api/player/me", { credentials: "include" });
+}
+
+/** Fetch a public player projection (no auth — public read-model). */
+function fetchPublicPlayer(userId) {
+    return request("/api/player/public/" + encodeURIComponent(String(userId || "")));
+}
+
+/** Fetch the static organisation registry (4 founding orgs + member counts). */
+function fetchOrganizations() {
+    return request("/api/player/organizations");
+}
+
+/** Fetch one organisation by slug. */
+function fetchOrganization(slug) {
+    return request("/api/player/organization/" + encodeURIComponent(String(slug || "")));
+}
+
+/** Fetch the calling operator's organisation (login required). */
+function fetchMyOrganization() {
+    return request("/api/player/organization/me", { credentials: "include" });
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4.3 — leaderboards (read-only public projections)
+// ---------------------------------------------------------------------------
+/** Fetch every known leaderboard (top-N each). */
+function fetchLeaderboards(limitPerKind) {
+    const q = limitPerKind ? "?limit=" + encodeURIComponent(String(limitPerKind)) : "";
+    return request("/api/leaderboards" + q);
+}
+
+/** Fetch one leaderboard kind (richest | level | org-reputation | most-leaked). */
+function fetchLeaderboard(kind, limit) {
+    const q = limit ? "?limit=" + encodeURIComponent(String(limit)) : "";
+    return request("/api/leaderboards/" + encodeURIComponent(String(kind || "")) + q);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4.3 — leak engine (public reads only — Owner triggers go through the
+// Discord bot, never the VM)
+// ---------------------------------------------------------------------------
+/** Fetch recent exposures across the Grid (public, masked-only). */
+function fetchRecentLeaks(limit) {
+    const q = limit ? "?limit=" + encodeURIComponent(String(limit)) : "";
+    return request("/api/leaks/recent" + q);
+}
+
+/** Fetch the caller's own exposure history (login required). */
+function fetchMyLeaks(limit) {
+    const q = limit ? "?limit=" + encodeURIComponent(String(limit)) : "";
+    return request("/api/leaks/me" + q, { credentials: "include" });
+}
+
 /**
  * The shared GatewayClient instance. The VM has exactly one backend; one
  * client is enough. Import it where backend content is needed.
@@ -205,4 +273,16 @@ export const gatewayClient = {
     fetchWorldContentDomain,
     fetchAnnouncements,
     fetchWorldContentItem,
+    // Phase 4.3 - identity surface
+    fetchSelfPlayer,
+    fetchPublicPlayer,
+    fetchOrganizations,
+    fetchOrganization,
+    fetchMyOrganization,
+    // Phase 4.3 - leaderboards
+    fetchLeaderboards,
+    fetchLeaderboard,
+    // Phase 4.3 - leaks
+    fetchRecentLeaks,
+    fetchMyLeaks,
 };

@@ -179,7 +179,12 @@ function renderBuckyHome() {
                 { url: "bucky://community", label: "Bucky Community", note: "events, giveaways, support" },
                 { url: "bucky://dev", label: "Bucky Dev", note: "patch notes & announcements" },
                 { url: "bucky://tube/welcome-to-the-grid", label: "Welcome to the Grid", note: "orientation reel" },
-                { url: "bucky://wiki/bucky", label: "BuckyWiki: Bucky", note: "the lore entry" }
+                { url: "bucky://wiki/bucky", label: "BuckyWiki: Bucky", note: "the lore entry" },
+                // Phase 4.3 — identity-aware pages.
+                { url: "bucky://profile", label: "Operator profile", note: "your dashboard" },
+                { url: "bucky://organizations", label: "Organisations", note: "the four founders" },
+                { url: "bucky://leaderboards", label: "Leaderboards", note: "live rankings" },
+                { url: "bucky://pulse", label: "PulseNet", note: "Grid-wide live state" }
             ])}
         </div>
     `;

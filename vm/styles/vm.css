@@ -4256,3 +4256,165 @@ body.vm-focus-active .arcade-vm-bay {
 .vm-dev-md > :first-child { margin-top: 0; }
 .vm-dev-md > :last-child { margin-bottom: 0; }
 
+
+/* ============================================================================
+ * Phase 4.3 — identity-aware pages
+ *   bucky://profile, bucky://organizations, bucky://leaderboards, bucky://pulse
+ *
+ * Additive only. No existing selectors are modified. Uses the existing
+ * --vm-cyan / --vm-amber / --vm-pink / --vm-green palette and reuses
+ * .vm-wiki-section, .vm-site-chip, .vm-leak-table* and .vm-dev-feedstatus
+ * primitives where possible. New selectors are namespaced vm-profile-* /
+ * vm-org-* / vm-leaderboard-* / vm-pulse-* so they cannot collide.
+ * ============================================================================ */
+
+/* -- Profile banner ---------------------------------------------------- */
+.vm-profile-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+    border: 1px solid rgba(82, 255, 243, .18);
+    background: linear-gradient(120deg, rgba(82, 255, 243, .06), rgba(255, 70, 137, .04));
+    border-radius: 10px;
+    flex-wrap: wrap;
+}
+.vm-profile-banner-id { display: flex; align-items: center; gap: 14px; }
+.vm-profile-avatar {
+    width: 56px; height: 56px;
+    display: grid; place-items: center;
+    font-size: 26px; font-weight: 700;
+    color: var(--vm-cyan);
+    background: rgba(82, 255, 243, .08);
+    border: 1px solid rgba(82, 255, 243, .35);
+    border-radius: 12px;
+}
+.vm-profile-identity { display: flex; flex-direction: column; gap: 4px; }
+.vm-profile-name { color: rgba(222, 234, 246, .96); font-size: 16px; font-weight: 600; }
+.vm-profile-name code { color: var(--vm-cyan); background: transparent; padding: 0; }
+.vm-profile-title { color: rgba(176, 200, 220, .8); font-size: 13px; }
+.vm-profile-banner-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* -- Profile blocks + tile grid ---------------------------------------- */
+.vm-profile-block { padding: 14px 16px; }
+.vm-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin: 10px 0;
+}
+.vm-wiki-info-row.is-wide { grid-column: 1 / -1; }
+
+/* -- Organisation cards ------------------------------------------------- */
+.vm-org-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+.vm-org-card {
+    --vm-org-accent: var(--vm-cyan);
+    padding: 16px;
+    border: 1px solid rgba(82, 255, 243, .12);
+    border-left: 3px solid var(--vm-org-accent);
+    background: rgba(15, 22, 32, .55);
+    border-radius: 10px;
+}
+.vm-org-card-head { display: flex; gap: 12px; margin-bottom: 8px; }
+.vm-org-emblem {
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    font-size: 18px; font-weight: 700;
+    color: var(--vm-org-accent, var(--vm-cyan));
+    background: rgba(82, 255, 243, .06);
+    border: 1px solid var(--vm-org-accent, rgba(82, 255, 243, .35));
+    border-radius: 10px;
+}
+.vm-org-card-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 10px; gap: 8px;
+}
+.vm-org-banner {
+    --vm-org-accent: var(--vm-cyan);
+    display: flex; gap: 16px; align-items: center; justify-content: space-between;
+    padding: 18px 20px; margin-bottom: 16px;
+    border: 1px solid rgba(82, 255, 243, .18);
+    border-left: 4px solid var(--vm-org-accent);
+    border-radius: 10px;
+    background: linear-gradient(120deg, rgba(82, 255, 243, .04), rgba(255, 70, 137, .02));
+    flex-wrap: wrap;
+}
+.vm-org-banner-id { display: flex; align-items: center; gap: 14px; }
+.vm-org-banner-stats { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* -- Leaderboards ------------------------------------------------------- */
+.vm-leaderboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+.vm-leaderboard-strip {
+    padding: 14px 16px;
+    border: 1px solid rgba(82, 255, 243, .14);
+    background: rgba(15, 22, 32, .55);
+    border-radius: 10px;
+}
+.vm-leaderboard-strip-head { margin-bottom: 8px; }
+.vm-leaderboard-list {
+    list-style: none; padding: 0; margin: 8px 0 0;
+    display: flex; flex-direction: column; gap: 4px;
+}
+.vm-leaderboard-list.is-full { gap: 6px; }
+.vm-leaderboard-row {
+    display: grid;
+    grid-template-columns: 44px 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(15, 22, 32, .35);
+}
+.vm-leaderboard-rank { color: var(--vm-amber); font-weight: 700; font-size: 13px; }
+.vm-leaderboard-id { color: rgba(222, 234, 246, .88); }
+.vm-leaderboard-score { color: var(--vm-cyan); font-weight: 600; }
+.vm-leaderboard-meta { color: rgba(176, 200, 220, .68); font-size: 12px; }
+
+/* -- PulseNet ----------------------------------------------------------- */
+.vm-pulse-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+.vm-pulse-block {
+    padding: 14px 16px;
+    border: 1px solid rgba(82, 255, 243, .14);
+    background: rgba(15, 22, 32, .55);
+    border-radius: 10px;
+}
+.vm-pulse-h {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: var(--vm-cyan);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+.vm-pulse-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.vm-pulse-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(15, 22, 32, .35);
+    flex-wrap: wrap;
+}
+.vm-pulse-meta { color: rgba(176, 200, 220, .68); font-size: 12px; }
+.vm-pulse-boards { display: flex; flex-direction: column; gap: 6px; }
+.vm-pulse-board {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(15, 22, 32, .35);
+}

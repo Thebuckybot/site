@@ -64,6 +64,15 @@ function scoreEntry(entry, tokens) {
 export function createSiteRegistry() {
     /** @type {Map<string, object>} url -> entry */
     const entries = new Map();
+    /**
+     * Pattern-matched entries (Phase 4.3). A matcher carries `match(url)` and
+     * `render(ctx)` instead of a fixed URL — the registry consults them only
+     * when an exact-URL lookup misses, so existing static routes always win.
+     * Used by `bucky://profile/<id>` and any other dynamic-id route that
+     * doesn't enumerate all possible URLs at register time.
+     */
+    /** @type {object[]} */
+    const matchers = [];
 
     /** Register (or replace) a site page. Returns the stored entry. */
     function register(entry) {
@@ -86,14 +95,68 @@ export function createSiteRegistry() {
         return stored;
     }
 
-    /** Resolve a URL (query/fragment ignored) to its entry, or null. */
-    function resolve(url) {
-        return entries.get(normalizeUrl(url)) || null;
+    /**
+     * Register a pattern-matched entry (Phase 4.3). Used for dynamic URL
+     * spaces — e.g. `bucky://profile/<id>` — where pre-registering every URL
+     * is impossible. Matchers are consulted ONLY when `resolve(url)` would
+     * otherwise return null, so an exact-URL entry always wins.
+     *
+     * The `match(url)` predicate returns truthy for URLs the matcher should
+     * own; on match, `render(ctx)` is called with the original URL on ctx
+     * so the entry can extract whatever id / params it needs.
+     */
+    function registerMatcher(entry) {
+        if (!entry || typeof entry.match !== "function" || typeof entry.render !== "function") {
+            throw new Error("SiteRegistry.registerMatcher: entry needs match() and render()");
+        }
+        matchers.push({
+            id: entry.id || ("matcher-" + matchers.length),
+            site: entry.site || "",
+            title: entry.title || "",
+            type: entry.type || "page",
+            searchable: false,  // dynamic ids don't belong in PulseSearch
+            keywords: entry.keywords || [],
+            description: entry.description || "",
+            tags: entry.tags || [],
+            match: entry.match,
+            render: entry.render,
+        });
+        return entry;
     }
 
-    /** True when a URL maps to a registered page. */
+    /** Resolve a URL (query/fragment ignored) to its entry, or null. */
+    function resolve(url) {
+        const exact = entries.get(normalizeUrl(url));
+        if (exact) return exact;
+        // Fall through to pattern-matched entries (Phase 4.3). The original
+        // (un-normalised) URL is passed in: matchers may want to keep the
+        // case-sensitive id intact (Discord ids are numeric, so this is
+        // currently lossless either way — kept defensive for the future).
+        for (const m of matchers) {
+            if (m.match(url)) {
+                // Bind the matcher to this URL so navigation chrome (title /
+                // history) can read the resolved-against URL.
+                return {
+                    id: m.id,
+                    url: String(url || ""),
+                    site: m.site,
+                    title: m.title,
+                    type: m.type,
+                    searchable: false,
+                    keywords: m.keywords,
+                    description: m.description,
+                    tags: m.tags,
+                    render: (ctx) => m.render(String(url || ""), ctx),
+                };
+            }
+        }
+        return null;
+    }
+
+    /** True when a URL maps to a registered page or a matcher. */
     function has(url) {
-        return entries.has(normalizeUrl(url));
+        if (entries.has(normalizeUrl(url))) return true;
+        return matchers.some((m) => m.match(url));
     }
 
     /**
@@ -131,5 +194,5 @@ export function createSiteRegistry() {
         return [...new Set([...entries.values()].map((e) => e.site).filter(Boolean))];
     }
 
-    return { register, resolve, has, search, list, sites };
+    return { register, registerMatcher, resolve, has, search, list, sites };
 }
