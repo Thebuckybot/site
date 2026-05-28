@@ -30,10 +30,10 @@ import { registerBuckySite } from "./sites/bucky.js";
 import { registerCommunitySite } from "./sites/community.js";
 import { registerHiddenSites } from "./sites/hidden.js";
 // Phase 4.3 — identity-aware player & world pages.
-import { registerProfileSite } from "./sites/profile.js";
-import { registerOrganizationsSite } from "./sites/organizations.js";
-import { registerLeaderboardsSite } from "./sites/leaderboards.js";
-import { registerPulseSite } from "./sites/pulse.js";
+import { registerProfileSite, preloadProfile } from "./sites/profile.js";
+import { registerOrganizationsSite, preloadOrganizations } from "./sites/organizations.js";
+import { registerLeaderboardsSite, preloadLeaderboards } from "./sites/leaderboards.js";
+import { registerPulseSite, preloadPulse } from "./sites/pulse.js";
 
 /** @type {ReturnType<typeof createSiteRegistry>|null} */
 let registry = null;
@@ -68,6 +68,18 @@ export function getBuckyNet() {
     // Hidden pages are searchable:false — present for direct routing, absent
     // from PulseSearch. Registered last; order does not affect resolution.
     registerHiddenSites(registry);
+
+    // Phase 4.3 polish — boot-time preload (additive, fire-and-forget).
+    // The four identity-aware pages each expose a TTL-respecting preload()
+    // that starts the first fetch immediately, so by the time the operator
+    // navigates to bucky://profile / organizations / leaderboards / pulse,
+    // the data is already in cache. preload() is a no-op when the cache is
+    // fresh, and profile-preload skips entirely when no auth token is set
+    // (public visits never trigger a /api/player/me round-trip).
+    try { preloadProfile(); }       catch (_e) { /* never block VM boot on preload */ }
+    try { preloadOrganizations(); } catch (_e) { /* ditto */ }
+    try { preloadLeaderboards(); }  catch (_e) { /* ditto */ }
+    try { preloadPulse(); }         catch (_e) { /* ditto */ }
 
     return registry;
 }

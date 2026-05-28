@@ -51,7 +51,7 @@ const cache = {
 };
 
 // ---------------------------------------------------------------------------
-// Self-view
+// Self-view (the rich operator dashboard)
 // ---------------------------------------------------------------------------
 function renderSelfProfile() {
     maybeRefreshSelf();
@@ -64,7 +64,34 @@ function renderSelfProfile() {
     if (!c.item) return renderOffline();
 
     const view = c.item;
+    const body = renderRichDashboard(view);
+
+    return sitePage({
+        site: SITE,
+        domain: `${SITE_DOMAIN} ` + middot() + ` bucky://profile`,
+        title: "Operator Profile",
+        lead: "Your operator dashboard, the cyberworld’s read-only mirror.",
+        bodyHtml: body,
+    });
+}
+
+/**
+ * Build the rich-dashboard body for the self-view. The layout intentionally
+ * mirrors what `profile.py` shows in Discord, with the additions Phase 4.3
+ * makes available: organisation affiliation, exposure archive and identity-
+ * aware progression bars. Every numeric value the backend ships is presented
+ * in a stat tile; the lists (achievements, titles, arcs) are surfaced as
+ * compact chip rows so the page stays scannable.
+ */
+function renderRichDashboard(view) {
     const org = view.organization;
+    const sec = view.security || {};
+    const work = view.work || {};
+    const wp = view.windpark || {};
+
+    const orgChip = org
+        ? `<span class="vm-site-chip">${escapeHtml(org.emblem || "")} ${escapeHtml(org.name || "")}</span>`
+        : `<span class="vm-site-chip">Unaffiliated</span>`;
 
     const banner = `
         <header class="vm-profile-banner">
@@ -78,24 +105,151 @@ function renderSelfProfile() {
             <div class="vm-profile-banner-meta">
                 <span class="vm-site-chip">Level ${escapeHtml(String(view.level || 1))}</span>
                 <span class="vm-site-chip">Prestige ${escapeHtml(String(view.prestige || 0))}</span>
-                ${org ? `<span class="vm-site-chip" style="color:#10E0C8;">${escapeHtml(org.emblem || "")} ${escapeHtml(org.name || "")}</span>` : `<span class="vm-site-chip">Unaffiliated</span>`}
+                ${orgChip}
+                ${view.security && view.security.alert_triggered
+                    ? `<span class="vm-site-chip vm-profile-alert">SECURITY ALERT</span>` : ""}
             </div>
         </header>
     `;
 
-    const economy = `
-        <section class="vm-wiki-section vm-profile-block">
-            <h2>Economy</h2>
-            <div class="vm-profile-grid">
-                ${statTile("Coins", String(view.coins || 0))}
-                ${statTile("Bank", String(view.bank || 0))}
-                ${statTile("Bank limit", String(view.bank_limit || 0))}
-                ${statTile("Net worth", String(view.networth || 0))}
+    const progressBar = renderXpBar(view);
+
+    const orgBlock = renderOrgBlock(org);
+    const economy = renderEconomyBlock(view);
+    const progression = renderProgressionBlock(view);
+    const inventory = renderInventoryBlock(view);
+    const security = renderSecurityBlock(sec);
+    const cosmetics = renderCosmeticsBlock(view);
+    const operations = renderOperationsBlock(view, work, wp);
+    const exposureBlock = renderExposureBlock(view.exposures || []);
+
+    return `
+        <div class="vm-wiki-body">
+            ${banner}
+            ${progressBar}
+            <div class="vm-profile-columns">
+                <div class="vm-profile-col">
+                    ${orgBlock}
+                    ${economy}
+                    ${progression}
+                </div>
+                <div class="vm-profile-col">
+                    ${inventory}
+                    ${security}
+                    ${operations}
+                </div>
+            </div>
+            ${cosmetics}
+            ${exposureBlock}
+            ${crossRefs("Across BuckyNet", [
+                { url: "bucky://leaks", label: "Leak Database", note: "the public archive" },
+                { url: "bucky://leaderboards", label: "Leaderboards", note: "where you rank" },
+                { url: "bucky://organizations", label: "Organisations", note: "Grid factions" },
+                { url: "bucky://pulse", label: "PulseNet", note: "live Grid state" }
+            ])}
+        </div>
+    `;
+}
+
+/** A unicode middot constant kept out of long template strings (helps with
+ *  multi-byte safety in edit tooling). */
+function middot() { return "·"; }
+
+function renderXpBar(view) {
+    const into = Math.max(0, parseInt(view.xp_into_level || 0, 10));
+    const next = Math.max(1, parseInt(view.xp_to_next_level || 1, 10));
+    const pct = Math.min(100, Math.max(0, Math.round((into / next) * 100)));
+    const totalXp = parseInt(view.xp || 0, 10);
+    return `
+        <section class="vm-profile-progress">
+            <div class="vm-profile-progress-head">
+                <span>Level ${escapeHtml(String(view.level || 1))} progression</span>
+                <span>${escapeHtml(String(into))} / ${escapeHtml(String(next))} XP (${pct}%)</span>
+            </div>
+            <div class="vm-profile-progress-track">
+                <div class="vm-profile-progress-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="vm-profile-progress-foot">
+                Lifetime XP: ${escapeHtml(String(totalXp))}
+                ${view.prestige ? ` ${middot()} Prestige ${escapeHtml(String(view.prestige))}` : ""}
             </div>
         </section>
     `;
+}
 
-    const inventory = `
+function renderOrgBlock(org) {
+    if (!org) {
+        return `
+            <section class="vm-wiki-section vm-profile-block">
+                <h2>Organisation</h2>
+                <p class="vm-dev-note">
+                    No affiliation yet. Run <code>+chooseorg</code> in Discord. The
+                    choice is permanent and gates progression commands.
+                </p>
+                <div class="vm-leak-more">${link("bucky://organizations", "Browse the founding organisations")}</div>
+            </section>
+        `;
+    }
+    return `
+        <section class="vm-wiki-section vm-profile-block">
+            <h2>Organisation</h2>
+            <div class="vm-profile-grid">
+                ${statTile("Affiliation", `${escapeHtml(org.emblem || "")} ${escapeHtml(org.name || "")}`, true)}
+                ${statTile("Rank", String(org.rank || "recruit"))}
+                ${statTile("Reputation", String(org.reputation || 0))}
+                ${statTile("Warnings", String(org.warnings != null ? org.warnings : 0))}
+            </div>
+            <div class="vm-leak-more">${link("bucky://organizations/" + (org.id || ""), "Open organisation page")}</div>
+        </section>
+    `;
+}
+
+function renderEconomyBlock(view) {
+    const bonus = parseInt(view.bank_limit_bonus || 0, 10);
+    return `
+        <section class="vm-wiki-section vm-profile-block">
+            <h2>Economy</h2>
+            <div class="vm-profile-grid">
+                ${statTile("Coins", formatNumber(view.coins))}
+                ${statTile("Bank", formatNumber(view.bank))}
+                ${statTile("Bank limit", formatNumber(view.bank_limit)
+                    + (bonus ? ` (+${formatNumber(bonus)})` : ""))}
+                ${statTile("Net worth", formatNumber(view.networth))}
+            </div>
+            <div class="vm-profile-substats">
+                <span>Total given: <strong>${escapeHtml(formatNumber(view.total_given))}</strong></span>
+                <span>Total received: <strong>${escapeHtml(formatNumber(view.total_received))}</strong></span>
+            </div>
+        </section>
+    `;
+}
+
+function renderProgressionBlock(view) {
+    const arc = view.current_arc || null;
+    const completed = view.completed_arcs || [];
+    const unlocked = view.unlocked_arcs || [];
+    const arcsRow = `
+        <div class="vm-profile-substats">
+            <span>Current arc: <strong>${escapeHtml(arc || "none")}</strong></span>
+            <span>Unlocked: <strong>${escapeHtml(String(unlocked.length))}</strong></span>
+            <span>Completed: <strong>${escapeHtml(String(completed.length))}</strong></span>
+            <span>Active quests: <strong>${escapeHtml(String(view.active_quests_count || 0))}</strong></span>
+        </div>
+    `;
+    const completedChips = completed.length
+        ? `<div class="vm-site-chiprow">${completed.slice(0, 12).map((a) => chip(String(a))).join("")}</div>`
+        : "";
+    return `
+        <section class="vm-wiki-section vm-profile-block">
+            <h2>Progression</h2>
+            ${arcsRow}
+            ${completedChips}
+        </section>
+    `;
+}
+
+function renderInventoryBlock(view) {
+    return `
         <section class="vm-wiki-section vm-profile-block">
             <h2>Inventory</h2>
             <div class="vm-profile-grid">
@@ -106,94 +260,128 @@ function renderSelfProfile() {
             </div>
         </section>
     `;
+}
 
-    const security = `
+function renderSecurityBlock(sec) {
+    const codeState = sec.bank_code_set ? "rotated" : "default - rotate!";
+    const breach = sec.breached ? "BREACHED" : "secure";
+    return `
         <section class="vm-wiki-section vm-profile-block">
             <h2>Security posture</h2>
             <div class="vm-profile-grid">
-                ${statTile("Bank code", (view.security || {}).bank_code_set ? "rotated" : "default ⚠")}
-                ${statTile("Firewall", String((view.security || {}).firewall_level || 0))}
-                ${statTile("Breached", (view.security || {}).breached ? "yes" : "no")}
-                ${statTile("Alert", (view.security || {}).alert_triggered ? "active" : "—")}
+                ${statTile("Bank code", codeState)}
+                ${statTile("Firewall", "Lv " + String(sec.firewall_level || 0))}
+                ${statTile("Status", breach)}
+                ${statTile("Alert", sec.alert_triggered ? "ACTIVE" : "clear")}
+            </div>
+            <div class="vm-profile-substats">
+                <span>Equipped attack: <strong>${escapeHtml(sec.active_attack || "none")}</strong>
+                    (${escapeHtml(String(sec.attack_scripts_count || 0))} owned)</span>
+                <span>Equipped defence: <strong>${escapeHtml(sec.active_security || "none")}</strong>
+                    (${escapeHtml(String(sec.security_scripts_count || 0))} owned)</span>
             </div>
             <p class="vm-leak-cred-note">
                 Rotate your bank code in Discord with <code>/setbankcode</code> if it is still the default.
-                A weak code raises the chance the leak engine will fingerprint your operator on its next run.
+                A weak code raises the chance the leak engine fingerprints your operator on its next run.
             </p>
         </section>
     `;
+}
 
-    const orgBlock = org ? `
+function renderCosmeticsBlock(view) {
+    const titles = view.titles || [];
+    const achievements = view.achievements || [];
+    const eq = view.equipped_title || "";
+    const titleChips = titles.length
+        ? titles.slice(0, 24).map((t) => {
+            const isEq = String(t) === String(eq);
+            return `<span class="vm-site-chip${isEq ? " is-equipped" : ""}">${escapeHtml(String(t))}${isEq ? " " + middot() + " equipped" : ""}</span>`;
+        }).join("")
+        : `<span class="vm-dev-note">No titles unlocked yet.</span>`;
+    const achChips = achievements.length
+        ? achievements.slice(0, 24).map((a) => chip(String(a))).join("")
+        : `<span class="vm-dev-note">No achievements yet.</span>`;
+    return `
         <section class="vm-wiki-section vm-profile-block">
-            <h2>Organisation</h2>
-            <div class="vm-profile-grid">
-                ${statTile("Affiliation", `${escapeHtml(org.emblem || "")} ${escapeHtml(org.name || "")}`, true)}
-                ${statTile("Rank", String(org.rank || "recruit"))}
-                ${statTile("Reputation", String(org.reputation || 0))}
-                ${statTile("Warnings", String(org.warnings != null ? org.warnings : 0))}
+            <h2>Cosmetics &amp; recognition</h2>
+            <h3 class="vm-profile-subh">Titles (${titles.length})</h3>
+            <div class="vm-site-chiprow">${titleChips}</div>
+            <h3 class="vm-profile-subh">Achievements (${achievements.length})</h3>
+            <div class="vm-site-chiprow">${achChips}</div>
+        </section>
+    `;
+}
+
+function renderOperationsBlock(view, work, wp) {
+    const jobLine = work.job
+        ? `<span>Job: <strong>${escapeHtml(work.job)}</strong></span>
+           <span>Shifts today: <strong>${escapeHtml(String(work.daily_shifts_done || 0))}</strong></span>
+           <span>Strikes: <strong>${escapeHtml(String(work.strikes || 0))}</strong></span>`
+        : `<span>No job assigned</span>`;
+    const windLine = wp.unlocked
+        ? `<span>Windfarm level: <strong>${escapeHtml(String(wp.farm_level || 0))}</strong></span>
+           <span>Datafarm: <strong>${wp.datafarm_unlocked ? "Lv " + escapeHtml(String(wp.datafarm_level || 0)) : "locked"}</strong></span>
+           <span>Energy: <strong>${escapeHtml(String(wp.energy || 0))}</strong></span>
+           <span>Efficiency: <strong>${(wp.efficiency || 0).toFixed(2)}x</strong></span>
+           <span>Stability: <strong>${Math.round((wp.stability || 0) * 100)}%</strong></span>`
+        : `<span>Windpark not unlocked yet.</span>`;
+    return `
+        <section class="vm-wiki-section vm-profile-block">
+            <h2>Operations</h2>
+            <h3 class="vm-profile-subh">Work</h3>
+            <div class="vm-profile-substats">${jobLine}</div>
+            <h3 class="vm-profile-subh">Windpark</h3>
+            <div class="vm-profile-substats">${windLine}</div>
+            <h3 class="vm-profile-subh">Activity</h3>
+            <div class="vm-profile-substats">
+                <span>Streak: <strong>${escapeHtml(String(view.streak || 0))}</strong></span>
+                <span>Hours worked: <strong>${escapeHtml(String(view.hours_worked || 0))}</strong></span>
+                <span>Total logins: <strong>${escapeHtml(String(view.total_logins || 0))}</strong></span>
+                <span>Joined: <strong>${escapeHtml(formatDate(view.joined))}</strong></span>
             </div>
-            <div class="vm-leak-more">${link(`bucky://organizations/${escapeHtml(org.id || "")}`, "Open organisation page ›")}</div>
-        </section>
-    ` : `
-        <section class="vm-wiki-section vm-profile-block">
-            <h2>Organisation</h2>
-            <p class="vm-dev-note">
-                You haven't chosen an affiliation yet. Run <code>+chooseorg</code> in
-                Discord — it's permanent, and gating commands require it.
-            </p>
-            <div class="vm-leak-more">${link("bucky://organizations", "Browse the founding organisations ›")}</div>
         </section>
     `;
+}
 
-    const exposures = view.exposures || [];
-    const exposureBlock = `
+function renderExposureBlock(exposures) {
+    if (exposures.length === 0) {
+        return `
+            <section class="vm-wiki-section vm-profile-block">
+                <h2>Exposure archive</h2>
+                <p class="vm-dev-note">No exposures on record. Either you have been lucky, or the engine has not ticked since you rotated.</p>
+            </section>
+        `;
+    }
+    const rows = exposures.map((e) => `
+        <tr>
+            <td class="vm-leak-cred">${escapeHtml(e.masked_credential || "")}</td>
+            <td>${chip(e.severity || "low")}</td>
+            <td>${e.incident_slug
+                ? link("bucky://leaks/" + (e.incident_slug || ""), e.incident_title || e.incident_slug)
+                : escapeHtml(e.incident_title || "-")}</td>
+            <td>${escapeHtml(formatDate(e.leaked_at))}</td>
+        </tr>
+    `).join("");
+    return `
         <section class="vm-wiki-section vm-profile-block">
-            <h2>Exposure archive</h2>
-            ${exposures.length === 0
-                ? `<p class="vm-dev-note">No exposures on record. Either you've been lucky, or the engine hasn't ticked since you rotated.</p>`
-                : `<div class="vm-leak-tablewrap"><table class="vm-leak-table">
-                    <thead><tr><th>Snippet</th><th>Severity</th><th>Source</th><th>Logged</th></tr></thead>
-                    <tbody>${exposures.map((e) => `
-                        <tr>
-                            <td class="vm-leak-cred">${escapeHtml(e.masked_credential || "")}</td>
-                            <td>${chip(e.severity || "low")}</td>
-                            <td>${e.incident_slug
-                                ? link(`bucky://leaks/${escapeHtml(e.incident_slug)}`, e.incident_title || e.incident_slug)
-                                : escapeHtml(e.incident_title || "—")}</td>
-                            <td>${escapeHtml(formatDate(e.leaked_at))}</td>
-                        </tr>
-                    `).join("")}</tbody>
-                </table></div>`
-            }
+            <h2>Exposure archive (${exposures.length})</h2>
+            <div class="vm-leak-tablewrap"><table class="vm-leak-table">
+                <thead><tr><th>Snippet</th><th>Severity</th><th>Source</th><th>Logged</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table></div>
             <p class="vm-leak-cred-note">
                 Exposure rows are immutable. Rotating your bank code never deletes or rewrites historical leaks.
             </p>
         </section>
     `;
+}
 
-    const body = `
-        <div class="vm-wiki-body">
-            ${banner}
-            ${orgBlock}
-            ${economy}
-            ${inventory}
-            ${security}
-            ${exposureBlock}
-            ${crossRefs("Across BuckyNet", [
-                { url: "bucky://leaks", label: "Leak Database", note: "the public archive" },
-                { url: "bucky://leaderboards", label: "Leaderboards", note: "where you rank" },
-                { url: "bucky://organizations", label: "Organisations", note: "Grid factions" },
-                { url: "bucky://pulse", label: "PulseNet", note: "live Grid state" }
-            ])}
-        </div>
-    `;
-    return sitePage({
-        site: SITE,
-        domain: `${SITE_DOMAIN} · bucky://profile`,
-        title: "Operator Profile",
-        lead: "Your operator dashboard — read-only mirror of the Grid's state.",
-        bodyHtml: body,
-    });
+/** Format an integer with thousand-separators. Accepts strings/null safely. */
+function formatNumber(value) {
+    if (value == null || value === "") return "0";
+    const n = parseInt(value, 10);
+    if (isNaN(n)) return String(value);
+    return n.toLocaleString("en-GB");
 }
 
 // ---------------------------------------------------------------------------
@@ -253,17 +441,17 @@ function renderPublicProfile(userId) {
 function renderLoggedOut() {
     return sitePage({
         site: SITE,
-        domain: `${SITE_DOMAIN} · bucky://profile`,
+        domain: `${SITE_DOMAIN} ` + middot() + ` bucky://profile`,
         title: "Operator Profile",
         lead: "Log in on Discord to see your operator profile here.",
         bodyHtml: `
             <div class="vm-wiki-body">
                 <div class="vm-dev-feedstatus is-idle">
                     <span class="vm-dev-feeddot"></span>
-                    You're browsing BuckyNet as an anonymous visitor — no identity is bound to this VM yet.
+                    You are browsing BuckyNet as an anonymous visitor; no identity is bound to this VM session.
                 </div>
-                <p>To see your own profile, achievements and exposure archive, link your Bucky session via Discord.</p>
-                <div class="vm-leak-more">${link("bucky://organizations", "Browse the founding organisations ›")}</div>
+                <p>To see your own profile, achievements and exposure archive, log in to the Bucky dashboard with Discord.</p>
+                <div class="vm-leak-more">${link("bucky://organizations", "Browse the founding organisations")}</div>
             </div>
         `,
     });
@@ -272,13 +460,13 @@ function renderLoggedOut() {
 function renderFirstRun() {
     return sitePage({
         site: SITE,
-        domain: `${SITE_DOMAIN} · bucky://profile`,
+        domain: `${SITE_DOMAIN} ` + middot() + ` bucky://profile`,
         title: "No operator profile yet",
         lead: "Run /start in Discord to begin your operator career.",
         bodyHtml: `
             <div class="vm-wiki-body">
-                <p>The Grid doesn't know you yet. Run <code>/start</code> in any Bucky-enabled Discord server to create your profile. The organisation chooser opens automatically right after.</p>
-                <div class="vm-leak-more">${link("bucky://organizations", "Preview the founding organisations ›")}</div>
+                <p>The Grid does not know you yet. Run <code>/start</code> in any Bucky-enabled Discord server to create your profile. The organisation chooser opens automatically right after.</p>
+                <div class="vm-leak-more">${link("bucky://organizations", "Preview the founding organisations")}</div>
             </div>
         `,
     });
@@ -287,14 +475,14 @@ function renderFirstRun() {
 function renderOffline() {
     return sitePage({
         site: SITE,
-        domain: `${SITE_DOMAIN} · bucky://profile`,
+        domain: `${SITE_DOMAIN} ` + middot() + ` bucky://profile`,
         title: "Operator Profile",
         lead: "The Grid is briefly unreachable.",
         bodyHtml: `
             <div class="vm-wiki-body">
                 <div class="vm-dev-feedstatus is-offline">
                     <span class="vm-dev-feeddot"></span>
-                    Live profile feed offline — try again in a moment.
+                    Live profile feed offline; try again in a moment.
                 </div>
             </div>
         `,
@@ -302,16 +490,17 @@ function renderOffline() {
 }
 
 function renderLoading(userId) {
+    const pathLabel = userId ? `bucky://profile/${userId}` : "bucky://profile";
     return sitePage({
         site: SITE,
-        domain: `${SITE_DOMAIN} · ${userId ? `bucky://profile/${escapeHtml(String(userId))}` : "bucky://profile"}`,
+        domain: `${SITE_DOMAIN} ` + middot() + ` ${pathLabel}`,
         title: "Operator Profile",
-        lead: "Resolving operator…",
+        lead: "Resolving operator...",
         bodyHtml: `
             <div class="vm-wiki-body">
                 <div class="vm-dev-feedstatus is-loading">
                     <span class="vm-dev-feeddot"></span>
-                    Loading profile from the Grid…
+                    Loading profile from the Grid...
                 </div>
             </div>
         `,
@@ -321,20 +510,20 @@ function renderLoading(userId) {
 function renderUnknownOperator(userId) {
     return sitePage({
         site: SITE,
-        domain: `${SITE_DOMAIN} · bucky://profile/${escapeHtml(String(userId))}`,
+        domain: `${SITE_DOMAIN} ` + middot() + ` bucky://profile/${userId}`,
         title: "Operator not found",
         lead: "No operator on record for this id.",
         bodyHtml: `
             <div class="vm-wiki-body">
                 <p>The Grid has no profile for <code>${escapeHtml(String(userId))}</code>.</p>
-                <div class="vm-leak-more">${link("bucky://leaderboards", "Browse known operators ›")}</div>
+                <div class="vm-leak-more">${link("bucky://leaderboards", "Browse known operators")}</div>
             </div>
         `,
     });
 }
 
 // ---------------------------------------------------------------------------
-// Soft-refresh
+// Soft-refresh lifecycle (TTL-based; identical pattern to the worldfeed factory).
 // ---------------------------------------------------------------------------
 function maybeRefreshSelf() {
     const c = cache.me;
@@ -353,16 +542,15 @@ async function refreshSelf() {
     catch (_e) { res = { ok: false }; }
     c.fetchedAt = Date.now();
     c.inflight = false;
-    // Reset the per-state sentinels on every fetch. Without this, a token
-    // arriving after a first failed fetch (e.g. arcade.js setting auth AFTER
-    // the VM auto-fetched once at boot) would leave `unauthenticated` stuck
-    // True even when the new response is good.
+    // Reset per-state sentinels: a token arriving after a first failed fetch
+    // would otherwise leave them stuck even when the new response is good.
     c.unauthenticated = false;
     c.firstRun = false;
     if (!res || !res.ok) {
         if (res && res.status === 401) {
             c.unauthenticated = true;
             c.status = "loaded";
+            notifyHydrated();
             return;
         }
         c.status = "offline";
@@ -373,12 +561,12 @@ async function refreshSelf() {
         c.firstRun = true;
         c.status = "loaded";
         c.item = null;
+        notifyHydrated();
         return;
     }
-    c.unauthenticated = false;
-    c.firstRun = false;
     c.item = data.item || null;
     c.status = c.item ? "loaded" : "offline";
+    notifyHydrated();
 }
 
 function maybeRefreshPublic(userId) {
@@ -411,7 +599,7 @@ async function refreshPublic(userId) {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Helpers (kept ASCII-safe to stay portable across edit tooling)
 // ---------------------------------------------------------------------------
 function statTile(label, value, wide) {
     return `
@@ -429,22 +617,35 @@ function initial(view) {
 }
 
 function formatDate(value) {
-    if (!value) return "—";
+    if (!value) return "-";
     const d = new Date(value);
     if (isNaN(d.getTime())) return String(value);
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-// ---------------------------------------------------------------------------
-// Registration
-// ---------------------------------------------------------------------------
+/**
+ * Phase 4.3 polish - hydration signal.
+ *
+ * After a successful refresh we fire a `bucky:hydrated` custom DOM event so
+ * the BrowserApp can re-render its viewport if the user is currently sitting
+ * on bucky://profile (or any identity-aware page). This eliminates the
+ * "first render shows stale data" flicker without coupling the gateway to
+ * the browser app or introducing realtime sync.
+ */
+function notifyHydrated() {
+    if (typeof window === "undefined" || !window.dispatchEvent) return;
+    try {
+        window.dispatchEvent(new CustomEvent("bucky:hydrated", {
+            detail: { source: "profile" }
+        }));
+    } catch (_e) { /* CustomEvent unsupported - noop */ }
+}
+
 const PUBLIC_URL_RE = /^bucky:\/\/profile\/([^/?#]+)$/;
 
-/**
- * Register the bucky://profile + bucky://profile/<id> routes. The dynamic
- * per-id route uses a `resolve` predicate so we don't need to pre-register
- * every user — the SiteRegistry calls our handler whenever a URL matches.
- */
+// ---------------------------------------------------------------------------
+// Registration + preload hook (Phase 4.3 polish)
+// ---------------------------------------------------------------------------
 export function registerProfileSite(registry) {
     registry.register({
         id: "profile-home",
@@ -454,14 +655,11 @@ export function registerProfileSite(registry) {
         type: "home",
         keywords: ["profile", "operator", "me", "dashboard", "self", "level",
                    "prestige", "title", "achievement", "exposure", "leak", "rank"],
-        description: "Your operator dashboard — identity, economy summary and exposure archive.",
+        description: "Your operator dashboard: identity, economy summary, progression and exposure archive.",
         tags: ["profile", "identity"],
         render: () => renderSelfProfile(),
     });
 
-    // Public profile by id — we register a single entry whose `resolve`
-    // predicate matches any `bucky://profile/<id>` URL. The siteRegistry
-    // calls `render` with the matched URL so we can extract the id.
     if (typeof registry.registerMatcher === "function") {
         registry.registerMatcher({
             id: "profile-public-by-id",
@@ -479,6 +677,21 @@ export function registerProfileSite(registry) {
     }
 }
 
-// Exposed for future hooks / tests.
+/**
+ * Phase 4.3 - boot-time preload.
+ *
+ * Called by buckynet.js right after the registry is built so the operator
+ * identity is hydrated before the user navigates to bucky://profile. Idempotent
+ * and TTL-respecting: if the cache is already fresh, this is a no-op. We only
+ * preload when an auth token is available - public visits skip the fetch.
+ */
+export function preloadProfile() {
+    if (!gatewayClient.hasAuthToken || !gatewayClient.hasAuthToken()) return;
+    return refreshSelf();
+}
+
 export function refreshProfile() { return refreshSelf(); }
-export function invalidateProfile() { cache.me.fetchedAt = 0; cache.publicById.clear(); }
+export function invalidateProfile() {
+    cache.me.fetchedAt = 0;
+    cache.publicById.clear();
+}

@@ -232,6 +232,15 @@ async function refresh() {
     if (okCount === 0) state.status = "offline";
     else if (okCount < totalProbes) state.status = "partial";
     else state.status = "live";
+    notifyHydrated("pulse");
+}
+
+/** Phase 4.3 polish — hydration signal (same pattern across identity sites). */
+function notifyHydrated(source) {
+    if (typeof window === "undefined" || !window.dispatchEvent) return;
+    try {
+        window.dispatchEvent(new CustomEvent("bucky:hydrated", { detail: { source } }));
+    } catch (_e) { /* noop */ }
 }
 
 async function safe(fn) {
@@ -279,7 +288,7 @@ export function registerPulseSite(registry) {
         type: "home",
         keywords: ["pulse", "pulsenet", "grid", "live", "feed", "dashboard",
                    "incidents", "leaks", "news", "rankings", "world", "state"],
-        description: "The Grid's combined live state — incidents, leaks, news and the top of every leaderboard.",
+        description: "The Grid's combined live state - incidents, leaks, news and the top of every leaderboard.",
         tags: ["pulse", "live", "dashboard"],
         render: () => renderHome(),
     });
@@ -287,3 +296,10 @@ export function registerPulseSite(registry) {
 
 export function refreshPulse() { return refresh(); }
 export function invalidatePulse() { state.fetchedAt = 0; }
+
+/**
+ * Phase 4.3 polish - boot-time preload. PulseNet aggregates four independent
+ * feeds; preloading at boot avoids the partial-state flicker the first time
+ * the user navigates here.
+ */
+export function preloadPulse() { return refresh(); }

@@ -244,6 +244,19 @@ async function refresh() {
     });
     state.items = merged;
     state.status = "live";
+    notifyHydrated("organizations");
+}
+
+/**
+ * Phase 4.3 polish — emit a `bucky:hydrated` event so the BrowserApp can
+ * re-render the active tab if the user is sitting on a freshly-hydrated page.
+ * Same pattern across organizations / leaderboards / pulse / profile.
+ */
+function notifyHydrated(source) {
+    if (typeof window === "undefined" || !window.dispatchEvent) return;
+    try {
+        window.dispatchEvent(new CustomEvent("bucky:hydrated", { detail: { source } }));
+    } catch (_e) { /* noop */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -316,3 +329,10 @@ export function registerOrganizationsSite(registry) {
 
 export function refreshOrganizations() { return refresh(); }
 export function invalidateOrganizations() { state.fetchedAt = 0; }
+
+/**
+ * Phase 4.3 polish - boot-time preload. Idempotent + TTL-respecting; called
+ * by buckynet.js right after registration so live member counts are hydrated
+ * before the user opens bucky://organizations.
+ */
+export function preloadOrganizations() { return refresh(); }

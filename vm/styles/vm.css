@@ -4418,3 +4418,90 @@ body.vm-focus-active .arcade-vm-bay {
     border-radius: 6px;
     background: rgba(15, 22, 32, .35);
 }
+
+/* ============================================================================
+ * Phase 4.3 polish - rich operator dashboard primitives
+ *
+ * Additive: introduces the progress bar, two-column profile layout, alert
+ * chip and substat row used by the expanded bucky://profile. Reuses the
+ * existing vm-profile-*, vm-wiki-* and vm-site-chip primitives where
+ * possible.
+ * ============================================================================ */
+
+.vm-profile-progress {
+    margin: 8px 0 16px;
+    padding: 12px 16px;
+    border: 1px solid rgba(82, 255, 243, .18);
+    background: rgba(15, 22, 32, .55);
+    border-radius: 10px;
+}
+.vm-profile-progress-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; color: rgba(222, 234, 246, .9);
+    margin-bottom: 6px;
+}
+.vm-profile-progress-head span:last-child {
+    color: var(--vm-cyan);
+    font-variant-numeric: tabular-nums;
+}
+.vm-profile-progress-track {
+    height: 8px; border-radius: 4px; overflow: hidden;
+    background: rgba(82, 255, 243, .08);
+    border: 1px solid rgba(82, 255, 243, .15);
+}
+.vm-profile-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--vm-cyan), var(--vm-pink));
+    transition: width 280ms var(--vm-ease, ease-out);
+}
+.vm-profile-progress-foot {
+    margin-top: 6px;
+    font-size: 12px;
+    color: rgba(176, 200, 220, .68);
+}
+
+.vm-profile-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 12px;
+}
+@media (max-width: 720px) {
+    .vm-profile-columns { grid-template-columns: 1fr; }
+}
+.vm-profile-col { display: flex; flex-direction: column; gap: 14px; }
+
+.vm-profile-subh {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--vm-cyan);
+    margin: 12px 0 6px;
+}
+.vm-profile-substats {
+    display: flex; flex-wrap: wrap; gap: 8px 14px;
+    margin: 6px 0;
+    font-size: 13px;
+    color: rgba(222, 234, 246, .88);
+}
+.vm-profile-substats > span {
+    background: rgba(15, 22, 32, .35);
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+/* Equipped title chip - subtle highlight. */
+.vm-site-chip.is-equipped {
+    color: var(--vm-cyan);
+    border-color: rgba(82, 255, 243, .45);
+    background: rgba(82, 255, 243, .08);
+}
+
+/* Security alert chip in the banner - red/pink, attention-grabbing. */
+.vm-site-chip.vm-profile-alert {
+    color: #ffd6e3;
+    border-color: rgba(255, 70, 137, .6);
+    background: rgba(255, 70, 137, .14);
+    font-weight: 700;
+    letter-spacing: .04em;
+}

@@ -531,8 +531,62 @@ export function mountBrowserApp(runtime, windowState, element) {
 
     refreshChrome(windowState);
 
-    // A fresh window focuses the omnibox — standard new-window behaviour.
+    // Phase 4.3 polish - re-render the active tab on late hydration.
+    // The identity-aware sites (profile / organizations / leaderboards /
+    // pulse) emit `bucky:hydrated` after a successful soft-refresh. If the
+    // user is currently sitting on an identity-aware URL whose data was
+    // still being fetched at first render, the page re-renders in place
+    // with the fresh content. We target ONLY identity-aware URLs so a
+    // hydration event doesn't disturb static lore pages, and we never
+    // disturb a tab that is currently loading another navigation. A small
+    // debounce coalesces back-to-back hydrations (e.g. pulse fans out four
+    // parallel fetches that all land within ~20ms).
+    let hydrationTimer = null;
+    const hydrationListener = (_event) => {
+        if (hydrationTimer) return;
+        hydrationTimer = setTimeout(() => {
+            hydrationTimer = null;
+            try {
+                const tab = activeTab(windowState.appState);
+                if (!tab) return;
+                const url = String(tab.address || "");
+                if (!isIdentityAwareUrl(url)) return;
+                if (tab.status === "loading") return;
+                // resolvePage is pure + idempotent and the site cache now
+                // holds fresh data, so render() picks it up.
+                showActiveTab(runtime, windowState);
+            } catch (error) {
+                logError("Hydration re-render", error);
+            }
+        }, 30);
+    };
+    if (typeof window !== "undefined" && window.addEventListener) {
+        window.addEventListener("bucky:hydrated", hydrationListener);
+        view.cleanups.push(() => {
+            if (hydrationTimer) { clearTimeout(hydrationTimer); hydrationTimer = null; }
+            window.removeEventListener("bucky:hydrated", hydrationListener);
+        });
+    }
+
+    // A fresh window focuses the omnibox - standard new-window behaviour.
     if (runtime.activeWindowId === windowState.id) focusOmnibox(windowState);
+}
+
+/**
+ * Phase 4.3 polish - URLs that consume identity-aware backend data and
+ * therefore benefit from re-rendering on late hydration. Static lore pages
+ * (wiki, tube, bucky, etc.) deliberately stay out of this set so a hydration
+ * event never re-renders pages that don't depend on fetched state.
+ */
+function isIdentityAwareUrl(url) {
+    if (!url) return false;
+    const u = String(url).toLowerCase();
+    return u.startsWith("bucky://profile")
+        || u.startsWith("bucky://organizations")
+        || u.startsWith("bucky://leaderboards")
+        || u.startsWith("bucky://pulse")
+        || u.startsWith("bucky://leaks")
+        || u.startsWith("bucky://incidents");
 }
 
 export function unmountBrowserApp(runtime, windowState) {

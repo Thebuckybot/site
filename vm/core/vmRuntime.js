@@ -78,6 +78,19 @@ export class BuckyVMRuntime {
         if (token) {
             gatewayClient.setAuthToken(token);
         }
+        // Phase 4.3 polish — eagerly build the BuckyNet site registry so its
+        // boot-time preload hooks fire NOW (before the user navigates to any
+        // identity-aware page). Wrapped to never break VM boot if a site
+        // module throws on first construction. The registry is built once and
+        // memoised; subsequent browser-window opens reuse it.
+        try {
+            // Lazy import keeps the cycle clean: vmRuntime -> BrowserApp ->
+            // buckynet is the normal path. Calling getBuckyNet() here just
+            // primes the same singleton early.
+            import("../apps/browser/buckynet.js")
+                .then((m) => { try { m.getBuckyNet(); } catch (_e) {} })
+                .catch(() => {});
+        } catch (_e) { /* never block VM boot on preload priming */ }
         this.debug = Boolean(options.debug);
         setDebugMode(this.debug);
         this.mode = "embedded";

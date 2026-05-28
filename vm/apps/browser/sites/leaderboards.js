@@ -206,6 +206,15 @@ async function refreshAll() {
     }
     state.all.items = res.data.boards || [];
     state.all.status = "live";
+    notifyHydrated("leaderboards");
+}
+
+/** Phase 4.3 polish — hydration signal (same pattern across identity sites). */
+function notifyHydrated(source) {
+    if (typeof window === "undefined" || !window.dispatchEvent) return;
+    try {
+        window.dispatchEvent(new CustomEvent("bucky:hydrated", { detail: { source } }));
+    } catch (_e) { /* noop */ }
 }
 
 function maybeRefreshKind(kind) {
@@ -235,6 +244,7 @@ async function refreshKind(kind) {
     }
     c.items = res.data.items || [];
     c.status = "live";
+    notifyHydrated("leaderboard:" + String(kind || ""));
 }
 
 function normaliseColor(c) {
@@ -294,3 +304,9 @@ export function invalidateLeaderboards() {
     state.all.fetchedAt = 0;
     state.byKind.forEach((v) => { v.fetchedAt = 0; });
 }
+
+/**
+ * Phase 4.3 polish - boot-time preload of the "all boards" overview so the
+ * strip view is instantly populated when the user opens bucky://leaderboards.
+ */
+export function preloadLeaderboards() { return refreshAll(); }
