@@ -61,6 +61,7 @@ import {
     unmountBrowserApp
 } from "../apps/browser/BrowserApp.js";
 import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
+import { gatewayClient } from "./gatewayClient.js";
 
 const FALLBACK_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
 
@@ -68,6 +69,15 @@ export class BuckyVMRuntime {
     constructor(root, user = {}, options = {}) {
         this.root = root;
         this.user = normalizeUser(user);
+        // Phase 4.3 — propagate the operator's auth token into the gateway
+        // BEFORE any identity-aware page (bucky://profile, leaderboards, etc.)
+        // performs its first fetch. The token is what makes /api/player/me
+        // resolve to a real identity instead of returning 401 (the previous
+        // "anonymous visitor" failure mode).
+        const token = user && (user.api_token || user.access_token || user.token);
+        if (token) {
+            gatewayClient.setAuthToken(token);
+        }
         this.debug = Boolean(options.debug);
         setDebugMode(this.debug);
         this.mode = "embedded";

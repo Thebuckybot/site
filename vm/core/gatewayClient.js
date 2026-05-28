@@ -63,6 +63,37 @@ function resolveBase() {
 }
 
 /**
+ * Phase 4.3 — Bearer-token auth seam.
+ *
+ * The arcade flow (site/js/dashboard.js) holds an API token in localStorage
+ * and attaches it as `Authorization: Bearer ...` on every site fetch. The VM
+ * runs in the same browsing context but its gateway client used to rely only
+ * on the cross-origin session cookie (`credentials: "include"`), which many
+ * browsers drop in third-party / cross-origin contexts. The result was the
+ * VM's `/api/player/me` call returning 401 even for fully-authenticated
+ * operators ("anonymous visitor — no identity is bound to this VM yet").
+ *
+ * `setAuthToken(token)` is the additive fix: the embedder (arcade.js, or
+ * vmRuntime when it receives a `user.api_token`) calls it once after login
+ * and every subsequent gateway request carries the token. Same trust model
+ * as the rest of the site; same `api_login_required` decorator on the
+ * backend resolves it.
+ *
+ * Token storage is in-module — never persisted, never read from localStorage
+ * by the gateway itself (the gateway stays portable across embedders).
+ */
+let _bearerToken = null;
+function setAuthToken(token) {
+    _bearerToken = token ? String(token) : null;
+}
+function clearAuthToken() {
+    _bearerToken = null;
+}
+function hasAuthToken() {
+    return Boolean(_bearerToken);
+}
+
+/**
  * Perform one backend request.
  *
  * Always resolves (never rejects) to:
@@ -90,13 +121,24 @@ async function request(path, options = {}) {
         ? setTimeout(() => controller.abort(), timeoutMs)
         : null;
 
+    // Compose headers: caller-supplied first, then the Phase 4.3 Bearer
+    // header if a token has been set via `setAuthToken`. The caller may still
+    // override `Authorization` explicitly by passing it in options.headers.
+    const headers = { Accept: "application/json", ...(options.headers || {}) };
+    if (_bearerToken && !headers.Authorization && !headers.authorization) {
+        headers.Authorization = "Bearer " + _bearerToken;
+    }
+
     try {
         const response = await fetch(url, {
             method: options.method || "GET",
-            headers: { Accept: "application/json", ...(options.headers || {}) },
-            // Future-auth seam: defaults to "omit" — public content needs no
-            // credentials. Flip to "include" once the VM carries a session.
-            credentials: options.credentials || "omit",
+            headers,
+            // When a Bearer token is set, the gateway is operator-authenticated.
+            // Default to `include` so the session cookie also flows on
+            // same-site setups; the explicit `omit` request still wins when
+            // an unauthenticated public read is intended.
+            credentials: options.credentials
+                || (_bearerToken ? "include" : "omit"),
             signal: controller ? controller.signal : undefined,
         });
 
@@ -241,7 +283,7 @@ function fetchLeaderboard(kind, limit) {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 4.3 — leak engine (public reads only — Owner triggers go through the
+// Phase 4.3 - leak engine (public reads only; Owner triggers go through the
 // Discord bot, never the VM)
 // ---------------------------------------------------------------------------
 /** Fetch recent exposures across the Grid (public, masked-only). */
@@ -250,7 +292,7 @@ function fetchRecentLeaks(limit) {
     return request("/api/leaks/recent" + q);
 }
 
-/** Fetch the caller's own exposure history (login required). */
+/** Fetch the caller\'s own exposure history (login required). */
 function fetchMyLeaks(limit) {
     const q = limit ? "?limit=" + encodeURIComponent(String(limit)) : "";
     return request("/api/leaks/me" + q, { credentials: "include" });
@@ -263,6 +305,10 @@ function fetchMyLeaks(limit) {
 export const gatewayClient = {
     base: resolveBase,
     request,
+    // Phase 4.3 - Bearer-token auth seam (additive).
+    setAuthToken,
+    clearAuthToken,
+    hasAuthToken,
     softRefreshTtl: SOFT_REFRESH_TTL,
     // Phase 4.1 - dev posts
     fetchDevPosts,

@@ -106,6 +106,16 @@ async function loadProfile() {
 
     const user = data.user;
     user.avatarUrl = getDiscordAvatar(user);
+    // Phase 4.3 — propagate the localStorage API token into the VM. The site
+    // uses `apiFetch` with `Authorization: Bearer <token>`; the VM's gateway
+    // used to rely only on the cross-origin session cookie, which dropped in
+    // third-party / cross-origin contexts and resulted in the "anonymous
+    // visitor" identity-binding failure on bucky://profile.
+    try {
+        user.api_token = localStorage.getItem("api_token") || null;
+    } catch (_e) {
+        user.api_token = null;
+    }
 
     document.getElementById("hero-username").innerText = user.username;
     document.getElementById("hero-avatar").src = user.avatarUrl;

@@ -353,6 +353,12 @@ async function refreshSelf() {
     catch (_e) { res = { ok: false }; }
     c.fetchedAt = Date.now();
     c.inflight = false;
+    // Reset the per-state sentinels on every fetch. Without this, a token
+    // arriving after a first failed fetch (e.g. arcade.js setting auth AFTER
+    // the VM auto-fetched once at boot) would leave `unauthenticated` stuck
+    // True even when the new response is good.
+    c.unauthenticated = false;
+    c.firstRun = false;
     if (!res || !res.ok) {
         if (res && res.status === 401) {
             c.unauthenticated = true;
