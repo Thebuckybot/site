@@ -67,6 +67,10 @@ const detailCache    = new Map(); // "LEAK-0008::1" -> { status, data, fetchedAt
 
 const viewState = { q: "", severity: "all", incPage: 1, opPage: 1 };
 
+// Simulation mode: when > 0, the page renders the FICTIONAL +leaks test dataset
+// (bucky://leaks?test=N) through these exact same paths. 0 = live real data.
+let testSize = 0;
+
 // ===========================================================================
 // Soft-refresh lifecycle (mirrors profile.js)
 // ===========================================================================
@@ -91,11 +95,12 @@ async function doRefresh(cache, fetchFn, assign) {
 }
 
 function refreshHomeData() {
-    maybeRefresh(statsCache, () => gatewayClient.fetchLeakStats(),
+    const t = testSize || undefined;
+    maybeRefresh(statsCache, () => gatewayClient.fetchLeakStats(t),
         (d) => { statsCache.data = d || {}; });
-    maybeRefresh(incidentsCache, () => gatewayClient.fetchLeakIncidents(),
+    maybeRefresh(incidentsCache, () => gatewayClient.fetchLeakIncidents(t),
         (d) => { incidentsCache.items = (d && d.items) || []; });
-    maybeRefresh(operatorsCache, () => gatewayClient.fetchLeakOperators(),
+    maybeRefresh(operatorsCache, () => gatewayClient.fetchLeakOperators(undefined, t),
         (d) => { operatorsCache.records = (d && d.records) || []; });
 }
 
@@ -114,8 +119,28 @@ function severityBadge(s) {
     const m = sevMeta(s);
     return `<span class="vm-leak-sev ${m.cls}">${escapeHtml(m.label)}</span>`;
 }
-function incidentUrl(id) { return `bucky://leaks/incident/${String(id || "").toLowerCase()}`; }
+function incidentUrl(id, test) {
+    const base = `bucky://leaks/incident/${String(id || "").toLowerCase()}`;
+    return test ? `${base}?test=${test}` : base;
+}
+function detailUrl(id, page, test) {
+    const params = [];
+    if (page && page > 1) params.push("page=" + page);
+    if (test) params.push("test=" + test);
+    return `bucky://leaks/incident/${String(id || "").toLowerCase()}` + (params.length ? "?" + params.join("&") : "");
+}
 function profileUrl(uid) { return `bucky://profile/${encodeURIComponent(String(uid || ""))}`; }
+
+function renderSimBanner() {
+    return `
+        <div class="vm-osint-simbanner" role="status">
+            <span class="vm-osint-simdot" aria-hidden="true"></span>
+            <strong>SIMULATION MODE</strong> — showing ${testSize} fictional operators from
+            <code>+leaks test ${testSize}</code>. No real exposures, profiles or DMs are involved.
+            ${link("bucky://leaks", "Exit to live data")}
+        </div>
+    `;
+}
 
 function formatDate(value) {
     if (!value) return "—";
@@ -264,13 +289,13 @@ function renderIncidentResults() {
                 <span class="vm-leak-id">${escapeHtml(i.incident_id || "LEAK-????")}</span>
                 ${severityBadge(i.severity)}
             </div>
-            <h3>${link(incidentUrl(i.incident_id), i.title || "Untitled incident", "vm-leak-card-title")}</h3>
+            <h3>${link(incidentUrl(i.incident_id, testSize), i.title || "Untitled incident", "vm-leak-card-title")}</h3>
             <div class="vm-leak-card-stats">
                 <span>${escapeHtml(String(i.affected_operators || 0))} operators</span>
                 <span>${escapeHtml(String(i.exposure_count || 0))} exposures</span>
                 <span>${escapeHtml(formatDate(i.last_seen))}</span>
             </div>
-            <p class="vm-leak-more">${link(incidentUrl(i.incident_id), "Open incident &#8250;")}</p>
+            <p class="vm-leak-more">${link(incidentUrl(i.incident_id, testSize), "Open incident &#8250;")}</p>
         </article>
     `).join("");
     return `<div class="vm-leak-grid">${cards}</div>`;
@@ -302,7 +327,7 @@ function renderOperatorResults() {
             <td class="vm-osint-email">${escapeHtml(o.email || "")}</td>
             <td class="vm-leak-cred">${escapeHtml(o.masked_credential || "")}</td>
             <td>${severityBadge(o.severity)}</td>
-            <td>${o.incident_id ? link(incidentUrl(o.incident_id), o.incident_id) : escapeHtml(o.incident_title || "—")}</td>
+            <td>${o.incident_id ? link(incidentUrl(o.incident_id, testSize), o.incident_id) : escapeHtml(o.incident_title || "—")}</td>
             <td>${escapeHtml(formatDate(o.leaked_at))}</td>
         </tr>
     `).join("");
@@ -333,12 +358,24 @@ function renderSummary() {
 // ===========================================================================
 // The home page
 // ===========================================================================
-function renderHome() {
+function renderHome(ctx) {
+    // Simulation-mode switch — read ?test=N and reset caches when it changes.
+    const t = parseInt((ctx && ctx.query && ctx.query.test) || "0", 10);
+    const newTest = (!isNaN(t) && t > 0) ? Math.min(t, 500) : 0;
+    if (newTest !== testSize) {
+        testSize = newTest;
+        statsCache.fetchedAt = 0;
+        incidentsCache.fetchedAt = 0;
+        operatorsCache.fetchedAt = 0;
+        viewState.incPage = 1;
+        viewState.opPage = 1;
+    }
     refreshHomeData();
     registerController();
 
     const body = `
         <div class="vm-wiki-body vm-osint" data-inpage="leaks">
+            ${testSize ? renderSimBanner() : ""}
             ${renderStats()}
             <div class="vm-leak-notice">${escapeHtml(DISCLAIMER)}</div>
             ${renderControls()}
@@ -425,17 +462,17 @@ function registerController() {
 // ===========================================================================
 // Incident detail page (lazy-loaded on navigation)
 // ===========================================================================
-function detailKey(id, page) { return `${String(id).toUpperCase()}::${page}`; }
+function detailKey(id, page, test) { return `${String(id).toUpperCase()}::${page}::${test || 0}`; }
 
-function maybeRefreshDetail(id, page) {
-    const key = detailKey(id, page);
+function maybeRefreshDetail(id, page, test) {
+    const key = detailKey(id, page, test);
     let c = detailCache.get(key);
     if (!c) { c = { status: "idle", data: null, fetchedAt: 0, inflight: false }; detailCache.set(key, c); }
     if (c.inflight) return c;
     if (c.fetchedAt && (Date.now() - c.fetchedAt < TTL)) return c;
     c.inflight = true;
     if (!c.fetchedAt) c.status = "loading";
-    gatewayClient.fetchLeakIncident(id, page).then((res) => {
+    gatewayClient.fetchLeakIncident(id, page, test || undefined).then((res) => {
         c.fetchedAt = Date.now();
         c.inflight = false;
         if (!res || !res.ok) { c.status = res && res.status === 404 ? "missing" : "offline"; notifyHydrated(); return; }
@@ -449,12 +486,15 @@ function maybeRefreshDetail(id, page) {
 function renderIncidentDetail(ctx) {
     const id = (ctx.segments && ctx.segments[ctx.segments.length - 1]) || "";
     const page = Math.max(1, parseInt((ctx.query && ctx.query.page) || "1", 10) || 1);
-    const c = maybeRefreshDetail(id, page);
+    const t = parseInt((ctx.query && ctx.query.test) || "0", 10);
+    const test = (!isNaN(t) && t > 0) ? Math.min(t, 500) : 0;
+    const c = maybeRefreshDetail(id, page, test);
+    const backUrl = test ? `bucky://leaks?test=${test}` : "bucky://leaks";
 
     let body;
     if (c.status === "missing") {
         body = `<div class="vm-wiki-body"><p>No incident on record for <code>${escapeHtml(String(id).toUpperCase())}</code>.</p>
-            <p class="vm-leak-more">${link("bucky://leaks", "&#8249; Back to the Leak Database")}</p></div>`;
+            <p class="vm-leak-more">${link(backUrl, "&#8249; Back to the Leak Database")}</p></div>`;
     } else if (c.status === "offline") {
         body = `<div class="vm-wiki-body"><div class="vm-dev-feedstatus is-offline"><span class="vm-dev-feeddot"></span>
             Incident feed offline; try again in a moment.</div></div>`;
@@ -462,7 +502,7 @@ function renderIncidentDetail(ctx) {
         body = `<div class="vm-wiki-body"><div class="vm-dev-feedstatus is-loading"><span class="vm-dev-feeddot"></span>
             Loading incident from the Grid…</div></div>`;
     } else {
-        body = renderIncidentDetailBody(c.data);
+        body = renderIncidentDetailBody(c.data, test, backUrl);
     }
     return sitePage({
         site: SITE,
@@ -473,7 +513,7 @@ function renderIncidentDetail(ctx) {
     });
 }
 
-function renderIncidentDetailBody(d) {
+function renderIncidentDetailBody(d, test, backUrl) {
     const rows = (d.operators || []).map((o) => `
         <tr>
             <td class="vm-leak-handle">${link(profileUrl(o.user_id), o.handle || "operator")}</td>
@@ -493,12 +533,11 @@ function renderIncidentDetailBody(d) {
     // Detail pagination is navigation-based (lazy detail load), one page of 50.
     let detailPager = "";
     if ((d.pages || 1) > 1) {
-        const base = incidentUrl(d.incident_id);
         const prev = d.page > 1
-            ? link(`${base}?page=${d.page - 1}`, "&#8592; Previous")
+            ? link(detailUrl(d.incident_id, d.page - 1, test), "&#8592; Previous")
             : `<span class="vm-osint-pgbtn is-disabled">&#8592; Previous</span>`;
         const next = d.page < d.pages
-            ? link(`${base}?page=${d.page + 1}`, "Next &#8594;")
+            ? link(detailUrl(d.incident_id, d.page + 1, test), "Next &#8594;")
             : `<span class="vm-osint-pgbtn is-disabled">Next &#8594;</span>`;
         detailPager = `<div class="vm-osint-pager">${prev}<span class="vm-osint-pgnum">Page ${d.page} / ${d.pages}</span>${next}</div>`;
     }
@@ -526,7 +565,7 @@ function renderIncidentDetailBody(d) {
                 ${opsTable}
                 ${detailPager}
             </section>
-            <p class="vm-leak-more">${link("bucky://leaks", "&#8249; Back to the Leak Database")}</p>
+            <p class="vm-leak-more">${link(backUrl || "bucky://leaks", "&#8249; Back to the Leak Database")}</p>
         </div>
     `;
 }
@@ -547,7 +586,7 @@ export function registerLeaksSite(registry) {
                    "incident", "credential", "compromised", "operators", "database"],
         description: "BuckyNet's live OSINT breach database — real incidents and exposed operators.",
         tags: ["leaks", "site", "osint"],
-        render: () => renderHome(),
+        render: (ctx) => renderHome(ctx),
     });
 
     if (typeof registry.registerMatcher === "function") {

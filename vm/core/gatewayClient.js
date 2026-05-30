@@ -302,26 +302,31 @@ function fetchMyLeaks(limit) {
 // Phase 4.3 OSINT expansion — the live Leak Database (public, read-only).
 // All powered by REAL player_exposures via the backend osint_service.
 // ---------------------------------------------------------------------------
+// `test` (a positive integer) switches any read to the fictional simulation
+// dataset (the `+leaks test N` tooling) — visualisation only, never the DB.
+function _qs(parts) {
+    const kv = Object.entries(parts).filter(([, v]) => v !== undefined && v !== null && v !== "" && v !== 0);
+    return kv.length ? "?" + kv.map(([k, v]) => k + "=" + encodeURIComponent(String(v))).join("&") : "";
+}
+
 /** Headline statistics for bucky://leaks (incidents, operators, severity, ...). */
-function fetchLeakStats() {
-    return request("/api/leaks/stats");
+function fetchLeakStats(test) {
+    return request("/api/leaks/stats" + _qs({ test }));
 }
 
 /** The incident index — one entry per real leak incident, newest first. */
-function fetchLeakIncidents() {
-    return request("/api/leaks/incidents");
+function fetchLeakIncidents(test) {
+    return request("/api/leaks/incidents" + _qs({ test }));
 }
 
 /** One incident + a page of its affected operators (lazy detail load). */
-function fetchLeakIncident(incidentId, page) {
-    const q = page ? "?page=" + encodeURIComponent(String(page)) : "";
-    return request("/api/leaks/incident/" + encodeURIComponent(String(incidentId || "")) + q);
+function fetchLeakIncident(incidentId, page, test) {
+    return request("/api/leaks/incident/" + encodeURIComponent(String(incidentId || "")) + _qs({ page, test }));
 }
 
 /** The bounded exposed-operator window the VM browses client-side. */
-function fetchLeakOperators(limit) {
-    const q = limit ? "?limit=" + encodeURIComponent(String(limit)) : "";
-    return request("/api/leaks/operators" + q);
+function fetchLeakOperators(limit, test) {
+    return request("/api/leaks/operators" + _qs({ limit, test }));
 }
 
 /**

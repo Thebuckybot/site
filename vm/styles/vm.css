@@ -2810,6 +2810,29 @@ body.vm-focus-active .arcade-vm-bay {
 }
 .vm-osint-summary { font-size: 12px; opacity: .65; margin: 4px 0 12px; }
 
+/* Simulation-mode banner (bucky://leaks?test=N) — clearly fictional. */
+.vm-osint-simbanner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    border: 1px dashed rgba(255, 209, 102, .55);
+    border-radius: 10px;
+    background: rgba(255, 209, 102, .08);
+    color: var(--vm-amber);
+    font-size: 12.5px;
+}
+.vm-osint-simbanner strong { letter-spacing: .06em; }
+.vm-osint-simbanner code { background: rgba(255, 209, 102, .14); padding: 1px 5px; border-radius: 4px; }
+.vm-osint-simdot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--vm-amber);
+    box-shadow: 0 0 8px var(--vm-amber);
+    animation: vm-profile-compromised-pulse 2s ease-in-out infinite;
+}
+
 /* Exposed-operator table specifics */
 .vm-osint-optable .vm-osint-email { color: var(--vm-pink); font-family: ui-monospace, monospace; font-size: 12px; }
 
