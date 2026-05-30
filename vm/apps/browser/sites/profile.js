@@ -639,11 +639,17 @@ async function refreshPublic(userId) {
     c.inflight = false;
     if (!res || !res.ok) {
         c.status = res && res.status === 404 ? "missing" : "offline";
+        // Fire the hydration signal so BrowserApp re-renders the public profile
+        // out of its initial "loading" paint — without this the page stays
+        // stuck on the first render even after the fetch resolves (the bug
+        // behind bucky://profile/<id> appearing permanently offline/loading).
+        notifyHydrated();
         return;
     }
     const data = res.data || {};
     c.item = data.item || null;
     c.status = c.item ? "loaded" : "missing";
+    notifyHydrated();
 }
 
 // ---------------------------------------------------------------------------

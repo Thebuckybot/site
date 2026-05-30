@@ -484,7 +484,13 @@ function maybeRefreshDetail(id, page, test) {
 }
 
 function renderIncidentDetail(ctx) {
-    const id = (ctx.segments && ctx.segments[ctx.segments.length - 1]) || "";
+    ctx = (ctx && typeof ctx === "object") ? ctx : {};
+    // id from the resolved path segments; fall back to parsing the raw url.
+    let id = (ctx.segments && ctx.segments[ctx.segments.length - 1]) || "";
+    if (!id && ctx.url) {
+        const m = /\/incident\/([^/?#]+)/i.exec(String(ctx.url));
+        id = m ? m[1] : "";
+    }
     const page = Math.max(1, parseInt((ctx.query && ctx.query.page) || "1", 10) || 1);
     const t = parseInt((ctx.query && ctx.query.test) || "0", 10);
     const test = (!isNaN(t) && t > 0) ? Math.min(t, 500) : 0;
@@ -598,7 +604,11 @@ export function registerLeaksSite(registry) {
             keywords: ["leak", "incident", "breach", "osint"],
             tags: ["leaks", "incident", "osint"],
             match: (url) => INCIDENT_URL_RE.test(String(url || "")),
-            render: (ctx) => renderIncidentDetail(ctx),
+            // SiteRegistry invokes a matcher as render(url, ctx) — the URL is
+            // the FIRST arg, the context object the SECOND. We pass the ctx
+            // through (with the url as a fallback) so the id / page / test are
+            // read from the real context, not the URL string.
+            render: (url, ctx) => renderIncidentDetail(ctx || { url: String(url || "") }),
         });
     }
 }
