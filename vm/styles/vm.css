@@ -4505,3 +4505,54 @@ body.vm-focus-active .arcade-vm-bay {
     font-weight: 700;
     letter-spacing: .04em;
 }
+
+/* Phase 4.3 audit pass - the COMPROMISED operator-incident banner. Shown only
+   while the operator is breached; turns the dashboard into a live console. */
+.vm-profile-compromised {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 70, 137, .55);
+    border-left-width: 4px;
+    border-radius: 10px;
+    background:
+        linear-gradient(180deg, rgba(255, 70, 137, .14), rgba(255, 70, 137, .05));
+    box-shadow: 0 0 24px rgba(255, 70, 137, .12);
+    animation: vm-profile-compromised-pulse 2.6s ease-in-out infinite;
+}
+@keyframes vm-profile-compromised-pulse {
+    0%, 100% { box-shadow: 0 0 18px rgba(255, 70, 137, .10); }
+    50%      { box-shadow: 0 0 30px rgba(255, 70, 137, .22); }
+}
+.vm-profile-compromised-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 12px;
+    margin-bottom: 12px;
+}
+.vm-profile-compromised-badge {
+    color: #fff;
+    background: rgba(255, 70, 137, .9);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    font-size: 13px;
+}
+.vm-profile-compromised-sub {
+    color: #ffd6e3;
+    font-size: 12px;
+    opacity: .85;
+}
+.vm-profile-compromised-cta {
+    margin: 12px 0 0;
+    color: #ffe3ee;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.vm-profile-compromised-cta code {
+    color: #fff;
+    background: rgba(255, 70, 137, .22);
+    padding: 1px 5px;
+    border-radius: 4px;
+}

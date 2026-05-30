@@ -106,13 +106,20 @@ function renderRichDashboard(view) {
                 <span class="vm-site-chip">Level ${escapeHtml(String(view.level || 1))}</span>
                 <span class="vm-site-chip">Prestige ${escapeHtml(String(view.prestige || 0))}</span>
                 ${orgChip}
-                ${view.security && view.security.alert_triggered
-                    ? `<span class="vm-site-chip vm-profile-alert">SECURITY ALERT</span>` : ""}
+                ${view.security && view.security.breached
+                    ? `<span class="vm-site-chip vm-profile-alert">COMPROMISED</span>`
+                    : (view.security && view.security.alert_triggered
+                        ? `<span class="vm-site-chip vm-profile-alert">SECURITY ALERT</span>` : "")}
             </div>
         </header>
     `;
 
     const progressBar = renderXpBar(view);
+
+    // Phase 4.3 audit pass — a prominent COMPROMISED status banner shown only
+    // while the operator is breached. Empty string when secure, so a healthy
+    // dashboard is unchanged.
+    const compromised = renderCompromisedBanner(view);
 
     const orgBlock = renderOrgBlock(org);
     const economy = renderEconomyBlock(view);
@@ -126,6 +133,7 @@ function renderRichDashboard(view) {
     return `
         <div class="vm-wiki-body">
             ${banner}
+            ${compromised}
             ${progressBar}
             <div class="vm-profile-columns">
                 <div class="vm-profile-col">
@@ -262,9 +270,49 @@ function renderInventoryBlock(view) {
     `;
 }
 
+/**
+ * Phase 4.3 audit pass — the live "operator under incident" banner.
+ *
+ * Rendered only while `security.breached` is true. It turns the dashboard into
+ * a live security console: a COMPROMISED headline, the breach timestamp and
+ * source the backend now ships, the total exposure count, and the most recent
+ * incident the operator appeared in. Returns an empty string when the operator
+ * is secure, so a healthy profile is visually unchanged.
+ */
+function renderCompromisedBanner(view) {
+    const sec = view.security || {};
+    if (!sec.breached) return "";
+
+    const exposures = view.exposures || [];
+    const last = exposures[0] || {};
+    const when = sec.last_breached_at ? formatDateTime(sec.last_breached_at) : "unknown";
+    const source = sec.last_breached_by || "unknown source";
+    const lastIncident = last.incident_title || last.incident_slug || "—";
+
+    return `
+        <section class="vm-profile-compromised" role="alert">
+            <div class="vm-profile-compromised-head">
+                <span class="vm-profile-compromised-badge">SECURITY STATUS: COMPROMISED</span>
+                <span class="vm-profile-compromised-sub">Active incident — credentials exposed on BuckyNet</span>
+            </div>
+            <div class="vm-profile-grid vm-profile-compromised-grid">
+                ${statTile("Breached at", escapeHtml(when))}
+                ${statTile("Source", escapeHtml(String(source)))}
+                ${statTile("Exposures on record", String(exposures.length))}
+                ${statTile("Last incident", escapeHtml(String(lastIncident)), true)}
+            </div>
+            <p class="vm-profile-compromised-cta">
+                Your account is flagged as compromised. Rotate your bank code in Discord with
+                <code>+setbankcode</code> to clear this alert and return to <strong>SECURE</strong>.
+                Historical exposures below remain immutable — recovery never erases them.
+            </p>
+        </section>
+    `;
+}
+
 function renderSecurityBlock(sec) {
     const codeState = sec.bank_code_set ? "rotated" : "default - rotate!";
-    const breach = sec.breached ? "BREACHED" : "secure";
+    const breach = sec.breached ? "COMPROMISED" : "secure";
     return `
         <section class="vm-wiki-section vm-profile-block">
             <h2>Security posture</h2>
@@ -621,6 +669,17 @@ function formatDate(value) {
     const d = new Date(value);
     if (isNaN(d.getTime())) return String(value);
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** Date + time, for breach provenance (the COMPROMISED banner). */
+function formatDateTime(value) {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return d.toLocaleString("en-GB", {
+        day: "numeric", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+    });
 }
 
 /**
