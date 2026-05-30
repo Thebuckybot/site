@@ -515,6 +515,29 @@ export function mountBrowserApp(runtime, windowState, element) {
             return;
         }
 
+        // In-page controller actions (Phase 4.3 OSINT). A rendered page may
+        // register an interactive controller on window.__buckyInpage keyed by
+        // an id; elements opt in with data-inpage="<id>" + data-inpage-act.
+        // The controller re-renders ONLY its own subtree (filters, pagination,
+        // live-search results) — no navigation, no network, no VM rerender, so
+        // this stays inside the existing refresh model. Reusable by future
+        // OSINT modules. Clicks are checked BEFORE bucky-link so control chrome
+        // never triggers a navigation.
+        const actEl = target.closest("[data-inpage-act]");
+        if (actEl && actEl.tagName !== "INPUT") {
+            const ctrl = inpageController(actEl);
+            if (ctrl && typeof ctrl.onAction === "function") {
+                event.preventDefault();
+                const host = actEl.closest("[data-inpage]");
+                ctrl.onAction(
+                    actEl.getAttribute("data-inpage-act"),
+                    actEl.getAttribute("data-inpage-val"),
+                    host,
+                );
+                return;
+            }
+        }
+
         const linkEl = target.closest("[data-bucky-link]");
         if (linkEl) {
             event.preventDefault();
@@ -526,6 +549,18 @@ export function mountBrowserApp(runtime, windowState, element) {
         // A click anywhere else closes an open bookmarks panel.
         if (view.bookmarksOpen && !target.closest("[data-browser-bm-panel]")) {
             closeBookmarksPanel(windowState);
+        }
+    });
+
+    // Delegated input for in-page live-search boxes. Forwards keystrokes to the
+    // page's registered controller, which filters its own result subtree in
+    // place — the input is never re-rendered, so the caret is preserved.
+    appElement.addEventListener("input", (event) => {
+        const box = event.target;
+        if (!box || !box.matches || !box.matches("[data-inpage-act='search']")) return;
+        const ctrl = inpageController(box);
+        if (ctrl && typeof ctrl.onSearch === "function") {
+            ctrl.onSearch(box.value, box.closest("[data-inpage]"));
         }
     });
 
@@ -578,6 +613,23 @@ export function mountBrowserApp(runtime, windowState, element) {
  * (wiki, tube, bucky, etc.) deliberately stay out of this set so a hydration
  * event never re-renders pages that don't depend on fetched state.
  */
+/**
+ * Phase 4.3 OSINT — resolve the in-page controller that owns an element.
+ * A site registers `window.__buckyInpage[id] = { onSearch, onAction }`; its
+ * interactive elements live inside an ancestor carrying `data-inpage="<id>"`.
+ * Returns the controller object, or null. Pure lookup — never throws.
+ */
+function inpageController(el) {
+    try {
+        const host = el && el.closest && el.closest("[data-inpage]");
+        if (!host) return null;
+        const reg = (typeof window !== "undefined" && window.__buckyInpage) || null;
+        return reg ? reg[host.getAttribute("data-inpage")] || null : null;
+    } catch (_e) {
+        return null;
+    }
+}
+
 function isIdentityAwareUrl(url) {
     if (!url) return false;
     const u = String(url).toLowerCase();

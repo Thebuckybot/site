@@ -2702,6 +2702,138 @@ body.vm-focus-active .arcade-vm-bay {
 .vm-leak-sev.is-low { color: var(--vm-green); border: 1px solid rgba(132, 255, 155, .4); background: rgba(132, 255, 155, .08); }
 .vm-leak-sev.is-mod { color: var(--vm-amber); border: 1px solid rgba(255, 209, 102, .4); background: rgba(255, 209, 102, .08); }
 .vm-leak-sev.is-sev { color: var(--vm-red); border: 1px solid rgba(255, 79, 109, .45); background: rgba(255, 79, 109, .1); }
+/* Phase 4.3 OSINT — engine severity vocabulary (low|medium|high|severe). */
+.vm-leak-sev.is-medium { color: var(--vm-amber); border: 1px solid rgba(255, 209, 102, .4); background: rgba(255, 209, 102, .08); }
+.vm-leak-sev.is-high   { color: #ffb347; border: 1px solid rgba(255, 140, 70, .5); background: rgba(255, 140, 70, .1); }
+.vm-leak-sev.is-severe { color: var(--vm-red); border: 1px solid rgba(255, 79, 109, .5); background: rgba(255, 79, 109, .12); }
+
+/* =====================================================================
+   Phase 4.3 OSINT — the live Leak Database (bucky://leaks)
+   ===================================================================== */
+.vm-osint-statbar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin: 4px 0 16px;
+}
+.vm-osint-statbar.is-empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border: 1px solid rgba(82, 255, 243, .2);
+    border-radius: 10px;
+    background: rgba(82, 255, 243, .05);
+    color: var(--vm-cyan);
+    font-size: 13px;
+}
+.vm-osint-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid rgba(82, 255, 243, .18);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(82, 255, 243, .06), rgba(10, 22, 38, .35));
+}
+.vm-osint-stat-val {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--vm-cyan);
+    line-height: 1.1;
+    word-break: break-word;
+}
+.vm-osint-stat-val small { font-size: 11px; font-weight: 600; opacity: .7; display: block; }
+.vm-osint-stat-label {
+    font-size: 11px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    opacity: .7;
+}
+.vm-osint-stat.is-alert { border-color: rgba(255, 70, 137, .45); background: linear-gradient(180deg, rgba(255, 70, 137, .1), rgba(10, 22, 38, .35)); }
+.vm-osint-stat.is-alert .vm-osint-stat-val { color: #ffd6e3; }
+.vm-osint-stat.is-sevtile .vm-osint-stat-val { color: var(--vm-amber); }
+
+/* Search + filter row */
+.vm-osint-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin: 14px 0 6px;
+}
+.vm-osint-searchwrap {
+    position: relative;
+    flex: 1 1 260px;
+    display: flex;
+    align-items: center;
+}
+.vm-osint-searchglyph {
+    position: absolute;
+    left: 12px;
+    color: var(--vm-cyan);
+    opacity: .7;
+    pointer-events: none;
+}
+.vm-osint-search {
+    width: 100%;
+    padding: 9px 12px 9px 32px;
+    border-radius: 999px;
+    border: 1px solid rgba(82, 255, 243, .28);
+    background: rgba(2, 8, 18, .6);
+    color: #e9fbff;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 160ms var(--vm-ease), box-shadow 160ms var(--vm-ease);
+}
+.vm-osint-search:focus {
+    border-color: rgba(82, 255, 243, .6);
+    box-shadow: 0 0 0 3px rgba(82, 255, 243, .12);
+}
+.vm-osint-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.vm-osint-filter {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(82, 255, 243, .22);
+    background: transparent;
+    color: #bfeefb;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 140ms var(--vm-ease), border-color 140ms var(--vm-ease), color 140ms var(--vm-ease);
+}
+.vm-osint-filter:hover { border-color: rgba(82, 255, 243, .5); }
+.vm-osint-filter.is-active {
+    background: rgba(82, 255, 243, .16);
+    border-color: rgba(82, 255, 243, .6);
+    color: var(--vm-cyan);
+}
+.vm-osint-summary { font-size: 12px; opacity: .65; margin: 4px 0 12px; }
+
+/* Exposed-operator table specifics */
+.vm-osint-optable .vm-osint-email { color: var(--vm-pink); font-family: ui-monospace, monospace; font-size: 12px; }
+
+/* Pagination */
+.vm-osint-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin: 14px 0 4px;
+}
+.vm-osint-pgbtn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(82, 255, 243, .3);
+    background: rgba(82, 255, 243, .06);
+    color: var(--vm-cyan);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.vm-osint-pgbtn:hover { border-color: rgba(82, 255, 243, .6); }
+.vm-osint-pgbtn.is-disabled { opacity: .35; cursor: default; pointer-events: none; }
+.vm-osint-pgnum { font-size: 12px; opacity: .75; min-width: 92px; text-align: center; }
 
 .vm-leak-more {
     margin: 12px 0 0;

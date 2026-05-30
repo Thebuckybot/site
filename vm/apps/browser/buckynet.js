@@ -24,7 +24,7 @@ import { registerDevSite } from "./sites/dev.js";
 import { registerNewsSite } from "./sites/news.js";
 import { registerIncidentsSite } from "./sites/incidents.js";
 import { registerMaintenanceSite } from "./sites/maintenance.js";
-import { registerLeaksSite } from "./sites/leaks.js";
+import { registerLeaksSite, preloadLeaks } from "./sites/leaks.js";
 import { registerLeaksLive } from "./sites/leaksLive.js";
 import { registerBuckySite } from "./sites/bucky.js";
 import { registerCommunitySite } from "./sites/community.js";
@@ -80,6 +80,7 @@ export function getBuckyNet() {
     try { preloadOrganizations(); } catch (_e) { /* ditto */ }
     try { preloadLeaderboards(); }  catch (_e) { /* ditto */ }
     try { preloadPulse(); }         catch (_e) { /* ditto */ }
+    try { preloadLeaks(); }         catch (_e) { /* ditto — live OSINT leak DB */ }
 
     return registry;
 }

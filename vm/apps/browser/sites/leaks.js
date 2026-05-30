@@ -1,409 +1,541 @@
 /**
- * Leak Database — bucky://leaks
+ * Leak Database — bucky://leaks  (Phase 4.3 OSINT expansion)
  *
- * The fictional breach / OSINT site of BuckyNet. Everything here is invented
- * in-universe content: fake breaches, fake usernames, fake accounts, fake
- * exposed credentials, fake incident reports. Nothing references a real
- * person, brand or service.
+ * The first true OSINT application inside the Bucky VM. This page is NO LONGER
+ * a static lore archive — every record is REAL leak data served by the backend
+ * osint_service (powered by player_exposures + the live `breached` flag):
  *
- * Phase 3B expansion: breach categories, timestamps, organisation names,
- * per-breach incident report pages, per-account fake profile pages with
- * (masked, fictional) exposed credentials, and searchable leak entries. The
- * OSINT layer of a later phase will make these records correlatable; for now
- * they render as a deep, browsable, cross-linked archive.
+ *   bucky://leaks                      breach-database home:
+ *                                        • statistics block
+ *                                        • incident index (real incidents)
+ *                                        • exposed-operator index (real ops)
+ *                                        • live search + severity filter + paging
+ *   bucky://leaks/incident/<LEAK-id>   incident detail: header + affected ops
  *
- * Content is authored as DATA (BREACHES, EXPOSED). The renderer does not care
- * whether a future OSINTService generated the records. Every field is
- * HTML-escaped through the site kit before it reaches the viewport.
+ * IN-UNIVERSE / SAFETY
+ *   Operator handles come from the public Discord display name; the
+ *   `<handle>@bucky.net` address is a FICTIONAL OSINT representation generated
+ *   by the backend — real Discord emails are never read or shown. Credential
+ *   snippets are masked snapshots (e.g. "2x7x"); the real bank code never
+ *   leaves the bot.
+ *
+ * ARCHITECTURE (preserved)
+ *   • SiteRegistry/EventBus/GatewayClient/BrowserApp untouched in spirit. The
+ *     home reads from module caches and soft-refreshes on a TTL (the same
+ *     pattern as profile.js); it dispatches `bucky:hydrated` so the BrowserApp
+ *     re-renders in place. No websockets, no polling, no realtime sync.
+ *   • Search / severity-filter / pagination are handled CLIENT-SIDE over a
+ *     bounded operator window + the small incident set, via a tiny in-page
+ *     controller registered on window.__buckyInpage (the generic BrowserApp
+ *     hook). Live search updates only the result subtrees — the input keeps
+ *     focus. Incident DETAIL is lazy-loaded on navigation.
+ *
+ * EXTENSION POINTS (Phase 4.4+, prepared not built)
+ *   The controller + cache shape is reusable by future OSINT surfaces
+ *   (Mail Relay, Database Viewer, Intelligence Reports, Network Recon,
+ *   Exposure Correlation). They register sibling sites and a sibling
+ *   controller id; nothing here needs to change.
  */
 import { escapeHtml, link, chip, sitePage, crossRefs } from "./kit.js";
+import { gatewayClient } from "../../../core/gatewayClient.js";
 
 const SITE = "leaks";
 const DOMAIN = "Leak Database";
-
-/** Fictional breach reports. */
-const BREACHES = [
-    {
-        id: "BRCH-0123",
-        name: "Helix Dynamics Internal Relay",
-        org: "Helix Dynamics",
-        category: "Credential dump",
-        date: "Cycle 311",
-        records: "12,640",
-        severity: "Severe",
-        note: "An internal Helix relay was left on a default credential. Operator handles and masked credentials exposed.",
-        detail: [
-            "Helix Dynamics runs more nodes than it watches. Internal relay Helix-4 was reachable with a factory credential that was never rotated.",
-            "The dump is large and clean — a Static Den signature. They did not break the relay; they walked in and copied the index.",
-            "This is the breach that put Helix Dynamics back at the top of the database."
-        ],
-        wiki: "bucky://wiki/helix-dynamics"
-    },
-    {
-        id: "BRCH-0117",
-        name: "Unknown Relay — unsigned",
-        org: "Unverified",
-        category: "Unverified dump",
-        date: "Cycle 309",
-        records: "??",
-        severity: "Severe",
-        note: "Source unverified. The dump arrived with a transmission no creator will claim. Flagged for OSINT review.",
-        detail: [
-            "BRCH-0117 is the database's open question. The dump has no verified origin node and the record count never resolves.",
-            "It arrived alongside a sixty-seven second transmission. The source address in the metadata resolves to an unindexed region of the Grid — the ninth sector.",
-            "Operators mapping hidden routes use this incident as the entry point."
-        ],
-        wiki: "bucky://wiki/virus",
-        lead: "bucky://hidden/sector-9"
-    },
-    {
-        id: "BRCH-0130",
-        name: "Northgate Freight Manifest",
-        org: "Northgate Freight",
-        category: "Records leak",
-        date: "Cycle 312",
-        records: "3,002",
-        severity: "Moderate",
-        note: "Shipping manifests and operator handles scraped from a Northgate logistics node.",
-        detail: [
-            "Northgate Freight moves cargo data across the Grid. A logistics node exposed manifest records and the handles of operators with access.",
-            "No credentials in the set — handles and routes only. Low value alone, useful when correlated with another breach."
-        ]
-    },
-    {
-        id: "BRCH-0091",
-        name: "LuckyChip Casino Node",
-        org: "LuckyChip",
-        category: "Token wallet dump",
-        date: "Cycle 288",
-        records: "4,210",
-        severity: "Moderate",
-        note: "Token wallets exposed after a default credential was left on the arcade relay. No Credits affected.",
-        detail: [
-            "The LuckyChip casino node exposed token wallet identifiers. Bucky Credits were never in scope — arcade tokens and Grid Credits are separate wallets.",
-            "An old breach, kept because several handles in it reappear in newer dumps."
-        ],
-        wiki: "bucky://wiki/items"
-    },
-    {
-        id: "BRCH-0102",
-        name: "Arcade Node arcade-01",
-        org: "Caldera Energy",
-        category: "Session log scrape",
-        date: "Cycle 297",
-        records: "1,884",
-        severity: "Low",
-        note: "Session logs scraped from an unguarded node. Operator handles exposed; no passwords in the set.",
-        detail: [
-            "Caldera Energy runs the arcade relay. Node arcade-01 exposed session logs — handles, timestamps, last routes.",
-            "Low severity, high usefulness: a session log is a map of where an operator has been."
-        ],
-        wiki: "bucky://wiki/caldera-energy"
-    }
-];
-
-/** Fictional exposed accounts. All names, handles, emails and credentials are invented. */
-const EXPOSED = [
-    {
-        handle: "node_runner", email: "node.runner@bucky,net", source: "BRCH-0102",
-        joined: "Cycle 304", lastSeen: "Cycle 312", exposed: "handle, session log",
-        note: "A new operator. Active, careful, no faction ties on record.",
-        credentials: [{ service: "BuckyNet session", secret: "••••••••", hint: "no password in this dump" }]
-    },
-    {
-        handle: "halflight", email: "halflight@bucky,net", source: "BRCH-0091",
-        joined: "Cycle 271", lastSeen: "Cycle 309", exposed: "handle, token wallet id",
-        note: "Frequent BuckTube commenter. Spotted the banknote serial match on Unknown Transmission.",
-        credentials: [{ service: "LuckyChip wallet", secret: "wallet:LC-••••", hint: "wallet id only — no key" }]
-    },
-    {
-        handle: "trace_void", email: "trace.void@bucky,net", source: "BRCH-0123",
-        joined: "Cycle 240", lastSeen: "Cycle 311", exposed: "handle, masked credential, last route",
-        note: "Recurring handle across multiple breaches. Static Den suspect — unconfirmed.",
-        faction: "Static Den (suspected)",
-        credentials: [{ service: "Helix relay", secret: "••••••••••", hint: "reused across two nodes" }]
-    },
-    {
-        handle: "gridhopper", email: "gridhopper@bucky,net", source: "BRCH-0091",
-        joined: "Cycle 288", lastSeen: "Cycle 312", exposed: "handle, token balance",
-        note: "Community creator. Runs arcade-night content. No security concern on record.",
-        credentials: [{ service: "LuckyChip wallet", secret: "wallet:LC-••••", hint: "balance exposed, no key" }]
-    },
-    {
-        handle: "anon_signal", email: "anon@bucky,net", source: "BRCH-0117",
-        joined: "Cycle ???", lastSeen: "Cycle ???", exposed: "handle only — record incomplete",
-        note: "Uploader of the Unknown Transmission. Join date predates the public Grid. Record incomplete.",
-        faction: "Unknown",
-        credentials: [{ service: "—", secret: "—", hint: "no credential data recovered" }]
-    },
-    {
-        handle: "coldstart", email: "coldstart@bucky,net", source: "BRCH-0123",
-        joined: "Cycle 290", lastSeen: "Cycle 312", exposed: "handle, masked credential",
-        note: "Security-minded operator. Quotes the Security Awareness reel often.",
-        credentials: [{ service: "Helix relay", secret: "••••••••", hint: "rotated after the breach" }]
-    },
-    {
-        handle: "operator", email: "tommy@bucky,net", source: "BRCH-0102",
-        joined: "Cycle 305", lastSeen: "Cycle 312", exposed: "handle, workstation id",
-        note: "This workstation's operator handle. Exposed in a low-severity log scrape — a reminder that everyone is in here.",
-        credentials: [{ service: "BuckyNet session", secret: "••••••••", hint: "this is a fictional record" }]
-    }
-];
-
-const SEVERITY_CLASS = { Low: "is-low", Moderate: "is-mod", Severe: "is-sev" };
-const BREACH_BY_ID = new Map(BREACHES.map((breach) => [breach.id, breach]));
-const ACCOUNT_BY_HANDLE = new Map(EXPOSED.map((account) => [account.handle, account]));
+const PAGE_SIZE = 50;
+const TTL = gatewayClient.softRefreshTtl || 60000;
 
 const DISCLAIMER =
-    "Every record in the Leak Database is fictional, in-universe VM content. No handle, email, " +
-    "credential or breach here refers to a real person, account or organisation.";
+    "Operator handles, @bucky.net addresses and masked credential snippets are " +
+    "in-universe OSINT representations. No real email address or usable secret is shown.";
 
-function incidentUrl(id) {
-    return `bucky://leaks/incident/${id.toLowerCase()}`;
+// Severity vocabulary (engine emits low|medium|high|severe).
+const SEV = {
+    low:    { label: "Low",    cls: "is-low" },
+    medium: { label: "Medium", cls: "is-medium" },
+    high:   { label: "High",   cls: "is-high" },
+    severe: { label: "Severe", cls: "is-severe" },
+};
+const SEV_FILTERS = ["all", "low", "medium", "high", "severe"];
+
+// ---------------------------------------------------------------------------
+// Module state — caches + the client-side browse state.
+// ---------------------------------------------------------------------------
+const statsCache     = { status: "idle", data: null, fetchedAt: 0, inflight: false };
+const incidentsCache = { status: "idle", items: [], fetchedAt: 0, inflight: false };
+const operatorsCache = { status: "idle", records: [], fetchedAt: 0, inflight: false };
+const detailCache    = new Map(); // "LEAK-0008::1" -> { status, data, fetchedAt, inflight }
+
+const viewState = { q: "", severity: "all", incPage: 1, opPage: 1 };
+
+// ===========================================================================
+// Soft-refresh lifecycle (mirrors profile.js)
+// ===========================================================================
+function maybeRefresh(cache, fetchFn, assign) {
+    if (cache.inflight) return;
+    if (cache.fetchedAt && (Date.now() - cache.fetchedAt < TTL)) return;
+    doRefresh(cache, fetchFn, assign);
 }
-function profileUrl(handle) {
-    return `bucky://leaks/profile/${handle}`;
+
+async function doRefresh(cache, fetchFn, assign) {
+    if (cache.inflight) return;
+    cache.inflight = true;
+    if (!cache.fetchedAt) cache.status = "loading";
+    let res;
+    try { res = await fetchFn(); } catch (_e) { res = { ok: false }; }
+    cache.fetchedAt = Date.now();
+    cache.inflight = false;
+    if (!res || !res.ok) { cache.status = "offline"; notifyHydrated(); return; }
+    try { assign(res.data || {}); } catch (_e) { /* keep last good */ }
+    cache.status = "loaded";
+    notifyHydrated();
 }
 
-// ----- Rendering -------------------------------------------------------------
-
-function severityChip(severity) {
-    const cls = SEVERITY_CLASS[severity] || "is-mod";
-    return `<span class="vm-leak-sev ${cls}">${escapeHtml(severity)}</span>`;
+function refreshHomeData() {
+    maybeRefresh(statsCache, () => gatewayClient.fetchLeakStats(),
+        (d) => { statsCache.data = d || {}; });
+    maybeRefresh(incidentsCache, () => gatewayClient.fetchLeakIncidents(),
+        (d) => { incidentsCache.items = (d && d.items) || []; });
+    maybeRefresh(operatorsCache, () => gatewayClient.fetchLeakOperators(),
+        (d) => { operatorsCache.records = (d && d.records) || []; });
 }
 
-function renderBreachCards() {
-    return BREACHES.map((breach) => `
+function notifyHydrated() {
+    if (typeof window === "undefined" || !window.dispatchEvent) return;
+    try {
+        window.dispatchEvent(new CustomEvent("bucky:hydrated", { detail: { source: "leaks" } }));
+    } catch (_e) { /* noop */ }
+}
+
+// ===========================================================================
+// Small render helpers
+// ===========================================================================
+function sevMeta(s) { return SEV[String(s || "").toLowerCase()] || SEV.low; }
+function severityBadge(s) {
+    const m = sevMeta(s);
+    return `<span class="vm-leak-sev ${m.cls}">${escapeHtml(m.label)}</span>`;
+}
+function incidentUrl(id) { return `bucky://leaks/incident/${String(id || "").toLowerCase()}`; }
+function profileUrl(uid) { return `bucky://profile/${encodeURIComponent(String(uid || ""))}`; }
+
+function formatDate(value) {
+    if (!value) return "—";
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function statTile(label, value, accentClass) {
+    return `
+        <div class="vm-osint-stat${accentClass ? " " + accentClass : ""}">
+            <span class="vm-osint-stat-val">${value}</span>
+            <span class="vm-osint-stat-label">${escapeHtml(label)}</span>
+        </div>
+    `;
+}
+
+// ===========================================================================
+// Statistics block
+// ===========================================================================
+function renderStats() {
+    const s = statsCache.data && statsCache.data.stats;
+    if (!s) {
+        const msg = statsCache.status === "offline"
+            ? "Statistics feed offline; retrying shortly."
+            : "Loading breach statistics from the Grid…";
+        return `<div class="vm-osint-statbar is-empty"><span class="vm-dev-feeddot"></span>${escapeHtml(msg)}</div>`;
+    }
+    const hs = s.highest_severity ? sevMeta(s.highest_severity).label : "—";
+    const recentTitle = (s.most_recent && s.most_recent.title) || "—";
+    const recentAt = s.most_recent && s.most_recent.at ? formatDate(s.most_recent.at) : "";
+    return `
+        <div class="vm-osint-statbar">
+            ${statTile("Leak incidents", String(s.total_incidents || 0))}
+            ${statTile("Exposed operators", String(s.total_exposed_operators || 0))}
+            ${statTile("Active compromised", String(s.active_compromised || 0), "is-alert")}
+            ${statTile("Highest severity", escapeHtml(hs), "is-sevtile")}
+            ${statTile("Most recent", `${escapeHtml(recentTitle)}${recentAt ? ` <small>${escapeHtml(recentAt)}</small>` : ""}`)}
+        </div>
+    `;
+}
+
+// ===========================================================================
+// Search + filter chrome
+// ===========================================================================
+function renderControls() {
+    return `
+        <div class="vm-osint-controls">
+            <div class="vm-osint-searchwrap">
+                <span class="vm-osint-searchglyph" aria-hidden="true">&#9906;</span>
+                <input class="vm-osint-search" type="text" spellcheck="false" autocomplete="off"
+                       placeholder="Search operators, LEAK id, severity, incident…"
+                       aria-label="Search the leak database"
+                       data-inpage-act="search" value="${escapeHtml(viewState.q)}">
+            </div>
+            <div class="vm-osint-filters" data-osint="filters">${renderFilterChips()}</div>
+        </div>
+    `;
+}
+
+function renderFilterChips() {
+    return SEV_FILTERS.map((f) => {
+        const active = viewState.severity === f ? " is-active" : "";
+        const label = f === "all" ? "All" : sevMeta(f).label;
+        return `<button class="vm-osint-filter${active}" data-inpage-act="filter" data-inpage-val="${f}">${escapeHtml(label)}</button>`;
+    }).join("");
+}
+
+// ===========================================================================
+// Filtering + pagination (pure, client-side)
+// ===========================================================================
+function matchSeverity(sev) {
+    return viewState.severity === "all" || String(sev || "").toLowerCase() === viewState.severity;
+}
+function q() { return viewState.q.trim().toLowerCase(); }
+
+function filteredIncidents() {
+    const query = q();
+    return (incidentsCache.items || []).filter((i) => {
+        if (!matchSeverity(i.severity)) return false;
+        if (!query) return true;
+        return String(i.title || "").toLowerCase().includes(query)
+            || String(i.incident_id || "").toLowerCase().includes(query)
+            || sevMeta(i.severity).label.toLowerCase() === query;
+    });
+}
+
+function filteredOperators() {
+    const query = q();
+    return (operatorsCache.records || []).filter((o) => {
+        if (!matchSeverity(o.severity)) return false;
+        if (!query) return true;
+        return String(o.handle || "").toLowerCase().includes(query)
+            || String(o.email || "").toLowerCase().includes(query)
+            || String(o.incident_title || "").toLowerCase().includes(query)
+            || String(o.incident_id || "").toLowerCase().includes(query)
+            || String(o.masked_credential || "").toLowerCase().includes(query)
+            || sevMeta(o.severity).label.toLowerCase() === query;
+    });
+}
+
+function pageCount(total) { return Math.max(1, Math.ceil(total / PAGE_SIZE)); }
+function clampPage(n, pages) {
+    const p = parseInt(n, 10);
+    if (isNaN(p)) return 1;
+    return Math.min(Math.max(1, p), pages);
+}
+function pageSlice(arr, page) {
+    const start = (page - 1) * PAGE_SIZE;
+    return arr.slice(start, start + PAGE_SIZE);
+}
+
+function pager(section, page, pages) {
+    if (pages <= 1) return "";
+    const btn = (target, label, disabled) => disabled
+        ? `<span class="vm-osint-pgbtn is-disabled">${label}</span>`
+        : `<button class="vm-osint-pgbtn" data-inpage-act="${section}page" data-inpage-val="${target}">${label}</button>`;
+    return `
+        <div class="vm-osint-pager">
+            ${btn(page - 1, "&#8592; Previous", page <= 1)}
+            <span class="vm-osint-pgnum">Page ${page} / ${pages}</span>
+            ${btn(page + 1, "Next &#8594;", page >= pages)}
+        </div>
+    `;
+}
+
+// ===========================================================================
+// Incident list
+// ===========================================================================
+function renderIncidentResults() {
+    const all = filteredIncidents();
+    const pages = pageCount(all.length);
+    viewState.incPage = Math.min(viewState.incPage, pages);
+    if (!incidentsCache.items.length) {
+        const msg = incidentsCache.status === "offline"
+            ? "Incident feed offline; retrying shortly."
+            : (incidentsCache.status === "loaded"
+                ? "No leak incidents recorded yet. When the leak engine fires, real incidents appear here."
+                : "Loading incidents…");
+        return `<p class="vm-dev-note">${escapeHtml(msg)}</p>`;
+    }
+    if (!all.length) return `<p class="vm-dev-note">No incidents match the current search / filter.</p>`;
+    const cards = pageSlice(all, viewState.incPage).map((i) => `
         <article class="vm-leak-card">
             <div class="vm-leak-card-head">
-                <span class="vm-leak-id">${escapeHtml(breach.id)}</span>
-                ${severityChip(breach.severity)}
+                <span class="vm-leak-id">${escapeHtml(i.incident_id || "LEAK-????")}</span>
+                ${severityBadge(i.severity)}
             </div>
-            <h3>${link(incidentUrl(breach.id), breach.name, "vm-leak-card-title")}</h3>
+            <h3>${link(incidentUrl(i.incident_id), i.title || "Untitled incident", "vm-leak-card-title")}</h3>
             <div class="vm-leak-card-stats">
-                <span>${escapeHtml(breach.org)}</span>
-                <span>${escapeHtml(breach.date)}</span>
-                <span>${escapeHtml(breach.records)} records</span>
+                <span>${escapeHtml(String(i.affected_operators || 0))} operators</span>
+                <span>${escapeHtml(String(i.exposure_count || 0))} exposures</span>
+                <span>${escapeHtml(formatDate(i.last_seen))}</span>
             </div>
-            <div class="vm-site-chiprow">${chip(breach.category)}</div>
-            <p>${escapeHtml(breach.note)}</p>
-            <p class="vm-leak-more">${link(incidentUrl(breach.id), "Open incident report ›")}</p>
+            <p class="vm-leak-more">${link(incidentUrl(i.incident_id), "Open incident &#8250;")}</p>
         </article>
     `).join("");
+    return `<div class="vm-leak-grid">${cards}</div>`;
 }
 
-function renderExposedTable() {
-    const rows = EXPOSED.map((account) => `
+function renderIncidentPager() {
+    return pager("inc", viewState.incPage, pageCount(filteredIncidents().length));
+}
+
+// ===========================================================================
+// Exposed-operator index
+// ===========================================================================
+function renderOperatorResults() {
+    const all = filteredOperators();
+    const pages = pageCount(all.length);
+    viewState.opPage = Math.min(viewState.opPage, pages);
+    if (!operatorsCache.records.length) {
+        const msg = operatorsCache.status === "offline"
+            ? "Operator index offline; retrying shortly."
+            : (operatorsCache.status === "loaded"
+                ? "No exposed operators on record yet."
+                : "Loading exposed operators…");
+        return `<p class="vm-dev-note">${escapeHtml(msg)}</p>`;
+    }
+    if (!all.length) return `<p class="vm-dev-note">No operators match the current search / filter.</p>`;
+    const rows = pageSlice(all, viewState.opPage).map((o) => `
         <tr>
-            <td class="vm-leak-handle">${link(profileUrl(account.handle), account.handle)}</td>
-            <td>${escapeHtml(account.email)}</td>
-            <td>${link(incidentUrl(account.source), account.source)}</td>
-            <td>${escapeHtml(account.exposed)}</td>
+            <td class="vm-leak-handle">${link(profileUrl(o.user_id), o.handle || "operator")}</td>
+            <td class="vm-osint-email">${escapeHtml(o.email || "")}</td>
+            <td class="vm-leak-cred">${escapeHtml(o.masked_credential || "")}</td>
+            <td>${severityBadge(o.severity)}</td>
+            <td>${o.incident_id ? link(incidentUrl(o.incident_id), o.incident_id) : escapeHtml(o.incident_title || "—")}</td>
+            <td>${escapeHtml(formatDate(o.leaked_at))}</td>
         </tr>
     `).join("");
     return `
         <div class="vm-leak-tablewrap">
-            <table class="vm-leak-table">
-                <thead>
-                    <tr><th>Handle</th><th>Exposed email</th><th>Source</th><th>Exposed data</th></tr>
-                </thead>
+            <table class="vm-leak-table vm-osint-optable">
+                <thead><tr>
+                    <th>Operator</th><th>Exposed address</th><th>Snippet</th>
+                    <th>Severity</th><th>Incident</th><th>Logged</th>
+                </tr></thead>
                 <tbody>${rows}</tbody>
             </table>
         </div>
     `;
 }
 
-/** Render the Leak Database home. */
+function renderOperatorPager() {
+    return pager("op", viewState.opPage, pageCount(filteredOperators().length));
+}
+
+function renderSummary() {
+    const inc = filteredIncidents().length;
+    const ops = filteredOperators().length;
+    const scope = viewState.q || viewState.severity !== "all" ? "match" : "on record";
+    return `${inc} incident${inc === 1 ? "" : "s"} &middot; ${ops} exposure${ops === 1 ? "" : "s"} ${escapeHtml(scope)}`;
+}
+
+// ===========================================================================
+// The home page
+// ===========================================================================
 function renderHome() {
+    refreshHomeData();
+    registerController();
+
     const body = `
-        <div class="vm-wiki-body">
-            <p class="vm-wiki-intro">
-                The Leak Database is BuckyNet's breach archive — the future home of the OSINT layer.
-                ${BREACHES.length} breach reports, ${EXPOSED.length} exposed accounts. Every entry is
-                searchable and cross-linked.
-            </p>
+        <div class="vm-wiki-body vm-osint" data-inpage="leaks">
+            ${renderStats()}
             <div class="vm-leak-notice">${escapeHtml(DISCLAIMER)}</div>
+            ${renderControls()}
+            <div class="vm-osint-summary" data-osint="summary">${renderSummary()}</div>
+
             <section class="vm-wiki-section">
-                <h2>Breach reports</h2>
-                <div class="vm-leak-grid">${renderBreachCards()}</div>
+                <h2>Incidents</h2>
+                <div data-osint="incidents-results">${renderIncidentResults()}</div>
+                <div data-osint="incidents-pager">${renderIncidentPager()}</div>
             </section>
+
             <section class="vm-wiki-section">
-                <h2>Exposed accounts</h2>
-                ${renderExposedTable()}
-                <p class="vm-leak-more">${link("bucky://leaks/exposed-accounts", "Open the full exposed-account index ›")}</p>
+                <h2>Exposed operators</h2>
+                <div data-osint="operators-results">${renderOperatorResults()}</div>
+                <div data-osint="operators-pager">${renderOperatorPager()}</div>
             </section>
+
             ${crossRefs("Across BuckyNet", [
-                { url: "bucky://wiki/static-den", label: "BuckyWiki: The Static Den", note: "the crew behind the dumps" },
-                { url: "bucky://community", label: "Bucky Community", note: "share OSINT finds" }
+                { url: "bucky://profile", label: "Your operator profile", note: "your own exposure archive" },
+                { url: "bucky://leaderboards", label: "Leaderboards", note: "most-leaked operators" },
+                { url: "bucky://wiki/static-den", label: "BuckyWiki: The Static Den", note: "OSINT lore" }
             ])}
         </div>
     `;
     return sitePage({
         site: SITE,
-        domain: `${DOMAIN} · bucky://leaks`,
+        domain: `${DOMAIN} &middot; bucky://leaks`,
         title: "Leak Database",
-        lead: "BuckyNet's breach archive.",
-        bodyHtml: body
+        lead: "Live OSINT breach archive — real incidents, real exposed operators.",
+        bodyHtml: body,
     });
 }
 
-/** Render the standalone breach report index. */
-function renderBreachReports() {
-    const body = `
-        <div class="vm-wiki-body">
-            <p class="vm-wiki-intro">
-                Every breach report filed on the Grid. Each is a fictional incident; open a report
-                for the full write-up and the accounts it exposed.
-            </p>
-            <div class="vm-leak-notice">${escapeHtml(DISCLAIMER)}</div>
-            <div class="vm-leak-grid">${renderBreachCards()}</div>
-            <p class="vm-leak-more">${link("bucky://leaks", "‹ Back to the Leak Database")}</p>
-        </div>
-    `;
+// ===========================================================================
+// In-page controller (registered for the generic BrowserApp hook)
+// ===========================================================================
+const controller = {
+    onSearch(value, host) {
+        viewState.q = String(value || "");
+        viewState.incPage = 1;
+        viewState.opPage = 1;
+        repaintAll(host);
+    },
+    onAction(act, val, host) {
+        if (act === "filter") {
+            viewState.severity = SEV_FILTERS.includes(val) ? val : "all";
+            viewState.incPage = 1;
+            viewState.opPage = 1;
+            repaintAll(host);
+            setHtml(host, '[data-osint="filters"]', renderFilterChips());
+        } else if (act === "incpage") {
+            viewState.incPage = clampPage(val, pageCount(filteredIncidents().length));
+            setHtml(host, '[data-osint="incidents-results"]', renderIncidentResults());
+            setHtml(host, '[data-osint="incidents-pager"]', renderIncidentPager());
+        } else if (act === "oppage") {
+            viewState.opPage = clampPage(val, pageCount(filteredOperators().length));
+            setHtml(host, '[data-osint="operators-results"]', renderOperatorResults());
+            setHtml(host, '[data-osint="operators-pager"]', renderOperatorPager());
+        }
+    },
+};
+
+function repaintAll(host) {
+    setHtml(host, '[data-osint="summary"]', renderSummary());
+    setHtml(host, '[data-osint="incidents-results"]', renderIncidentResults());
+    setHtml(host, '[data-osint="incidents-pager"]', renderIncidentPager());
+    setHtml(host, '[data-osint="operators-results"]', renderOperatorResults());
+    setHtml(host, '[data-osint="operators-pager"]', renderOperatorPager());
+}
+
+function setHtml(host, selector, html) {
+    const scope = host || (typeof document !== "undefined" && document.querySelector('[data-inpage="leaks"]'));
+    if (!scope) return;
+    const el = scope.querySelector(selector);
+    if (el) el.innerHTML = html;
+}
+
+function registerController() {
+    if (typeof window === "undefined") return;
+    window.__buckyInpage = window.__buckyInpage || {};
+    window.__buckyInpage.leaks = controller;
+}
+
+// ===========================================================================
+// Incident detail page (lazy-loaded on navigation)
+// ===========================================================================
+function detailKey(id, page) { return `${String(id).toUpperCase()}::${page}`; }
+
+function maybeRefreshDetail(id, page) {
+    const key = detailKey(id, page);
+    let c = detailCache.get(key);
+    if (!c) { c = { status: "idle", data: null, fetchedAt: 0, inflight: false }; detailCache.set(key, c); }
+    if (c.inflight) return c;
+    if (c.fetchedAt && (Date.now() - c.fetchedAt < TTL)) return c;
+    c.inflight = true;
+    if (!c.fetchedAt) c.status = "loading";
+    gatewayClient.fetchLeakIncident(id, page).then((res) => {
+        c.fetchedAt = Date.now();
+        c.inflight = false;
+        if (!res || !res.ok) { c.status = res && res.status === 404 ? "missing" : "offline"; notifyHydrated(); return; }
+        c.data = (res.data && res.data.incident) || null;
+        c.status = c.data ? "loaded" : "missing";
+        notifyHydrated();
+    }).catch(() => { c.inflight = false; c.status = "offline"; notifyHydrated(); });
+    return c;
+}
+
+function renderIncidentDetail(ctx) {
+    const id = (ctx.segments && ctx.segments[ctx.segments.length - 1]) || "";
+    const page = Math.max(1, parseInt((ctx.query && ctx.query.page) || "1", 10) || 1);
+    const c = maybeRefreshDetail(id, page);
+
+    let body;
+    if (c.status === "missing") {
+        body = `<div class="vm-wiki-body"><p>No incident on record for <code>${escapeHtml(String(id).toUpperCase())}</code>.</p>
+            <p class="vm-leak-more">${link("bucky://leaks", "&#8249; Back to the Leak Database")}</p></div>`;
+    } else if (c.status === "offline") {
+        body = `<div class="vm-wiki-body"><div class="vm-dev-feedstatus is-offline"><span class="vm-dev-feeddot"></span>
+            Incident feed offline; try again in a moment.</div></div>`;
+    } else if (!c.data) {
+        body = `<div class="vm-wiki-body"><div class="vm-dev-feedstatus is-loading"><span class="vm-dev-feeddot"></span>
+            Loading incident from the Grid…</div></div>`;
+    } else {
+        body = renderIncidentDetailBody(c.data);
+    }
     return sitePage({
         site: SITE,
-        domain: `${DOMAIN} · bucky://leaks/breach-reports`,
-        title: "Breach Reports",
-        lead: "Fictional breach incidents filed on the Grid.",
-        bodyHtml: body
+        domain: `${DOMAIN} &middot; bucky://leaks/incident/${escapeHtml(String(id).toLowerCase())}`,
+        title: (c.data && c.data.title) || String(id).toUpperCase(),
+        lead: c.data ? `${c.data.incident_id} &middot; ${sevMeta(c.data.severity).label} severity` : "Incident report",
+        bodyHtml: body,
     });
 }
 
-/** Render the standalone exposed-account index. */
-function renderExposedAccounts() {
-    const body = `
-        <div class="vm-wiki-body">
-            <p class="vm-wiki-intro">
-                The exposed-account index. Handles and emails below are invented in-universe content
-                tied to fictional breaches. Open a handle for its full profile.
-            </p>
-            <div class="vm-leak-notice">${escapeHtml(DISCLAIMER)}</div>
-            ${renderExposedTable()}
-            <p class="vm-leak-more">${link("bucky://leaks", "‹ Back to the Leak Database")}</p>
-        </div>
-    `;
-    return sitePage({
-        site: SITE,
-        domain: `${DOMAIN} · bucky://leaks/exposed-accounts`,
-        title: "Exposed Accounts",
-        lead: "The fictional exposed-account index.",
-        bodyHtml: body
-    });
-}
+function renderIncidentDetailBody(d) {
+    const rows = (d.operators || []).map((o) => `
+        <tr>
+            <td class="vm-leak-handle">${link(profileUrl(o.user_id), o.handle || "operator")}</td>
+            <td class="vm-osint-email">${escapeHtml(o.email || "")}</td>
+            <td class="vm-leak-cred">${escapeHtml(o.masked_credential || "")}</td>
+            <td>${severityBadge(o.severity)}</td>
+            <td>${escapeHtml(formatDate(o.leaked_at))}</td>
+        </tr>
+    `).join("");
 
-/** Render one breach incident report. */
-function renderIncident(breach) {
-    const affected = EXPOSED.filter((account) => account.source === breach.id);
-    const affectedHtml = affected.length
-        ? `<ul class="vm-wiki-links">${affected.map((account) =>
-            `<li>${link(profileUrl(account.handle), account.handle)}
-             <span class="vm-wiki-links-cat">${escapeHtml(account.exposed)}</span></li>`).join("")}</ul>`
-        : `<p>No individual accounts are itemised for this incident.</p>`;
+    const opsTable = (d.operators && d.operators.length)
+        ? `<div class="vm-leak-tablewrap"><table class="vm-leak-table vm-osint-optable">
+               <thead><tr><th>Operator</th><th>Exposed address</th><th>Snippet</th><th>Severity</th><th>Logged</th></tr></thead>
+               <tbody>${rows}</tbody></table></div>`
+        : `<p class="vm-dev-note">No affected operators on this page.</p>`;
 
-    const refs = [];
-    if (breach.wiki) refs.push({ url: breach.wiki, label: "BuckyWiki context", note: "the organisation" });
-    if (breach.lead) refs.push({ url: breach.lead, label: "Trace the source address", note: "unindexed route" });
-    refs.push({ url: "bucky://leaks/breach-reports", label: "All breach reports", note: "back to the index" });
+    // Detail pagination is navigation-based (lazy detail load), one page of 50.
+    let detailPager = "";
+    if ((d.pages || 1) > 1) {
+        const base = incidentUrl(d.incident_id);
+        const prev = d.page > 1
+            ? link(`${base}?page=${d.page - 1}`, "&#8592; Previous")
+            : `<span class="vm-osint-pgbtn is-disabled">&#8592; Previous</span>`;
+        const next = d.page < d.pages
+            ? link(`${base}?page=${d.page + 1}`, "Next &#8594;")
+            : `<span class="vm-osint-pgbtn is-disabled">Next &#8594;</span>`;
+        detailPager = `<div class="vm-osint-pager">${prev}<span class="vm-osint-pgnum">Page ${d.page} / ${d.pages}</span>${next}</div>`;
+    }
 
-    const body = `
+    return `
         <div class="vm-wiki-body">
             <div class="vm-leak-incident-head">
-                <span class="vm-leak-id">${escapeHtml(breach.id)}</span>
-                ${severityChip(breach.severity)}
-                ${chip(breach.category)}
+                <span class="vm-leak-id">${escapeHtml(d.incident_id || "")}</span>
+                ${severityBadge(d.severity)}
             </div>
             <div class="vm-leak-incident-grid">
-                <div class="vm-wiki-info-row"><span>Organisation</span><strong>${escapeHtml(breach.org)}</strong></div>
-                <div class="vm-wiki-info-row"><span>Filed</span><strong>${escapeHtml(breach.date)}</strong></div>
-                <div class="vm-wiki-info-row"><span>Records</span><strong>${escapeHtml(breach.records)}</strong></div>
-                <div class="vm-wiki-info-row"><span>Severity</span><strong>${escapeHtml(breach.severity)}</strong></div>
+                <div class="vm-wiki-info-row"><span>Severity</span><strong>${escapeHtml(sevMeta(d.severity).label)}</strong></div>
+                <div class="vm-wiki-info-row"><span>Affected operators</span><strong>${escapeHtml(String(d.affected_operators || 0))}</strong></div>
+                <div class="vm-wiki-info-row"><span>Exposures</span><strong>${escapeHtml(String(d.exposure_count || 0))}</strong></div>
+                <div class="vm-wiki-info-row"><span>First seen</span><strong>${escapeHtml(formatDate(d.first_seen))}</strong></div>
+                <div class="vm-wiki-info-row"><span>Last seen</span><strong>${escapeHtml(formatDate(d.last_seen))}</strong></div>
             </div>
             <div class="vm-leak-notice">${escapeHtml(DISCLAIMER)}</div>
             <section class="vm-wiki-section">
                 <h2>Incident report</h2>
-                ${breach.detail.map((text) => `<p>${escapeHtml(text)}</p>`).join("")}
+                <p>${escapeHtml(d.description || "")}</p>
             </section>
             <section class="vm-wiki-section">
-                <h2>Exposed accounts</h2>
-                ${affectedHtml}
+                <h2>Affected operators (${escapeHtml(String(d.total || (d.operators || []).length))})</h2>
+                ${opsTable}
+                ${detailPager}
             </section>
-            ${crossRefs("Follow the thread", refs)}
+            <p class="vm-leak-more">${link("bucky://leaks", "&#8249; Back to the Leak Database")}</p>
         </div>
     `;
-    return sitePage({
-        site: SITE,
-        domain: `${DOMAIN} · ${incidentUrl(breach.id)}`,
-        title: breach.name,
-        lead: `${breach.id} · ${breach.org} · ${breach.severity}`,
-        bodyHtml: body
-    });
 }
 
-/** Render one fake account profile. */
-function renderProfile(account) {
-    const breach = BREACH_BY_ID.get(account.source);
-    const creds = account.credentials.map((cred) => `
-        <tr>
-            <td>${escapeHtml(cred.service)}</td>
-            <td class="vm-leak-cred">${escapeHtml(cred.secret)}</td>
-            <td>${escapeHtml(cred.hint)}</td>
-        </tr>
-    `).join("");
+// ===========================================================================
+// Registration
+// ===========================================================================
+const INCIDENT_URL_RE = /^bucky:\/\/leaks\/incident\/[^/?#]+$/i;
 
-    const refs = [
-        { url: incidentUrl(account.source), label: `Incident ${account.source}`, note: "the breach" },
-        { url: "bucky://leaks/exposed-accounts", label: "Exposed accounts", note: "the full index" }
-    ];
-    if (account.faction && account.faction.indexOf("Static Den") !== -1) {
-        refs.push({ url: "bucky://wiki/static-den", label: "BuckyWiki: The Static Den", note: "suspected faction" });
-    }
-
-    const body = `
-        <div class="vm-wiki-body">
-            <div class="vm-leak-profile-head">
-                <span class="vm-leak-avatar" aria-hidden="true">${escapeHtml(account.handle.slice(0, 1).toUpperCase())}</span>
-                <div>
-                    <div class="vm-leak-profile-handle">${escapeHtml(account.handle)}</div>
-                    <div class="vm-leak-profile-email">${escapeHtml(account.email)}</div>
-                </div>
-            </div>
-            <div class="vm-leak-notice">${escapeHtml(DISCLAIMER)}</div>
-            <div class="vm-leak-incident-grid">
-                <div class="vm-wiki-info-row"><span>Joined</span><strong>${escapeHtml(account.joined)}</strong></div>
-                <div class="vm-wiki-info-row"><span>Last seen</span><strong>${escapeHtml(account.lastSeen)}</strong></div>
-                <div class="vm-wiki-info-row"><span>Source breach</span><strong>${escapeHtml(account.source)}</strong></div>
-                <div class="vm-wiki-info-row"><span>Faction</span><strong>${escapeHtml(account.faction || "None on record")}</strong></div>
-            </div>
-            <section class="vm-wiki-section">
-                <h2>Profile note</h2>
-                <p>${escapeHtml(account.note)}</p>
-                ${breach ? `<p>Exposed in <strong>${escapeHtml(breach.name)}</strong> (${escapeHtml(breach.date)}).</p>` : ""}
-            </section>
-            <section class="vm-wiki-section">
-                <h2>Exposed credentials</h2>
-                <p class="vm-leak-cred-note">Credentials are masked and entirely fictional — no usable secret is shown.</p>
-                <div class="vm-leak-tablewrap">
-                    <table class="vm-leak-table">
-                        <thead><tr><th>Service</th><th>Credential</th><th>Note</th></tr></thead>
-                        <tbody>${creds}</tbody>
-                    </table>
-                </div>
-            </section>
-            ${crossRefs("Follow the thread", refs)}
-        </div>
-    `;
-    return sitePage({
-        site: SITE,
-        domain: `${DOMAIN} · ${profileUrl(account.handle)}`,
-        title: account.handle,
-        lead: `Exposed account · source ${account.source}`,
-        bodyHtml: body
-    });
-}
-
-// ----- Registration ----------------------------------------------------------
-
-/** Register every Leak Database page into the given SiteRegistry. */
 export function registerLeaksSite(registry) {
     registry.register({
         id: "leaks-home",
@@ -411,65 +543,35 @@ export function registerLeaksSite(registry) {
         site: SITE,
         title: "Leak Database",
         type: "home",
-        keywords: ["leaks", "leak", "bucky", "database", "breach", "breaches", "osint", "exposed", "dump"],
-        description: "BuckyNet's breach archive — fictional breach reports, incident reports and exposed accounts.",
+        keywords: ["leaks", "leak", "breach", "breaches", "osint", "exposed", "dump",
+                   "incident", "credential", "compromised", "operators", "database"],
+        description: "BuckyNet's live OSINT breach database — real incidents and exposed operators.",
         tags: ["leaks", "site", "osint"],
-        render: () => renderHome()
+        render: () => renderHome(),
     });
 
-    registry.register({
-        id: "leaks-breach-reports",
-        url: "bucky://leaks/breach-reports",
-        site: SITE,
-        title: "Breach Reports",
-        type: "index",
-        keywords: ["breach", "breaches", "reports", "leaks", "leak", "bucky", "incident", "osint"],
-        description: "The full index of fictional breach reports filed on the Grid.",
-        tags: ["leaks", "breach", "osint"],
-        render: () => renderBreachReports()
-    });
-
-    registry.register({
-        id: "leaks-exposed-accounts",
-        url: "bucky://leaks/exposed-accounts",
-        site: SITE,
-        title: "Exposed Accounts",
-        type: "index",
-        keywords: ["exposed", "accounts", "leaks", "leak", "bucky", "emails", "handles", "osint", "credentials"],
-        description: "The fictional exposed-account index — invented handles, emails and masked credentials.",
-        tags: ["leaks", "accounts", "osint"],
-        render: () => renderExposedAccounts()
-    });
-
-    // Per-breach incident reports — each a searchable leak entry.
-    BREACHES.forEach((breach) => {
-        registry.register({
-            id: `leaks-incident-${breach.id}`,
-            url: incidentUrl(breach.id),
+    if (typeof registry.registerMatcher === "function") {
+        registry.registerMatcher({
+            id: "leaks-incident-detail",
             site: SITE,
-            title: breach.name,
+            title: "Leak Incident",
             type: "incident",
-            keywords: ["breach", "incident", breach.id.toLowerCase(), breach.org.toLowerCase(),
-                breach.category.toLowerCase(), "leak", "leaks"],
-            description: `${breach.id} — ${breach.category} · ${breach.org} · ${breach.note}`,
-            tags: ["leaks", "incident", "breach"],
-            render: () => renderIncident(breach)
+            keywords: ["leak", "incident", "breach", "osint"],
+            tags: ["leaks", "incident", "osint"],
+            match: (url) => INCIDENT_URL_RE.test(String(url || "")),
+            render: (ctx) => renderIncidentDetail(ctx),
         });
-    });
+    }
+}
 
-    // Per-account fake profiles — each a searchable leak entry.
-    EXPOSED.forEach((account) => {
-        registry.register({
-            id: `leaks-profile-${account.handle}`,
-            url: profileUrl(account.handle),
-            site: SITE,
-            title: account.handle,
-            type: "profile",
-            keywords: ["account", "profile", "handle", account.handle.toLowerCase(),
-                "exposed", "leak", "leaks", "osint"],
-            description: `Exposed account ${account.handle} — ${account.note}`,
-            tags: ["leaks", "profile", "account"],
-            render: () => renderProfile(account)
-        });
-    });
+/** Boot-time preload (additive, fire-and-forget) — mirrors the other live pages. */
+export function preloadLeaks() {
+    try { refreshHomeData(); } catch (_e) { /* never block VM boot */ }
+}
+
+export function invalidateLeaks() {
+    statsCache.fetchedAt = 0;
+    incidentsCache.fetchedAt = 0;
+    operatorsCache.fetchedAt = 0;
+    detailCache.clear();
 }

@@ -298,6 +298,32 @@ function fetchMyLeaks(limit) {
     return request("/api/leaks/me" + q, { credentials: "include" });
 }
 
+// ---------------------------------------------------------------------------
+// Phase 4.3 OSINT expansion — the live Leak Database (public, read-only).
+// All powered by REAL player_exposures via the backend osint_service.
+// ---------------------------------------------------------------------------
+/** Headline statistics for bucky://leaks (incidents, operators, severity, ...). */
+function fetchLeakStats() {
+    return request("/api/leaks/stats");
+}
+
+/** The incident index — one entry per real leak incident, newest first. */
+function fetchLeakIncidents() {
+    return request("/api/leaks/incidents");
+}
+
+/** One incident + a page of its affected operators (lazy detail load). */
+function fetchLeakIncident(incidentId, page) {
+    const q = page ? "?page=" + encodeURIComponent(String(page)) : "";
+    return request("/api/leaks/incident/" + encodeURIComponent(String(incidentId || "")) + q);
+}
+
+/** The bounded exposed-operator window the VM browses client-side. */
+function fetchLeakOperators(limit) {
+    const q = limit ? "?limit=" + encodeURIComponent(String(limit)) : "";
+    return request("/api/leaks/operators" + q);
+}
+
 /**
  * The shared GatewayClient instance. The VM has exactly one backend; one
  * client is enough. Import it where backend content is needed.
@@ -331,4 +357,9 @@ export const gatewayClient = {
     // Phase 4.3 - leaks
     fetchRecentLeaks,
     fetchMyLeaks,
+    // Phase 4.3 OSINT expansion - live Leak Database
+    fetchLeakStats,
+    fetchLeakIncidents,
+    fetchLeakIncident,
+    fetchLeakOperators,
 };
