@@ -21,6 +21,7 @@
  * mode only) through the diagnostics helper — they never throw.
  */
 import { debugLog, debugWarn } from "./diagnostics.js";
+import { EXAMPLE_SCRIPTS } from "./runtime/examples.js";
 
 const MIME_BY_EXTENSION = {
     txt: "text/plain",
@@ -156,6 +157,22 @@ function buildSeedTree(username) {
         system: {
             "version.sys": "Bucky OS 0.2 filesystem runtime",
             "apps.sys": "terminal files buckycode browser"
+        },
+        // Phase 4.4 — the BuckyCode operating environment workspace. `scripts`
+        // is seeded with the bundled example tools; `data` and `reports` are
+        // where operator scripts persist watchlists/trackers and write reports.
+        projects: {
+            data: {},
+            reports: {},
+            scripts: EXAMPLE_SCRIPTS,
+            "README.md":
+                "# /projects\n\n" +
+                "Your BuckyCode workspace.\n\n" +
+                "- **scripts/** — runnable tools. Try: `run scripts/leak_reporter.py`\n" +
+                "- **data/** — JSON state (watchlists, trackers) your scripts keep\n" +
+                "- **reports/** — generated reports\n\n" +
+                "Bundled examples: leak_reporter, incident_scanner, profile_audit,\n" +
+                "org_lookup, watchlist_monitor, exposure_tracker, menu (interactive).\n"
         }
     };
 

@@ -11,7 +11,14 @@
  */
 import { escapeHtml } from "../core/util.js";
 import { logError } from "../core/diagnostics.js";
-import { executeFile, isRunnable, runtimeForName } from "../core/execution.js";
+import {
+    startSession,
+    isRunnable,
+    runtimeForName,
+    runBanner,
+    completeBanner,
+    errorBlock
+} from "../core/execution.js";
 
 // ----- State -----------------------------------------------------------------
 
@@ -21,6 +28,9 @@ export function createTerminalState(user, filesystem) {
         input: "",
         history: [],
         historyIndex: 0,
+        session: null,
+        sessionName: null,
+        sessionPrompt: "",
         lines: [
             { type: "system", text: "Bucky VM terminal linked to the shared filesystem runtime." },
             { type: "system", text: `Authenticated profile: ${user.username || "operator"}` },
@@ -50,45 +60,33 @@ function tokenize(commandLine) {
 }
 
 /**
- * Execute a VM file through the simulated execution layer and stream its
- * result into the terminal scrollback. No real code ever runs — see
- * core/execution.js and core/pseudoPython.js.
+ * Validate a directly-invoked path (./script.py, ~/bin/tool.py, /abs/path) and
+ * return an exec descriptor { path, argv }, or null after reporting why it
+ * cannot run. Like a real shell this requires the executable flag (chmod +x).
+ * Execution itself flows through the async interactive session in the Enter
+ * handler — no real code ever runs (see core/execution.js).
  */
-function runScriptFile(runtime, path, out) {
-    const result = executeFile(runtime.filesystem, path);
-    (result.output || []).forEach((line) => out("output", line));
-    if (result.error) {
-        out("error", result.error);
-    } else if (!result.output || !result.output.length) {
-        out("system", "(no output)");
-    }
-}
-
-/**
- * Run a path invoked directly (./script.py, ~/bin/tool.py, /abs/path). Like a
- * real shell this requires the executable flag — set it with `chmod +x`.
- */
-function runDirectPath(runtime, state, command, out) {
+function resolveDirectExec(runtime, state, command, args, out) {
     const fs = runtime.filesystem;
     const targetPath = fs.resolve(state.cwd, command);
     const node = fs.get(targetPath);
     if (!node) {
         out("error", `${command}: No such file or directory`);
-        return;
+        return null;
     }
     if (node.type === "dir") {
         out("error", `${command}: Is a directory`);
-        return;
+        return null;
     }
     if (!node.flags || !node.flags.executable) {
         out("error", `${command}: Permission denied — run: chmod +x ${command}`);
-        return;
+        return null;
     }
     if (!isRunnable(node.name)) {
         out("error", `${command}: no VM runtime can execute this file`);
-        return;
+        return null;
     }
-    runScriptFile(runtime, targetPath, out);
+    return { path: targetPath, argv: args };
 }
 
 /**
@@ -106,6 +104,7 @@ function execCommand(runtime, state, raw) {
         state.lines.push(line);
         appended.push(line);
     };
+    let execRequest = null;
 
     if (!commandLine) return { cleared: false, lines: appended };
 
@@ -135,6 +134,7 @@ function execCommand(runtime, state, raw) {
             out("output", "  browser [url]   open the BuckyNet browser (optionally at a bucky:// url)");
             out("output", "  chmod +x <file> mark a file executable (VM metadata only)");
             out("output", "  python <file>   run a Python file in the simulated VM runtime");
+            out("output", "  run <file>      run a script (args supported: run tool.py LEAK-0004)");
             out("output", "  ./<file>        run an executable script directly");
             out("output", "  clear           clear the terminal screen");
             out("system", "Files and folders you create are shared live with Files and BuckyCode.");
@@ -330,20 +330,43 @@ function execCommand(runtime, state, raw) {
                 out("error", `python: '${args[0]}': not a Python (.py) file`);
                 break;
             }
-            runScriptFile(runtime, targetPath, out);
+            execRequest = { path: targetPath, argv: args.slice(1) };
+            break;
+        }
+
+        case "run": {
+            if (!args[0]) {
+                out("error", "run: usage: run <file.py> [args...]");
+                break;
+            }
+            const targetPath = fs.resolve(state.cwd, args[0]);
+            const node = fs.get(targetPath);
+            if (!node) {
+                out("error", `run: can't open file '${args[0]}': No such file or directory`);
+                break;
+            }
+            if (node.type === "dir") {
+                out("error", `run: '${args[0]}': is a directory`);
+                break;
+            }
+            if (runtimeForName(node.name) !== "python") {
+                out("error", `run: '${args[0]}': not a runnable (.py) file`);
+                break;
+            }
+            execRequest = { path: targetPath, argv: args.slice(1) };
             break;
         }
 
         default:
             // A path invoked directly — ./script.py, ~/tool.py, /abs/path.
             if (/^(\.\/|\.\.\/|\/|~\/)/.test(command)) {
-                runDirectPath(runtime, state, command, out);
+                execRequest = resolveDirectExec(runtime, state, command, args, out);
                 break;
             }
             out("error", `${command}: command not found`);
     }
 
-    return { cleared: false, lines: appended };
+    return { cleared: false, lines: appended, exec: execRequest };
 }
 
 // ----- Rendering -------------------------------------------------------------
@@ -380,6 +403,65 @@ function appendLines(view, lineObjects) {
     view.screen.scrollTop = view.screen.scrollHeight;
 }
 
+// ----- Interactive script sessions (Phase 4.4) -------------------------------
+
+/** Append a line to the live DOM and to scrollback state (survives rerender). */
+function pushLine(view, state, line) {
+    state.lines.push(line);
+    appendLines(view, [line]);
+}
+
+/**
+ * Begin running a script as an interactive session. Output streams live; if
+ * the script calls input() the session suspends and the terminal feeds the
+ * next typed line back in (see the Enter handler).
+ */
+async function startScript(runtime, windowState, view, exec) {
+    const state = windowState.appState;
+    const fs = runtime.filesystem;
+    const name = fs.normalize(exec.path).split("/").pop();
+    runBanner(name).forEach((t) => pushLine(view, state, { type: "system", text: t }));
+
+    const stdout = (line) => pushLine(view, state, { type: "output", text: line });
+    let driver;
+    try {
+        driver = await startSession(fs, exec.path, { argv: exec.argv, user: runtime.user, stdout });
+    } catch (error) {
+        pushLine(view, state, { type: "error", text: `run: ${error && error.message ? error.message : error}` });
+        return;
+    }
+    if (!driver.ok) {
+        pushLine(view, state, { type: "error", text: `run: ${driver.error}` });
+        return;
+    }
+    state.session = driver;
+    state.sessionName = name;
+    handleSessionStep(runtime, windowState, view, driver.step());
+}
+
+/** Render one step of a session: suspend at a prompt, or finish with a banner. */
+function handleSessionStep(runtime, windowState, view, step) {
+    const state = windowState.appState;
+    if (step.status === "input") {
+        state.sessionPrompt = step.prompt ? `${step.prompt} ` : "";
+        view.promptEl.textContent = state.sessionPrompt || "> ";
+        view.screen.scrollTop = view.screen.scrollHeight;
+        return;
+    }
+    const result = step.result || {};
+    if (result.ok) {
+        completeBanner(result.durationMs).forEach((t) => pushLine(view, state, { type: "system", text: t }));
+    } else if (result.errorInfo) {
+        errorBlock(state.sessionName || "script", result.errorInfo).forEach((t) => pushLine(view, state, { type: "error", text: t }));
+    } else {
+        pushLine(view, state, { type: "error", text: result.error || "run failed" });
+    }
+    state.session = null;
+    state.sessionName = null;
+    state.sessionPrompt = "";
+    view.promptEl.textContent = createPrompt(state, runtime.user);
+}
+
 // ----- Lifecycle -------------------------------------------------------------
 
 export function mountTerminalApp(runtime, windowState, element) {
@@ -394,22 +476,37 @@ export function mountTerminalApp(runtime, windowState, element) {
         windowState.appState.input = event.target.value;
     });
 
-    view.input.addEventListener("keydown", (event) => {
+    view.input.addEventListener("keydown", async (event) => {
         const state = windowState.appState;
 
         if (event.key === "Enter") {
             event.preventDefault();
-            const result = execCommand(runtime, state, view.input.value);
+            const value = view.input.value;
             state.input = "";
             view.input.value = "";
+
+            // Mid-interactive-script: feed this line to the paused session.
+            if (state.session) {
+                pushLine(view, state, { type: "prompt", text: `${state.sessionPrompt || ""}${value}` });
+                handleSessionStep(runtime, windowState, view, state.session.step(value));
+                return;
+            }
+
+            const result = execCommand(runtime, state, value);
             if (result.cleared) {
                 view.screen.querySelectorAll(".vm-terminal-line").forEach((node) => node.remove());
             } else {
                 appendLines(view, result.lines);
             }
             view.promptEl.textContent = createPrompt(state, runtime.user);
+
+            if (result.exec) {
+                await startScript(runtime, windowState, view, result.exec);
+            }
             return;
         }
+
+        if (state.session) return; // command history is disabled mid-script
 
         if (event.key === "ArrowUp") {
             event.preventDefault();

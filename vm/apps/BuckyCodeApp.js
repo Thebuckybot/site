@@ -26,7 +26,7 @@ import { escapeHtml } from "../core/util.js";
 import { logError } from "../core/diagnostics.js";
 import { renderMarkdown, isMarkdownName } from "../core/markdown.js";
 import { highlight, languageForName } from "../core/highlight.js";
-import { executeFile, isRunnable, runtimeLabel } from "../core/execution.js";
+import { executeFile, isRunnable, runtimeLabel, runBanner, completeBanner, errorBlock } from "../core/execution.js";
 
 const INDENT = "  ";
 
@@ -134,7 +134,7 @@ function renderOutputPanel(state) {
         lines.push(`<span class="vm-code-output-dim">(no output)</span>`);
     }
     return `
-        <div class="vm-code-output${out.error ? " is-error" : " is-ok"}">
+        <div class="vm-code-output${out.ok ? " is-ok" : " is-error"}">
             <div class="vm-code-output-head">
                 <span>OUTPUT · ${escapeHtml(runtimeLabel(out.runtime))}</span>
                 <button class="vm-code-output-clear" type="button" data-code-output-clear>Clear</button>
@@ -221,7 +221,7 @@ function saveFile(runtime, windowState) {
  * what is on screen and the on-disk file stays in sync (edit → save → run).
  * Execution is routed through the sandboxed execution layer — never real code.
  */
-function runFile(runtime, windowState) {
+async function runFile(runtime, windowState) {
     const state = windowState.appState;
     if (!isRunnableState(state)) return;
 
@@ -237,13 +237,27 @@ function runFile(runtime, windowState) {
         }
     }
 
-    const result = executeFile(runtime.filesystem, state.path);
-    state.output = {
-        ok: result.ok,
-        lines: result.output || [],
-        error: result.error,
-        runtime: result.runtime
-    };
+    // Immediate feedback — the read-only backend snapshot may load async.
+    state.output = { ok: true, lines: ["Running…"], error: null, runtime: "python" };
+    if (windowState.view.refreshOutput) windowState.view.refreshOutput();
+
+    const result = await executeFile(runtime.filesystem, state.path, { user: runtime.user });
+
+    // Compose a framed, professional output: RUNNING banner, the script's
+    // output, then a COMPLETE banner or a structured ERROR block. Interactive
+    // input() is Terminal-only; here it surfaces as a clear, displayed error.
+    const lines = [];
+    runBanner(fileName(state)).forEach((t) => lines.push(t));
+    (result.output || []).forEach((t) => lines.push(t));
+    let errorText = null;
+    if (result.ok) {
+        completeBanner(result.durationMs).forEach((t) => lines.push(t));
+    } else if (result.errorInfo) {
+        errorBlock(fileName(state), result.errorInfo).forEach((t) => lines.push(t));
+    } else {
+        errorText = result.error;
+    }
+    state.output = { ok: result.ok, lines, error: errorText, runtime: result.runtime };
     if (windowState.view.refreshOutput) windowState.view.refreshOutput();
     runtime.notify(result.ok ? "Run complete" : "Run failed", fileName(state));
 }
