@@ -8,13 +8,19 @@
  * deterministic for the duration of one run — and the VM keeps its strict
  * read-only-consumer contract (the GatewayClient performs reads only).
  *
+ * ENVELOPE UNWRAPPING
+ *   The player gateway endpoints wrap their payload in a single-item envelope
+ *   `{ available, item: {...} }` (and may signal `{ first_run: true,
+ *   item: null }`). The leak endpoints use `{ stats }`, `{ items }` and
+ *   `{ records }`. This module unwraps each to the bare object/array the
+ *   bucky.* modules expect — defensively, tolerating either the enveloped or a
+ *   bare shape, so an accessor like profile.level() reads the real value
+ *   rather than a default.
+ *
  * Every fetch is individually guarded: a failed or offline call degrades that
  * section to empty data and flips `online` to false, never throwing into the
- * run. Shapes are normalised defensively to match what the bucky.* modules
- * expect, absorbing minor backend response-shape differences.
- *
- * The GatewayClient is injected (not imported) so this module stays trivially
- * testable headlessly with a fake gateway.
+ * run. The GatewayClient is injected (not imported) so this module stays
+ * trivially testable headlessly with a fake gateway.
  */
 
 function pick(...candidates) {
@@ -22,6 +28,16 @@ function pick(...candidates) {
         if (Array.isArray(c)) return c;
     }
     return [];
+}
+
+/** Unwrap a player-style { available, item } envelope to its item object. */
+function unwrapItem(data) {
+    const d = data || {};
+    if (d.item && typeof d.item === "object") return d.item;
+    if (d.player && typeof d.player === "object") return d.player;
+    // Bare shape fallback: the payload's own fields (no envelope).
+    if (typeof d.level === "number" || typeof d.coins === "number" || d.user_id) return d;
+    return {};
 }
 
 /**
@@ -59,7 +75,7 @@ export async function prefetchSnapshot(gateway, needs) {
                 stats: (stats.data && (stats.data.stats || stats.data)) || {},
                 incidents: pick(incidents.data && incidents.data.items, incidents.data && incidents.data.incidents, incidents.data),
                 operators: pick(operators.data && operators.data.records, operators.data && operators.data.operators, operators.data),
-                mine: pick(mine.data && mine.data.records, mine.data && mine.data.items, mine.data)
+                mine: pick(mine.data && mine.data.items, mine.data && mine.data.records, mine.data)
             };
         })());
     }
@@ -67,7 +83,7 @@ export async function prefetchSnapshot(gateway, needs) {
     if (want.has("profile")) {
         jobs.push((async () => {
             const me = await okWrap(() => gateway.fetchSelfPlayer && gateway.fetchSelfPlayer());
-            snapshot.profile = (me.data && (me.data.player || me.data)) || {};
+            snapshot.profile = unwrapItem(me.data);
         })());
     }
 
@@ -79,7 +95,7 @@ export async function prefetchSnapshot(gateway, needs) {
             ]);
             snapshot.organizations = {
                 list: pick(orgs.data && orgs.data.items, orgs.data && orgs.data.organizations, orgs.data),
-                current: (mine.data && (mine.data.organization || mine.data.item || mine.data)) || null
+                current: (mine.data && (mine.data.item || mine.data.organization)) || null
             };
         })());
     }

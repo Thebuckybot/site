@@ -1,23 +1,25 @@
 /**
  * bucky.profile — the operator's own identity, read-only (Phase 4.4, Part 13).
  *
- * Reads the self-view captured from /api/player/me at script start. Strictly
- * read-only by construction: the Discord bot is the sole authoritative writer
- * of profiles, and this API honours that — there is no setter.
+ * Reads the self-view captured from /api/player/me at script start. The gateway
+ * wraps it in a { available, item } envelope; the snapshot layer unwraps `item`
+ * so the fields below (level, coins, xp, prestige, networth, inventory_count,
+ * organization, exposures, ...) are read directly. Strictly read-only: the
+ * Discord bot is the sole authoritative writer of profiles.
  *
- *   me()           level()      prestige()   xp()        coins()
- *   organization() reputation() exposures()  titles()    summary()
- *   refresh()      request a fresh snapshot for the NEXT run
+ *   me()             level()         prestige()      xp()
+ *   coins()          bank()          networth()      inventory_count()
+ *   organization()   reputation()    exposures()     titles()
+ *   summary()        refresh()
  *
- * Degrades to safe defaults (level 1, 0 xp/coins, no org, empty exposures)
- * when the operator has no profile yet, is logged out, or the backend is
- * offline — so a script never crashes on identity.
+ * Degrades to safe defaults (level 1, 0 economy, no org, empty exposures) when
+ * the operator has no profile yet, is logged out, or the backend is offline.
  */
 import { mod, def } from "./kit.js";
 
 export function createProfileModule(ctx) {
     const view = () => (ctx.snapshot && ctx.snapshot.profile) || {};
-    const num = (v, dflt) => (typeof v === "number" ? v : (v != null && !Number.isNaN(Number(v)) ? Number(v) : dflt));
+    const num = (v, dflt) => (typeof v === "number" ? v : (v != null && v !== "" && !Number.isNaN(Number(v)) ? Number(v) : dflt));
 
     function me() {
         ctx.caps.require("profile", "profile.me");
@@ -27,6 +29,16 @@ export function createProfileModule(ctx) {
     function prestige() { ctx.caps.require("profile", "profile.prestige"); return num(view().prestige, 0); }
     function xp() { ctx.caps.require("profile", "profile.xp"); return num(view().xp, 0); }
     function coins() { ctx.caps.require("profile", "profile.coins"); return num(view().coins, 0); }
+    function bank() { ctx.caps.require("profile", "profile.bank"); return num(view().bank, 0); }
+    function networth() { ctx.caps.require("profile", "profile.networth"); return num(view().networth, 0); }
+    function inventory_count() {
+        ctx.caps.require("profile", "profile.inventory_count");
+        const v = view();
+        // The API ships a count directly; fall back to len(items) if a raw
+        // profile shape is ever passed through.
+        if (typeof v.inventory_count === "number") return v.inventory_count;
+        return Array.isArray(v.items) ? v.items.length : 0;
+    }
     function organization() { ctx.caps.require("profile", "profile.organization"); return view().organization || null; }
     function reputation() {
         ctx.caps.require("profile", "profile.reputation");
@@ -47,8 +59,10 @@ export function createProfileModule(ctx) {
         const v = view();
         return {
             level: num(v.level, 1), prestige: num(v.prestige, 0), xp: num(v.xp, 0),
-            coins: num(v.coins, 0), reputation: reputation(),
+            coins: num(v.coins, 0), bank: num(v.bank, 0), networth: num(v.networth, 0),
+            reputation: reputation(),
             organization: v.organization ? (v.organization.name || v.organization.id || null) : null,
+            inventory_count: inventory_count(),
             exposures: Array.isArray(v.exposures) ? v.exposures.length : 0,
             titles: Array.isArray(v.titles) ? v.titles.length : 0
         };
@@ -64,6 +78,9 @@ export function createProfileModule(ctx) {
         prestige: def(prestige),
         xp: def(xp),
         coins: def(coins),
+        bank: def(bank),
+        networth: def(networth),
+        inventory_count: def(inventory_count),
         organization: def(organization),
         reputation: def(reputation),
         exposures: def(exposures),

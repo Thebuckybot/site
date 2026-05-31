@@ -62,6 +62,12 @@ const DEFAULT_LIMITS = {
  */
 export const INPUT = { __input__: true, pyName: "input" };
 
+/**
+ * The exit() marker. A clean script-stop signal (NOT an error). exit() and
+ * describe()/--help raise this; the drivers treat it as a successful finish.
+ */
+export const SCRIPT_EXIT = { __exit__: true };
+
 // ============================================================================
 // 1. LEXER  — source -> tokens (with NEWLINE / INDENT / DEDENT)
 // ============================================================================
@@ -854,10 +860,13 @@ class Interpreter {
         this.steps = 0;
         this.depth = 0;
         this.global = new Scope(null);
-        this.installBuiltins(options.builtins || {});
+        this.callStack = [];
         // Program arguments -> global `args` (user args, program name excluded).
+        // Set BEFORE builtins so a runtime-provided richer `args`/`argv` (the
+        // flag parser) overrides these defaults when present.
         this.global.set("args", Array.isArray(options.argv) ? options.argv.slice() : []);
         this.global.set("argv", Array.isArray(options.argv) ? ["script", ...options.argv] : ["script"]);
+        this.installBuiltins(options.builtins || {});
     }
 
     tick() {
@@ -988,7 +997,9 @@ class Interpreter {
 
     resolveModule(name, line) {
         if (Object.prototype.hasOwnProperty.call(this.modules, name)) return this.modules[name];
-        throw new BuckyError("ImportError", `no module named '${name}'`, line, name);
+        const available = Object.keys(this.modules).filter((k) => !/^bucky$/.test(k)).sort();
+        const hint = available.length ? ` (available: ${available.join(", ")})` : "";
+        throw new BuckyError("ImportError", `no module named '${name}'${hint}`, line, name);
     }
 
     doImport(moduleName, alias, scope, line) {
@@ -1300,6 +1311,12 @@ class Interpreter {
         const method = lookupMethod(obj, name, this);
         if (method) return method;
         if (isDict(obj) && name in obj) return obj[name];
+        // Own-property fallback for host-provided rich values (e.g. the `args`
+        // flag parser attaches has()/get()/raw()/flags() to its list). Only OWN
+        // function props resolve — prototype methods (push, map, ...) never leak.
+        if (obj && typeof obj === "object" && Object.prototype.hasOwnProperty.call(obj, name) && typeof obj[name] === "function") {
+            return obj[name];
+        }
         throw new BuckyError("AttributeError", `'${typeName(obj)}' object has no attribute '${name}'`, line, name);
     }
 
@@ -1335,7 +1352,7 @@ class Interpreter {
                 const r = callee(args, kwargs, this);
                 return r === undefined ? null : r;
             } catch (e) {
-                if (e instanceof BuckyError || e instanceof ReturnSignal || e === BREAK || e === CONTINUE) throw e;
+                if (e instanceof BuckyError || e instanceof ReturnSignal || e === BREAK || e === CONTINUE || (e && e.__exit__)) throw e;
                 throw new BuckyError(e.buckyType || "RuntimeError", e.message || "call failed", line, e.varName || null);
             }
         }
@@ -1356,13 +1373,19 @@ class Interpreter {
             else if (p.default !== null) scope.set(p.name, yield* this.eval(p.default, fn.env));
             else { this.depth--; throw new BuckyError("TypeError", `${fn.def.name}() missing argument '${p.name}'`, line, p.name); }
         }
+        // Frame for tracebacks: who was called and from which line.
+        this.callStack.push({ name: fn.def.name, calledAt: line });
         try {
             yield* this.execBlock(fn.def.body, scope);
         } catch (e) {
-            if (e instanceof ReturnSignal) { this.depth--; return e.value; }
+            if (e instanceof ReturnSignal) { this.callStack.pop(); this.depth--; return e.value; }
+            // Capture the active frame chain at the deepest point of failure.
+            if (e instanceof BuckyError && !e.stackFrames) e.stackFrames = this.callStack.slice();
+            this.callStack.pop();
             this.depth--;
             throw e;
         }
+        this.callStack.pop();
         this.depth--;
         return null;
     }
@@ -1541,6 +1564,9 @@ function makeBuiltins(interp) {
             for (let i = 0; i < n; i++) out.push(lists.map((l) => l[i]));
             return out;
         }),
+        any: native("any", (a) => (Array.isArray(a[0]) ? a[0] : []).some((x) => truthy(x))),
+        all: native("all", (a) => (Array.isArray(a[0]) ? a[0] : []).every((x) => truthy(x))),
+        exit: native("exit", () => { throw SCRIPT_EXIT; }),
         type: native("type", (a) => typeName(a[0])),
         input: INPUT
     };
@@ -1558,7 +1584,7 @@ function reduceNums(args, mode) {
 
 /** Build the normalized { ok, output, error, errorInfo } result envelope. */
 function buildResult(interp, error) {
-    if (!error || error instanceof ReturnSignal) {
+    if (!error || error instanceof ReturnSignal || (error && error.__exit__)) {
         return { ok: true, output: interp.output, error: null, errorInfo: null };
     }
     const info = toErrorInfo(error);
@@ -1650,7 +1676,8 @@ function toErrorInfo(error) {
             type: error.buckyType || "Error",
             line: error.line || 0,
             problem: error.message,
-            name: error.varName || null
+            name: error.varName || null,
+            stack: error.stackFrames || null
         };
     }
     return {

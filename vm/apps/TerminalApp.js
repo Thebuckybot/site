@@ -122,7 +122,7 @@ function execCommand(runtime, state, raw) {
         case "help":
             out("system", "Bucky VM terminal — command reference");
             out("output", "  help            show this command list");
-            out("output", "  ls [path]       list a directory's contents");
+            out("output", "  ls [-alR][path] list a directory (-a hidden, -l long, -R recursive)");
             out("output", "  cd [path]       change the working directory");
             out("output", "  pwd             print the working directory");
             out("output", "  mkdir <dir>     create a directory (nested paths supported)");
@@ -146,20 +146,23 @@ function execCommand(runtime, state, raw) {
             break;
 
         case "ls": {
-            const targetPath = fs.resolve(state.cwd, args[0] || ".");
+            // Flags may be combined (-al) or separate (-a -l). Path is the
+            // first non-flag operand. Unknown flag chars are ignored.
+            const flags = args.filter((a) => a.startsWith("-")).join("").replace(/-/g, "");
+            const pathArg = args.find((a) => !a.startsWith("-"));
+            const opt = { all: flags.includes("a"), long: flags.includes("l"), recursive: flags.includes("R") };
+            const targetPath = fs.resolve(state.cwd, pathArg || ".");
             const node = fs.get(targetPath);
             if (!node) {
-                out("error", `ls: cannot access '${args[0] || "."}': No such file or directory`);
+                out("error", `ls: cannot access '${pathArg || "."}': No such file or directory`);
                 break;
             }
             if (node.type !== "dir") {
-                out("output", node.name);
+                out("output", lsLine({ node, name: node.name }, opt));
                 break;
             }
-            const entries = fs.list(targetPath);
-            out("output", entries.length
-                ? entries.map((entry) => `${entry.type === "dir" ? "<DIR>" : "     "} ${entry.name}`).join("\n")
-                : "(empty)");
+            if (opt.recursive) lsRecursive(fs, targetPath, opt, out);
+            else lsDir(fs, targetPath, opt, out);
             break;
         }
 
@@ -409,6 +412,41 @@ function appendLines(view, lineObjects) {
 function pushLine(view, state, line) {
     state.lines.push(line);
     appendLines(view, [line]);
+}
+
+// ----- ls helpers (Phase 4.4 — -a hidden, -l long, -R recursive) -------------
+
+/** A node's display name, with a trailing "*" executable indicator. */
+function lsName(node) {
+    const star = node.type === "file" && node.flags && node.flags.executable ? "*" : "";
+    return node.name + star;
+}
+
+/** One listing row, plain or long (-l: type, exec bit, size, name). */
+function lsLine(entry, opt) {
+    const node = entry.node;
+    if (opt.long) {
+        const t = node.type === "dir" ? "d" : "-";
+        const x = node.flags && node.flags.executable ? "x" : "-";
+        const size = node.type === "dir" ? "-" : String(node.size || 0);
+        return `${t}${x}  ${size.padStart(7)}  ${lsName(node)}`;
+    }
+    return `${node.type === "dir" ? "<DIR>" : "     "} ${lsName(node)}`;
+}
+
+/** List one directory (non-recursive), honouring the -a hidden filter. */
+function lsDir(fs, path, opt, out) {
+    const entries = fs.list(path).filter((e) => opt.all || !e.name.startsWith("."));
+    out("output", entries.length ? entries.map((e) => lsLine(e, opt)).join("\n") : "(empty)");
+}
+
+/** Recursive listing: a `path:` header per directory, depth-first. */
+function lsRecursive(fs, path, opt, out) {
+    out("output", path + ":");
+    lsDir(fs, path, opt, out);
+    fs.list(path)
+        .filter((e) => e.type === "dir" && (opt.all || !e.name.startsWith(".")))
+        .forEach((e) => { out("output", ""); lsRecursive(fs, e.path, opt, out); });
 }
 
 /**

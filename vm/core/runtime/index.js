@@ -1,36 +1,25 @@
 /**
  * BuckyRuntime — the runtime abstraction layer (Phase 4.4, Part 1).
  *
- * The formal seam between a script and the VM's services. Instead of the
- * interpreter reaching into the VM directly, execution flows:
+ * The formal seam between a script and the VM's services. Execution flows:
  *
  *     script  ->  runtime  ->  VM services (filesystem, gateway snapshot, ...)
  *
  * The runtime owns: the granted capability set, the assembled bucky.* standard
- * library (built per run against a context), and the call into the sandboxed
- * interpreter. Future subsystems (mail, database, missions, automation,
- * scheduler) plug into the runtime through the extension registry — never into
- * the interpreter or an app — keeping the whole system modular and additive.
+ * library (built per run against a context), the script argument parser and the
+ * help (describe) builtin, and the call into the sandboxed interpreter. Future
+ * subsystems plug in through the extension registry — never into the
+ * interpreter or an app — keeping the system modular and additive.
  *
  * DOM-free and network-free: the runtime consumes an already-captured snapshot
- * and a FileSystemService. Fetching the snapshot is the execution layer's job
- * (core/execution.js), which keeps this layer synchronous and unit-testable.
+ * and a FileSystemService. Fetching the snapshot is the execution layer's job.
  * Both a non-interactive run() and an interactive session() are exposed.
  */
-import { runPython, createScriptSession } from "../pseudoPython.js";
+import { runPython, createScriptSession, SCRIPT_EXIT } from "../pseudoPython.js";
 import { buildStandardLibrary } from "./stdlib/index.js";
 import { createCapabilitySet, DEFAULT_CAPABILITIES } from "./capabilities.js";
+import { buildArgs, makeDescribe } from "./args.js";
 
-/**
- * @param {object} opts
- * @param {object} opts.filesystem   the VM FileSystemService
- * @param {object} [opts.user]       the operator (for identity-aware context)
- * @param {object} [opts.snapshot]   backend snapshot (see runtime/snapshot.js)
- * @param {string[]} [opts.granted]  granted capabilities (defaults to operator set)
- * @param {string} [opts.cwd]        working directory for relative paths
- * @param {string} [opts.owner]      fs owner label stamped on writes
- * @param {Function} [opts.refresh]  (section) => status — request a fresh snapshot
- */
 export function createRuntime(opts = {}) {
     const caps = createCapabilitySet(opts.granted || DEFAULT_CAPABILITIES);
     const baseCtx = {
@@ -43,14 +32,22 @@ export function createRuntime(opts = {}) {
         refresh: typeof opts.refresh === "function" ? opts.refresh : null
     };
 
-    function libFor(runOpts) {
+    /** Assemble the stdlib + the per-run arg parser / help builtins. */
+    function prepare(runOpts) {
         const ctx = { ...baseCtx, cwd: runOpts.cwd || baseCtx.cwd };
-        return buildStandardLibrary(ctx);
+        const { modules, builtins } = buildStandardLibrary(ctx);
+        const argsObj = buildArgs(runOpts.argv || []);
+        const richBuiltins = {
+            ...builtins,
+            args: argsObj,
+            describe: makeDescribe(argsObj, SCRIPT_EXIT)
+        };
+        return { modules, builtins: richBuiltins };
     }
 
     /** Run a script to completion (non-interactive). */
     function run(source, runOpts = {}) {
-        const { modules, builtins } = libFor(runOpts);
+        const { modules, builtins } = prepare(runOpts);
         return runPython(source, {
             argv: runOpts.argv || [],
             stdout: runOpts.stdout || null,
@@ -64,7 +61,7 @@ export function createRuntime(opts = {}) {
 
     /** Begin an interactive (pausable) session — the Terminal drives it. */
     function session(source, runOpts = {}) {
-        const { modules, builtins } = libFor(runOpts);
+        const { modules, builtins } = prepare(runOpts);
         return createScriptSession(source, {
             argv: runOpts.argv || [],
             stdout: runOpts.stdout || null,

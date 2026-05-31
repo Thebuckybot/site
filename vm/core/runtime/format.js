@@ -1,13 +1,8 @@
 /**
- * Runtime presentation helpers — Phase 4.4, Parts 18 & 19.
+ * Runtime presentation helpers — Phase 4.4, Parts 18 & 19 (+ traceback).
  *
  * Pure string formatting for the terminal scrollback and BuckyCode output
- * panel. Returns plain string arrays (one entry per line) so callers stay in
- * control of how lines are themed/emitted; this module owns NO DOM.
- *
- *   RUNNING / COMPLETE banners give an interactive session a professional,
- *   consistent frame. The structured ERROR block replaces a raw interpreter
- *   trace with an operator-readable report (File / Line / Problem / Name).
+ * panel. Returns plain string arrays (one entry per line); owns NO DOM.
  */
 
 const RULE = "=================================";
@@ -23,7 +18,7 @@ export function completeBanner(ms) {
     return [RULE, `COMPLETE${tail}`, RULE];
 }
 
-/** A simple full-width rule, e.g. for in-script section separators. */
+/** A simple full-width rule. */
 export function rule() {
     return RULE;
 }
@@ -31,7 +26,7 @@ export function rule() {
 /**
  * Render a structured error block from interpreter errorInfo.
  * @param {string} file        the script filename (e.g. "scanner.py")
- * @param {object} errorInfo   { type, line, problem, name }
+ * @param {object} errorInfo   { type, line, problem, name, stack }
  * @returns {string[]}
  */
 export function errorBlock(file, errorInfo) {
@@ -42,6 +37,14 @@ export function errorBlock(file, errorInfo) {
     lines.push(`Problem: ${problemFor(info)}`);
     if (info.name) lines.push(`Name: ${info.name}`);
     if (info.type) lines.push(`Type: ${info.type}`);
+    // Traceback — the chain of function calls active at the failure point.
+    if (Array.isArray(info.stack) && info.stack.length) {
+        lines.push("Traceback (most recent call last):");
+        info.stack.forEach((frame) => {
+            const at = frame && frame.calledAt ? ` (called at line ${frame.calledAt})` : "";
+            lines.push(`  in ${frame && frame.name ? frame.name : "?"}()${at}`);
+        });
+    }
     lines.push(RULE);
     return lines;
 }
@@ -58,13 +61,13 @@ function problemFor(info) {
         ImportError: "Module could not be imported",
         ZeroDivisionError: "Division by zero",
         ValueError: "Invalid value",
+        FileError: "Filesystem error",
         RecursionError: "Too much recursion",
         CapabilityError: "Permission not granted",
         NotImplementedError: "Not available yet",
         RuntimeError: "Runtime limit or fault"
     };
     const head = byType[info.type];
-    // Keep the precise interpreter message as the detail when we have a headline.
     if (head && info.problem && head.toLowerCase() !== String(info.problem).toLowerCase()) {
         return `${head} — ${info.problem}`;
     }
