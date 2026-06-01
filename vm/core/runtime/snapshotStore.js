@@ -12,20 +12,21 @@
  */
 import { prefetchSnapshot } from "./snapshot.js";
 
-const SECTIONS = ["leaks", "profile", "organizations"];
+const SECTIONS = ["leaks", "profile", "organizations", "leaderboards"];
 
 export function createSnapshotStore(gateway) {
-    const cache = { leaks: null, profile: null, organizations: null };
-    const fetchedAt = { leaks: 0, profile: 0, organizations: 0 };
+    const cache = { leaks: null, profile: null, organizations: null, leaderboards: null };
+    const fetchedAt = { leaks: 0, profile: 0, organizations: 0, leaderboards: 0 };
     let online = false;
 
     function current() {
         return {
             online,
-            generatedAt: Math.max(fetchedAt.leaks, fetchedAt.profile, fetchedAt.organizations),
+            generatedAt: Math.max(fetchedAt.leaks, fetchedAt.profile, fetchedAt.organizations, fetchedAt.leaderboards),
             leaks: cache.leaks,
             profile: cache.profile,
-            organizations: cache.organizations
+            organizations: cache.organizations,
+            leaderboards: cache.leaderboards
         };
     }
 

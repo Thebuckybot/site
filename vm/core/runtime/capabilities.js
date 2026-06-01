@@ -22,6 +22,23 @@ export const CAPABILITIES = {
     LEAKS: "leaks",
     ORGANIZATIONS: "organizations",
     TERMINAL: "terminal",
+    // Phase 4.5 — runtime + read-only game-system surface. Each module declares
+    // exactly one capability; the UI toolkit (progress/table/form/menu/notify/
+    // status) shares the `ui` capability. Data modules read the gateway snapshot
+    // read-only; write paths (economy.transfer, hackbank, ...) route through the
+    // Discord bridge and raise NotImplemented (the bot stays the sole authority).
+    PROCESS: "process",
+    UI: "ui",
+    INVENTORY: "inventory",
+    ECONOMY: "economy",
+    SECURITY: "security",
+    LEADERBOARDS: "leaderboards",
+    HACKBANK: "hackbank",
+    WATCHLIST: "watchlist",
+    SEARCH: "search",
+    REPORT: "report",
+    EVENTS: "events",
+    AUTOMATION: "automation",
     // Declared, gated for later phases (interface-only modules today).
     MAIL: "mail",
     DATABASE: "database",
@@ -30,13 +47,29 @@ export const CAPABILITIES = {
 
 export const ALL_CAPABILITIES = Object.values(CAPABILITIES);
 
-/** Capabilities granted to an operator script by default in Phase 4.4. */
+/** Capabilities granted to an operator script by default (Phase 4.4 + 4.5). */
 export const DEFAULT_CAPABILITIES = [
     CAPABILITIES.FILESYSTEM,
     CAPABILITIES.PROFILE,
     CAPABILITIES.LEAKS,
     CAPABILITIES.ORGANIZATIONS,
     CAPABILITIES.TERMINAL,
+    // Phase 4.5 surface — all granted to operator scripts today, exactly as the
+    // present-day modules are. The capability is the seam (a future phase can
+    // hand a narrower grant to an untrusted/marketplace script); granting the
+    // full set here keeps every existing script working unchanged.
+    CAPABILITIES.PROCESS,
+    CAPABILITIES.UI,
+    CAPABILITIES.INVENTORY,
+    CAPABILITIES.ECONOMY,
+    CAPABILITIES.SECURITY,
+    CAPABILITIES.LEADERBOARDS,
+    CAPABILITIES.HACKBANK,
+    CAPABILITIES.WATCHLIST,
+    CAPABILITIES.SEARCH,
+    CAPABILITIES.REPORT,
+    CAPABILITIES.EVENTS,
+    CAPABILITIES.AUTOMATION,
     // Future modules are importable as interface stubs — granting the
     // capability lets the prepared `from bucky.mail import *` line resolve;
     // the stub members still raise NotImplemented when called.
@@ -54,6 +87,26 @@ export const MODULE_CAPABILITY = {
     "bucky.profile": CAPABILITIES.PROFILE,
     "bucky.organizations": CAPABILITIES.ORGANIZATIONS,
     "bucky.terminal": CAPABILITIES.TERMINAL,
+    // Phase 4.5 modules.
+    "bucky.process": CAPABILITIES.PROCESS,
+    "bucky.progress": CAPABILITIES.UI,
+    "bucky.ui": CAPABILITIES.UI,
+    "bucky.table": CAPABILITIES.UI,
+    "bucky.form": CAPABILITIES.UI,
+    "bucky.menu": CAPABILITIES.UI,
+    "bucky.notify": CAPABILITIES.UI,
+    "bucky.status": CAPABILITIES.UI,
+    "bucky.inventory": CAPABILITIES.INVENTORY,
+    "bucky.economy": CAPABILITIES.ECONOMY,
+    "bucky.security": CAPABILITIES.SECURITY,
+    "bucky.leaderboards": CAPABILITIES.LEADERBOARDS,
+    "bucky.hackbank": CAPABILITIES.HACKBANK,
+    "bucky.watchlist": CAPABILITIES.WATCHLIST,
+    "bucky.search": CAPABILITIES.SEARCH,
+    "bucky.report": CAPABILITIES.REPORT,
+    "bucky.events": CAPABILITIES.EVENTS,
+    "bucky.schedule": CAPABILITIES.AUTOMATION,
+    // Future / interface-only.
     "bucky.mail": CAPABILITIES.MAIL,
     "bucky.database": CAPABILITIES.DATABASE,
     "bucky.missions": CAPABILITIES.MISSIONS

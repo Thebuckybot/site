@@ -30,6 +30,26 @@ function pick(...candidates) {
     return [];
 }
 
+/**
+ * Normalise the /api/leaderboards payload to { kinds: { <kind>: rows[] } },
+ * tolerating several wrapper shapes (a `boards`/`leaderboards`/`kinds` map, or
+ * the bare object), so bucky.leaderboards reads a stable shape (Phase 4.5, §13).
+ */
+function normalizeLeaderboards(data) {
+    const d = data || {};
+    const src = d.boards || d.leaderboards || d.kinds || d;
+    const kinds = {};
+    if (src && typeof src === "object" && !Array.isArray(src)) {
+        Object.keys(src).forEach((k) => {
+            const v = src[k];
+            if (Array.isArray(v)) kinds[k] = v;
+            else if (v && Array.isArray(v.items)) kinds[k] = v.items;
+            else if (v && Array.isArray(v.rows)) kinds[k] = v.rows;
+        });
+    }
+    return { kinds };
+}
+
 /** Unwrap a player-style { available, item } envelope to its item object. */
 function unwrapItem(data) {
     const d = data || {};
@@ -47,7 +67,7 @@ function unwrapItem(data) {
  */
 export async function prefetchSnapshot(gateway, needs) {
     const want = needs instanceof Set ? needs : new Set(needs || []);
-    const snapshot = { generatedAt: Date.now(), online: false, leaks: null, profile: null, organizations: null };
+    const snapshot = { generatedAt: Date.now(), online: false, leaks: null, profile: null, organizations: null, leaderboards: null };
     if (!gateway) return snapshot;
 
     let anyOk = false;
@@ -97,6 +117,13 @@ export async function prefetchSnapshot(gateway, needs) {
                 list: pick(orgs.data && orgs.data.items, orgs.data && orgs.data.organizations, orgs.data),
                 current: (mine.data && (mine.data.item || mine.data.organization)) || null
             };
+        })());
+    }
+
+    if (want.has("leaderboards")) {
+        jobs.push((async () => {
+            const board = await okWrap(() => gateway.fetchLeaderboards && gateway.fetchLeaderboards(25));
+            snapshot.leaderboards = normalizeLeaderboards(board.data);
         })());
     }
 

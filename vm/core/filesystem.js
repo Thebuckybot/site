@@ -164,15 +164,21 @@ function buildSeedTree(username) {
         projects: {
             data: {},
             reports: {},
+            exports: {},
+            archives: {},
             scripts: EXAMPLE_SCRIPTS,
             "README.md":
                 "# /projects\n\n" +
                 "Your BuckyCode workspace.\n\n" +
                 "- **scripts/** — runnable tools. Try: `run scripts/leak_reporter.py`\n" +
                 "- **data/** — JSON state (watchlists, trackers) your scripts keep\n" +
-                "- **reports/** — generated reports\n\n" +
-                "Bundled examples: leak_reporter, incident_scanner, profile_audit,\n" +
-                "org_lookup, watchlist_monitor, exposure_tracker, menu (interactive).\n"
+                "- **reports/** — generated reports (report.to_reports / report.save)\n" +
+                "- **exports/** — exported artifacts (report.to_exports)\n" +
+                "- **archives/** — archived snapshots (report.to_archives)\n\n" +
+                "Phase 4.4 examples: leak_reporter, incident_scanner, profile_audit,\n" +
+                "org_lookup, watchlist_monitor, exposure_tracker, menu (interactive).\n" +
+                "Phase 4.5 examples: process_demo, watchlist_demo, inventory_demo,\n" +
+                "economy_demo, security_demo, report_demo, bruteforce_demo.\n"
         }
     };
 

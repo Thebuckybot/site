@@ -51,7 +51,10 @@ export function registeredModules() {
 // ---------------------------------------------------------------------------
 
 /** The automation event vocabulary future scripts/scheduler bind to. */
-export const AUTOMATION_EVENTS = ["on_leak", "on_mail", "on_incident", "on_levelup"];
+export const AUTOMATION_EVENTS = ["on_leak", "on_mail", "on_incident", "on_mission", "on_levelup"];
+
+/** The scheduling cadences the automation foundation recognises (Phase 4.5, §24). */
+export const SCHEDULE_CADENCES = ["once", "hourly", "daily", "weekly"];
 
 export function createAutomationRegistry() {
     const handlers = new Map(AUTOMATION_EVENTS.map((e) => [e, []]));
@@ -79,6 +82,43 @@ export function createAutomationRegistry() {
             return { dispatched: false, reason: "automation dispatch arrives in a later phase" };
         },
         registered: () => Object.fromEntries([...handlers].map(([e, l]) => [e, l.length]))
+    };
+}
+
+/**
+ * Scheduling registry (Phase 4.5, §24 — architecture only, NOT executed).
+ *
+ * Records the *intent* to run a task on a cadence (hourly/daily/weekly) or once.
+ * There is deliberately no clock and no execution here: a scheduler/daemon that
+ * fires these arrives in a later phase. This declares the shape automation
+ * scripts bind to so wiring it later is additive.
+ */
+export function createScheduleRegistry() {
+    const tasks = [];
+    let nextId = 1;
+    return {
+        cadences: () => SCHEDULE_CADENCES.slice(),
+        add(cadence, name, handler, meta = {}) {
+            const c = String(cadence || "").toLowerCase();
+            if (!SCHEDULE_CADENCES.includes(c)) {
+                const err = new Error(`unknown schedule cadence '${cadence}' (use ${SCHEDULE_CADENCES.join(", ")})`);
+                err.buckyType = "ValueError";
+                throw err;
+            }
+            const task = { id: nextId++, cadence: c, name: String(name || `task-${nextId}`), handler: handler || null, meta };
+            tasks.push(task);
+            return { id: task.id, cadence: task.cadence, name: task.name };
+        },
+        list: () => tasks.map((t) => ({ id: t.id, cadence: t.cadence, name: t.name })),
+        remove(id) {
+            const i = tasks.findIndex((t) => t.id === Number(id));
+            if (i >= 0) { tasks.splice(i, 1); return true; }
+            return false;
+        },
+        /** Inert in this phase — the scheduler that fires tasks lands later. */
+        run() {
+            return { ran: false, reason: "the scheduler daemon arrives in a later phase" };
+        }
     };
 }
 

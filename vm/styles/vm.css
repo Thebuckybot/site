@@ -744,6 +744,12 @@ body.vm-focus-active .arcade-vm-bay {
 .vm-terminal-line.is-success { color: var(--vm-green); }
 .vm-terminal-line.is-error { color: var(--vm-red); }
 
+/* Phase 4.5 — coloured process states in ps / jobs / top / status output. */
+.vm-terminal-line.is-proc-running { color: var(--vm-cyan); }
+.vm-terminal-line.is-proc-waiting { color: #ffd166; }
+.vm-terminal-line.is-proc-done { color: #8fb7a3; }
+.vm-terminal-line.is-proc-failed { color: var(--vm-red); }
+
 .vm-terminal-input-row {
     display: flex;
     align-items: center;

@@ -1333,6 +1333,23 @@ class Interpreter {
             const value = yield { type: "input", prompt, line: node.line };
             return value == null ? "" : String(value);
         }
+        // Rich interactive widgets (Phase 4.5 — form.select / menu.show). Like
+        // input() they SUSPEND the run for terminal input, but they first render
+        // a prompt (printing options via interp.print through callee.prompt) and
+        // then map the typed line back to a structured value (callee.resume). A
+        // non-interactive host (BuckyCode "Run") turns the suspension into the
+        // same friendly "needs the interactive Terminal" error input() raises.
+        if (callee && callee.__interactive__ === true) {
+            const iargs = [];
+            for (const a of node.args) iargs.push(yield* this.eval(a.value, scope));
+            let prompt = "";
+            if (typeof callee.prompt === "function") {
+                try { prompt = String(callee.prompt(iargs, this) || ""); } catch (_e) { prompt = ""; }
+            }
+            const value = yield { type: "input", prompt, line: node.line };
+            const line = value == null ? "" : String(value);
+            return typeof callee.resume === "function" ? callee.resume(line, iargs, this) : line;
+        }
         const args = [];
         const kwargs = {};
         for (const a of node.args) {

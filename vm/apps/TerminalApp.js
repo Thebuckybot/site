@@ -13,12 +13,19 @@ import { escapeHtml } from "../core/util.js";
 import { logError } from "../core/diagnostics.js";
 import {
     startSession,
+    executeFile,
+    sessionProcesses,
     isRunnable,
     runtimeForName,
     runBanner,
     completeBanner,
     errorBlock
 } from "../core/execution.js";
+
+// Process-control words usable even while a foreground job holds the terminal
+// (Phase 4.5). Typed at the locked prompt they manage the running job rather
+// than being fed to it as input(); everything else is treated as script input.
+const CONTROL_COMMANDS = new Set(["ps", "jobs", "top", "kill", "killall", "status"]);
 
 // ----- State -----------------------------------------------------------------
 
@@ -31,6 +38,7 @@ export function createTerminalState(user, filesystem) {
         session: null,
         sessionName: null,
         sessionPrompt: "",
+        foregroundPid: null,
         lines: [
             { type: "system", text: "Bucky VM terminal linked to the shared filesystem runtime." },
             { type: "system", text: `Authenticated profile: ${user.username || "operator"}` },
@@ -111,8 +119,16 @@ function execCommand(runtime, state, raw) {
     state.history.push(commandLine);
     state.historyIndex = state.history.length;
 
-    const [command = "", ...args] = tokenize(commandLine);
+    // Phase 4.5 — a trailing `&` requests a background launch (handled by the
+    // run/python/./ cases). Strip it before tokenizing.
+    let background = false;
+    let effective = commandLine;
+    const bgMatch = effective.match(/^(.*?\S)\s*&\s*$/);
+    if (bgMatch) { background = true; effective = bgMatch[1].trim(); }
+
+    const [command = "", ...args] = tokenize(effective);
     const fs = runtime.filesystem;
+    const procs = sessionProcesses();
 
     switch (command.toLowerCase()) {
         case "clear":
@@ -136,6 +152,14 @@ function execCommand(runtime, state, raw) {
             out("output", "  python <file>   run a Python file in the simulated VM runtime");
             out("output", "  run <file>      run a script (args supported: run tool.py LEAK-0004)");
             out("output", "  ./<file>        run an executable script directly");
+            out("output", "  ./<file> &      run a script as a background job");
+            out("system", "Processes (Phase 4.5):");
+            out("output", "  ps / jobs / top list processes; jobs+top show active only");
+            out("output", "  kill <pid>      terminate a process; killall <name>");
+            out("output", "  status [pid]    show a process's details; fg / bg job control");
+            out("system", "Filesystem inspection:");
+            out("output", "  find [path] -name <pat>   tree [path]   du [path]");
+            out("output", "  head/tail [-n N] <file>   grep [-i] <pattern> <file>");
             out("output", "  clear           clear the terminal screen");
             out("system", "Files and folders you create are shared live with Files and BuckyCode.");
             out("system", "Use the up and down arrows to recall previous commands.");
@@ -360,6 +384,117 @@ function execCommand(runtime, state, raw) {
             break;
         }
 
+        // ----- Phase 4.5 — process table -----
+        case "ps":
+            renderProcTable(procs.list(), out, "PROCESSES");
+            break;
+
+        case "jobs":
+            renderProcTable(procs.active(), out, "JOBS (active)");
+            break;
+
+        case "top": {
+            const s = procs.stats();
+            const done = (s.completed || 0) + (s.failed || 0) + (s.terminated || 0);
+            out("system", `tasks ${s.total}  •  running ${s.running || 0}  waiting ${s.waiting || 0}  sleeping ${s.sleeping || 0}  done ${done}`);
+            renderProcTable(procs.active(), out, "ACTIVE");
+            break;
+        }
+
+        case "kill": {
+            if (!args[0]) { out("error", "kill: usage: kill <pid>"); break; }
+            const pid = parseInt(args[0], 10);
+            const target = procs.get(pid);
+            if (!target) { out("error", `kill: no such process: ${args[0]}`); break; }
+            if (procs.kill(pid)) out("success", `terminated PID ${pid} (${target.name})`);
+            else out("error", `kill: PID ${pid} is already ${target.state}`);
+            break;
+        }
+
+        case "killall": {
+            if (!args[0]) { out("error", "killall: usage: killall <name>"); break; }
+            const n = procs.killall(args[0]);
+            if (n > 0) out("success", `terminated ${n} process(es) named ${args[0]}`);
+            else out("output", `killall: no active process named ${args[0]}`);
+            break;
+        }
+
+        case "status": {
+            const p = args[0] ? procs.get(parseInt(args[0], 10)) : procs.foreground();
+            if (!p) { out("output", args[0] ? `status: no such process ${args[0]}` : "status: no active foreground process"); break; }
+            renderProcStatus(p, out);
+            break;
+        }
+
+        case "fg": {
+            const f = procs.foreground();
+            if (f) out("system", `foreground: ${f.name} (PID ${f.pid}) — ${f.state}`);
+            else out("output", "fg: no current job");
+            break;
+        }
+
+        case "bg":
+            out("system", "bg: launch a background job with a trailing & — e.g. ./scanner.py &");
+            break;
+
+        // ----- Phase 4.5 — virtual filesystem inspection -----
+        case "find": {
+            const pathArg = args.find((a) => !a.startsWith("-")) || ".";
+            const nameIdx = args.indexOf("-name");
+            const pattern = nameIdx >= 0 ? args[nameIdx + 1] : null;
+            const base = fs.resolve(state.cwd, pathArg);
+            if (!fs.get(base)) { out("error", `find: '${pathArg}': No such file or directory`); break; }
+            const results = fsFind(fs, base, pattern);
+            out("output", results.length ? results.join("\n") : "(no matches)");
+            break;
+        }
+
+        case "tree": {
+            const pathArg = args.find((a) => !a.startsWith("-")) || ".";
+            const base = fs.resolve(state.cwd, pathArg);
+            if (!fs.get(base)) { out("error", `tree: '${pathArg}': No such file or directory`); break; }
+            out("output", base);
+            fsTree(fs, base, "", out);
+            break;
+        }
+
+        case "du": {
+            const pathArg = args.find((a) => !a.startsWith("-")) || ".";
+            const base = fs.resolve(state.cwd, pathArg);
+            if (!fs.get(base)) { out("error", `du: '${pathArg}': No such file or directory`); break; }
+            fsDu(fs, base, out);
+            break;
+        }
+
+        case "head":
+        case "tail": {
+            const nIdx = args.indexOf("-n");
+            const count = nIdx >= 0 ? (parseInt(args[nIdx + 1], 10) || 10) : 10;
+            const fileArg = args.find((a, i) => !a.startsWith("-") && !(nIdx >= 0 && i === nIdx + 1));
+            if (!fileArg) { out("error", `${command}: missing file operand`); break; }
+            const r = fs.read(fs.resolve(state.cwd, fileArg));
+            if (!r.ok) { out("error", `${command}: ${fileArg}: ${r.error}`); break; }
+            const lines = String(r.content || "").split("\n");
+            const sel = command === "head" ? lines.slice(0, count) : lines.slice(-count);
+            out("output", sel.join("\n"));
+            break;
+        }
+
+        case "grep": {
+            const flags = args.filter((a) => a.startsWith("-")).join("");
+            const rest = args.filter((a) => !a.startsWith("-"));
+            const pattern = rest[0];
+            const fileArg = rest[1];
+            if (!pattern || !fileArg) { out("error", "grep: usage: grep [-i] <pattern> <file>"); break; }
+            const r = fs.read(fs.resolve(state.cwd, fileArg));
+            if (!r.ok) { out("error", `grep: ${fileArg}: ${r.error}`); break; }
+            const ci = flags.includes("i");
+            const needle = ci ? pattern.toLowerCase() : pattern;
+            const hits = String(r.content || "").split("\n").filter((l) => (ci ? l.toLowerCase() : l).includes(needle));
+            out("output", hits.length ? hits.join("\n") : "(no matches)");
+            break;
+        }
+
         default:
             // A path invoked directly — ./script.py, ~/tool.py, /abs/path.
             if (/^(\.\/|\.\.\/|\/|~\/)/.test(command)) {
@@ -369,6 +504,7 @@ function execCommand(runtime, state, raw) {
             out("error", `${command}: command not found`);
     }
 
+    if (execRequest) execRequest.background = background;
     return { cleared: false, lines: appended, exec: execRequest };
 }
 
@@ -449,6 +585,139 @@ function lsRecursive(fs, path, opt, out) {
         .forEach((e) => { out("output", ""); lsRecursive(fs, e.path, opt, out); });
 }
 
+// ----- Process table rendering (Phase 4.5) -----------------------------------
+
+/** Map a process state to a coloured scrollback line type (see vm.css). */
+function procLineType(state) {
+    if (state === "running") return "proc-running";
+    if (state === "waiting" || state === "sleeping") return "proc-waiting";
+    if (state === "failed" || state === "terminated") return "proc-failed";
+    return "proc-done"; // completed
+}
+
+/** Render a `ps`/`jobs`/`top` table; each row is coloured by its state. */
+function renderProcTable(list, out, title) {
+    if (title) out("system", title);
+    if (!list.length) { out("output", "(no processes)"); return; }
+    out("output", "  PID  STATE       PROG  OWNER      NAME");
+    list.forEach((p) => {
+        const pid = String(p.pid).padStart(4);
+        const st = String(p.state).padEnd(10);
+        const pr = (p.progress != null ? p.progress + "%" : "-").padStart(4);
+        const ow = String(p.owner || "").padEnd(9);
+        out(procLineType(p.state), ` ${pid}  ${st}  ${pr}  ${ow}  ${p.name}${p.background ? " &" : ""}`);
+    });
+}
+
+/** Render the `status` detail block for one process. */
+function renderProcStatus(p, out) {
+    out("system", `PID ${p.pid}`);
+    out("output", `NAME      ${p.name}`);
+    out(procLineType(p.state), `STATE     ${p.state}`);
+    out("output", `OWNER     ${p.owner}`);
+    if (p.progress != null) out("output", `PROGRESS  ${p.progress}%`);
+    out("output", `ELAPSED   ${Math.max(0, Math.round(p.elapsedMs || 0))}ms`);
+    if (p.exitCode != null) out("output", `EXIT      ${p.exitCode}`);
+}
+
+// ----- Virtual filesystem inspection (Phase 4.5) -----------------------------
+
+/** Recursive path search under `base`, optionally filtered by a -name glob. */
+function fsFind(fs, base, pattern) {
+    const results = [];
+    const match = (name) => {
+        if (!pattern) return true;
+        if (pattern.includes("*")) {
+            const re = new RegExp("^" + pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$", "i");
+            return re.test(name);
+        }
+        return name.toLowerCase().includes(pattern.toLowerCase());
+    };
+    const walk = (path) => {
+        const node = fs.get(path);
+        if (!node) return;
+        const name = path.split("/").pop() || path;
+        if (match(name)) results.push(path);
+        if (node.type === "dir") fs.list(path).forEach((e) => walk(e.path));
+    };
+    walk(base);
+    return results;
+}
+
+/** Depth-first ASCII tree of a directory. */
+function fsTree(fs, path, prefix, out) {
+    const entries = fs.list(path);
+    entries.forEach((e, i) => {
+        const last = i === entries.length - 1;
+        out("output", prefix + (last ? "└─ " : "├─ ") + e.name + (e.type === "dir" ? "/" : ""));
+        if (e.type === "dir") fsTree(fs, e.path, prefix + (last ? "   " : "│  "), out);
+    });
+}
+
+/** Disk-usage summary: each immediate subdirectory total, then the base total. */
+function fsDu(fs, base, out) {
+    const sizeOf = (p) => {
+        const node = fs.get(p);
+        if (!node) return 0;
+        if (node.type !== "dir") return node.size || 0;
+        return fs.list(p).reduce((s, e) => s + sizeOf(e.path), 0);
+    };
+    const node = fs.get(base);
+    if (node && node.type === "dir") {
+        fs.list(base).filter((e) => e.type === "dir").forEach((e) => out("output", `${String(sizeOf(e.path)).padStart(8)}  ${e.path}`));
+    }
+    out("output", `${String(sizeOf(base)).padStart(8)}  ${base}`);
+}
+
+/** Filesystem/launch verbs blocked while a foreground job holds the terminal. */
+const SHELL_VERBS = new Set([
+    "ls", "cd", "pwd", "cat", "mkdir", "touch", "edit", "open", "files",
+    "browser", "chmod", "python", "python3", "run", "find", "tree", "du", "head", "tail", "grep"
+]);
+function isShellVerb(word) {
+    return SHELL_VERBS.has(word);
+}
+
+/** Tear down the active foreground session (e.g. after a kill). */
+function endForegroundSession(runtime, windowState, view, reason) {
+    const state = windowState.appState;
+    pushLine(view, state, { type: "system", text: `[${reason}] ${state.sessionName || "process"} (PID ${state.foregroundPid}) ended.` });
+    state.session = null;
+    state.sessionName = null;
+    state.sessionPrompt = "";
+    state.foregroundPid = null;
+    view.promptEl.textContent = createPrompt(state, runtime.user);
+}
+
+/**
+ * Run a script as a background job (Phase 4.5). It runs non-interactively (so it
+ * never blocks the prompt or reads input()); output streams live and the run is
+ * recorded in the process table as a background process.
+ */
+async function startBackground(runtime, windowState, view, exec) {
+    const state = windowState.appState;
+    const fs = runtime.filesystem;
+    const name = fs.normalize(exec.path).split("/").pop();
+    pushLine(view, state, { type: "system", text: `[bg] ${name} launched` });
+    const stdout = (line) => pushLine(view, state, { type: "output", text: line });
+    const notify = (title, message) => { try { runtime.notify && runtime.notify(title, message); } catch (_e) { /* no-op */ } };
+    let result;
+    try {
+        result = await executeFile(fs, exec.path, { argv: exec.argv, user: runtime.user, stdout, owner: "terminal", background: true, notify });
+    } catch (error) {
+        pushLine(view, state, { type: "error", text: `bg: ${error && error.message ? error.message : error}` });
+        return;
+    }
+    if (result.ok) {
+        pushLine(view, state, { type: "success", text: `[bg] PID ${result.pid} (${name}) completed` });
+    } else if (result.errorInfo) {
+        pushLine(view, state, { type: "system", text: `[bg] PID ${result.pid} (${name}) failed` });
+        errorBlock(name, result.errorInfo).forEach((t) => pushLine(view, state, { type: "error", text: t }));
+    } else {
+        pushLine(view, state, { type: "error", text: `[bg] ${name}: ${result.error || "failed"}` });
+    }
+}
+
 /**
  * Begin running a script as an interactive session. Output streams live; if
  * the script calls input() the session suspends and the terminal feeds the
@@ -461,9 +730,10 @@ async function startScript(runtime, windowState, view, exec) {
     runBanner(name).forEach((t) => pushLine(view, state, { type: "system", text: t }));
 
     const stdout = (line) => pushLine(view, state, { type: "output", text: line });
+    const notify = (title, message) => { try { runtime.notify && runtime.notify(title, message); } catch (_e) { /* no-op */ } };
     let driver;
     try {
-        driver = await startSession(fs, exec.path, { argv: exec.argv, user: runtime.user, stdout });
+        driver = await startSession(fs, exec.path, { argv: exec.argv, user: runtime.user, stdout, notify, exclusive: true });
     } catch (error) {
         pushLine(view, state, { type: "error", text: `run: ${error && error.message ? error.message : error}` });
         return;
@@ -474,6 +744,8 @@ async function startScript(runtime, windowState, view, exec) {
     }
     state.session = driver;
     state.sessionName = name;
+    state.foregroundPid = driver.pid;
+    pushLine(view, state, { type: "system", text: `PID ${driver.pid} Started.` });
     handleSessionStep(runtime, windowState, view, driver.step());
 }
 
@@ -497,6 +769,7 @@ function handleSessionStep(runtime, windowState, view, step) {
     state.session = null;
     state.sessionName = null;
     state.sessionPrompt = "";
+    state.foregroundPid = null;
     view.promptEl.textContent = createPrompt(state, runtime.user);
 }
 
@@ -523,8 +796,29 @@ export function mountTerminalApp(runtime, windowState, element) {
             state.input = "";
             view.input.value = "";
 
-            // Mid-interactive-script: feed this line to the paused session.
+            // Mid-interactive-script: the terminal is LOCKED to the foreground
+            // job (Phase 4.5). Process-control words manage it; shell/launch
+            // verbs are refused as "Terminal busy"; anything else answers the
+            // script's input()/form/menu prompt.
             if (state.session) {
+                const trimmed = value.trim();
+                const word = (trimmed.split(/\s+/)[0] || "").toLowerCase();
+                if (CONTROL_COMMANDS.has(word)) {
+                    const ctl = execCommand(runtime, state, value);
+                    appendLines(view, ctl.lines);
+                    if ((word === "kill" || word === "killall") && state.foregroundPid != null) {
+                        const fp = sessionProcesses().get(state.foregroundPid);
+                        if (!fp || ["terminated", "completed", "failed"].includes(fp.state)) {
+                            endForegroundSession(runtime, windowState, view, "killed");
+                        }
+                    }
+                    return;
+                }
+                if (isShellVerb(word) || /^(\.\/|\.\.\/|\/|~\/)/.test(trimmed)) {
+                    pushLine(view, state, { type: "prompt", text: `${state.sessionPrompt || ""}${value}` });
+                    pushLine(view, state, { type: "error", text: `Terminal busy. Active process: ${state.sessionName} (PID ${state.foregroundPid}). Use ps / kill ${state.foregroundPid}.` });
+                    return;
+                }
                 pushLine(view, state, { type: "prompt", text: `${state.sessionPrompt || ""}${value}` });
                 handleSessionStep(runtime, windowState, view, state.session.step(value));
                 return;
@@ -539,7 +833,8 @@ export function mountTerminalApp(runtime, windowState, element) {
             view.promptEl.textContent = createPrompt(state, runtime.user);
 
             if (result.exec) {
-                await startScript(runtime, windowState, view, result.exec);
+                if (result.exec.background) await startBackground(runtime, windowState, view, result.exec);
+                else await startScript(runtime, windowState, view, result.exec);
             }
             return;
         }
