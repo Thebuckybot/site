@@ -14,7 +14,7 @@
  * Registered extension modules (core/runtime/extensions.js, Part 23) are
  * merged in when their capability is granted — the seam future subsystems use.
  */
-import { mod } from "./kit.js";
+import { mod, def } from "./kit.js";
 import { createFilesModule } from "./files.js";
 import { createJsonModule } from "./json.js";
 import { createLeaksModule } from "./leaks.js";
@@ -108,6 +108,7 @@ export function buildStandardLibrary(ctx) {
         "bucky.watchlist": watchlist,
         "bucky.search": search,
         "bucky.report": report,
+        "bucky.reports": report,
         "bucky.events": events,
         "bucky.schedule": schedule,
         bucky
@@ -129,14 +130,31 @@ export function buildStandardLibrary(ctx) {
         }
     });
 
+    // dir() — reflection. dir() lists the available modules; dir(module) or
+    // dir("economy") lists a module's members. Aids discoverability from a
+    // script or the Terminal without external docs.
+    function dirImpl(target) {
+        // def() spreads the call args, so `target` is the first argument value
+        // (a module namespace or a module name), or undefined for a bare dir().
+        if (typeof target === "string" && bucky[target] && bucky[target].__module__) target = bucky[target];
+        if (target && typeof target === "object" && target.__module__ === true) {
+            return Object.keys(target).filter((k) => k !== "__module__" && k !== "__name__").sort();
+        }
+        const names = Object.keys(bucky).filter((k) => k !== "__module__" && k !== "__name__");
+        names.push("orgs", "reports");
+        return Array.from(new Set(names)).sort();
+    }
+
     // Prelude: short names available without an import. `orgs` aliases
-    // organizations; `notify` is the callable send helper (so `notify("...")`
-    // works) while `bucky.notify` keeps send/info/warn/alert.
+    // organizations; `reports` aliases `report`; `notify` is the callable send
+    // helper (so `notify("...")` works) while `bucky.notify` keeps
+    // send/info/warn/alert. `dir` is the reflection builtin.
     const builtins = {
         files, json, leaks, profile, organizations, orgs: organizations, terminal, bucky,
         process, progress, table, status, form, menu, ui, notify: notify.send,
-        inventory, economy, security, leaderboards, hackbank, watchlist, search, report,
-        events, schedule
+        inventory, economy, security, leaderboards, hackbank, watchlist, search,
+        report, reports: report, events, schedule,
+        dir: def(dirImpl)
     };
 
     return { modules, builtins };

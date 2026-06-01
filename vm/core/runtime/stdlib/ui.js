@@ -222,7 +222,8 @@ export function createFormModule(ctx) {
         prompt: (args) => (args && args[0] != null ? String(args[0]) + " " : ""),
         resume: (line) => String(line == null ? "" : line)
     };
-    return mod("bucky.form", { select, confirm, ask });
+    // `input` is an alias of `ask` — free-text prompt that returns the line.
+    return mod("bucky.form", { select, confirm, ask, input: ask });
 }
 
 // ----- menu (§6, interactive) -------------------------------------------------

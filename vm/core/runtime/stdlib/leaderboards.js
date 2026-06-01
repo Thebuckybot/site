@@ -60,6 +60,13 @@ export function createLeaderboardsModule(ctx) {
         kinds: def(kinds),
         top: def(top),
         rank: def(rank),
-        organizations: def(organizations)
+        organizations: def(organizations),
+        // Convenience accessors for the named backend kinds.
+        richest: def((limit) => top("richest", limit)),
+        levels: def((limit) => top("level", limit)),
+        level: def((limit) => top("level", limit)),
+        reputation: def((limit) => top("org-reputation", limit)),
+        mostLeaked: def((limit) => top("most-leaked", limit)),
+        most_leaked: def((limit) => top("most-leaked", limit))
     });
 }

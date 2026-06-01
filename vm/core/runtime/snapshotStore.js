@@ -38,7 +38,15 @@ export function createSnapshotStore(gateway) {
             const snap = await prefetchSnapshot(gateway, new Set(missing));
             if (snap.online) online = true;
             const stamp = snap.generatedAt || Date.now();
-            missing.forEach((s) => { cache[s] = snap[s]; fetchedAt[s] = stamp; });
+            const sectionOk = snap.sectionOk || {};
+            missing.forEach((s) => {
+                cache[s] = snap[s];
+                // Only mark a section "fetched" when its backend call SUCCEEDED.
+                // A failed/empty authenticated fetch (e.g. an early /api/player/me
+                // 401) stays unfetched so the next run retries it — rather than
+                // serving an empty profile for the rest of the session.
+                if (sectionOk[s]) fetchedAt[s] = stamp;
+            });
         }
         return current();
     }

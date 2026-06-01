@@ -104,6 +104,7 @@ export const MODULE_CAPABILITY = {
     "bucky.watchlist": CAPABILITIES.WATCHLIST,
     "bucky.search": CAPABILITIES.SEARCH,
     "bucky.report": CAPABILITIES.REPORT,
+    "bucky.reports": CAPABILITIES.REPORT,
     "bucky.events": CAPABILITIES.EVENTS,
     "bucky.schedule": CAPABILITIES.AUTOMATION,
     // Future / interface-only.

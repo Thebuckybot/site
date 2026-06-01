@@ -50,13 +50,23 @@ function normalizeLeaderboards(data) {
     return { kinds };
 }
 
-/** Unwrap a player-style { available, item } envelope to its item object. */
+/**
+ * Unwrap a player-style { available, item } envelope to its item object.
+ * Tolerant of transport nesting ({ data: { available, item } }), `player` /
+ * `profile` keys, and a bare profile shape, so profile.level()/coins()/xp() read
+ * the real authenticated values rather than defaults.
+ */
 function unwrapItem(data) {
-    const d = data || {};
+    let d = data || {};
+    if (d.data && typeof d.data === "object" && !Array.isArray(d.data) &&
+        (d.data.item || d.data.player || d.data.profile || typeof d.data.level === "number")) {
+        d = d.data;
+    }
     if (d.item && typeof d.item === "object") return d.item;
     if (d.player && typeof d.player === "object") return d.player;
+    if (d.profile && typeof d.profile === "object") return d.profile;
     // Bare shape fallback: the payload's own fields (no envelope).
-    if (typeof d.level === "number" || typeof d.coins === "number" || d.user_id) return d;
+    if (typeof d.level === "number" || typeof d.coins === "number" || typeof d.xp === "number" || d.user_id) return d;
     return {};
 }
 
@@ -68,6 +78,11 @@ function unwrapItem(data) {
 export async function prefetchSnapshot(gateway, needs) {
     const want = needs instanceof Set ? needs : new Set(needs || []);
     const snapshot = { generatedAt: Date.now(), online: false, leaks: null, profile: null, organizations: null, leaderboards: null };
+    // Per-section success. A section is only worth CACHING when its backend
+    // call actually succeeded — so a transient/early failure (e.g. an
+    // /api/player/me 401 before auth settles) is NOT cached, and the next run
+    // retries it instead of being stuck with an empty profile all session.
+    snapshot.sectionOk = { leaks: false, profile: false, organizations: false, leaderboards: false };
     if (!gateway) return snapshot;
 
     let anyOk = false;
@@ -91,6 +106,7 @@ export async function prefetchSnapshot(gateway, needs) {
                 okWrap(() => gateway.fetchLeakOperators && gateway.fetchLeakOperators()),
                 okWrap(() => gateway.fetchMyLeaks && gateway.fetchMyLeaks())
             ]);
+            snapshot.sectionOk.leaks = !!(stats.ok || incidents.ok || operators.ok || mine.ok);
             snapshot.leaks = {
                 stats: (stats.data && (stats.data.stats || stats.data)) || {},
                 incidents: pick(incidents.data && incidents.data.items, incidents.data && incidents.data.incidents, incidents.data),
@@ -103,6 +119,7 @@ export async function prefetchSnapshot(gateway, needs) {
     if (want.has("profile")) {
         jobs.push((async () => {
             const me = await okWrap(() => gateway.fetchSelfPlayer && gateway.fetchSelfPlayer());
+            snapshot.sectionOk.profile = !!me.ok;
             snapshot.profile = unwrapItem(me.data);
         })());
     }
@@ -113,6 +130,7 @@ export async function prefetchSnapshot(gateway, needs) {
                 okWrap(() => gateway.fetchOrganizations && gateway.fetchOrganizations()),
                 okWrap(() => gateway.fetchMyOrganization && gateway.fetchMyOrganization())
             ]);
+            snapshot.sectionOk.organizations = !!(orgs.ok || mine.ok);
             snapshot.organizations = {
                 list: pick(orgs.data && orgs.data.items, orgs.data && orgs.data.organizations, orgs.data),
                 current: (mine.data && (mine.data.item || mine.data.organization)) || null
@@ -123,6 +141,7 @@ export async function prefetchSnapshot(gateway, needs) {
     if (want.has("leaderboards")) {
         jobs.push((async () => {
             const board = await okWrap(() => gateway.fetchLeaderboards && gateway.fetchLeaderboards(25));
+            snapshot.sectionOk.leaderboards = !!board.ok;
             snapshot.leaderboards = normalizeLeaderboards(board.data);
         })());
     }

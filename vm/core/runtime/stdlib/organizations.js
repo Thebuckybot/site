@@ -50,6 +50,7 @@ export function createOrganizationsModule(ctx) {
 
     return mod("bucky.organizations", {
         current: def(current),
+        mine: def(current), // alias — the caller's own organisation
         list: def(list),
         get: def(get),
         search: def(search),
