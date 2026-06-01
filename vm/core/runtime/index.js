@@ -16,7 +16,7 @@
  * Both a non-interactive run() and an interactive session() are exposed.
  *
  * Phase 4.5 threads three more things through the per-run context: the shared
- * process table (so process.*/progress.* see the live process), an optional
+ * process table (so process. progress. see the live process), an optional
  * desktop notification sink, and per-runtime automation/schedule registries.
  */
 import { runPython, createScriptSession, SCRIPT_EXIT } from "../pseudoPython.js";
