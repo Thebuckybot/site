@@ -22,6 +22,7 @@
  */
 import { debugLog, debugWarn } from "./diagnostics.js";
 import { EXAMPLE_SCRIPTS } from "./runtime/examples.js";
+import { EXAMPLE_DEMOS } from "./runtime/examples_demos.js";
 
 const MIME_BY_EXTENSION = {
     txt: "text/plain",
@@ -167,9 +168,11 @@ function buildSeedTree(username) {
             exports: {},
             archives: {},
             scripts: EXAMPLE_SCRIPTS,
+            examples: EXAMPLE_DEMOS,
             "README.md":
                 "# /projects\n\n" +
                 "Your BuckyCode workspace.\n\n" +
+                "- **examples/** — commented demos. Try: `run examples/profile_demo.py`\n" +
                 "- **scripts/** — runnable tools. Try: `run scripts/leak_reporter.py`\n" +
                 "- **data/** — JSON state (watchlists, trackers) your scripts keep\n" +
                 "- **reports/** — generated reports (report.to_reports / report.save)\n" +

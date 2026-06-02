@@ -97,6 +97,59 @@ function isListLine(line) {
     return /^(\s*)([-*+]|\d+[.)])\s+/.test(line);
 }
 
+// ----- GFM tables ------------------------------------------------------------
+
+/** A table separator row: | --- | :--: | ---: | (dashes, optional colons). */
+function isTableSeparator(line) {
+    return /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)+\|?\s*$/.test(String(line || ""));
+}
+
+/** Split a table row into trimmed cells, dropping the outer-pipe empties. */
+function parseTableRow(line) {
+    let s = String(line || "").trim();
+    if (s.startsWith("|")) s = s.slice(1);
+    if (s.endsWith("|")) s = s.slice(0, -1);
+    return s.split("|").map((c) => c.trim());
+}
+
+/** Per-column CSS text-align from the separator row's colons. */
+function parseAligns(sep) {
+    return parseTableRow(sep).map((c) => {
+        const left = c.startsWith(":");
+        const right = c.endsWith(":");
+        if (left && right) return "center";
+        if (right) return "right";
+        if (left) return "left";
+        return "";
+    });
+}
+
+/** True when lines[i] starts a table (a row immediately followed by a separator). */
+function isTableStart(lines, i) {
+    return i + 1 < lines.length
+        && lines[i].indexOf("|") >= 0
+        && !isTableSeparator(lines[i])
+        && isTableSeparator(lines[i + 1]);
+}
+
+/** Render a GFM table block; returns { html, next } (next = index after the table). */
+function renderTable(lines, start) {
+    const headers = parseTableRow(lines[start]);
+    const aligns = parseAligns(lines[start + 1]);
+    let index = start + 2;
+    const rows = [];
+    while (index < lines.length && lines[index].indexOf("|") >= 0 && !/^\s*$/.test(lines[index]) && !isTableSeparator(lines[index])) {
+        rows.push(parseTableRow(lines[index]));
+        index++;
+    }
+    const alignAttr = (i) => (aligns[i] ? ` style="text-align:${aligns[i]}"` : "");
+    const cell = (tag, text, i) => `<${tag}${alignAttr(i)}>${renderInline(escapeHtml(text == null ? "" : text))}</${tag}>`;
+    const head = `<thead><tr>${headers.map((h, i) => cell("th", h, i)).join("")}</tr></thead>`;
+    const body = rows.map((r) =>
+        `<tr>${headers.map((_h, i) => cell("td", r[i], i)).join("")}</tr>`).join("");
+    return { html: `<table class="vm-md-table">${head}<tbody>${body}</tbody></table>`, next: index };
+}
+
 /**
  * Render a markdown source string to a safe HTML string.
  * @param {string} source
@@ -193,6 +246,14 @@ export function renderMarkdown(source) {
             continue;
         }
 
+        // GFM table - a header row immediately followed by a separator row.
+        if (isTableStart(lines, index)) {
+            const table = renderTable(lines, index);
+            html.push(table.html);
+            index = table.next;
+            continue;
+        }
+
         // Blank line.
         if (/^\s*$/.test(raw)) {
             index++;
@@ -202,7 +263,7 @@ export function renderMarkdown(source) {
         // Paragraph - gather consecutive plain lines.
         const paragraph = [escapeHtml(raw)];
         index++;
-        while (index < lines.length && !isBlockStart(lines[index])) {
+        while (index < lines.length && !isBlockStart(lines[index]) && !isTableStart(lines, index)) {
             paragraph.push(escapeHtml(lines[index]));
             index++;
         }

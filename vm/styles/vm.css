@@ -1654,6 +1654,29 @@ body.vm-focus-active .arcade-vm-bay {
     font-style: italic;
 }
 
+/* GFM tables (Phase 4.5). */
+.vm-md-table {
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+    width: auto;
+    max-width: 100%;
+}
+.vm-md-table th,
+.vm-md-table td {
+    border: 1px solid rgba(82, 255, 243, .24);
+    padding: 6px 12px;
+    text-align: left;
+}
+.vm-md-table th {
+    background: rgba(82, 255, 243, .10);
+    color: var(--vm-cyan);
+    font-weight: 600;
+}
+.vm-md-table tbody tr:nth-child(even) td {
+    background: rgba(232, 255, 255, .03);
+}
+
 /* ===================================================================
    Phase 1.2 — Files app polish: file-kind icons + markdown preview
    =================================================================== */

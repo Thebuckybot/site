@@ -115,16 +115,18 @@ export function createProgressModule(ctx) {
             const h = handle || current || { label: "Progress", total: 100 };
             const pct = pctFrom(typeof value === "number" ? value : 0, h.total);
             if (label != null) h.label = String(label);
-            interp.print(h.label + ": " + renderBar(pct));
+            const text = h.label + ": " + renderBar(pct);
+            interp.print(text);
             syncProcess(pct, h.label);
-            return null;
+            return text;
         },
         finish: (args, kwargs, interp) => {
             const label = args && args[0] != null ? String(args[0]) : ((current && current.label) || "Progress");
-            interp.print(label + ": " + renderBar(100) + " done");
+            const text = label + ": " + renderBar(100) + " done";
+            interp.print(text);
             syncProcess(100, label);
             current = null;
-            return null;
+            return text;
         },
         bar: (args) => renderBar(args && typeof args[0] === "number" ? args[0] : 0)
     });
@@ -134,13 +136,17 @@ export function createProgressModule(ctx) {
 
 export function createTableModule(ctx) {
     return mod("bucky.table", {
+        // render() PRINTS the table to the output stream AND returns the rendered
+        // text, so it is useful both for display and for capture/reporting. It
+        // always prints — the return is additive, not a mode switch.
         render: (args, kwargs, interp) => {
             const rows = args && args[0];
             const cols = (args && args[1]) || (kwargs && kwargs.columns);
-            tableLines(rows, cols).forEach((line) => interp.print(line));
-            return null;
+            const lines = tableLines(rows, cols);
+            lines.forEach((line) => interp.print(line));
+            return lines.join("\n");
         },
-        // Return the rendered text without printing — useful for reports.
+        // format() returns the rendered text WITHOUT printing.
         format: (args) => tableLines(args && args[0], args && args[1]).join("\n")
     });
 }
@@ -148,26 +154,41 @@ export function createTableModule(ctx) {
 // ----- status cards (§21) -----------------------------------------------------
 
 export function createStatusModule(ctx) {
+    // Render one field value readably: booleans Python-style, nested dicts/lists
+    // flattened, None as "-". Keeps card content meaningful (never blank).
+    const renderValue = (v) => {
+        if (v === true) return "True";
+        if (v === false) return "False";
+        if (v == null) return "-";
+        if (Array.isArray(v)) return v.map(renderValue).join(", ");
+        if (isPlainDict(v)) return Object.keys(v).map((k) => k + "=" + renderValue(v[k])).join("  ");
+        return String(v);
+    };
     return mod("bucky.status", {
+        // card(title, fields) — fields may be a dict (positional) or kwargs.
+        // Prints a bordered block AND returns the rendered text.
         card: (args, kwargs, interp) => {
             const title = args && args[0] != null ? String(args[0]) : "STATUS";
-            const fields = (args && args[1]) || kwargs || {};
-            interp.print(RULE);
-            interp.print(" " + title);
-            interp.print(RULE);
-            if (isPlainDict(fields)) {
-                const keys = Object.keys(fields);
+            const fields = (args && args[1] != null && isPlainDict(args[1])) ? args[1]
+                : (isPlainDict(kwargs) && Object.keys(kwargs).length ? kwargs : {});
+            const out = [RULE, " " + title, RULE];
+            const keys = Object.keys(fields);
+            if (keys.length) {
                 const w = keys.reduce((m, k) => Math.max(m, k.length), 0);
-                keys.forEach((k) => interp.print(" " + k.padEnd(w) + "  " + String(fields[k])));
+                keys.forEach((k) => out.push(" " + k.padEnd(w) + "  " + renderValue(fields[k])));
+            } else {
+                out.push(" (no fields)");
             }
-            interp.print(RULE);
-            return null;
+            out.push(RULE);
+            out.forEach((l) => interp.print(l));
+            return out.join("\n");
         },
         line: (args, kwargs, interp) => {
             const label = args && args[0] != null ? String(args[0]) : "";
-            const value = args && args[1] != null ? String(args[1]) : "";
-            interp.print(label + ": " + value);
-            return null;
+            const value = args && args[1] != null ? renderValue(args[1]) : "";
+            const text = label + ": " + value;
+            interp.print(text);
+            return text;
         }
     });
 }
@@ -236,8 +257,12 @@ export function createMenuModule(ctx) {
         resume: (line, args) => {
             const items = Array.isArray(args && args[0]) ? args[0] : [];
             const n = parseInt(line, 10);
-            if (!Number.isNaN(n) && n >= 1 && n <= items.length) return n; // 1-based choice
-            return 0; // 0 = no valid selection (e.g. an "Exit"-style fallthrough)
+            let idx = -1;
+            if (!Number.isNaN(n) && n >= 1 && n <= items.length) idx = n - 1;
+            else { const m = items.findIndex((o) => labelOf(o).toLowerCase() === String(line).toLowerCase()); if (m >= 0) idx = m; }
+            // Meaningful selection: { index (1-based), label, value }, or None.
+            if (idx < 0) return null;
+            return { index: idx + 1, label: labelOf(items[idx]), value: items[idx] };
         }
     };
     return mod("bucky.menu", { show });

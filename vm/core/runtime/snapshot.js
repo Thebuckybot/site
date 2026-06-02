@@ -37,8 +37,16 @@ function pick(...candidates) {
  */
 function normalizeLeaderboards(data) {
     const d = data || {};
-    const src = d.boards || d.leaderboards || d.kinds || d;
     const kinds = {};
+    // Backend shape (services/leaderboard_service.list_all):
+    //   { available, kinds:[...names], boards:[ { kind, items:[...] }, ... ] }
+    // `boards` is an ARRAY of per-kind envelopes — key each by its `kind`.
+    if (Array.isArray(d.boards)) {
+        d.boards.forEach((b) => { if (b && b.kind) kinds[b.kind] = Array.isArray(b.items) ? b.items : []; });
+        return { kinds };
+    }
+    // Tolerate a map shape too ({ richest:[...] } or { richest:{ items:[...] } }).
+    const src = d.boards || d.leaderboards || d.kinds || d;
     if (src && typeof src === "object" && !Array.isArray(src)) {
         Object.keys(src).forEach((k) => {
             const v = src[k];

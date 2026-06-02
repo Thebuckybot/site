@@ -39,6 +39,7 @@ import { createReportModule } from "./report.js";
 import { createEventsModule, createScheduleModule } from "./events.js";
 import { registeredModules } from "../extensions.js";
 import { moduleCapability } from "../capabilities.js";
+import { HELP } from "./helptext.js";
 
 export function buildStandardLibrary(ctx) {
     // Phase 4.4 core.
@@ -133,16 +134,86 @@ export function buildStandardLibrary(ctx) {
     // dir() — reflection. dir() lists the available modules; dir(module) or
     // dir("economy") lists a module's members. Aids discoverability from a
     // script or the Terminal without external docs.
-    function dirImpl(target) {
-        // def() spreads the call args, so `target` is the first argument value
-        // (a module namespace or a module name), or undefined for a bare dir().
-        if (typeof target === "string" && bucky[target] && bucky[target].__module__) target = bucky[target];
-        if (target && typeof target === "object" && target.__module__ === true) {
-            return Object.keys(target).filter((k) => k !== "__module__" && k !== "__name__").sort();
+    // Short module key for HELP lookups ("bucky.economy" -> "economy").
+    const shortName = (m) => (m && m.__name__ ? String(m.__name__).replace(/^bucky\./, "") : null);
+    const resolveModule = (target) => {
+        if (typeof target === "string") {
+            const base = target.split(".")[0];
+            return bucky[base] && bucky[base].__module__ ? bucky[base] : null;
+        }
+        if (target && typeof target === "object" && target.__module__ === true) return target;
+        return null;
+    };
+    const memberNames = (m) => Object.keys(m).filter((k) => k !== "__module__" && k !== "__name__").sort();
+    // Find the HELP signature/doc for a bare method name (matches "name(" key).
+    const helpFor = (key, method) => {
+        const h = HELP[key];
+        if (!h || !h.methods) return null;
+        const sigKey = Object.keys(h.methods).find((s) => s.replace(/[\s(].*$/, "") === method
+            || s.split("/").some((alt) => alt.replace(/[\s(].*$/, "").trim() === method));
+        return sigKey ? { signature: sigKey, description: h.methods[sigKey] } : null;
+    };
+
+    // dir(target[, detailed]) — RETURNS a list. Bare → module names; a module/
+    // name → its members; detailed=True → [{name, signature, description}].
+    function dirImpl(args, kwargs) {
+        const target = args && args.length ? args[0] : null;
+        const detailed = (args && args[1] === true) || (kwargs && (kwargs.detailed === true || kwargs.detail === true));
+        const mod = resolveModule(target);
+        if (mod) {
+            const key = shortName(mod);
+            const members = memberNames(mod);
+            if (!detailed) return members;
+            return members.map((m) => {
+                const hit = helpFor(key, m);
+                return { name: m, signature: hit ? hit.signature : (m + "(...)"), description: hit ? hit.description : "" };
+            });
         }
         const names = Object.keys(bucky).filter((k) => k !== "__module__" && k !== "__name__");
         names.push("orgs", "reports");
         return Array.from(new Set(names)).sort();
+    }
+
+    // help([target[, member]]) — PRINTS a help screen and returns the text.
+    //   help()                 -> module index
+    //   help(profile)          -> module description + functions
+    //   help("profile")        -> same, by name
+    //   help("profile.level")  -> one method's signature + doc + example
+    //   help(profile, "level") -> same
+    function helpImpl(args, kwargs, interp) {
+        const lines = [];
+        const emit = (s) => { lines.push(s); if (interp && interp.print) interp.print(s); };
+        const target = args && args.length ? args[0] : null;
+        let member = args && args.length > 1 ? args[1] : null;
+        if (typeof target === "string" && target.indexOf(".") >= 0 && member == null) {
+            member = target.split(".").slice(1).join(".");
+        }
+        const mod = resolveModule(target);
+        if (!mod) {
+            emit("Bucky VM — available modules (use help(name) for detail):");
+            const names = Object.keys(bucky).filter((k) => k !== "__module__" && k !== "__name__").sort();
+            names.forEach((n) => { const h = HELP[n]; emit("  " + n.padEnd(15) + (h ? h.description : "")); });
+            emit("Try: help('profile'), help('profile.level'), dir(profile, detailed=True)");
+            return lines.join("\n");
+        }
+        const key = shortName(mod);
+        const h = HELP[key] || { description: "", methods: {} };
+        if (member != null) {
+            const hit = helpFor(key, String(member));
+            if (hit) { emit(key + "." + hit.signature); emit("  " + hit.description); }
+            else emit("No help for '" + key + "." + member + "'. Try help('" + key + "').");
+            return lines.join("\n");
+        }
+        emit("MODULE  " + key);
+        if (h.description) emit("  " + h.description);
+        emit("FUNCTIONS");
+        if (h.methods && Object.keys(h.methods).length) {
+            Object.keys(h.methods).forEach((sig) => emit("  " + key + "." + sig + "  —  " + h.methods[sig]));
+        } else {
+            memberNames(mod).forEach((m) => emit("  " + key + "." + m + "()"));
+        }
+        if (h.example) emit("EXAMPLE  " + h.example);
+        return lines.join("\n");
     }
 
     // Prelude: short names available without an import. `orgs` aliases
@@ -154,7 +225,12 @@ export function buildStandardLibrary(ctx) {
         process, progress, table, status, form, menu, ui, notify: notify.send,
         inventory, economy, security, leaderboards, hackbank, watchlist, search,
         report, reports: report, events, schedule,
-        dir: def(dirImpl)
+        // mail (foundation) + database/missions (interface stubs) are bound as
+        // prelude names too, so `mail.identity()` resolves without an import
+        // (previously "mail is not defined"); stub methods still raise NotImplemented.
+        mail, database, missions,
+        // Raw native bindings (they read kwargs / print via interp directly).
+        dir: dirImpl, help: helpImpl
     };
 
     return { modules, builtins };

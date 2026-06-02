@@ -55,6 +55,31 @@ export function buildArgs(rawList) {
     arr.flags = () => raw.filter(isFlag);
     arr.positional = () => positionals.slice();
 
+    // Typed accessors (Phase 4.5). All accept the flag token, e.g. "-u" / "--save".
+    arr.value = arr.get;                         // alias of get()
+    arr.bool = (a) => arr.has(a);                // a present flag is True
+    arr.flag = (a) => arr.has(a);                // alias of bool()
+    arr.int = (a) => {
+        const d = a && a.length > 1 ? a[1] : null;
+        const v = valueFor(String(a && a[0] != null ? a[0] : ""));
+        if (v === undefined || v === true) return d;
+        const n = parseInt(v, 10);
+        return Number.isNaN(n) ? d : n;
+    };
+    // all() -> a dict of every --key:value / --key=value pair (bare flags = True).
+    arr.all = () => {
+        const out = {};
+        raw.forEach((t) => {
+            if (!isFlag(t)) return;
+            const ci = t.indexOf(":");
+            const ei = t.indexOf("=");
+            const si = ci >= 0 && (ei < 0 || ci < ei) ? ci : ei;
+            if (si >= 0) out[t.slice(0, si)] = t.slice(si + 1);
+            else out[t] = true;
+        });
+        return out;
+    };
+
     // Internal (JS-side) — used by describe() to auto-show help.
     arr.hasHelp = raw.includes("--help") || raw.includes("-h");
     return arr;

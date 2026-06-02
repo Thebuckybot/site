@@ -32,16 +32,22 @@ export function createSecurityModule(ctx) {
     }
     function breached() {
         ctx.caps.require("security", "security.breached");
+        // The backend self-view exposes an explicit `security.breached` flag;
+        // honour it, then fall back to the exposure list.
+        const sec = profile().security || {};
+        if (typeof sec.breached === "boolean") return sec.breached || exposures().length > 0;
         return exposures().length > 0;
     }
     function firewall() {
         ctx.caps.require("security", "security.firewall");
         const sec = profile().security || {};
-        // Read explicit defence fields when present; otherwise derive a sensible
-        // posture from progression (a higher-level operator has a hardened node).
-        const enabled = sec.firewall != null ? !!sec.firewall : num(profile().level, 1) >= 3;
-        const tier = sec.firewall_tier || sec.tier || (enabled ? "standard" : "none");
-        return { enabled, tier };
+        // The backend self-view (services/player_service._security_view) ships
+        // `firewall_level` (an int), NOT a boolean. Map it: level 0 = none,
+        // 1–2 = basic, 3+ = hardened. Tolerate an explicit boolean/tier too.
+        const lvl = num(sec.firewall_level, sec.firewall === true ? 1 : (sec.firewall === false ? 0 : 0));
+        const enabled = lvl > 0 || sec.firewall === true;
+        const tier = sec.firewall_tier || sec.tier || (lvl >= 3 ? "hardened" : lvl >= 1 ? "basic" : "none");
+        return { enabled, tier, level: lvl };
     }
     function status() {
         ctx.caps.require("security", "security.status");
