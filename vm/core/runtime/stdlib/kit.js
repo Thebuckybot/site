@@ -22,7 +22,19 @@ export function defEx(impl) {
 
 /** Build a namespace/module object the interpreter can import + attribute-read. */
 export function mod(name, members) {
-    return Object.assign({ __module__: true, __name__: name }, members);
+    const m = Object.assign({ __module__: true, __name__: name }, members);
+    // Stamp each callable member with a qualified pyName ("profile.level") so
+    // reflection (help(profile.level), help(menu.show), help(leaderboards.richest))
+    // can map a bound function back to its module.method. Interactive widgets
+    // already carry an explicit pyName; never overwrite it. Phase 4.5B help-system.
+    const short = String(name || "").replace(/^bucky\./, "");
+    Object.keys(members || {}).forEach((key) => {
+        const v = m[key];
+        if (v && typeof v === "function" && !v.pyName) {
+            try { v.pyName = short + "." + key; } catch (_e) { /* frozen fn — ignore */ }
+        }
+    });
+    return m;
 }
 
 /** A member that always raises NotImplemented (interface-only seams). */

@@ -25,6 +25,26 @@ import { mod, def } from "./kit.js";
 const RULE = "=================================";
 const BAR_WIDTH = 14;
 
+// ----- display token (Phase 4.5B, BUG 3 fix) --------------------------------
+// The toolkit widgets that PRINT (table.render, status.card/line, progress.*,
+// notify) used to ALSO return the rendered text as a plain string. That made
+// the natural `print(table.render(rows))` render the table TWICE — once as the
+// widget's own side-effect, once from print() — the "TABLE / TABLE" duplication.
+//
+// A `display` token is text that has ALREADY been streamed this run. It still
+// behaves as its text for capture (str(), f-strings, file writes, report.save —
+// via toString/valueOf and a pyStr branch in the interpreter), but the
+// interpreter's print() recognises a lone already-shown display token and does
+// NOT re-emit it. So `print(table.render(rows))` now shows the table exactly
+// once, while `body = table.render(rows); files.write(p, body)` still captures
+// the text. This is the single, additive seam that kills the print+return
+// duplication footgun without changing any widget's documented "prints AND
+// returns the text" contract.
+export function display(text) {
+    const t = String(text == null ? "" : text);
+    return { __display__: true, text: t, _shown: true, toString: () => t, valueOf: () => t };
+}
+
 // ----- shared rendering helpers ---------------------------------------------
 
 function renderBar(percent) {
@@ -80,6 +100,29 @@ function labelOf(o) {
     return String(o);
 }
 
+/**
+ * Resolve the (options, title) pair from a menu/form arg list TOLERANTLY.
+ *
+ * Phase 4.5B BUG 1 hardening — the documented signature is
+ * `menu.show(items[, title])`, but operators naturally also write
+ * `menu.show("Title", items)`. The old code read args[0] as the options array
+ * unconditionally, so the swapped form made `options` a string, every selection
+ * fell through to "no match", and `menu.show()` returned None for 1/2/3 — the
+ * "None for every selection" symptom. We now find the array argument wherever it
+ * is and treat the first string/number argument as the title, so BOTH orders
+ * work and a valid numeric pick is never silently lost.
+ */
+function pickOptions(args) {
+    const a = Array.isArray(args) ? args : [];
+    let options = null;
+    let title = null;
+    for (const v of a) {
+        if (options == null && Array.isArray(v)) options = v;
+        else if (title == null && (typeof v === "string" || typeof v === "number")) title = String(v);
+    }
+    return { options: options || [], title };
+}
+
 // ----- progress (§2) ---------------------------------------------------------
 
 export function createProgressModule(ctx) {
@@ -102,6 +145,8 @@ export function createProgressModule(ctx) {
             current = { label, total, value: 0 };
             interp.print(label + ": " + renderBar(0));
             syncProcess(0, label);
+            // The handle is a control object (used by update(handle, ...)), not a
+            // display token — it is intentionally NOT a printed string.
             return { __progress__: true, label, total };
         },
         update: (args, kwargs, interp) => {
@@ -118,7 +163,7 @@ export function createProgressModule(ctx) {
             const text = h.label + ": " + renderBar(pct);
             interp.print(text);
             syncProcess(pct, h.label);
-            return text;
+            return display(text);
         },
         finish: (args, kwargs, interp) => {
             const label = args && args[0] != null ? String(args[0]) : ((current && current.label) || "Progress");
@@ -126,7 +171,7 @@ export function createProgressModule(ctx) {
             interp.print(text);
             syncProcess(100, label);
             current = null;
-            return text;
+            return display(text);
         },
         bar: (args) => renderBar(args && typeof args[0] === "number" ? args[0] : 0)
     });
@@ -144,7 +189,9 @@ export function createTableModule(ctx) {
             const cols = (args && args[1]) || (kwargs && kwargs.columns);
             const lines = tableLines(rows, cols);
             lines.forEach((line) => interp.print(line));
-            return lines.join("\n");
+            // Return a display token (already streamed) so print(table.render(...))
+            // does NOT render the table a second time — Phase 4.5B BUG 3 fix.
+            return display(lines.join("\n"));
         },
         // format() returns the rendered text WITHOUT printing.
         format: (args) => tableLines(args && args[0], args && args[1]).join("\n")
@@ -181,14 +228,14 @@ export function createStatusModule(ctx) {
             }
             out.push(RULE);
             out.forEach((l) => interp.print(l));
-            return out.join("\n");
+            return display(out.join("\n"));
         },
         line: (args, kwargs, interp) => {
             const label = args && args[0] != null ? String(args[0]) : "";
             const value = args && args[1] != null ? renderValue(args[1]) : "";
             const text = label + ": " + value;
             interp.print(text);
-            return text;
+            return display(text);
         }
     });
 }
@@ -205,7 +252,9 @@ export function createNotifyModule(ctx) {
             try { ctx.notify(text, level); } catch (_e) { /* never break a run */ }
         }
         interp.print("[NOTIFY] " + text);
-        return text;
+        // Return the already-streamed [NOTIFY] line as a display token so
+        // print(notify("x")) does not echo it a second time (BUG 3 family).
+        return display("[NOTIFY] " + text);
     };
     return mod("bucky.notify", {
         send,
@@ -221,13 +270,18 @@ export function createFormModule(ctx) {
     const select = {
         __interactive__: true,
         pyName: "form.select",
-        prompt: (args, interp) => printOptions(interp, args && args[1], args && args[0]),
+        // Documented: form.select(prompt, options). Tolerant of (options, prompt)
+        // too — the array is always the options wherever it appears (BUG 1 family).
+        prompt: (args, interp) => {
+            const { options, title } = pickOptions(args);
+            return printOptions(interp, options, title);
+        },
         resume: (line, args) => {
-            const options = Array.isArray(args && args[1]) ? args[1] : [];
+            const { options } = pickOptions(args);
             const n = parseInt(line, 10);
             if (!Number.isNaN(n) && n >= 1 && n <= options.length) return options[n - 1];
             // Allow choosing by label text too.
-            const match = options.find((o) => labelOf(o).toLowerCase() === String(line).toLowerCase());
+            const match = options.find((o) => labelOf(o).toLowerCase() === String(line).trim().toLowerCase());
             return match !== undefined ? match : null;
         }
     };
@@ -253,13 +307,21 @@ export function createMenuModule(ctx) {
     const show = {
         __interactive__: true,
         pyName: "menu.show",
-        prompt: (args, interp) => printOptions(interp, args && args[0], args && args[1]),
+        // Documented: menu.show(items[, title]). Tolerant of (title, items) too —
+        // the array argument is always the items, wherever it sits. This is the
+        // Phase 4.5B BUG 1 fix: a swapped arg order used to make every selection
+        // return None; now a valid numeric pick is always honoured.
+        prompt: (args, interp) => {
+            const { options, title } = pickOptions(args);
+            return printOptions(interp, options, title);
+        },
         resume: (line, args) => {
-            const items = Array.isArray(args && args[0]) ? args[0] : [];
-            const n = parseInt(line, 10);
+            const { options: items } = pickOptions(args);
+            const raw = String(line == null ? "" : line).trim();
+            const n = parseInt(raw, 10);
             let idx = -1;
             if (!Number.isNaN(n) && n >= 1 && n <= items.length) idx = n - 1;
-            else { const m = items.findIndex((o) => labelOf(o).toLowerCase() === String(line).toLowerCase()); if (m >= 0) idx = m; }
+            else { const m = items.findIndex((o) => labelOf(o).toLowerCase() === raw.toLowerCase()); if (m >= 0) idx = m; }
             // Meaningful selection: { index (1-based), label, value }, or None.
             if (idx < 0) return null;
             return { index: idx + 1, label: labelOf(items[idx]), value: items[idx] };

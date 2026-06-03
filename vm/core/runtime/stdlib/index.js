@@ -183,8 +183,14 @@ export function buildStandardLibrary(ctx) {
     function helpImpl(args, kwargs, interp) {
         const lines = [];
         const emit = (s) => { lines.push(s); if (interp && interp.print) interp.print(s); };
-        const target = args && args.length ? args[0] : null;
+        let target = args && args.length ? args[0] : null;
         let member = args && args.length > 1 ? args[1] : null;
+        // help(callable) — map a bound function / interactive widget back to its
+        // "module.method" name via its pyName (stamped in mod()), so help(menu.show),
+        // help(profile.level) and help(leaderboards.richest) all resolve. Phase 4.5B.
+        if (target && (typeof target === "function" || target.__interactive__ === true) && typeof target.pyName === "string") {
+            target = target.pyName.replace(/^bucky\./, "");
+        }
         if (typeof target === "string" && target.indexOf(".") >= 0 && member == null) {
             member = target.split(".").slice(1).join(".");
         }

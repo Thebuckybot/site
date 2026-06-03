@@ -114,21 +114,34 @@ export async function prefetchSnapshot(gateway, needs) {
                 okWrap(() => gateway.fetchLeakOperators && gateway.fetchLeakOperators()),
                 okWrap(() => gateway.fetchMyLeaks && gateway.fetchMyLeaks())
             ]);
-            snapshot.sectionOk.leaks = !!(stats.ok || incidents.ok || operators.ok || mine.ok);
-            snapshot.leaks = {
+            const leaksObj = {
                 stats: (stats.data && (stats.data.stats || stats.data)) || {},
                 incidents: pick(incidents.data && incidents.data.items, incidents.data && incidents.data.incidents, incidents.data),
                 operators: pick(operators.data && operators.data.records, operators.data && operators.data.operators, operators.data),
                 mine: pick(mine.data && mine.data.items, mine.data && mine.data.records, mine.data)
             };
+            snapshot.leaks = leaksObj;
+            // PHASE 4.5B HYDRATION FIX: don't cache a 200-but-empty leak archive.
+            const leaksHasData = (leaksObj.incidents.length + leaksObj.operators.length + leaksObj.mine.length) > 0
+                || (leaksObj.stats && typeof leaksObj.stats === "object" && Object.keys(leaksObj.stats).length > 0);
+            snapshot.sectionOk.leaks = !!((stats.ok || incidents.ok || operators.ok || mine.ok) && leaksHasData);
         })());
     }
 
     if (want.has("profile")) {
         jobs.push((async () => {
             const me = await okWrap(() => gateway.fetchSelfPlayer && gateway.fetchSelfPlayer());
-            snapshot.sectionOk.profile = !!me.ok;
-            snapshot.profile = unwrapItem(me.data);
+            const profileObj = unwrapItem(me.data);
+            snapshot.profile = profileObj;
+            // PHASE 4.5B HYDRATION FIX (BUG 2): a 200 is NOT proof of data.
+            // /api/player/me answers 200 with { first_run:true, item:null } before
+            // a profile exists, and can return an empty item during a cold/early
+            // read. The old gate (just `me.ok`) let the snapshot store cache that
+            // EMPTY profile for the WHOLE session — status.card()/profile.level()
+            // were stuck at level 1 / 0 coins even after the real profile existed.
+            // Require the call to succeed AND return a populated profile; otherwise
+            // the section stays unfetched so the next run re-hydrates it.
+            snapshot.sectionOk.profile = !!(me.ok && profileObj && Object.keys(profileObj).length > 0);
         })());
     }
 
@@ -138,19 +151,31 @@ export async function prefetchSnapshot(gateway, needs) {
                 okWrap(() => gateway.fetchOrganizations && gateway.fetchOrganizations()),
                 okWrap(() => gateway.fetchMyOrganization && gateway.fetchMyOrganization())
             ]);
-            snapshot.sectionOk.organizations = !!(orgs.ok || mine.ok);
-            snapshot.organizations = {
+            const orgsObj = {
                 list: pick(orgs.data && orgs.data.items, orgs.data && orgs.data.organizations, orgs.data),
                 current: (mine.data && (mine.data.item || mine.data.organization)) || null
             };
+            snapshot.organizations = orgsObj;
+            // PHASE 4.5B HYDRATION FIX: the org registry is static (4 founding
+            // orgs) so a healthy read always has a non-empty list; a 200-but-empty
+            // list means the backend was not ready — don't cache it, retry.
+            snapshot.sectionOk.organizations = !!((orgs.ok || mine.ok) && (orgsObj.list.length > 0 || orgsObj.current));
         })());
     }
 
     if (want.has("leaderboards")) {
         jobs.push((async () => {
             const board = await okWrap(() => gateway.fetchLeaderboards && gateway.fetchLeaderboards(25));
-            snapshot.sectionOk.leaderboards = !!board.ok;
-            snapshot.leaderboards = normalizeLeaderboards(board.data);
+            const normalized = normalizeLeaderboards(board.data);
+            snapshot.leaderboards = normalized;
+            // PHASE 4.5B HYDRATION FIX (BUG 4/5): same stale-empty trap as profile.
+            // A 200 with all-empty boards (cold backend / data not ready) was cached
+            // as "ok" forever, so leaderboards.richest()/top() returned [] for the
+            // whole session. Only treat the section as hydrated when at least one
+            // board actually has rows; otherwise leave it unfetched to retry.
+            const hasRows = !!(normalized && normalized.kinds &&
+                Object.values(normalized.kinds).some((rows) => Array.isArray(rows) && rows.length > 0));
+            snapshot.sectionOk.leaderboards = !!(board.ok && hasRows);
         })());
     }
 

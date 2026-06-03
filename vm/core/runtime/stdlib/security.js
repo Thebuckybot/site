@@ -38,16 +38,37 @@ export function createSecurityModule(ctx) {
         if (typeof sec.breached === "boolean") return sec.breached || exposures().length > 0;
         return exposures().length > 0;
     }
+    // Map a security-script id ("firewall_3") to its firewall level. The bot's
+    // firewall is a SCRIPT, not a number — see scriptLevel usage below.
+    const scriptLevel = (id) => {
+        const s = String(id == null ? "" : id);
+        if (s.indexOf("firewall_") === 0) {
+            const n = parseInt(s.slice("firewall_".length), 10);
+            return Number.isNaN(n) ? 0 : n;
+        }
+        return 0;
+    };
     function firewall() {
         ctx.caps.require("security", "security.firewall");
         const sec = profile().security || {};
         // The backend self-view (services/player_service._security_view) ships
-        // `firewall_level` (an int), NOT a boolean. Map it: level 0 = none,
-        // 1–2 = basic, 3+ = hardened. Tolerate an explicit boolean/tier too.
-        const lvl = num(sec.firewall_level, sec.firewall === true ? 1 : (sec.firewall === false ? 0 : 0));
-        const enabled = lvl > 0 || sec.firewall === true;
+        // `firewall_level` (an int) derived from the owned/active firewall_N
+        // security scripts. Map it: 0 = none, 1–2 = basic, 3+ = hardened.
+        //
+        // PHASE 4.5B BUG-6 DEFENCE-IN-DEPTH: the firewall is a purchasable
+        // SCRIPT (active_security / security_scripts = firewall_1|2|3), and the
+        // top-level integer was historically never written (always 0). The
+        // backend now derives the level, but the VM ALSO derives defensively
+        // from `active_security` (and tolerates a boolean/tier) so a stale or
+        // un-patched snapshot can never regress security.firewall() back to 0
+        // when the operator clearly owns a firewall. Never trust a single field.
+        const stored = num(sec.firewall_level, sec.firewall === true ? 1 : 0);
+        const fromActive = scriptLevel(sec.active_security);
+        const lvl = Math.max(stored, fromActive);
+        const enabled = lvl > 0 || sec.firewall_active === true || sec.firewall === true;
         const tier = sec.firewall_tier || sec.tier || (lvl >= 3 ? "hardened" : lvl >= 1 ? "basic" : "none");
-        return { enabled, tier, level: lvl };
+        // `active` distinguishes "owns a firewall" from "firewall equipped now".
+        return { enabled, tier, level: lvl, active: sec.firewall_active === true || fromActive > 0 };
     }
     function status() {
         ctx.caps.require("security", "security.status");

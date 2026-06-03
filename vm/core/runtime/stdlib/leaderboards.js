@@ -15,6 +15,7 @@
  * module survives backend shape changes; degrades to empty lists when offline.
  */
 import { mod, def, asList } from "./kit.js";
+import { tableLines, display } from "./ui.js";
 
 export function createLeaderboardsModule(ctx) {
     const board = () => (ctx.snapshot && ctx.snapshot.leaderboards) || {};
@@ -56,6 +57,52 @@ export function createLeaderboardsModule(ctx) {
         return asList(orgsRoot().list).slice().sort((a, b) => rankBy(b) - rankBy(a));
     }
 
+    // ----- readable rendering layer (Phase 4.5B leaderboard UX) --------------
+    // Leaderboards previously surfaced as raw JSON blobs. These produce aligned,
+    // human-readable tables instead. `format`/`table` RETURN the text (no print,
+    // for capture/reporting); `render`/`pretty` PRINT it live and return a
+    // display token, so `print(leaderboards.render())` never double-renders
+    // (see ui.js display() — same BUG 3 contract).
+    const COLS = {
+        richest: ["rank", "operator", "level", "org"],
+        level: ["rank", "operator", "level"],
+        "org-reputation": ["rank", "organization", "reputation", "members"],
+        "most-leaked": ["rank", "operator", "exposures"]
+    };
+    function boardRows(kind) {
+        const k = String(kind == null ? "richest" : kind);
+        return asList(kindsMap()[k]).map((r) => {
+            r = r || {};
+            const org = r.organization || {};
+            return {
+                rank: r.rank != null ? r.rank : "",
+                operator: r.handle || r.user_id || r.id || "",
+                org: org.name || "",
+                organization: r.name || org.name || "",
+                level: r.level != null ? r.level : "",
+                reputation: r.reputation != null ? r.reputation : (r.score_value != null ? r.score_value : ""),
+                members: r.members != null ? r.members : "",
+                exposures: r.score_label === "exposures" ? r.score_value : (r.exposures != null ? r.exposures : ""),
+                score: r.score_value != null ? r.score_value : ""
+            };
+        });
+    }
+    function formatBoard(kind, limit) {
+        ctx.caps.require("leaderboards", "leaderboards.format");
+        const k = String(kind == null ? "richest" : kind);
+        let rows = boardRows(k);
+        if (typeof limit === "number" && limit > 0) rows = rows.slice(0, limit);
+        const title = "LEADERBOARD \u2014 " + k;
+        if (!rows.length) return title + "\n  (no data \u2014 leaderboard empty or backend offline)";
+        const cols = COLS[k] || ["rank", "operator", "score"];
+        return title + "\n" + tableLines(rows, cols).join("\n");
+    }
+    const renderBoard = (args, kwargs, interp) => {
+        const text = formatBoard(args && args[0], args && args[1]);
+        text.split("\n").forEach((l) => interp.print(l));
+        return display(text);
+    };
+
     return mod("bucky.leaderboards", {
         kinds: def(kinds),
         top: def(top),
@@ -67,6 +114,11 @@ export function createLeaderboardsModule(ctx) {
         level: def((limit) => top("level", limit)),
         reputation: def((limit) => top("org-reputation", limit)),
         mostLeaked: def((limit) => top("most-leaked", limit)),
-        most_leaked: def((limit) => top("most-leaked", limit))
+        most_leaked: def((limit) => top("most-leaked", limit)),
+        // Readable rendering (Phase 4.5B). render()/pretty() print; table()/format() return.
+        format: (args) => formatBoard(args && args[0], args && args[1]),
+        table: (args) => formatBoard(args && args[0], args && args[1]),
+        render: renderBoard,
+        pretty: renderBoard
     });
 }

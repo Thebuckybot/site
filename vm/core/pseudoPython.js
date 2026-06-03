@@ -797,6 +797,10 @@ function pyStr(value) {
     if (value === true) return "True";
     if (value === false) return "False";
     if (value === null || value === undefined) return "None";
+    // Display token (UI toolkit return value, Phase 4.5B BUG 3): render as its
+    // text so str()/f-strings/file writes capture the content normally. The
+    // no-re-print behaviour lives in print(), not here.
+    if (value && value.__display__ === true) return String(value.text == null ? "" : value.text);
     if (typeof value === "string") return value;
     if (typeof value === "number") return numStr(value);
     if (Array.isArray(value)) return "[" + value.map(pyRepr).join(", ") + "]";
@@ -876,6 +880,14 @@ class Interpreter {
     }
 
     print(...vals) {
+        // Phase 4.5B BUG 3: a lone, already-streamed display token (the return of
+        // table.render()/status.card()/progress.*/notify) must NOT be re-emitted,
+        // so `print(table.render(rows))` shows the table exactly once. A display
+        // used among other args / inside an f-string still renders as its text.
+        if (vals.length === 1 && vals[0] && vals[0].__display__ === true && vals[0]._shown) {
+            vals[0]._shown = false; // one-shot: a later explicit re-print is honoured
+            return null;
+        }
         const line = vals.map(pyStr).join(" ");
         if (this.output.length >= this.limits.output) {
             throw new BuckyError("RuntimeError", "output limit reached", 0);
