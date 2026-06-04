@@ -206,7 +206,7 @@ export const HELP = {
     hackbank: {
         description: "HackBank client foundation. Authority stays Discord; the VM only inspects.",
         methods: {
-            "owned()": "True when you own the Discord HackBank item.",
+            "owned()": "True when you can run HackBank (own >=1 attack script via Discord).",
             "available()": "owned() AND off cooldown.",
             "cooldown()": "Seconds remaining (0 = ready).",
             "status()": "{ owned, available, cooldown }.",

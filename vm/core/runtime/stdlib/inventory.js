@@ -23,7 +23,20 @@ export function createInventoryModule(ctx) {
     const rawItems = () => asList(view().items || view().inventory);
     const nameOf = (it) =>
         typeof it === "string" ? it : String((it && (it.name || it.item || it.id || it.label)) || "");
-    const qtyOf = (it) => (it && typeof it === "object" && typeof it.quantity === "number" ? it.quantity : 1);
+    // Quantity field. SOURCE OF TRUTH (Currency.py): items are stored as
+    // { "id": <item_id>, "amount": <int> } (see buy/give/sell in Currency.py).
+    // Phase 4.6 BUG-8 fix: read `amount` first — the old code only honoured
+    // `quantity`, so every stack counted as 1 and inventory.count() undercounted
+    // stacked items. Tolerate quantity/qty/count for non-bot shapes.
+    const qtyOf = (it) => {
+        if (!it || typeof it !== "object") return 1;
+        const v = (typeof it.amount === "number") ? it.amount
+            : (typeof it.quantity === "number") ? it.quantity
+            : (typeof it.qty === "number") ? it.qty
+            : (typeof it.count === "number") ? it.count
+            : 1;
+        return typeof v === "number" && v > 0 ? v : 1;
+    };
 
     function items() {
         ctx.caps.require("inventory", "inventory.items");
