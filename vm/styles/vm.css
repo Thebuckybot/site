@@ -1096,7 +1096,12 @@ body.vm-focus-active .arcade-vm-bay {
         min-height: clamp(330px, 48vw, 430px);
     }
 
-    .vm-window {
+    /* Tablet/narrow: clamp NORMAL windows to a sensible default width. A
+       MAXIMIZED window must keep the full inline width set by JS
+       (getMaximizedBounds) — the `!important` here was overriding that inline
+       width while height stayed full, so maximize grew tall but not wide on
+       iPad. Excluding .is-maximized restores full-width maximize. */
+    .vm-window:not(.is-maximized) {
         width: min(570px, calc(100% - 112px)) !important;
     }
 }
@@ -1106,10 +1111,9 @@ body.vm-focus-active .arcade-vm-bay {
         width: calc(100dvw - 24px);
         height: min(86dvh, calc(100dvh - 24px), 760px);
     }
-
-    .vm-window.is-maximized {
-        inset: 12px 12px 8px 84px;
-    }
+    /* Maximize geometry is owned by the runtime (getMaximizedBounds), applied
+       as inline left/top/width/height. No CSS override here — a previous
+       `inset` rule was dead (inline wins) and only obscured the real cause. */
 }
 
 @media (max-width: 767px) {
