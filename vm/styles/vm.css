@@ -4760,8 +4760,13 @@ body.vm-focus-active .arcade-vm-bay {
     --mail-selected: #e4edfd;
     --mail-alert: #e23744;
 
-    position: absolute;
-    inset: 0;
+    /* Fill the window body exactly like FilesApp (height:100%), and act as the
+       positioning context for the compose overlay. Using position:absolute here
+       escaped the body and overlapped the window chrome — the body is static,
+       so absolute resolved against the draggable .vm-window. */
+    position: relative;
+    height: 100%;
+    width: 100%;
     display: flex;
     min-width: 0;
     background: var(--mail-bg);
@@ -4953,6 +4958,7 @@ body.vm-focus-active .arcade-vm-bay {
 }
 .vm-mail-conn { display: flex; align-items: center; gap: 5px; }
 .vm-mail-conn-dot { width: 7px; height: 7px; border-radius: 50%; background: #2bb673; box-shadow: 0 0 0 2px rgba(43,182,115,.18); }
+.vm-mail-conn-dot.is-offline { background: #9aa3af; box-shadow: 0 0 0 2px rgba(154,163,175,.18); }
 
 /* ----- Reader ----- */
 .vm-mail-reader { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--mail-surface); overflow-y: auto; }

@@ -171,16 +171,21 @@ function renderList(runtime, state) {
     const title = state.mailbox === "inbox" ? "Inbox" : "Sent";
     const totalForBox = state.mailbox === "inbox" ? counts.inboxTotal : counts.sentTotal;
     const shown = Math.min(items.length, LIST_LIMIT);
+    const isOnline = svc.online && svc.online();
+    const listInner = (state.loading && !items.length)
+        ? `<div class="vm-mail-empty"><strong>Loading mail…</strong><span>Fetching your inbox from the server.</span></div>`
+        : renderListItems(items, state.selectedId);
+    const connLabel = isOnline ? "Connected to Bucky Mail Service" : "Offline — local mailbox";
     return `
         <section class="vm-mail-list">
             <header class="vm-mail-list-head">
                 <strong>${title}</strong>
                 <span class="vm-mail-list-count">${shown} of ${totalForBox}</span>
             </header>
-            <div class="vm-mail-list-scroll">${renderListItems(items, state.selectedId)}</div>
+            <div class="vm-mail-list-scroll">${listInner}</div>
             <footer class="vm-mail-statusbar">
                 <span>${counts.inboxTotal} in Inbox · ${counts.sentTotal} Sent</span>
-                <span class="vm-mail-conn"><span class="vm-mail-conn-dot"></span>Connected to Bucky Mail Service</span>
+                <span class="vm-mail-conn"><span class="vm-mail-conn-dot${isOnline ? "" : " is-offline"}"></span>${connLabel}</span>
             </footer>
         </section>
     `;
@@ -317,6 +322,15 @@ function renderCompose(state) {
 
 // ----- Inner render ----------------------------------------------------------
 
+/** Whether a message id is still known to the service (mode-aware). */
+function messageExists(svc, id) {
+    if (svc.online && svc.online()) {
+        return svc._remote.inbox.concat(svc._remote.sent).some((m) => Number(m.messageId) === Number(id))
+            || svc._remote.bodies.has(Number(id));
+    }
+    return Boolean(svc._storage.getMessageMeta(id));
+}
+
 function renderMailInner(runtime, windowState) {
     const svc = mailService(runtime);
     const state = windowState.appState;
@@ -324,7 +338,7 @@ function renderMailInner(runtime, windowState) {
         return `<div class="vm-mail-empty"><strong>Mail service unavailable</strong><span>The mail runtime did not initialise.</span></div>`;
     }
     // Drop a selection that no longer exists.
-    if (state.selectedId != null && !svc._storage.getMessageMeta(state.selectedId)) {
+    if (state.selectedId != null && !messageExists(svc, state.selectedId)) {
         state.selectedId = null;
     }
     return `
@@ -407,8 +421,13 @@ function handleClick(runtime, windowState, event) {
         const id = Number(open.dataset.mailOpen);
         state.selectedId = id;
         state.openAttachmentId = null;
-        svc.openMessage(id); // marks read + emits mail:read (refreshes via event)
-        refresh();
+        if (svc.online && svc.online()) {
+            refresh();              // show the reader placeholder immediately
+            svc.openRemote(id);     // async: fetch body, cache, emit -> refresh
+        } else {
+            svc.openMessage(id);    // marks read + emits mail:read
+            refresh();
+        }
         return;
     }
 
@@ -416,8 +435,19 @@ function handleClick(runtime, windowState, event) {
     const att = event.target.closest("[data-mail-att]");
     if (att) {
         const id = Number(att.dataset.mailAtt);
-        state.openAttachmentId = state.openAttachmentId === id ? null : id;
-        refresh();
+        const opening = state.openAttachmentId !== id;
+        state.openAttachmentId = opening ? id : null;
+        if (opening && svc.online && svc.online()) {
+            windowState.view._attCache = { id, content: "Loading…" };
+            refresh();
+            Promise.resolve(svc.getAttachmentRemote(id)).then((a) => {
+                windowState.view._attCache = { id, content: a ? a.content : "(unavailable)" };
+                refresh();
+            });
+        } else {
+            if (!opening) windowState.view._attCache = null;
+            refresh();
+        }
         return;
     }
 
@@ -425,9 +455,10 @@ function handleClick(runtime, windowState, event) {
     const save = event.target.closest("[data-mail-att-save]");
     if (save) {
         const id = Number(save.dataset.mailAttSave);
-        const result = svc.saveAttachment(id);
-        if (result && result.ok) runtime.notify("Attachment saved", result.path);
-        else runtime.notify("Save failed", (result && result.error) || "unknown error");
+        Promise.resolve(svc.saveAttachmentToVfs(id)).then((result) => {
+            if (result && result.ok) runtime.notify("Attachment saved", result.path);
+            else runtime.notify("Save failed", (result && result.error) || "unknown error");
+        });
         return;
     }
 }
@@ -462,23 +493,26 @@ function doSend(runtime, windowState) {
     const appElement = windowState.view.appElement;
     snapshotCompose(appElement, state);
     const d = state.compose.draft;
-    const result = svc.send({
+    // submit() routes to the backend when online (cross-user delivery) and to
+    // the local store when offline; both resolve to { ok, messageId, error }.
+    Promise.resolve(svc.submit({
         to: d.to, cc: d.cc, bcc: d.bcc,
         subject: d.subject || "(no subject)",
         body: d.body,
         attachments: state.compose.attachments
-    });
-    if (!result.ok) {
-        state.compose.notice = result.error || "Could not send.";
+    })).then((result) => {
+        if (!result || !result.ok) {
+            state.compose.notice = (result && result.error) || "Could not send.";
+            windowState.view.refresh();
+            return;
+        }
+        runtime.notify("Message sent", `To ${d.to || d.cc || d.bcc}`);
+        state.composing = false;
+        state.compose = emptyCompose();
+        state.mailbox = "sent";
+        state.selectedId = result.messageId;
         windowState.view.refresh();
-        return;
-    }
-    runtime.notify("Message sent", `To ${d.to || d.cc || d.bcc}`);
-    state.composing = false;
-    state.compose = emptyCompose();
-    state.mailbox = "sent";
-    state.selectedId = result.messageId;
-    windowState.view.refresh();
+    });
 }
 
 // ----- Lifecycle -------------------------------------------------------------
@@ -492,18 +526,21 @@ export function mountMailApp(runtime, windowState, element) {
 
     view.refresh = () => {
         // Hydrate decrypted attachment content for an expanded reader chip so
-        // the render stays a pure string build (no async in render).
+        // the render stays a pure string build (no async in render). Offline
+        // resolves synchronously here; online is populated by the click handler.
         const svc = mailService(runtime);
         const state = windowState.appState;
         if (svc && state.openAttachmentId != null) {
-            const att = svc.getAttachment(state.openAttachmentId);
-            view._attCache = att ? { id: att.id, content: att.content } : null;
+            if (!(svc.online && svc.online())) {
+                const att = svc.getAttachment(state.openAttachmentId);
+                view._attCache = att ? { id: att.id, content: att.content } : null;
+            }
         } else {
             view._attCache = null;
         }
         appElement.innerHTML = renderMailInner(runtime, windowState);
         // Inject the decrypted attachment content into the just-rendered chip.
-        if (view._attCache) {
+        if (view._attCache && Number(view._attCache.id) === Number(state.openAttachmentId)) {
             const body = appElement.querySelector(".vm-mail-att.is-open .vm-mail-att-body");
             if (body) body.textContent = view._attCache.content || "(empty file)";
         }
@@ -513,6 +550,17 @@ export function mountMailApp(runtime, windowState, element) {
         try { handleClick(runtime, windowState, event); }
         catch (error) { logError("Mail click", error); }
     });
+
+    // ONLINE (authenticated): mirror the real backend mailbox on open. Offline
+    // (GitHub Pages / no token) the local seeded store is shown as before.
+    const svc0 = mailService(runtime);
+    if (svc0 && svc0.online && svc0.online()) {
+        windowState.appState.loading = true;
+        Promise.resolve(svc0.hydrate()).then(() => {
+            windowState.appState.loading = false;
+            view.refresh();
+        }).catch(() => { windowState.appState.loading = false; });
+    }
 
     // Live updates: re-render when mail state changes. Skip refresh while the
     // user is mid-typing in compose to avoid disturbing the caret (the compose

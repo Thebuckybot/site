@@ -129,6 +129,19 @@ async function request(path, options = {}) {
         headers.Authorization = "Bearer " + _bearerToken;
     }
 
+    // Phase 5.0A — JSON body support (the mail platform is the VM's first WRITE
+    // surface: send / mark-read are POSTs). A body is serialised to JSON and the
+    // Content-Type set unless the caller already provided one.
+    let bodyPayload;
+    if (options.body !== undefined && options.body !== null) {
+        bodyPayload = typeof options.body === "string"
+            ? options.body
+            : JSON.stringify(options.body);
+        if (!headers["Content-Type"] && !headers["content-type"]) {
+            headers["Content-Type"] = "application/json";
+        }
+    }
+
     try {
         const response = await fetch(url, {
             method: options.method || "GET",
@@ -139,6 +152,7 @@ async function request(path, options = {}) {
             // an unauthenticated public read is intended.
             credentials: options.credentials
                 || (_bearerToken ? "include" : "omit"),
+            body: bodyPayload,
             signal: controller ? controller.signal : undefined,
         });
 
@@ -329,6 +343,37 @@ function fetchLeakOperators(limit, test) {
     return request("/api/leaks/operators" + _qs({ limit, test }));
 }
 
+// ---------------------------------------------------------------------------
+// Phase 5.0A — Mail Platform surface (the VM's first authenticated WRITE path).
+// All login-gated; the operator's own address is passed so the backend can
+// resolve their inbox (cross-user mail is addressed by email, recipient_user_id
+// is NULL). All resolve to the standard { ok, status, error, data } envelope.
+// ---------------------------------------------------------------------------
+function fetchMailInbox(address) {
+    return request("/api/vm/mail/inbox" + _qs({ address }), { credentials: "include" });
+}
+function fetchMailSent(address) {
+    return request("/api/vm/mail/sent" + _qs({ address }), { credentials: "include" });
+}
+function fetchMailMessage(messageId, address) {
+    return request(
+        "/api/vm/mail/message/" + encodeURIComponent(String(messageId)) + _qs({ address }),
+        { credentials: "include" }
+    );
+}
+function fetchMailAttachment(attachmentId) {
+    return request("/api/vm/mail/attachment/" + encodeURIComponent(String(attachmentId)), { credentials: "include" });
+}
+function sendMail(payload) {
+    return request("/api/vm/mail/send", { method: "POST", body: payload || {}, credentials: "include" });
+}
+function markMailRead(messageId, read, address) {
+    return request(
+        "/api/vm/mail/message/" + encodeURIComponent(String(messageId)) + "/read",
+        { method: "POST", body: { read: read !== false, address }, credentials: "include" }
+    );
+}
+
 /**
  * The shared GatewayClient instance. The VM has exactly one backend; one
  * client is enough. Import it where backend content is needed.
@@ -367,4 +412,11 @@ export const gatewayClient = {
     fetchLeakIncidents,
     fetchLeakIncident,
     fetchLeakOperators,
+    // Phase 5.0A - Mail Platform (authenticated reads + writes)
+    fetchMailInbox,
+    fetchMailSent,
+    fetchMailMessage,
+    fetchMailAttachment,
+    sendMail,
+    markMailRead,
 };

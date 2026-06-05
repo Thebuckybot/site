@@ -130,7 +130,11 @@ export class BuckyVMRuntime {
             this.services.mail = setMailService(createMailService({
                 user: this.user,
                 bus: this.bus,
-                filesystem: this.filesystem
+                filesystem: this.filesystem,
+                // Phase 5.0A — the backend gateway enables ONLINE (multiplayer)
+                // mail when the operator is authenticated; offline it falls back
+                // to the local seeded store (GitHub Pages safe).
+                gateway: gatewayClient
             }));
         } catch (error) {
             logError("MailService init", error);
