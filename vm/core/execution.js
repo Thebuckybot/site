@@ -23,6 +23,7 @@
  */
 import { runPython } from "./pseudoPython.js";
 import { gatewayClient } from "./gatewayClient.js";
+import { getMailService } from "./mail/mailService.js";
 import { createRuntime } from "./runtime/index.js";
 import { createSnapshotStore } from "./runtime/snapshotStore.js";
 import { scanImportedModules, requiredCapabilities } from "./runtime/capabilities.js";
@@ -150,7 +151,10 @@ async function buildRuntimeFor(filesystem, source, cwd, opts) {
         // Phase 4.5 — share the session process table; the optional notify sink
         // lets notify(...) raise a desktop toast when the Terminal supplies one.
         processes: sessionProcesses(),
-        notify: typeof opts.notify === "function" ? opts.notify : null
+        notify: typeof opts.notify === "function" ? opts.notify : null,
+        // Phase 5.0 — the live MailService singleton (set at VM boot), so the
+        // bucky.mail stdlib reads/sends the operator's real mailbox.
+        mail: getMailService()
     });
 }
 

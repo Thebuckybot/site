@@ -42,7 +42,10 @@ export function createRuntime(opts = {}) {
         notify: typeof opts.notify === "function" ? opts.notify : null,
         automation: opts.automation || createAutomationRegistry(),
         schedule: opts.schedule || createScheduleRegistry(),
-        pid: opts.pid != null ? opts.pid : null
+        pid: opts.pid != null ? opts.pid : null,
+        // Phase 5.0 — the live MailService (runtime.services.mail), so the
+        // bucky.mail stdlib operates on the operator's real mailbox.
+        mail: opts.mail || null
     };
 
     /** Assemble the stdlib + the per-run arg parser / help builtins. */

@@ -60,8 +60,15 @@ import {
     mountBrowserApp,
     unmountBrowserApp
 } from "../apps/browser/BrowserApp.js";
+import {
+    createMailState,
+    renderMailApp,
+    mountMailApp,
+    unmountMailApp
+} from "../apps/MailApp.js";
 import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
 import { gatewayClient } from "./gatewayClient.js";
+import { createMailService, setMailService } from "./mail/mailService.js";
 
 const FALLBACK_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
 
@@ -111,6 +118,24 @@ export class BuckyVMRuntime {
         // Shared runtime services.
         this.bus = createEventBus();
         this.filesystem = createVirtualFilesystem(this.user.username, this.bus);
+
+        // Phase 5.0 — the Bucky Mail Platform. MailService owns the encrypted
+        // (compress→encrypt) in-memory message store and is registered as
+        // runtime.services.mail; the Mail app is a thin client over it. The
+        // module singleton lets the script execution layer reach the same
+        // instance the desktop app uses (one VM per page). Wrapped so a mail
+        // fault never blocks VM boot.
+        this.services = {};
+        try {
+            this.services.mail = setMailService(createMailService({
+                user: this.user,
+                bus: this.bus,
+                filesystem: this.filesystem
+            }));
+        } catch (error) {
+            logError("MailService init", error);
+            this.services.mail = null;
+        }
 
         this.bootQueue = [
             "INITIALIZING VM",
@@ -771,7 +796,20 @@ function createAppRegistry() {
             unmount: unmountBrowserApp
         },
         notes: placeholder("notes", "Apps", "Future app launcher and runtime registry under construction."),
-        mail: placeholder("mail", "Mail", "Secure mailbox under construction."),
+        mail: {
+            id: "mail",
+            title: "Mail",
+            label: "Mail",
+            icon: "MAI",
+            // Outlook-style three-pane client needs room; clamped to desktop bounds.
+            width: 880,
+            height: 560,
+            singleInstance: true,
+            createState: createMailState,
+            render: renderMailApp,
+            mount: mountMailApp,
+            unmount: unmountMailApp
+        },
         database: placeholder("database", "Database", "Database viewer under construction."),
         osint: placeholder("osint", "OSINT", "Investigation toolkit under construction.")
     };

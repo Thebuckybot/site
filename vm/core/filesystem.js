@@ -123,6 +123,7 @@ function buildSeedTree(username) {
                         "files.link": "files",
                         "buckycode.link": "buckycode",
                         "browser.link": "browser",
+                        "mail.link": "mail",
                         "welcome.md":
                             "# Bucky VM\n\n" +
                             "Welcome to the **Bucky VM** — a fictional cybersecurity workstation.\n\n" +
@@ -157,7 +158,7 @@ function buildSeedTree(username) {
         },
         system: {
             "version.sys": "Bucky OS 0.2 filesystem runtime",
-            "apps.sys": "terminal files buckycode browser"
+            "apps.sys": "terminal files buckycode browser mail"
         },
         // Phase 4.4 — the BuckyCode operating environment workspace. `scripts`
         // is seeded with the bundled example tools; `data` and `reports` are

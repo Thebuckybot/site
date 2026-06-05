@@ -7,6 +7,28 @@
 
 ---
 
+> ### Phase 5.0 implementation note (2026-06-05)
+>
+> The Bucky Mail Platform shipped in Phase 5.0. Where this source-of-truth spec
+> and the Phase 5.0 product brief differ, **the Phase 5.0 brief governs the
+> implemented system**:
+>
+> - **Addressing is DOT-form** (`_.tommy___@bucky.net`, `security@bucky.net`),
+>   not the comma-form of §2. The dot-form parser/validator is
+>   `site/vm/core/mail/mailAddress.js`; it is the authority for the implemented
+>   scheme. (§2's comma rule is retained here as historical design intent.)
+> - **Inbox/Sent render the last 10** messages (not ~5). Nothing is deleted —
+>   the cap is purely a UI render limit; all history is retained in the store.
+> - **Implemented now:** Inbox, Sent, open/read, mark read/unread, To/Cc/Bcc,
+>   attachments (open + materialise to `/mail/attachments`), compose/send,
+>   compression+encryption at rest, the `bucky.mail` script API, and a backend
+>   seam (`backend/migrations/0005`, `backend/{providers,services,api}/mail*`).
+> - **Deliberately deferred** (per the brief): Reply, Reply-All, Forward,
+>   Drafts, Trash, Spam, Search, Rules, Folders, threading UI, rich-text editor.
+> - Full session report: `docs/phase5/01-mail-platform.md`.
+
+---
+
 ## 1. Purpose
 
 The mail system is the Bucky VM's messaging layer — the in-universe email client and the inbox the player works out of. It is one of the primary channels through which the game *talks to the player*: briefings, alerts, leads, leaked information, and clues all arrive as mail.
