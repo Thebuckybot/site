@@ -66,6 +66,12 @@ import {
     mountMailApp,
     unmountMailApp
 } from "../apps/MailApp.js";
+import {
+    createMissionHubState,
+    renderMissionHubApp,
+    mountMissionHubApp,
+    unmountMissionHubApp
+} from "../apps/MissionHubApp.js";
 import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
 import { gatewayClient } from "./gatewayClient.js";
 import { createMailService, setMailService } from "./mail/mailService.js";
@@ -813,6 +819,22 @@ function createAppRegistry() {
             render: renderMailApp,
             mount: mountMailApp,
             unmount: unmountMailApp
+        },
+        // Mission Hub — Three.js rendering prototype (Phase v0.1/v0.2). Proves a
+        // 3D scene can live inside a standard VM window with full lifecycle.
+        // Roomy default geometry; the renderer fills whatever size it is given.
+        missionhub: {
+            id: "missionhub",
+            title: "Mission Hub",
+            label: "Mission Hub",
+            icon: "HUB",
+            width: 760,
+            height: 520,
+            singleInstance: true,
+            createState: createMissionHubState,
+            render: renderMissionHubApp,
+            mount: mountMissionHubApp,
+            unmount: unmountMissionHubApp
         },
         database: placeholder("database", "Database", "Database viewer under construction."),
         osint: placeholder("osint", "OSINT", "Investigation toolkit under construction.")
