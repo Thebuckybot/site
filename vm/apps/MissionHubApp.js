@@ -50,7 +50,9 @@ const JSM = `${CDN}/examples/jsm`;
 const DRACO_DECODER = "https://www.gstatic.com/draco/versioned/decoders/1.5.7/";
 
 const MODEL_URL = new URL("../assets/models/mission_hub.glb", import.meta.url).href;
-const HDRI_URL = new URL("../assets/hdri/terrace_night_1k.hdr", import.meta.url).href;
+// v0.7 (V3 env pass): dusk/sunset sky — drives the warm "evening apartment" look and
+// the reflections in the phone glass. (Was terrace_night_1k.hdr.)
+const HDRI_URL = new URL("../assets/hdri/dusk_sky_1k.hdr", import.meta.url).href;
 
 const STYLE_ELEMENT_ID = "vm-missionhub-styles";
 const REVEAL_DURATION = 5.0; // seconds, click → fully inside (was 4.0; slower = more "expensive")
@@ -64,24 +66,30 @@ const REVEAL_DURATION = 5.0; // seconds, click → fully inside (was 4.0; slower
 // This CAM block is the single tuning surface for framing — nudge widePos.y / the
 // look target to taste. (Window top crops a little past ~30°; that's the trade-off
 // between a steep angle and showing the whole window — see audit.)
+// v0.7 (V3): the Blender hero phone MOVED to three.js-Yup (-0.12, 0.781, -1.48)
+// (was ~-1.02 in z). These waypoints are re-derived from the verified Blender
+// establishing render (Blender cam loc 1.10,-0.55,2.05 → look -0.12,1.30,0.72,
+// converted to Y-up). Wide = elevated front-right ~30° down; close dollies DOWN
+// onto the flat screen so the portal reads face-on. NOTE: framing is reasonable
+// from the Blender match but wants one live WebGL tuning pass.
 const CAM = {
-    // v0.4 originals (too flat, ~8°): widePos [1.95,1.32,1.70] wideLook [-0.25,0.82,-1.00]
-    //                                 closePos [-0.02,0.86,-0.46] closeLook [-0.08,0.787,-1.02]
-    widePos: [1.10, 2.10, 0.70], wideLook: [-0.18, 0.84, -1.05], wideLens: 32,    // elevated establishing, ~30° down
-    closePos: [-0.06, 1.10, -0.66], closeLook: [-0.08, 0.79, -1.02], closeLens: 50, // ends looking DOWN on the screen, ~40°
-    screen: [-0.08, 0.789, -1.02]
+    widePos: [1.10, 2.05, 0.55], wideLook: [-0.12, 0.74, -1.30], wideLens: 34,    // elevated establishing, ~30° down
+    closePos: [-0.10, 1.02, -1.06], closeLook: [-0.12, 0.781, -1.46], closeLens: 50, // ends looking DOWN on the screen
+    screen: [-0.12, 0.781, -1.48]
 };
 
+// v0.7 (V3): tuned for the DUSK env + the building now visible through the window.
+// Key light is now WARM (golden sunset rake from the window) instead of cool.
 const LOOK = {
-    exposure: 1.15,            // ACES tone-mapping exposure
-    bloomStrength: 0.42,       // was 0.55 — softer, avoids the blown "orb" bloom on the lamp
+    exposure: 1.10,            // ACES tone-mapping exposure
+    bloomStrength: 0.42,       // softer, avoids the blown "orb" bloom on the lamp
     bloomRadius: 0.5,
-    bloomThreshold: 0.9,       // was 0.85 — only the brightest highlights bloom
-    envIntensity: 1.1,         // was 1.0 — HDRI a touch stronger (ambient fill + glass/metal reflections)
-    keyIntensity: 3.0,         // was 3.4 — cool window key light (PRIMARY light)
-    lampIntensity: 9.0,        // was 14 — warm desk-lamp ACCENT, not the main source
-    fillIntensity: 0.6,        // was 0.5 — lift camera-side shadows now that we look down
-    hemiIntensity: 0.35        // was 0.25 — gentle ambient so the dark floor/desk still reads
+    bloomThreshold: 0.9,       // only the brightest highlights bloom
+    envIntensity: 1.0,         // dusk HDRI: ambient fill + glass/metal reflections
+    keyIntensity: 3.2,         // WARM window key (PRIMARY light) — the setting sun
+    lampIntensity: 9.0,        // warm desk-lamp ACCENT, not the main source
+    fillIntensity: 0.5,        // cool sky-bounce fill on the camera side
+    hemiIntensity: 0.40        // gentle ambient floor so nothing reads pure black
 };
 
 // ---------------------------------------------------------------------------
@@ -132,7 +140,7 @@ export function mountMissionHubApp(runtime, windowState, element) {
     const scene = {
         disposed: false, THREE: null, renderer: null, composer: null,
         sceneGraph: null, camera: null, model: null, glass: null, portal: null,
-        envTex: null, pmrem: null, draco: null, resizeObserver: null, disposers: []
+        envTex: null, bgTex: null, pmrem: null, draco: null, resizeObserver: null, disposers: []
     };
     view.scene = scene;
 
@@ -195,10 +203,28 @@ async function buildScene(scene, stage, setStatus, ui) {
     stage.appendChild(renderer.domElement);
     scene.renderer = renderer;
 
+    // v0.7 (V3) black-screen guard: a lost WebGL context (GPU reset, iPad tab/app
+    // backgrounding, driver hiccup) leaves a FROZEN BLACK canvas unless we
+    // preventDefault so the browser will RESTORE it. three.js re-inits its GL state
+    // on restore and the setAnimationLoop resumes automatically.
+    const onCtxLost = (e) => { e.preventDefault(); debugLog("MissionHub WebGL context lost"); setStatus("paused", "Graphics paused — restoring…"); };
+    const onCtxRestored = () => { debugLog("MissionHub WebGL context restored"); setStatus("armed", "Click the phone to look closer…"); };
+    renderer.domElement.addEventListener("webglcontextlost", onCtxLost, false);
+    renderer.domElement.addEventListener("webglcontextrestored", onCtxRestored, false);
+    scene.disposers.push(() => {
+        renderer.domElement.removeEventListener("webglcontextlost", onCtxLost);
+        renderer.domElement.removeEventListener("webglcontextrestored", onCtxRestored);
+    });
+
     // ---- Scene ----
     const sceneGraph = new THREE.Scene();
-    sceneGraph.background = new THREE.Color(0x07080b);
-    sceneGraph.fog = new THREE.Fog(0x07080b, 4.0, 12.0);
+    // v0.7 (V3): the exterior building/trees now live in the GLB, ~25–55 units out
+    // through the window. The OLD fog far (12) would have FOGGED THE BUILDING OUT
+    // entirely. Fog is widened + tinted to a dusk haze so the city reads with gentle
+    // atmospheric depth. The sky itself becomes the HDRI once it loads; this solid
+    // dusk tone is also the SAFE fallback background if the HDRI never arrives.
+    sceneGraph.background = new THREE.Color(0x141019);
+    sceneGraph.fog = new THREE.Fog(0x2b2533, 8.0, 165.0);
     scene.sceneGraph = sceneGraph;
 
     // ---- HDRI environment (reflections + ambient) ----
@@ -209,30 +235,49 @@ async function buildScene(scene, stage, setStatus, ui) {
     try {
         const hdr = await new Promise((res, rej) => new RGBELoader().load(HDRI_URL, res, undefined, rej));
         if (scene.disposed) { hdr.dispose(); return; }
+        hdr.mapping = THREE.EquirectangularReflectionMapping;
         const envTex = pmrem.fromEquirectangular(hdr).texture;
         sceneGraph.environment = envTex;
         if ("environmentIntensity" in sceneGraph) sceneGraph.environmentIntensity = LOOK.envIntensity;
+        // Show the real dusk sky THROUGH the window, kept tame so it doesn't blow out
+        // behind the building. `hdr` stays alive as the background → disposed in teardown.
+        sceneGraph.background = hdr;
+        if ("backgroundIntensity" in sceneGraph) sceneGraph.backgroundIntensity = 0.45;
+        if ("backgroundBlurriness" in sceneGraph) sceneGraph.backgroundBlurriness = 0.0;
         scene.envTex = envTex;
-        hdr.dispose();
+        scene.bgTex = hdr;
     } catch (error) {
-        debugLog("MissionHub HDRI unavailable", error && error.message);
+        // NEVER leave the scene without an environment — that is the classic "black
+        // room" failure (no image-based lighting → dark PBR materials). Fall back to a
+        // procedural neutral studio env so geometry is ALWAYS lit + reflective.
+        debugLog("MissionHub HDRI unavailable → procedural fallback env", error && error.message);
+        try {
+            const { RoomEnvironment } = await import(/* @vite-ignore */ `${JSM}/environments/RoomEnvironment.js`);
+            if (scene.disposed) return;
+            const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+            sceneGraph.environment = envTex;
+            if ("environmentIntensity" in sceneGraph) sceneGraph.environmentIntensity = LOOK.envIntensity;
+            scene.envTex = envTex;
+        } catch (e2) {
+            debugLog("MissionHub fallback env failed", e2 && e2.message);
+        }
     }
 
     // ---- Lights (reproduce the Blender key/lamp/fill that GLB can't carry) ----
     const hemi = new THREE.HemisphereLight(0x9fb6e0, 0x14110d, LOOK.hemiIntensity);
     sceneGraph.add(hemi);
 
-    const key = new THREE.DirectionalLight(0xbcd2ff, LOOK.keyIntensity); // cool, from window
-    key.position.set(-0.5, 2.2, -2.6);
+    const key = new THREE.DirectionalLight(0xffca7a, LOOK.keyIntensity); // WARM sunset rake from the window
+    key.position.set(-0.5, 2.4, -3.4);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
     key.shadow.bias = -0.0004; key.shadow.radius = 5;
     { const c = key.shadow.camera; c.near = 0.5; c.far = 8; c.left = -2; c.right = 2; c.top = 2; c.bottom = -2; c.updateProjectionMatrix(); }
-    key.target.position.set(-0.1, 0.78, -1.0);
+    key.target.position.set(-0.12, 0.78, -1.46);
     sceneGraph.add(key); sceneGraph.add(key.target);
 
     const lamp = new THREE.PointLight(0xffb060, LOOK.lampIntensity, 6, 2.0); // warm desk lamp
-    lamp.position.set(0.62, 1.12, -1.55);
+    lamp.position.set(0.45, 1.00, -1.78);
     lamp.castShadow = true; lamp.shadow.mapSize.set(1024, 1024); lamp.shadow.bias = -0.0006;
     sceneGraph.add(lamp);
 
@@ -249,8 +294,16 @@ async function buildScene(scene, stage, setStatus, ui) {
         const gltf = await new Promise((res, rej) => loader.load(MODEL_URL, res, undefined, rej));
         if (scene.disposed) { disposeObject3D(gltf.scene); return; }
         model = gltf.scene;
-        model.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
-        tuneSceneAfterLoad(THREE, model);   // v0.5 audit: hide exported rig gizmos + warm the lamp
+        // v0.7 (V3): the EXTERIOR (EXT_BuildingMesh / EXT_Tree_* / EXT_Ground) is far
+        // outside the key light's small shadow frustum — exclude it from shadow work
+        // (pure perf; it is lit by the HDRI env only, exactly as in the Blender render).
+        model.traverse((n) => {
+            if (!n.isMesh) return;
+            const exterior = typeof n.name === "string" && n.name.indexOf("EXT_") === 0;
+            n.castShadow = !exterior;
+            n.receiveShadow = !exterior;
+        });
+        tuneSceneAfterLoad(THREE, model);   // warm the lamp/exterior emissives (gizmos now excluded at export)
         sceneGraph.add(model);
         screenMesh = model.getObjectByName("PhoneScreen");
         debugLog("MissionHub GLB loaded", MODEL_URL);
@@ -393,8 +446,10 @@ async function buildScene(scene, stage, setStatus, ui) {
                 glass.roughness = lerp(0.045, 0.16, p);
             }
             if (portal) {
+                // depth ramps in from p=0.2; parallax widens as the shaft opens so the
+                // layers visibly slide past each other (real 3D depth, not a flat fade).
                 portal.material.uniforms.uReveal.value = smoothstepRange(0.2, 1.0, p);
-                portal.material.uniforms.uParallax.value.set(Math.sin(time * 0.1) * 0.02, p * 0.06);
+                portal.material.uniforms.uParallax.value.set(Math.sin(time * 0.12) * 0.05, lerp(0.0, 0.14, p));
             }
             setStatus("revealing", revealLabel(p));
             if (raw >= 1) anim.phase = "complete";
@@ -402,12 +457,13 @@ async function buildScene(scene, stage, setStatus, ui) {
         }
         if (anim.phase === "complete") {
             camera.position.copy(closeP); camera.lookAt(closeL);
-            if (portal) portal.material.uniforms.uParallax.value.set(Math.sin(time * 0.08) * 0.015, 0.06);
+            if (portal) portal.material.uniforms.uParallax.value.set(Math.sin(time * 0.08) * 0.03, 0.12);
             if (!anim.carded) {
                 anim.carded = true;
                 if (ui.card) { ui.card.classList.add("is-visible"); ui.card.setAttribute("aria-hidden", "false"); }
                 setStatus("complete", "Bucky world · initializing");
                 debugLog("MissionHub intro complete");
+                MissionWorldEntry.onPortalOpen(scene);   // v0.7 (V3): Phase 7 entry seam (inert)
             }
         }
     };
@@ -420,34 +476,70 @@ async function buildScene(scene, stage, setStatus, ui) {
     setStatus("armed", "Click the phone to look closer…");
     debugLog("MissionHub cinematic scene running");
 
-    // v0.5 — preload seam for the future PHONE-WORLD scene (design-only; no world yet).
-    // The room is lightweight and now idle: this is where background loading of the
-    // SEPARATE world scene will begin so the click→inside hand-off is instant. Kept
-    // inert until the world module exists. See the audit report's preload section.
-    schedulePhoneWorldPreload(scene);
+    // v0.7 (V3) — Phase 5/7 seam: begin background preload of the (future) Mission
+    // World now, while the user still looks at the room, so the click→enter hand-off
+    // is instant. Inert until a world module exists. See MissionWorldEntry below.
+    MissionWorldEntry.schedulePreload(scene);
 }
 
 /**
- * EXTENSION POINT (v0.5, design-only) — background preload of the PHONE-WORLD scene.
+ * MissionWorldEntry — Phase 5 (preload) + Phase 7 (entry) ARCHITECTURE.
+ * Design-only / INERT: there is deliberately no Mission World yet (the brief says
+ * build the architecture, not the world). This is the single clean extension point
+ * where the future world plugs in, so the stable room/runtime is never rewritten.
  *
- * Architecture intent (NOT implemented here — full design lives in the audit report):
- *   - The Mission Hub ROOM and the PHONE-WORLD are two SEPARATE scenes; the room
- *     stays mounted and lit the whole time.
- *   - While the user looks at the room (idle/armed), the world's GLB/textures/shaders
- *     are fetched + GPU-uploaded in the background via requestIdleCallback, exposing a
- *     promise on `scene.worldPreload`.
- *   - On reveal-complete the already-ready world is swapped in — no fetch, no hitch,
- *     no asset popping.
- * Wiring this must not touch the room's EventBus / mount-update-unmount / dispose
- * contract; teardown should also abort an in-flight preload.
+ *     MissionHubRoom ──(click phone)──► Phone Portal ──(portal fully open)──► MissionWorld
+ *
+ *   1. PRELOAD (schedulePreload / preloadMissionWorld)
+ *        While the room is idle, fetch + GPU-upload the world's GLB/textures/shaders
+ *        in the background (requestIdleCallback) → promise on `scene.worldPreload`.
+ *        The room scene stays mounted + lit throughout.
+ *   2. ENTER (onPortalOpen) — fired once at full reveal:
+ *        (a) prepare room unload   — stop room-only work; keep it rendered one more frame
+ *        (b) activate MissionWorld — swap in the already-preloaded world scene
+ *        (c) camera through portal  — continue the dolly THROUGH the screen plane so it
+ *            feels like falling in, not a cut.
+ *
+ * Hard constraints when wired for real: must NOT touch the EventBus /
+ * mount-update-unmount / dispose contract; unmount must abort an in-flight preload
+ * (AbortController) and dispose world assets; world assets resolve via import.meta.url
+ * (GitHub-Pages-safe), exactly like the room GLB.
  */
-function schedulePhoneWorldPreload(scene) {
-    if (!scene || scene.worldPreload !== undefined) return;
-    // No world-scene module exists yet — this is the seam where it will plug in.
-    // Intended shape (kept inert on purpose):
-    //   const idle = (cb) => (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(cb);
-    //   scene.worldPreload = new Promise((resolve) => idle(() => resolve(/* loadPhoneWorld(scene.THREE) */ null)));
-    scene.worldPreload = null;
+const MissionWorldEntry = {
+    // Phase 5 — background preload (idempotent; inert until a world exists).
+    schedulePreload(scene) {
+        if (!scene || scene.worldPreload !== undefined) return;
+        scene.worldPreload = null;            // becomes a Promise once a world module exists
+        try {
+            const idle = (cb) => (typeof window !== "undefined" && window.requestIdleCallback
+                ? window.requestIdleCallback(cb, { timeout: 1500 })
+                : setTimeout(cb, 200));
+            idle(() => {
+                if (scene.disposed || scene.worldPreload) return;
+                // scene.worldPreload = preloadMissionWorld(scene.THREE);   // <- wire here
+            });
+        } catch (_e) { /* never block the room on preload */ }
+    },
+    // Phase 7 — called once when the portal is fully open. Inert handoff seam.
+    onPortalOpen(scene) {
+        if (!scene || scene.worldEntered) return;
+        scene.worldEntered = true;            // fire-once guard
+        // (a) prepare room unload   — e.g. scene.roomFrozen = true;
+        // (b) activate mission world — await scene.worldPreload, add the world scene
+        // (c) camera through portal  — extend the dolly past CAM.screen along the screen normal
+        debugLog("MissionHub portal fully open — MissionWorld entry seam (inert)");
+    }
+};
+
+/**
+ * preloadMissionWorld(THREE) — the named hook the future world fills in (Phase 5).
+ * INERT today (returns null). When the Mission World exists this resolves to a
+ * ready-to-mount handle (GLB parsed, textures GPU-uploaded, shaders compiled) that
+ * MissionWorldEntry.onPortalOpen swaps in with no fetch + no hitch.
+ */
+export function preloadMissionWorld(/* THREE */) {
+    // e.g. return loadAndUploadWorld(THREE, new URL("../assets/models/mission_world.glb", import.meta.url).href);
+    return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -457,6 +549,11 @@ const PORTAL_VERT = `
 varying vec2 vUv;
 void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }
 `;
+// v0.7 (V3) — PORTAL WITH DEPTH. The phone is no longer a flat screen showing a
+// picture: it is the mouth of a shaft. We stack several dusk-city layers that
+// RECEDE and parallax-shift as the portal opens, then add a warm vanishing-core
+// glowing from deep inside and a tunnel vignette so the throat reads as an
+// OPENING the camera is about to fall into — not a fullscreen image, not a fade.
 const PORTAL_FRAG = `
 precision highp float;
 varying vec2 vUv;
@@ -469,28 +566,45 @@ float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<5;i++){v+=a*noise(p);p*=2.0;
 float skyline(float x){ float h=0.08;
   h+=0.11*exp(-pow((x-0.28)*7.0,2.0)); h+=0.17*exp(-pow((x-0.50)*8.5,2.0));
   h+=0.09*exp(-pow((x-0.69)*9.0,2.0)); h+=0.05*exp(-pow((x-0.83)*12.0,2.0)); return h; }
-void main(){
-  vec2 uv=vUv; vec2 p=uv+uParallax; float horizon=0.46;
-  vec3 deep=vec3(0.02,0.045,0.09), halo=vec3(0.20,0.55,0.85), core=vec3(1.0,0.82,0.55);
+// one dusk-city slab sampled at a given uv/brightness → stack several for depth
+vec3 cityLayer(vec2 uv, float horizon, float bright){
+  vec3 deep=vec3(0.02,0.045,0.09), halo=vec3(0.20,0.55,0.85), core=vec3(1.0,0.74,0.45);
   float above=clamp((uv.y-horizon)/(1.0-horizon),0.0,1.0);
   vec3 col=mix(halo*0.6,deep,above);
   col+=core*exp(-pow((uv.y-horizon)*5.5,2.0))*0.9;
   col+=halo*exp(-pow((uv.y-horizon)*2.2,2.0))*0.5;
-  col+=core*exp(-pow(distance(p,vec2(0.5,horizon))*3.4,2.0))*1.2;
   float h1=fbm(vec2(uv.x*3.0,uv.y*3.0)+vec2(uTime*0.02,-uTime*0.015));
-  float h2=fbm(vec2(uv.x*6.0-uTime*0.03,uv.y*6.0));
-  col+=halo*mix(h1,h2,0.5)*0.18*above;
+  col+=halo*h1*0.16*above;
   float star=pow(hash(floor(uv*vec2(140.0,90.0))),40.0);
   col+=vec3(0.8,0.9,1.0)*star*(0.6+0.4*sin(uTime*2.0+hash(floor(uv*60.0))*30.0))*above*0.7;
-  float sk=horizon+skyline(uv.x+uParallax.x*0.5);
+  float sk=horizon+skyline(uv.x);
   float structure=smoothstep(0.012,0.0,sk-uv.y);
-  col=mix(col,deep*0.35,structure*0.92);
+  col=mix(col,deep*0.32,structure*0.92);
   col+=core*exp(-pow((uv.y-sk)*60.0,2.0))*0.5*structure;
-  col+=vec3(1.0,0.85,0.6)*step(0.86,hash(floor(vec2(uv.x*90.0,uv.y*120.0))))*structure*0.12;
-  col*=mix(0.55,1.0,smoothstep(0.0,0.4,uv.y));
-  float edge=smoothstep(0.0,0.05,uv.x)*smoothstep(1.0,0.95,uv.x)*smoothstep(0.0,0.05,uv.y)*smoothstep(1.0,0.95,uv.y);
+  col+=vec3(1.0,0.8,0.55)*step(0.86,hash(floor(vec2(uv.x*90.0,uv.y*120.0))))*structure*0.12;
+  return col*bright;
+}
+void main(){
+  float open=smoothstep(0.0,1.0,uReveal);
+  vec2 cc=vUv-0.5; float horizon=0.46;
+  // depth shaft — 3 layers; farther layers recede (smaller) + parallax-shift less
+  vec3 col=cityLayer(cc/mix(1.15,1.9,open)+0.5+uParallax*0.35, horizon, 0.7);
+  col=mix(col, cityLayer(cc/mix(1.0,1.35,open)+0.5+uParallax*0.7, horizon, 1.0), 0.75);
+  vec2 uv2=cc/mix(0.92,1.05,open)+0.5+uParallax*1.25;
+  float sp=pow(hash(floor(uv2*vec2(60.0,90.0)+uTime*0.05)),30.0);
+  col+=vec3(1.0,0.85,0.6)*sp*0.6*open;
+  // vanishing core deep in the shaft — GROWS as the portal opens
+  float r=length(cc*vec2(1.0,0.46));
+  float coreGlow=exp(-pow(r*(5.0-open*2.6),2.0));
+  col+=vec3(1.0,0.83,0.55)*coreGlow*(0.35+open*1.7);
+  // tunnel vignette + a glowing throat rim so it reads as an OPENING
+  float tunnel=smoothstep(0.62,0.08,r);
+  col*=mix(0.35,1.0,tunnel);
+  col+=vec3(0.5,0.7,1.0)*smoothstep(0.40,0.46,r)*smoothstep(0.52,0.46,r)*0.5*open;
+  col*=mix(0.6,1.0,smoothstep(0.0,0.4,vUv.y));
+  float edge=smoothstep(0.0,0.05,vUv.x)*smoothstep(1.0,0.95,vUv.x)*smoothstep(0.0,0.05,vUv.y)*smoothstep(1.0,0.95,vUv.y);
   float bright=clamp(max(col.r,max(col.g,col.b)),0.0,1.0);
-  gl_FragColor=vec4(col*uReveal, uReveal*edge*clamp(0.35+bright,0.0,1.0));
+  gl_FragColor=vec4(col*uReveal, uReveal*edge*clamp(0.4+bright,0.0,1.0));
 }
 `;
 function makePortal(THREE) {
@@ -588,6 +702,7 @@ function disposeScene(scene) {
     if (scene.composer) { try { scene.composer.dispose && scene.composer.dispose(); } catch (_) {} scene.composer = null; }
     if (scene.sceneGraph) { try { disposeObject3D(scene.sceneGraph); } catch (e) { logError("MissionHub disposeGraph", e); } scene.sceneGraph = null; }
     if (scene.envTex) { try { scene.envTex.dispose(); } catch (_) {} scene.envTex = null; }
+    if (scene.bgTex) { try { scene.bgTex.dispose(); } catch (_) {} scene.bgTex = null; }   // v0.7 (V3): dusk-sky background texture
     if (scene.pmrem) { try { scene.pmrem.dispose(); } catch (_) {} scene.pmrem = null; }
     if (scene.draco) { try { scene.draco.dispose(); } catch (_) {} scene.draco = null; }
     if (scene.renderer) {

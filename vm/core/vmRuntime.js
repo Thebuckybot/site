@@ -78,6 +78,27 @@ import { createMailService, setMailService } from "./mail/mailService.js";
 
 const FALLBACK_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
 
+// v0.7 (V3) — Phase 4: warm the Mission Hub hero assets (the ~4 MB dusk-room GLB and
+// the dusk HDRI) into the browser cache at BOOT, during idle time, so opening Mission
+// Hub later has NO load screen, model pop-in or texture pop-in. Fire-once,
+// best-effort, never blocks boot. GitHub-Pages-safe: URLs resolve from import.meta.url
+// (vm/core/ → vm/assets/…), exactly like MissionHubApp.js resolves them itself.
+let _missionHubPreloaded = false;
+function preloadMissionHub() {
+    if (_missionHubPreloaded || typeof window === "undefined" || typeof fetch !== "function") return;
+    _missionHubPreloaded = true;
+    const urls = [
+        new URL("../assets/models/mission_hub.glb", import.meta.url).href,
+        new URL("../assets/hdri/dusk_sky_1k.hdr", import.meta.url).href
+    ];
+    const warm = () => urls.forEach((u) => {
+        // Reading the body fully populates the HTTP cache; the app's GLTFLoader /
+        // RGBELoader then hit cache (no second download). Errors are swallowed.
+        try { fetch(u).then((r) => (r && r.arrayBuffer ? r.arrayBuffer() : null)).catch(() => {}); } catch (_e) {}
+    });
+    (window.requestIdleCallback ? window.requestIdleCallback(warm, { timeout: 3000 }) : setTimeout(warm, 800));
+}
+
 export class BuckyVMRuntime {
     constructor(root, user = {}, options = {}) {
         this.root = root;
@@ -104,6 +125,9 @@ export class BuckyVMRuntime {
                 .then((m) => { try { m.getBuckyNet(); } catch (_e) {} })
                 .catch(() => {});
         } catch (_e) { /* never block VM boot on preload priming */ }
+        // v0.7 (V3) — Phase 4: prime the Mission Hub cinematic's heavy assets now, so
+        // the click-to-open later is instant (no loading screen / asset pop-in).
+        try { preloadMissionHub(); } catch (_e) { /* never block VM boot on preload */ }
         this.debug = Boolean(options.debug);
         setDebugMode(this.debug);
         this.mode = "embedded";
