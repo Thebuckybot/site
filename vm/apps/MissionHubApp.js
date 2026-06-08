@@ -12,7 +12,7 @@
  *
  * The Blender file assets/blender/mission_hub_v2.blend is the SOURCE OF TRUTH.
  * This runtime consumes its optimised export:
- *   - site/vm/assets/models/mission_hub.glb       (Draco + WebP, ~1.5 MB)
+ *   - site/vm/assets/models/mission_hub.glb       (Draco + WebP, ~4.2 MB)
  *   - site/vm/assets/hdri/terrace_night_1k.hdr    (env + reflections, ~1.8 MB)
  * The camera waypoints below were recorded from that .blend
  * (mission_hub_v2_waypoints.json) so the shot matches the rendered reference.
@@ -291,30 +291,28 @@ async function buildScene(scene, stage, setStatus, ui) {
     const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
     let model = null, screenMesh = null;
     try {
-        const gltf = await new Promise((res, rej) => loader.load(MODEL_URL, res, undefined, rej));
+        const gltf = await loadMissionHubGltf(THREE, loader, MODEL_URL);
         if (scene.disposed) { disposeObject3D(gltf.scene); return; }
         model = gltf.scene;
-        // v0.7 (V3): the EXTERIOR (EXT_BuildingMesh / EXT_Tree_* / EXT_Ground) is far
-        // outside the key light's small shadow frustum — exclude it from shadow work
-        // (pure perf; it is lit by the HDRI env only, exactly as in the Blender render).
+        // Shadow flags are runtime-only; object transforms and visibility remain from the GLB.
         model.traverse((n) => {
             if (!n.isMesh) return;
             const exterior = typeof n.name === "string" && n.name.indexOf("EXT_") === 0;
             n.castShadow = !exterior;
             n.receiveShadow = !exterior;
         });
-        tuneSceneAfterLoad(THREE, model);   // warm the lamp/exterior emissives (gizmos now excluded at export)
         sceneGraph.add(model);
         screenMesh = model.getObjectByName("PhoneScreen");
+        const missingPhoneNodes = ["PhoneBody", "PhoneFrame", "PhoneScreen"].filter((name) => !model.getObjectByName(name));
+        if (missingPhoneNodes.length) {
+            throw new Error(`mission_hub.glb missing required phone nodes: ${missingPhoneNodes.join(", ")}`);
+        }
         debugLog("MissionHub GLB loaded", MODEL_URL);
     } catch (error) {
         if (scene.disposed) return;
-        debugLog("MissionHub mission_hub.glb missing → placeholder", error && error.message);
-        const ph = makePlaceholder(THREE); sceneGraph.add(ph.group); model = ph.group; screenMesh = ph.screen;
-        setStatus("placeholder", "mission_hub.glb not found — placeholder");
+        throw new Error(`mission_hub.glb failed to load from ${MODEL_URL}: ${error && error.message ? error.message : error}`);
     }
     scene.model = model;
-    if (!screenMesh) screenMesh = model;
 
     // ---- Glass screen (100% reflection at start) ----
     screenMesh.updateWorldMatrix(true, true);
@@ -371,7 +369,6 @@ async function buildScene(scene, stage, setStatus, ui) {
         const o = model.getObjectByName ? model.getObjectByName(n) : null;
         if (o) o.traverse((c) => { if (c.isMesh) targets.push(c); });
     });
-    if (!targets.length) model.traverse((c) => { if (c.isMesh) targets.push(c); });
 
     const overPhone = (ev) => {
         const r = renderer.domElement.getBoundingClientRect();
@@ -400,7 +397,7 @@ async function buildScene(scene, stage, setStatus, ui) {
         renderer.domElement.removeEventListener("pointerdown", onDown);
     });
 
-    setStatus(scene.model && scene.model.userData ? "armed" : "armed", "Click the phone to look closer…");
+    setStatus("armed", "Click the phone to look closer…");
 
     // ---- Responsive ----
     const resize = () => {
@@ -617,58 +614,111 @@ function makePortal(THREE) {
     return { mesh: new THREE.Mesh(geo, material), material };
 }
 
-/**
- * v0.5 audit fixes that do NOT require re-exporting the .blend (the GLB is the
- * source of truth for geometry; these are runtime overrides only):
- *  - Hide chair-rig CONTROL gizmos that Blender exported with NO material, so
- *    three.js gives them the default white standard material and they appear as
- *    stray pale shapes on the floor: GearCBS, LevelCBS, Post0CBS, Post_UpnDownCBS.
- *    (The visible chair — Base/Casing/Seat/Wheels/Posts — is untouched.)
- *  - Warm the lamp bulb's white-hot emissive so it reads as a cosy accent rather
- *    than a blue-white orb under bloom, and gently lift the "outside" glow so the
- *    view through the window feels brighter than the room.
- * If the .blend is ever re-exported with these gizmos excluded / the lamp tinted,
- * this becomes a harmless no-op.
- */
-function tuneSceneAfterLoad(THREE, root) {
-    if (!root || typeof root.getObjectByName !== "function") return;
-    ["GearCBS", "LevelCBS", "Post0CBS", "Post_UpnDownCBS"].forEach((name) => {
-        const o = root.getObjectByName(name);
-        if (o) o.visible = false;
-    });
-    root.traverse((n) => {
-        if (!n.isMesh || !n.material) return;
-        (Array.isArray(n.material) ? n.material : [n.material]).forEach((m) => {
-            if (!m || !m.name) return;
-            if (m.name === "Lamp") {                 // the tiny emissive bulb mesh
-                m.emissive = new THREE.Color(0xff9d4d);
-                if ("emissiveIntensity" in m) m.emissiveIntensity = 2.0;
-            } else if (m.name === "OutsideGlow") {   // what's "outside" the window
-                m.emissive = new THREE.Color(0x9fb6e0);
-                if ("emissiveIntensity" in m) m.emissiveIntensity = 1.5;
-            }
-        });
-    });
-}
-
-/** Minimal fallback if the GLB can't load. */
-function makePlaceholder(THREE) {
-    const group = new THREE.Group();
-    const desk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.9),
-        new THREE.MeshStandardMaterial({ color: 0x2a1a0e, roughness: 0.6 }));
-    desk.position.set(0, 0.74, -1.0); desk.receiveShadow = true; group.add(desk);
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.009, 0.150),
-        new THREE.MeshStandardMaterial({ color: 0x0a0c10, metalness: 1, roughness: 0.4 }));
-    body.name = "PhoneBody"; body.position.set(-0.08, 0.77, -1.02); group.add(body);
-    const screen = new THREE.Mesh(new THREE.BoxGeometry(0.066, 0.001, 0.142),
-        new THREE.MeshStandardMaterial({ color: 0x05070b }));
-    screen.name = "PhoneScreen"; screen.position.set(-0.08, 0.775, -1.02); group.add(screen);
-    return { group, screen };
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+async function loadMissionHubGltf(THREE, loader, url) {
+    const fileLoader = new THREE.FileLoader(loader.manager);
+    fileLoader.setResponseType("arraybuffer");
+    const raw = await new Promise((res, rej) => fileLoader.load(url, res, undefined, rej));
+    const { buffer, fixes } = patchMissingTextureSources(raw);
+    if (fixes.length) debugLog("MissionHub ignored missing GLB texture references", fixes);
+    const path = url.slice(0, url.lastIndexOf("/") + 1);
+    return await new Promise((res, rej) => loader.parse(buffer, path, res, rej));
+}
+
+function patchMissingTextureSources(arrayBuffer) {
+    const input = arrayBuffer instanceof ArrayBuffer ? new Uint8Array(arrayBuffer) : new Uint8Array(arrayBuffer.buffer);
+    const view = new DataView(input.buffer, input.byteOffset, input.byteLength);
+    if (input.length < 20 || readAscii(input, 0, 4) !== "glTF" || view.getUint32(4, true) !== 2) {
+        return { buffer: arrayBuffer, fixes: [] };
+    }
+
+    let offset = 12;
+    const chunks = [];
+    let jsonChunk = null;
+    while (offset + 8 <= input.length) {
+        const length = view.getUint32(offset, true); offset += 4;
+        const type = view.getUint32(offset, true); offset += 4;
+        const start = offset;
+        const end = start + length;
+        if (end > input.length) return { buffer: arrayBuffer, fixes: [] };
+        const data = input.slice(start, end);
+        const chunk = { type, data };
+        chunks.push(chunk);
+        if (type === 0x4e4f534a) jsonChunk = chunk;
+        offset = end;
+    }
+    if (!jsonChunk) return { buffer: arrayBuffer, fixes: [] };
+
+    const json = JSON.parse(new TextDecoder().decode(jsonChunk.data));
+    const fixes = removeMissingTextureReferences(json);
+    if (!fixes.length) return { buffer: arrayBuffer, fixes };
+
+    const jsonBytes = new TextEncoder().encode(JSON.stringify(json));
+    const paddedJson = padChunk(jsonBytes, 0x20);
+    jsonChunk.data = paddedJson;
+
+    const totalLength = 12 + chunks.reduce((sum, chunk) => sum + 8 + chunk.data.length, 0);
+    const output = new Uint8Array(totalLength);
+    const outView = new DataView(output.buffer);
+    output.set(input.slice(0, 4), 0);
+    outView.setUint32(4, 2, true);
+    outView.setUint32(8, totalLength, true);
+
+    let outOffset = 12;
+    chunks.forEach((chunk) => {
+        outView.setUint32(outOffset, chunk.data.length, true); outOffset += 4;
+        outView.setUint32(outOffset, chunk.type, true); outOffset += 4;
+        output.set(chunk.data, outOffset); outOffset += chunk.data.length;
+    });
+    return { buffer: output.buffer, fixes };
+}
+
+function removeMissingTextureReferences(json) {
+    const fixes = [];
+    const textures = json.textures || [];
+    const images = json.images || [];
+    const hasValidImage = (source) => Number.isInteger(source) && !!images[source];
+    const hasValidTexture = (index) => {
+        const texture = textures[index];
+        if (!texture) return false;
+        if (hasValidImage(texture.source)) return true;
+        const webp = texture.extensions && texture.extensions.EXT_texture_webp;
+        return !!(webp && hasValidImage(webp.source));
+    };
+
+    const walk = (value, path) => {
+        if (!value || typeof value !== "object") return;
+        Object.keys(value).forEach((key) => {
+            const child = value[key];
+            const childPath = path ? `${path}.${key}` : key;
+            if (key.endsWith("Texture") && child && typeof child === "object" && Number.isInteger(child.index) && !hasValidTexture(child.index)) {
+                fixes.push({ path: childPath, textureIndex: child.index });
+                delete value[key];
+                return;
+            }
+            walk(child, childPath);
+        });
+    };
+    walk(json, "");
+    return fixes;
+}
+
+function padChunk(bytes, padByte) {
+    const paddedLength = Math.ceil(bytes.length / 4) * 4;
+    const out = new Uint8Array(paddedLength);
+    out.set(bytes);
+    out.fill(padByte, bytes.length);
+    return out;
+}
+
+function readAscii(bytes, start, length) {
+    let s = "";
+    for (let i = 0; i < length; i++) s += String.fromCharCode(bytes[start + i]);
+    return s;
+}
+
 function lensToFov(lens) { return 2 * Math.atan(24 / (2 * lens)) * 180 / Math.PI; } // 36x24 full-frame, vertical
 function applyMaterial(target, mat) {
     target.traverse((n) => {
