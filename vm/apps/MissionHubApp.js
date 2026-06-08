@@ -53,25 +53,35 @@ const MODEL_URL = new URL("../assets/models/mission_hub.glb", import.meta.url).h
 const HDRI_URL = new URL("../assets/hdri/terrace_night_1k.hdr", import.meta.url).href;
 
 const STYLE_ELEMENT_ID = "vm-missionhub-styles";
-const REVEAL_DURATION = 4.0; // seconds, click → fully inside
+const REVEAL_DURATION = 5.0; // seconds, click → fully inside (was 4.0; slower = more "expensive")
 
-// Camera waypoints in Three.js (Y-up) world space, recorded from the .blend.
+// Camera waypoints in Three.js (Y-up) world space.
+// v0.5 AUDIT: the original waypoints (kept below) framed the desk at only ~8°
+// downward — a near-horizontal "table-height" view, the #1 reason the intro felt
+// like a prototype. Retuned to an elevated, looking-down cinematic establishing
+// shot (~30° down, desk dominant, phone the focal point) that dollies DOWN onto
+// the flat screen (~40°) so the "world inside" reads face-on instead of edge-on.
+// This CAM block is the single tuning surface for framing — nudge widePos.y / the
+// look target to taste. (Window top crops a little past ~30°; that's the trade-off
+// between a steep angle and showing the whole window — see audit.)
 const CAM = {
-    widePos: [1.95, 1.32, 1.70], wideLook: [-0.25, 0.82, -1.00], wideLens: 35,
-    closePos: [-0.02, 0.86, -0.46], closeLook: [-0.08, 0.787, -1.02], closeLens: 50,
+    // v0.4 originals (too flat, ~8°): widePos [1.95,1.32,1.70] wideLook [-0.25,0.82,-1.00]
+    //                                 closePos [-0.02,0.86,-0.46] closeLook [-0.08,0.787,-1.02]
+    widePos: [1.10, 2.10, 0.70], wideLook: [-0.18, 0.84, -1.05], wideLens: 32,    // elevated establishing, ~30° down
+    closePos: [-0.06, 1.10, -0.66], closeLook: [-0.08, 0.79, -1.02], closeLens: 50, // ends looking DOWN on the screen, ~40°
     screen: [-0.08, 0.789, -1.02]
 };
 
 const LOOK = {
     exposure: 1.15,            // ACES tone-mapping exposure
-    bloomStrength: 0.55,
+    bloomStrength: 0.42,       // was 0.55 — softer, avoids the blown "orb" bloom on the lamp
     bloomRadius: 0.5,
-    bloomThreshold: 0.85,
-    envIntensity: 1.0,         // scene.environmentIntensity (HDRI brightness)
-    keyIntensity: 3.4,         // cool window key light
-    lampIntensity: 14.0,       // warm desk-lamp point light
-    fillIntensity: 0.5,
-    hemiIntensity: 0.25
+    bloomThreshold: 0.9,       // was 0.85 — only the brightest highlights bloom
+    envIntensity: 1.1,         // was 1.0 — HDRI a touch stronger (ambient fill + glass/metal reflections)
+    keyIntensity: 3.0,         // was 3.4 — cool window key light (PRIMARY light)
+    lampIntensity: 9.0,        // was 14 — warm desk-lamp ACCENT, not the main source
+    fillIntensity: 0.6,        // was 0.5 — lift camera-side shadows now that we look down
+    hemiIntensity: 0.35        // was 0.25 — gentle ambient so the dark floor/desk still reads
 };
 
 // ---------------------------------------------------------------------------
@@ -240,6 +250,7 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (scene.disposed) { disposeObject3D(gltf.scene); return; }
         model = gltf.scene;
         model.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+        tuneSceneAfterLoad(THREE, model);   // v0.5 audit: hide exported rig gizmos + warm the lamp
         sceneGraph.add(model);
         screenMesh = model.getObjectByName("PhoneScreen");
         debugLog("MissionHub GLB loaded", MODEL_URL);
@@ -408,6 +419,35 @@ async function buildScene(scene, stage, setStatus, ui) {
     });
     setStatus("armed", "Click the phone to look closer…");
     debugLog("MissionHub cinematic scene running");
+
+    // v0.5 — preload seam for the future PHONE-WORLD scene (design-only; no world yet).
+    // The room is lightweight and now idle: this is where background loading of the
+    // SEPARATE world scene will begin so the click→inside hand-off is instant. Kept
+    // inert until the world module exists. See the audit report's preload section.
+    schedulePhoneWorldPreload(scene);
+}
+
+/**
+ * EXTENSION POINT (v0.5, design-only) — background preload of the PHONE-WORLD scene.
+ *
+ * Architecture intent (NOT implemented here — full design lives in the audit report):
+ *   - The Mission Hub ROOM and the PHONE-WORLD are two SEPARATE scenes; the room
+ *     stays mounted and lit the whole time.
+ *   - While the user looks at the room (idle/armed), the world's GLB/textures/shaders
+ *     are fetched + GPU-uploaded in the background via requestIdleCallback, exposing a
+ *     promise on `scene.worldPreload`.
+ *   - On reveal-complete the already-ready world is swapped in — no fetch, no hitch,
+ *     no asset popping.
+ * Wiring this must not touch the room's EventBus / mount-update-unmount / dispose
+ * contract; teardown should also abort an in-flight preload.
+ */
+function schedulePhoneWorldPreload(scene) {
+    if (!scene || scene.worldPreload !== undefined) return;
+    // No world-scene module exists yet — this is the seam where it will plug in.
+    // Intended shape (kept inert on purpose):
+    //   const idle = (cb) => (window.requestIdleCallback || ((f) => setTimeout(f, 200)))(cb);
+    //   scene.worldPreload = new Promise((resolve) => idle(() => resolve(/* loadPhoneWorld(scene.THREE) */ null)));
+    scene.worldPreload = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -461,6 +501,40 @@ function makePortal(THREE) {
         transparent: true, depthWrite: false, depthTest: true, toneMapped: false, blending: THREE.NormalBlending
     });
     return { mesh: new THREE.Mesh(geo, material), material };
+}
+
+/**
+ * v0.5 audit fixes that do NOT require re-exporting the .blend (the GLB is the
+ * source of truth for geometry; these are runtime overrides only):
+ *  - Hide chair-rig CONTROL gizmos that Blender exported with NO material, so
+ *    three.js gives them the default white standard material and they appear as
+ *    stray pale shapes on the floor: GearCBS, LevelCBS, Post0CBS, Post_UpnDownCBS.
+ *    (The visible chair — Base/Casing/Seat/Wheels/Posts — is untouched.)
+ *  - Warm the lamp bulb's white-hot emissive so it reads as a cosy accent rather
+ *    than a blue-white orb under bloom, and gently lift the "outside" glow so the
+ *    view through the window feels brighter than the room.
+ * If the .blend is ever re-exported with these gizmos excluded / the lamp tinted,
+ * this becomes a harmless no-op.
+ */
+function tuneSceneAfterLoad(THREE, root) {
+    if (!root || typeof root.getObjectByName !== "function") return;
+    ["GearCBS", "LevelCBS", "Post0CBS", "Post_UpnDownCBS"].forEach((name) => {
+        const o = root.getObjectByName(name);
+        if (o) o.visible = false;
+    });
+    root.traverse((n) => {
+        if (!n.isMesh || !n.material) return;
+        (Array.isArray(n.material) ? n.material : [n.material]).forEach((m) => {
+            if (!m || !m.name) return;
+            if (m.name === "Lamp") {                 // the tiny emissive bulb mesh
+                m.emissive = new THREE.Color(0xff9d4d);
+                if ("emissiveIntensity" in m) m.emissiveIntensity = 2.0;
+            } else if (m.name === "OutsideGlow") {   // what's "outside" the window
+                m.emissive = new THREE.Color(0x9fb6e0);
+                if ("emissiveIntensity" in m) m.emissiveIntensity = 1.5;
+            }
+        });
+    });
 }
 
 /** Minimal fallback if the GLB can't load. */
