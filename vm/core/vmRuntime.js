@@ -70,32 +70,43 @@ import {
     createMissionHubState,
     renderMissionHubApp,
     mountMissionHubApp,
-    unmountMissionHubApp
+    unmountMissionHubApp,
+    preloadMissionHubAssets,
+    disposeMissionHubAssets
 } from "../apps/MissionHubApp.js";
 import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
 import { gatewayClient } from "./gatewayClient.js";
+import { assetCache } from "./assetCache.js";
 import { createMailService, setMailService } from "./mail/mailService.js";
 
 const FALLBACK_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
 
-// v0.7 (V3) — Phase 4: warm the Mission Hub hero assets (the ~4 MB dusk-room GLB and
-// the dusk HDRI) into the browser cache at BOOT, during idle time, so opening Mission
-// Hub later has NO load screen, model pop-in or texture pop-in. Fire-once,
-// best-effort, never blocks boot. GitHub-Pages-safe: URLs resolve from import.meta.url
-// (vm/core/ → vm/assets/…), exactly like MissionHubApp.js resolves them itself.
+// v0.8 (Phase 2 · Task 4 / v0.9 Phase 4) — at BOOT, during idle, parse the Mission
+// Hub hero GLB ONCE into the in-memory AssetCache and warm the dusk HDRI into the
+// HTTP cache, so opening Mission Hub later has NO load screen, model pop-in or
+// texture pop-in — and EVERY later open clones the already-parsed scene (no
+// re-download / re-parse / re-decode; the cache is freed only when the VM unloads,
+// see dispose()). NOTE: Bucky World is deliberately NOT fetched here — only the
+// preload CAPABILITY is wired; its GLB is warmed when Mission Hub actually opens
+// (MissionWorldEntry.schedulePreload), so site startup stays lean.
+// Fire-once, best-effort, never blocks boot. GitHub-Pages-safe: URLs resolve from
+// import.meta.url (vm/core/ → vm/assets/…), exactly like MissionHubApp.js does.
 let _missionHubPreloaded = false;
 function preloadMissionHub() {
-    if (_missionHubPreloaded || typeof window === "undefined" || typeof fetch !== "function") return;
+    if (_missionHubPreloaded || typeof window === "undefined") return;
     _missionHubPreloaded = true;
-    const urls = [
-        new URL("../assets/models/mission_hub.glb", import.meta.url).href,
-        new URL("../assets/hdri/dusk_sky_1k.hdr", import.meta.url).href
-    ];
-    const warm = () => urls.forEach((u) => {
-        // Reading the body fully populates the HTTP cache; the app's GLTFLoader /
-        // RGBELoader then hit cache (no second download). Errors are swallowed.
-        try { fetch(u).then((r) => (r && r.arrayBuffer ? r.arrayBuffer() : null)).catch(() => {}); } catch (_e) {}
-    });
+    const hdriUrl = new URL("../assets/hdri/dusk_sky_1k.hdr", import.meta.url).href;
+    const warm = () => {
+        // GLB → parse-once into the AssetCache (download + GLTF/Draco parse + decode).
+        try { preloadMissionHubAssets(); } catch (_e) { /* never block boot on preload */ }
+        // HDRI → warm the HTTP cache (the per-open RGBELoader then hits cache). The env
+        // is renderer-bound (PMREM), so it stays a per-open decode by design.
+        try {
+            if (typeof fetch === "function") {
+                fetch(hdriUrl).then((r) => (r && r.arrayBuffer ? r.arrayBuffer() : null)).catch(() => {});
+            }
+        } catch (_e) { /* swallow */ }
+    };
     (window.requestIdleCallback ? window.requestIdleCallback(warm, { timeout: 3000 }) : setTimeout(warm, 800));
 }
 
@@ -200,6 +211,11 @@ export class BuckyVMRuntime {
         this.tickClock();
         this.clockTimer = window.setInterval(() => this.tickClock(), 1000);
         window.addEventListener("resize", this.resizeHandler);
+        // v0.8 (Phase 2) — "VM fully unloads" trigger. pagehide is the real
+        // end-of-session; dispose() then frees the AssetCache (and timers/listeners).
+        // Guarded against bfcache (event.persisted) so a restored page keeps working.
+        this._onPageHide = (event) => { if (!event || !event.persisted) this.dispose(); };
+        window.addEventListener("pagehide", this._onPageHide);
         this.runBootSequence();
     }
 
@@ -761,6 +777,27 @@ export class BuckyVMRuntime {
             this.notifications = this.notifications.filter((item) => item.id !== id);
             this.updateNotifications();
         }, 3600);
+    }
+
+    /**
+     * v0.8 (Phase 2) — explicit teardown for when the VM fully unloads (the target
+     * of vm-runtime.md §3.4). Idempotent. Clears the clock + resize/pagehide
+     * listeners, unmounts windows and the desktop view, and — the Phase 2 addition —
+     * frees the shared AssetCache. The Mission Hub GLB cache survives every app
+     * open/close; THIS is the only place it is released.
+     */
+    dispose() {
+        if (this._disposed) return;
+        this._disposed = true;
+        try { if (this.clockTimer) window.clearInterval(this.clockTimer); } catch (_e) { /* ignore */ }
+        this.clockTimer = null;
+        try { window.removeEventListener("resize", this.resizeHandler); } catch (_e) { /* ignore */ }
+        try { if (this._onPageHide) window.removeEventListener("pagehide", this._onPageHide); } catch (_e) { /* ignore */ }
+        try { this.teardownWindows(); } catch (_e) { /* ignore */ }
+        try { this.teardownDesktopView(); } catch (_e) { /* ignore */ }
+        try { disposeMissionHubAssets(); } catch (_e) { /* ignore */ }
+        try { assetCache.disposeAll(); } catch (_e) { /* ignore */ }
+        debugLog("BuckyVMRuntime disposed");
     }
 }
 

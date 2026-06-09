@@ -12,17 +12,21 @@
  *
  * The Blender file assets/blender/mission_hub_v2.blend is the SOURCE OF TRUTH.
  * This runtime consumes its optimised export:
- *   - site/vm/assets/models/mission_hub.glb       (Draco + WebP, ~4.2 MB)
- *   - site/vm/assets/hdri/terrace_night_1k.hdr    (env + reflections, ~1.8 MB)
+ *   - site/vm/assets/models/mission_hub.glb       (Draco + WebP, ~1.5 MB; parsed
+ *     ONCE by core/assetCache.js at boot and CLONED per open — no re-download,
+ *     re-parse or re-decode on reopen; freed only when the VM unloads)
+ *   - site/vm/assets/hdri/dusk_sky_1k.hdr         (env + reflections, ~1.3 MB)
  * The camera waypoints below were recorded from that .blend
  * (mission_hub_v2_waypoints.json) so the shot matches the rendered reference.
  *
  * ARCHITECTURE (unchanged contract — see docs/architecture/app-system.md)
  * ----------------------------------------------------------------------
- * Exports createState / render / mount / unmount, registered in vmRuntime.js.
- * The scene is built imperatively once in `mount`; the body is never rebuilt on
- * resize/maximize. Three.js + addons + the Draco decoder load on demand from
- * pinned CDNs (GitHub-Pages-safe, no build step). One ResizeObserver handles
+ * Exports createState / render / mount / unmount (+ preloadMissionHubAssets /
+ * disposeMissionHubAssets for the boot preload + VM-unload teardown), registered
+ * in vmRuntime.js. The scene is built imperatively once in `mount`; the body is
+ * never rebuilt on resize/maximize. Three.js + post-FX load on demand from pinned
+ * CDNs (GitHub-Pages-safe, no build step); the GLB + Draco decoder are owned by
+ * the shared AssetCache (core/assetCache.js). One ResizeObserver handles
  * all size changes. `unmount` performs deterministic teardown (loop stopped;
  * renderer, composer, passes, geometries, materials, textures, env map and
  * PMREM disposed), with an async `scene.disposed` guard for close-during-load.
@@ -40,6 +44,9 @@
  * bloom, light intensities, reveal timing, camera waypoints).
  */
 import { debugLog, logError } from "../core/diagnostics.js";
+// v0.8 (Phase 2) — the hero GLB is now parsed ONCE into the shared AssetCache and
+// cloned on each open (no re-download / re-parse / re-decode). See core/assetCache.js.
+import { assetCache } from "../core/assetCache.js";
 
 // ---------------------------------------------------------------------------
 // CONFIG — the one place to tune the look
@@ -47,36 +54,43 @@ import { debugLog, logError } from "../core/diagnostics.js";
 const THREE_VERSION = "0.160.0";
 const CDN = `https://esm.sh/three@${THREE_VERSION}`;
 const JSM = `${CDN}/examples/jsm`;
-const DRACO_DECODER = "https://www.gstatic.com/draco/versioned/decoders/1.5.7/";
 
 const MODEL_URL = new URL("../assets/models/mission_hub.glb", import.meta.url).href;
 // v0.7 (V3 env pass): dusk/sunset sky — drives the warm "evening apartment" look and
 // the reflections in the phone glass. (Was terrace_night_1k.hdr.)
 const HDRI_URL = new URL("../assets/hdri/dusk_sky_1k.hdr", import.meta.url).href;
+// v0.9 (Phase 4) — BUCKY WORLD. The phone is a real entry point: at Phone_Depth_Target
+// the runtime loads this world GLB (a placeholder Sphere today) to PROVE the
+// MissionHub → Phone Interior → BuckyWorld handoff. Resolved via import.meta.url
+// (GitHub-Pages-safe) and registered in the AssetCache with preload capability.
+const BUCKYWORLD_URL = new URL("../assets/models/buckyworld.glb", import.meta.url).href;
 
 const STYLE_ELEMENT_ID = "vm-missionhub-styles";
-const REVEAL_DURATION = 5.0; // seconds, click → fully inside (was 4.0; slower = more "expensive")
+const DESCENT_DURATION = 5.5; // seconds, click → arrive at Phone_Depth_Target (slow, "expensive" descent)
 
-// Camera waypoints in Three.js (Y-up) world space.
-// v0.5 AUDIT: the original waypoints (kept below) framed the desk at only ~8°
-// downward — a near-horizontal "table-height" view, the #1 reason the intro felt
-// like a prototype. Retuned to an elevated, looking-down cinematic establishing
-// shot (~30° down, desk dominant, phone the focal point) that dollies DOWN onto
-// the flat screen (~40°) so the "world inside" reads face-on instead of edge-on.
-// This CAM block is the single tuning surface for framing — nudge widePos.y / the
-// look target to taste. (Window top crops a little past ~30°; that's the trade-off
-// between a steep angle and showing the whole window — see audit.)
-// v0.7 (V3): the Blender hero phone MOVED to three.js-Yup (-0.12, 0.781, -1.48)
-// (was ~-1.02 in z). These waypoints are re-derived from the verified Blender
-// establishing render (Blender cam loc 1.10,-0.55,2.05 → look -0.12,1.30,0.72,
-// converted to Y-up). Wide = elevated front-right ~30° down; close dollies DOWN
-// onto the flat screen so the portal reads face-on. NOTE: framing is reasonable
-// from the Blender match but wants one live WebGL tuning pass.
+// Camera-into-phone path, Three.js (Y-up) world space.
+// v0.9 (Phase 4): the click no longer dollies onto a portal plane — the camera
+// physically ENTERS the device. CAM.entry/interior/depthTarget ARE the real Blender
+// Phone_Entry / Phone_Interior / Phone_Depth_Target empties (Y-up = [x, z, -y], from
+// mission_hub_v2_phone_path.json). The descent: room overview → approach → align
+// straight above the glass (looking DOWN) → descend vertically through the glass
+// (which fades) → through Entry and Interior → arrive at Depth_Target, where Bucky
+// World loads. No portal, no light beam, no pillar — a real vertical descent.
 const CAM = {
-    widePos: [1.10, 2.05, 0.55], wideLook: [-0.12, 0.74, -1.30], wideLens: 34,    // elevated establishing, ~30° down
-    closePos: [-0.10, 1.02, -1.06], closeLook: [-0.12, 0.781, -1.46], closeLens: 50, // ends looking DOWN on the screen
-    screen: [-0.12, 0.781, -1.48]
+    widePos: [1.10, 2.05, 0.55], wideLook: [-0.12, 0.74, -1.30], wideLens: 34, // room overview
+    screen:      [-0.12, 0.7817, -1.48], // PhoneScreen glass plane
+    entry:       [-0.12, 0.8517, -1.48], // Phone_Entry  — just above the glass
+    interior:    [-0.12, 0.2317, -1.48], // Phone_Interior — mid depth chamber
+    depthTarget: [-0.12, -0.3583, -1.48] // Phone_Depth_Target — the Bucky World loading area
 };
+// Descent keyframes (t 0..1). pos = camera position, look = aim point, lens = mm.
+const CAM_PATH = [
+    { t: 0.00, pos: [1.10, 2.05, 0.55],    look: [-0.12, 0.74, -1.30],  lens: 34 }, // overview: desk + poster + phone
+    { t: 0.30, pos: [0.34, 1.46, -0.86],   look: [-0.12, 0.80, -1.46],  lens: 40 }, // approach the phone
+    { t: 0.52, pos: [-0.12, 0.95, -1.48],  look: [-0.12, 0.781, -1.48], lens: 46 }, // align straight above the screen, looking DOWN
+    { t: 0.76, pos: [-0.12, 0.33, -1.48],  look: [-0.12, -0.30, -1.48], lens: 40 }, // descend through Entry → Interior
+    { t: 1.00, pos: [-0.12, -0.30, -1.48], look: [-0.12, -0.66, -1.48], lens: 35 }  // arrive at Depth_Target (Bucky World loads)
+];
 
 // v0.7 (V3): tuned for the DUSK env + the building now visible through the window.
 // Key light is now WARM (golden sunset rake from the window) instead of cool.
@@ -91,6 +105,55 @@ const LOOK = {
     fillIntensity: 0.5,        // cool sky-bounce fill on the camera side
     hemiIntensity: 0.40        // gentle ambient floor so nothing reads pure black
 };
+
+// ---------------------------------------------------------------------------
+// Asset cache wiring (Phase 2 · Tasks 4 + 5)
+// ---------------------------------------------------------------------------
+// The hero room GLB is registered with the shared AssetCache, which parses it
+// ONCE and hands every open a clone (shared geometry/materials/textures). Bucky
+// World is registered with the SAME parse-once/clone path (preload capability),
+// preloaded in the background when Mission Hub opens — not at site startup.
+let _assetsRegistered = false;
+function registerMissionHubAssets() {
+    if (_assetsRegistered) return;
+    _assetsRegistered = true;
+    assetCache.registerAsset("mission_hub", MODEL_URL, {
+        // Mission Hub's Blender export carries a known orphan image (Map #97.001)
+        // and can reference a missing texture source; strip those from the GLB
+        // bytes ONCE here so the cached parse — and every clone — is clean.
+        transformBuffer(rawBuffer) {
+            const { buffer, fixes } = patchMissingTextureSources(rawBuffer);
+            if (fixes.length) debugLog("MissionHub ignored missing GLB texture references", fixes);
+            return buffer;
+        }
+    });
+    // Phase 4 — BUCKY WORLD. The GLB ships now, registered with preload capability
+    // (available:true) but NOT eagerly fetched at site startup — its preload is kicked
+    // off when Mission Hub opens (schedulePreload) so it is cached before the camera
+    // arrives at Phone_Depth_Target. Same parse-once/clone path as the room GLB.
+    assetCache.registerAsset("buckyworld", BUCKYWORLD_URL, { available: true });
+}
+
+/**
+ * preloadMissionHubAssets — kick off the parse-once warm of the hero GLB.
+ * Called from the VM boot sequence (vmRuntime.preloadMissionHub) during idle so
+ * the first open clones an already-parsed scene with no loading screen / pop-in.
+ * Idempotent + best-effort; returns the cache promise (resolves to the entry).
+ */
+export function preloadMissionHubAssets() {
+    registerMissionHubAssets();
+    return assetCache.preloadAsset("mission_hub");
+}
+
+/**
+ * disposeMissionHubAssets — free the cached room GLB + Bucky World. This is the
+ * ONLY place the hero assets are released and it is called solely when the VM
+ * fully unloads (runtime.dispose). App open/close never touches the cache.
+ */
+export function disposeMissionHubAssets() {
+    assetCache.disposeAsset("mission_hub");
+    assetCache.disposeAsset("buckyworld");
+}
 
 // ---------------------------------------------------------------------------
 // State
@@ -139,8 +202,8 @@ export function mountMissionHubApp(runtime, windowState, element) {
 
     const scene = {
         disposed: false, THREE: null, renderer: null, composer: null,
-        sceneGraph: null, camera: null, model: null, glass: null, portal: null,
-        envTex: null, bgTex: null, pmrem: null, draco: null, resizeObserver: null, disposers: []
+        sceneGraph: null, camera: null, model: null, modelShared: false, glass: null, chamber: null, world: null,
+        envTex: null, bgTex: null, pmrem: null, resizeObserver: null, disposers: []
     };
     view.scene = scene;
 
@@ -168,13 +231,13 @@ export function unmountMissionHubApp(runtime, windowState) {
 // Scene construction
 // ---------------------------------------------------------------------------
 async function buildScene(scene, stage, setStatus, ui) {
-    let THREE, GLTFLoader, DRACOLoader, RGBELoader, EffectComposer, RenderPass, UnrealBloomPass, OutputPass;
+    // GLTF/Draco loading now lives in core/assetCache.js (parse-once), so the app
+    // only imports what it still owns per-open: the renderer env loader + post FX.
+    let THREE, RGBELoader, EffectComposer, RenderPass, UnrealBloomPass, OutputPass;
     try {
-        [THREE, { GLTFLoader }, { DRACOLoader }, { RGBELoader },
+        [THREE, { RGBELoader },
          { EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
             import(/* @vite-ignore */ CDN),
-            import(/* @vite-ignore */ `${JSM}/loaders/GLTFLoader.js`),
-            import(/* @vite-ignore */ `${JSM}/loaders/DRACOLoader.js`),
             import(/* @vite-ignore */ `${JSM}/loaders/RGBELoader.js`),
             import(/* @vite-ignore */ `${JSM}/postprocessing/EffectComposer.js`),
             import(/* @vite-ignore */ `${JSM}/postprocessing/RenderPass.js`),
@@ -285,21 +348,27 @@ async function buildScene(scene, stage, setStatus, ui) {
     fill.position.set(2.0, 1.4, 1.6);
     sceneGraph.add(fill);
 
-    // ---- Load the GLB scene ----
+    // ---- GLB scene (parse-once cache -> clone) ----
+    // v0.8 (Phase 2 · Task 4): the GLB is parsed ONCE by the AssetCache (warmed at
+    // boot). Here we receive a lightweight CLONE that shares geometry/materials/
+    // textures with every other open — no re-download, no re-parse, no re-decode.
+    // The cached original is freed only when the VM unloads (runtime.dispose).
     setStatus("loading", "Loading scene…");
-    const draco = new DRACOLoader(); draco.setDecoderPath(DRACO_DECODER); scene.draco = draco;
-    const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
+    registerMissionHubAssets();
     let model = null, screenMesh = null;
     try {
-        const gltf = await loadMissionHubGltf(THREE, loader, MODEL_URL);
-        if (scene.disposed) { disposeObject3D(gltf.scene); return; }
-        model = gltf.scene;
+        model = await assetCache.acquireScene("mission_hub");
+        // Close-during-load: drop the clone and bail. The shared cache is untouched
+        // (a clone's shared resources are never deep-disposed) and the clone is GC'd.
+        if (scene.disposed) { model = null; return; }
+        if (!model) throw new Error("AssetCache returned no scene (parse failed or asset unavailable)");
         // Shadow flags are runtime-only; object transforms and visibility remain from the GLB.
         model.traverse((n) => {
             if (!n.isMesh) return;
-            const exterior = typeof n.name === "string" && n.name.indexOf("EXT_") === 0;
-            n.castShadow = !exterior;
-            n.receiveShadow = !exterior;
+            // exterior city + the hidden depth chamber carry no shadow work
+            const noShadow = typeof n.name === "string" && (n.name.indexOf("EXT_") === 0 || n.name.indexOf("PHN_") === 0);
+            n.castShadow = !noShadow;
+            n.receiveShadow = !noShadow;
         });
         sceneGraph.add(model);
         screenMesh = model.getObjectByName("PhoneScreen");
@@ -307,12 +376,13 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (missingPhoneNodes.length) {
             throw new Error(`mission_hub.glb missing required phone nodes: ${missingPhoneNodes.join(", ")}`);
         }
-        debugLog("MissionHub GLB loaded", MODEL_URL);
+        debugLog("MissionHub GLB clone acquired", MODEL_URL);
     } catch (error) {
         if (scene.disposed) return;
         throw new Error(`mission_hub.glb failed to load from ${MODEL_URL}: ${error && error.message ? error.message : error}`);
     }
     scene.model = model;
+    scene.modelShared = true; // a shared AssetCache clone: detach on unmount, never deep-dispose
 
     // ---- Glass screen (100% reflection at start) ----
     screenMesh.updateWorldMatrix(true, true);
@@ -330,14 +400,17 @@ async function buildScene(scene, stage, setStatus, ui) {
     screenMesh.renderOrder = 2;
     scene.glass = glass;
 
-    // ---- Portal: procedural "world inside", aligned to the real screen ----
-    const portal = makePortal(THREE);
-    portal.mesh.quaternion.copy(sQuat);
-    portal.mesh.position.copy(sPos).addScaledVector(sNormal, 0.0004);
-    portal.mesh.renderOrder = 1;
-    sceneGraph.add(portal.mesh);
-    scene.portal = portal;
-    scene.disposers.push(() => { portal.mesh.geometry.dispose(); portal.material.dispose(); });
+    // ---- Phone Depth Chamber (real GLB geometry; hidden until the descent) ----
+    // The PHN_* nodes are the hidden depth chamber beneath the glass. In the room
+    // overview they are INVISIBLE (no glow leak, no pillar, no portal plane). They are
+    // revealed only once the camera starts descending THROUGH the screen.
+    const chamber = [];
+    ["PHN_Chamber", "PHN_Glow", "PHN_Specks"].forEach((n) => {
+        const o = model.getObjectByName ? model.getObjectByName(n) : null;
+        if (o) { o.visible = false; chamber.push(o); }
+    });
+    scene.chamber = chamber;
+    debugLog("MissionHub depth chamber nodes", chamber.map((o) => o.name));
 
     // ---- Camera ----
     const camera = new THREE.PerspectiveCamera(lensToFov(CAM.wideLens), W() / H(), 0.01, 100);
@@ -357,10 +430,14 @@ async function buildScene(scene, stage, setStatus, ui) {
     // ---- Interaction ----
     const wideP = new THREE.Vector3().fromArray(CAM.widePos);
     const wideL = new THREE.Vector3().fromArray(CAM.wideLook);
-    const closeP = new THREE.Vector3().fromArray(CAM.closePos);
-    const closeL = new THREE.Vector3().fromArray(CAM.closeLook);
-    const anim = { phase: "idle", t: 0, p: 0, carded: false,
-                   camStart: new THREE.Vector3(), lookStart: new THREE.Vector3() };
+    // Pre-bake the descent keyframes as Vector3s + FOVs (the single camera path).
+    const path = CAM_PATH.map((k) => ({
+        t: k.t,
+        pos: new THREE.Vector3().fromArray(k.pos),
+        look: new THREE.Vector3().fromArray(k.look),
+        fov: lensToFov(k.lens)
+    }));
+    const anim = { phase: "idle", t: 0, p: 0, carded: false };
 
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
@@ -377,19 +454,20 @@ async function buildScene(scene, stage, setStatus, ui) {
         raycaster.setFromCamera(ndc, camera);
         return raycaster.intersectObjects(targets, true).length > 0;
     };
-    const startReveal = () => {
+    const startDescent = () => {
         if (anim.phase !== "idle") return;
-        anim.phase = "revealing"; anim.t = 0;
-        anim.camStart.copy(camera.position); anim.lookStart.copy(wideL);
+        anim.phase = "descending"; anim.t = 0;
+        // reveal the hidden depth chamber now that the camera is going IN
+        (scene.chamber || []).forEach((o) => { o.visible = true; });
         if (ui.hint) ui.hint.textContent = "";
-        setStatus("revealing", "Looking closer…");
-        debugLog("MissionHub reveal start");
+        setStatus("descending", "Entering the device…");
+        debugLog("MissionHub descent start");
     };
     const onMove = (ev) => {
         if (anim.phase !== "idle") { renderer.domElement.style.cursor = "default"; return; }
         renderer.domElement.style.cursor = overPhone(ev) ? "pointer" : "default";
     };
-    const onDown = (ev) => { if (anim.phase === "idle" && overPhone(ev)) startReveal(); };
+    const onDown = (ev) => { if (anim.phase === "idle" && overPhone(ev)) startDescent(); };
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerdown", onDown);
     scene.disposers.push(() => {
@@ -415,52 +493,58 @@ async function buildScene(scene, stage, setStatus, ui) {
     // ---- Frame loop ----
     const clock = new THREE.Clock();
     const _off = new THREE.Vector3();
+    const _pos = new THREE.Vector3();
     const _look = new THREE.Vector3();
-    const fovWide = lensToFov(CAM.wideLens), fovClose = lensToFov(CAM.closeLens);
+    const fovWide = lensToFov(CAM.wideLens);
+
+    // Sample the keyframe path at progress p (0..1): drives camera pos/look/fov.
+    const samplePath = (p) => {
+        let a = path[0], b = path[path.length - 1];
+        for (let i = 0; i < path.length - 1; i++) {
+            if (p >= path[i].t && p <= path[i + 1].t) { a = path[i]; b = path[i + 1]; break; }
+        }
+        const seg = smoothstep01((p - a.t) / Math.max(1e-5, b.t - a.t)); // ease each segment
+        _pos.lerpVectors(a.pos, b.pos, seg);
+        _look.lerpVectors(a.look, b.look, seg);
+        camera.position.copy(_pos);
+        camera.lookAt(_look);
+        const fov = lerp(a.fov, b.fov, seg);
+        if (Math.abs(camera.fov - fov) > 1e-3) { camera.fov = fov; camera.updateProjectionMatrix(); }
+    };
 
     const tick = (dt, time) => {
-        if (portal) portal.material.uniforms.uTime.value = time;
-
         if (anim.phase === "idle") {
+            // gentle handheld bob over the room overview (desk + poster + phone)
             _off.set(Math.sin(time * 0.16) * 0.05, Math.cos(time * 0.13) * 0.025, Math.sin(time * 0.1) * 0.04);
             camera.position.copy(wideP).add(_off);
             camera.lookAt(wideL);
             if (camera.fov !== fovWide) { camera.fov = fovWide; camera.updateProjectionMatrix(); }
             if (glass) glass.envMapIntensity = 1.8 + Math.sin(time * 1.4) * 0.12;
-            if (portal) portal.material.uniforms.uReveal.value = 0.0;
             return;
         }
-        if (anim.phase === "revealing") {
-            anim.t += dt / REVEAL_DURATION;
+        if (anim.phase === "descending") {
+            anim.t += dt / DESCENT_DURATION;
             const raw = clamp01(anim.t), p = smootherstep(raw); anim.p = p;
-            camera.position.lerpVectors(anim.camStart, closeP, p);
-            _look.lerpVectors(anim.lookStart, closeL, p);
-            camera.lookAt(_look);
-            camera.fov = lerp(fovWide, fovClose, p); camera.updateProjectionMatrix();
+            samplePath(p);
+            // the glass fades as the camera passes DOWN through the screen plane
+            // (~p 0.50..0.64) so it sees INTO the dark chamber, not a reflection.
             if (glass) {
-                glass.envMapIntensity = lerp(1.8, 0.10, p);
-                glass.opacity = lerp(1.0, 0.18, smoothstep01(p));
-                glass.roughness = lerp(0.045, 0.16, p);
+                const through = smoothstepRange(0.50, 0.64, p);
+                glass.opacity = lerp(1.0, 0.0, through);
+                glass.envMapIntensity = lerp(1.8, 0.05, through);
+                glass.roughness = lerp(0.045, 0.18, through);
             }
-            if (portal) {
-                // depth ramps in from p=0.2; parallax widens as the shaft opens so the
-                // layers visibly slide past each other (real 3D depth, not a flat fade).
-                portal.material.uniforms.uReveal.value = smoothstepRange(0.2, 1.0, p);
-                portal.material.uniforms.uParallax.value.set(Math.sin(time * 0.12) * 0.05, lerp(0.0, 0.14, p));
-            }
-            setStatus("revealing", revealLabel(p));
-            if (raw >= 1) anim.phase = "complete";
+            setStatus("descending", descentLabel(p));
+            if (raw >= 1) anim.phase = "arrived";
             return;
         }
-        if (anim.phase === "complete") {
-            camera.position.copy(closeP); camera.lookAt(closeL);
-            if (portal) portal.material.uniforms.uParallax.value.set(Math.sin(time * 0.08) * 0.03, 0.12);
+        if (anim.phase === "arrived") {
+            samplePath(1); // hold at Phone_Depth_Target
             if (!anim.carded) {
                 anim.carded = true;
-                if (ui.card) { ui.card.classList.add("is-visible"); ui.card.setAttribute("aria-hidden", "false"); }
-                setStatus("complete", "Bucky world · initializing");
-                debugLog("MissionHub intro complete");
-                MissionWorldEntry.onPortalOpen(scene);   // v0.7 (V3): Phase 7 entry seam (inert)
+                setStatus("arrived", "Bucky World · loading");
+                debugLog("MissionHub arrived at Phone_Depth_Target");
+                MissionWorldEntry.enterBuckyWorld(scene, { card: ui.card }); // Phase 4 handoff
             }
         }
     };
@@ -473,160 +557,102 @@ async function buildScene(scene, stage, setStatus, ui) {
     setStatus("armed", "Click the phone to look closer…");
     debugLog("MissionHub cinematic scene running");
 
-    // v0.7 (V3) — Phase 5/7 seam: begin background preload of the (future) Mission
-    // World now, while the user still looks at the room, so the click→enter hand-off
-    // is instant. Inert until a world module exists. See MissionWorldEntry below.
+    // v0.9 (Phase 4): begin background preload of Bucky World now, while the user
+    // still looks at the room, so the descent → handoff has no fetch/parse hitch.
     MissionWorldEntry.schedulePreload(scene);
 }
 
 /**
- * MissionWorldEntry — Phase 5 (preload) + Phase 7 (entry) ARCHITECTURE.
- * Design-only / INERT: there is deliberately no Mission World yet (the brief says
- * build the architecture, not the world). This is the single clean extension point
- * where the future world plugs in, so the stable room/runtime is never rewritten.
+ * MissionWorldEntry — Phase 4 PRELOAD + HANDOFF.
  *
- *     MissionHubRoom ──(click phone)──► Phone Portal ──(portal fully open)──► MissionWorld
+ *     MissionHubRoom ──(click phone)──► descend through glass ──► Phone Depth Chamber
+ *        ──(arrive Phone_Depth_Target)──► Bucky World
  *
- *   1. PRELOAD (schedulePreload / preloadMissionWorld)
- *        While the room is idle, fetch + GPU-upload the world's GLB/textures/shaders
- *        in the background (requestIdleCallback) → promise on `scene.worldPreload`.
- *        The room scene stays mounted + lit throughout.
- *   2. ENTER (onPortalOpen) — fired once at full reveal:
- *        (a) prepare room unload   — stop room-only work; keep it rendered one more frame
- *        (b) activate MissionWorld — swap in the already-preloaded world scene
- *        (c) camera through portal  — continue the dolly THROUGH the screen plane so it
- *            feels like falling in, not a cut.
+ *   1. PRELOAD (schedulePreload / preloadMissionWorld) — while the room is idle, warm
+ *      buckyworld.glb into the shared AssetCache (parse once) so the handoff is instant.
+ *      Promise stored on `scene.worldPreload`. The room stays mounted + lit throughout.
+ *   2. HANDOFF (enterBuckyWorld) — fired once when the camera reaches Phone_Depth_Target:
+ *      clone the (already-parsed) world from the cache and drop it into the loading area
+ *      to PROVE the transition works. No gameplay, no interactions — only the handoff.
  *
- * Hard constraints when wired for real: must NOT touch the EventBus /
- * mount-update-unmount / dispose contract; unmount must abort an in-flight preload
- * (AbortController) and dispose world assets; world assets resolve via import.meta.url
- * (GitHub-Pages-safe), exactly like the room GLB.
+ * Contract preserved: this never touches the EventBus / mount-update-unmount / dispose
+ * paths; the world is a shared cache clone (detached on unmount, never deep-disposed);
+ * assets resolve via import.meta.url (GitHub-Pages-safe), exactly like the room GLB.
  */
 const MissionWorldEntry = {
-    // Phase 5 — background preload (idempotent; inert until a world exists).
+    // Phase 4 — background preload of Bucky World (idempotent; real, not inert).
     schedulePreload(scene) {
         if (!scene || scene.worldPreload !== undefined) return;
-        scene.worldPreload = null;            // becomes a Promise once a world module exists
+        scene.worldPreload = null;            // becomes the cache promise below
         try {
             const idle = (cb) => (typeof window !== "undefined" && window.requestIdleCallback
                 ? window.requestIdleCallback(cb, { timeout: 1500 })
                 : setTimeout(cb, 200));
             idle(() => {
                 if (scene.disposed || scene.worldPreload) return;
-                // scene.worldPreload = preloadMissionWorld(scene.THREE);   // <- wire here
+                scene.worldPreload = preloadMissionWorld();  // warms buckyworld into the AssetCache
             });
         } catch (_e) { /* never block the room on preload */ }
     },
-    // Phase 7 — called once when the portal is fully open. Inert handoff seam.
-    onPortalOpen(scene) {
+    // Phase 4 — fired once at Phone_Depth_Target. Clones the preloaded world + adds it.
+    enterBuckyWorld(scene, ui) {
         if (!scene || scene.worldEntered) return;
         scene.worldEntered = true;            // fire-once guard
-        // (a) prepare room unload   — e.g. scene.roomFrozen = true;
-        // (b) activate mission world — await scene.worldPreload, add the world scene
-        // (c) camera through portal  — extend the dolly past CAM.screen along the screen normal
-        debugLog("MissionHub portal fully open — MissionWorld entry seam (inert)");
+        const THREE = scene.THREE;
+        Promise.resolve(scene.worldPreload || preloadMissionWorld())
+            .then(() => assetCache.acquireScene("buckyworld"))
+            .then((world) => {
+                if (!world || scene.disposed || !scene.sceneGraph) {
+                    debugLog("MissionHub: Bucky World unavailable for handoff");
+                    return;
+                }
+                // place + scale the world into the loading area at Phone_Depth_Target
+                const dt = new THREE.Vector3().fromArray(CAM.depthTarget);
+                const box = new THREE.Box3().setFromObject(world);
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z) || 1;
+                world.scale.setScalar(0.26 / maxDim);        // fit inside the chamber bottom
+                world.position.set(dt.x, dt.y - 0.13, dt.z);  // centered just below the camera
+                world.traverse((n) => { if (n.isMesh) { n.castShadow = false; n.receiveShadow = false; } });
+                scene.sceneGraph.add(world);
+                scene.world = world;                          // shared clone: detached (not freed) on unmount
+                // a soft fill so the world reads inside the dark chamber
+                const wl = new THREE.PointLight(0x9fd8ff, 6.0, 2.2, 2.0);
+                wl.position.set(dt.x, dt.y + 0.16, dt.z);
+                scene.sceneGraph.add(wl);
+                scene.disposers.push(() => { try { scene.sceneGraph && scene.sceneGraph.remove(wl); } catch (_e) {} });
+                if (ui && ui.card) { ui.card.classList.add("is-visible"); ui.card.setAttribute("aria-hidden", "false"); }
+                debugLog("MissionHub → Bucky World handoff complete (world clone added at Depth_Target)");
+            })
+            .catch((e) => logError("MissionHub Bucky World handoff", e));
     }
 };
 
 /**
- * preloadMissionWorld(THREE) — the named hook the future world fills in (Phase 5).
- * INERT today (returns null). When the Mission World exists this resolves to a
- * ready-to-mount handle (GLB parsed, textures GPU-uploaded, shaders compiled) that
- * MissionWorldEntry.onPortalOpen swaps in with no fetch + no hitch.
+ * preloadMissionWorld() — the named Phase 4 hook for Bucky World. Delegates to the
+ * shared AssetCache (parse-once). The GLB ships today, so this returns a real cache
+ * promise resolving to a ready-to-clone world; enterBuckyWorld clones it with no
+ * fetch + no re-parse. Exported so the boot/runtime can warm it on demand.
  */
-export function preloadMissionWorld(/* THREE */) {
-    // e.g. return loadAndUploadWorld(THREE, new URL("../assets/models/mission_world.glb", import.meta.url).href);
-    return null;
+export function preloadMissionWorld() {
+    registerMissionHubAssets();
+    return assetCache.preloadAsset("buckyworld");
 }
 
 // ---------------------------------------------------------------------------
-// Portal — procedural "world inside the phone"
+// (v0.9 · Phase 4) The procedural GLSL "portal" was REMOVED. The phone is no
+// longer a glowing plane on the screen — it is a real depth chamber (PHN_* GLB
+// geometry) the camera physically descends INTO, ending at Phone_Depth_Target
+// where Bucky World loads. No portal plane, no light beam, no pillar, no column.
 // ---------------------------------------------------------------------------
-const PORTAL_VERT = `
-varying vec2 vUv;
-void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }
-`;
-// v0.7 (V3) — PORTAL WITH DEPTH. The phone is no longer a flat screen showing a
-// picture: it is the mouth of a shaft. We stack several dusk-city layers that
-// RECEDE and parallax-shift as the portal opens, then add a warm vanishing-core
-// glowing from deep inside and a tunnel vignette so the throat reads as an
-// OPENING the camera is about to fall into — not a fullscreen image, not a fade.
-const PORTAL_FRAG = `
-precision highp float;
-varying vec2 vUv;
-uniform float uTime; uniform float uReveal; uniform vec2 uParallax;
-float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
-float noise(vec2 p){ vec2 i=floor(p),f=fract(p);
-  float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
-  vec2 u=f*f*(3.0-2.0*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }
-float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<5;i++){v+=a*noise(p);p*=2.0;a*=0.5;} return v; }
-float skyline(float x){ float h=0.08;
-  h+=0.11*exp(-pow((x-0.28)*7.0,2.0)); h+=0.17*exp(-pow((x-0.50)*8.5,2.0));
-  h+=0.09*exp(-pow((x-0.69)*9.0,2.0)); h+=0.05*exp(-pow((x-0.83)*12.0,2.0)); return h; }
-// one dusk-city slab sampled at a given uv/brightness → stack several for depth
-vec3 cityLayer(vec2 uv, float horizon, float bright){
-  vec3 deep=vec3(0.02,0.045,0.09), halo=vec3(0.20,0.55,0.85), core=vec3(1.0,0.74,0.45);
-  float above=clamp((uv.y-horizon)/(1.0-horizon),0.0,1.0);
-  vec3 col=mix(halo*0.6,deep,above);
-  col+=core*exp(-pow((uv.y-horizon)*5.5,2.0))*0.9;
-  col+=halo*exp(-pow((uv.y-horizon)*2.2,2.0))*0.5;
-  float h1=fbm(vec2(uv.x*3.0,uv.y*3.0)+vec2(uTime*0.02,-uTime*0.015));
-  col+=halo*h1*0.16*above;
-  float star=pow(hash(floor(uv*vec2(140.0,90.0))),40.0);
-  col+=vec3(0.8,0.9,1.0)*star*(0.6+0.4*sin(uTime*2.0+hash(floor(uv*60.0))*30.0))*above*0.7;
-  float sk=horizon+skyline(uv.x);
-  float structure=smoothstep(0.012,0.0,sk-uv.y);
-  col=mix(col,deep*0.32,structure*0.92);
-  col+=core*exp(-pow((uv.y-sk)*60.0,2.0))*0.5*structure;
-  col+=vec3(1.0,0.8,0.55)*step(0.86,hash(floor(vec2(uv.x*90.0,uv.y*120.0))))*structure*0.12;
-  return col*bright;
-}
-void main(){
-  float open=smoothstep(0.0,1.0,uReveal);
-  vec2 cc=vUv-0.5; float horizon=0.46;
-  // depth shaft — 3 layers; farther layers recede (smaller) + parallax-shift less
-  vec3 col=cityLayer(cc/mix(1.15,1.9,open)+0.5+uParallax*0.35, horizon, 0.7);
-  col=mix(col, cityLayer(cc/mix(1.0,1.35,open)+0.5+uParallax*0.7, horizon, 1.0), 0.75);
-  vec2 uv2=cc/mix(0.92,1.05,open)+0.5+uParallax*1.25;
-  float sp=pow(hash(floor(uv2*vec2(60.0,90.0)+uTime*0.05)),30.0);
-  col+=vec3(1.0,0.85,0.6)*sp*0.6*open;
-  // vanishing core deep in the shaft — GROWS as the portal opens
-  float r=length(cc*vec2(1.0,0.46));
-  float coreGlow=exp(-pow(r*(5.0-open*2.6),2.0));
-  col+=vec3(1.0,0.83,0.55)*coreGlow*(0.35+open*1.7);
-  // tunnel vignette + a glowing throat rim so it reads as an OPENING
-  float tunnel=smoothstep(0.62,0.08,r);
-  col*=mix(0.35,1.0,tunnel);
-  col+=vec3(0.5,0.7,1.0)*smoothstep(0.40,0.46,r)*smoothstep(0.52,0.46,r)*0.5*open;
-  col*=mix(0.6,1.0,smoothstep(0.0,0.4,vUv.y));
-  float edge=smoothstep(0.0,0.05,vUv.x)*smoothstep(1.0,0.95,vUv.x)*smoothstep(0.0,0.05,vUv.y)*smoothstep(1.0,0.95,vUv.y);
-  float bright=clamp(max(col.r,max(col.g,col.b)),0.0,1.0);
-  gl_FragColor=vec4(col*uReveal, uReveal*edge*clamp(0.4+bright,0.0,1.0));
-}
-`;
-function makePortal(THREE) {
-    const geo = new THREE.PlaneGeometry(0.066, 0.142, 1, 1);
-    const material = new THREE.ShaderMaterial({
-        uniforms: { uTime: { value: 0 }, uReveal: { value: 0 }, uParallax: { value: new THREE.Vector2(0, 0) } },
-        vertexShader: PORTAL_VERT, fragmentShader: PORTAL_FRAG,
-        transparent: true, depthWrite: false, depthTest: true, toneMapped: false, blending: THREE.NormalBlending
-    });
-    return { mesh: new THREE.Mesh(geo, material), material };
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-async function loadMissionHubGltf(THREE, loader, url) {
-    const fileLoader = new THREE.FileLoader(loader.manager);
-    fileLoader.setResponseType("arraybuffer");
-    const raw = await new Promise((res, rej) => fileLoader.load(url, res, undefined, rej));
-    const { buffer, fixes } = patchMissingTextureSources(raw);
-    if (fixes.length) debugLog("MissionHub ignored missing GLB texture references", fixes);
-    const path = url.slice(0, url.lastIndexOf("/") + 1);
-    return await new Promise((res, rej) => loader.parse(buffer, path, res, rej));
-}
-
+// GLB byte-patcher: the Mission Hub Blender export carries a known orphan image
+// (Map #97.001) and can reference a missing texture source. We strip those
+// references from the GLB JSON chunk ONCE, before the AssetCache parse, so the
+// cached scene + every clone is clean. Passed to assetCache as `transformBuffer`.
 function patchMissingTextureSources(arrayBuffer) {
     const input = arrayBuffer instanceof ArrayBuffer ? new Uint8Array(arrayBuffer) : new Uint8Array(arrayBuffer.buffer);
     const view = new DataView(input.buffer, input.byteOffset, input.byteLength);
@@ -732,11 +758,13 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 function smoothstep01(x) { x = clamp01(x); return x * x * (3 - 2 * x); }
 function smootherstep(x) { x = clamp01(x); return x * x * x * (x * (x * 6 - 15) + 10); }
 function smoothstepRange(a, b, x) { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); }
-function revealLabel(p) {
-    if (p < 0.25) return "reflection 80% · world 20%";
-    if (p < 0.50) return "reflection 50% · world 50%";
-    if (p < 0.78) return "reflection 20% · world 80%";
-    return "reflection 0% · world 100%";
+// Status line during the descent — names the Blender empties as they are passed.
+function descentLabel(p) {
+    if (p < 0.30) return "approaching the phone";
+    if (p < 0.52) return "aligning above the screen";
+    if (p < 0.64) return "Phone_Entry · through the glass";
+    if (p < 0.86) return "Phone_Interior · descending";
+    return "arriving at Phone_Depth_Target";
 }
 
 // ---------------------------------------------------------------------------
@@ -750,11 +778,23 @@ function disposeScene(scene) {
     scene.disposers = [];
     if (scene.resizeObserver) { try { scene.resizeObserver.disconnect(); } catch (_) {} scene.resizeObserver = null; }
     if (scene.composer) { try { scene.composer.dispose && scene.composer.dispose(); } catch (_) {} scene.composer = null; }
-    if (scene.sceneGraph) { try { disposeObject3D(scene.sceneGraph); } catch (e) { logError("MissionHub disposeGraph", e); } scene.sceneGraph = null; }
+
+    // v0.8 (Phase 2 · Task 4): the room model is a SHARED AssetCache clone. DETACH
+    // it but NEVER free its geometry/materials/textures here — they belong to the
+    // cache and are reused by the next open (freed only on runtime.dispose). Only
+    // the per-instance GPU resources this mount created are released: the glass
+    // material (below), the portal (via disposers above), and the env/PMREM (below).
+    if (scene.sceneGraph && scene.model) { try { scene.sceneGraph.remove(scene.model); } catch (_) {} }
+    // Bucky World (if the handoff fired) is ALSO a shared AssetCache clone — detach it,
+    // never deep-dispose it; its resources belong to the cache (freed on VM unload).
+    if (scene.sceneGraph && scene.world) { try { scene.sceneGraph.remove(scene.world); } catch (_) {} }
+    scene.world = null; scene.chamber = null;
+    if (scene.glass) { try { scene.glass.dispose(); } catch (_) {} scene.glass = null; }
+    scene.sceneGraph = null; // lights carry no GPU resources; the clones were detached above
+
     if (scene.envTex) { try { scene.envTex.dispose(); } catch (_) {} scene.envTex = null; }
     if (scene.bgTex) { try { scene.bgTex.dispose(); } catch (_) {} scene.bgTex = null; }   // v0.7 (V3): dusk-sky background texture
     if (scene.pmrem) { try { scene.pmrem.dispose(); } catch (_) {} scene.pmrem = null; }
-    if (scene.draco) { try { scene.draco.dispose(); } catch (_) {} scene.draco = null; }
     if (scene.renderer) {
         try {
             const canvas = scene.renderer.domElement;
@@ -764,19 +804,7 @@ function disposeScene(scene) {
         } catch (e) { logError("MissionHub disposeRenderer", e); }
         scene.renderer = null;
     }
-    scene.model = null; scene.glass = null; scene.portal = null; scene.camera = null; scene.THREE = null;
-}
-function disposeObject3D(root) {
-    if (!root || typeof root.traverse !== "function") return;
-    root.traverse((node) => {
-        if (node.geometry && typeof node.geometry.dispose === "function") node.geometry.dispose();
-        const material = node.material; if (!material) return;
-        (Array.isArray(material) ? material : [material]).forEach((mat) => {
-            if (!mat) return;
-            Object.keys(mat).forEach((k) => { const v = mat[k]; if (v && v.isTexture && typeof v.dispose === "function") v.dispose(); });
-            if (typeof mat.dispose === "function") mat.dispose();
-        });
-    });
+    scene.model = null; scene.modelShared = false; scene.camera = null; scene.THREE = null;
 }
 
 // ---------------------------------------------------------------------------
