@@ -81,7 +81,11 @@ const CAM = {
     screen:      [-0.12, 0.7817, -1.48], // PhoneScreen glass plane
     entry:       [-0.12, 0.8517, -1.48], // Phone_Entry  — just above the glass
     interior:    [-0.12, 0.2317, -1.48], // Phone_Interior — mid depth chamber
-    depthTarget: [-0.12, -0.3583, -1.48] // Phone_Depth_Target — the Bucky World loading area
+    depthTarget: [-0.12, -0.3583, -1.48], // Phone_Depth_Target — the Bucky World loading area
+    // v0.10 — Bucky World is a MINIATURE that lives inside the phone and GROWS during the
+    // descent. worldCenter sits deep on the descent axis; the world scales from
+    // worldMiniScale (a speck seen through the glass) to worldFullScale (camera ends INSIDE).
+    worldCenter: [-0.12, -0.45, -1.48], worldMiniScale: 0.05, worldFullScale: 1.6
 };
 // Descent keyframes (t 0..1). pos = camera position, look = aim point, lens = mm.
 const CAM_PATH = [
@@ -94,14 +98,17 @@ const CAM_PATH = [
 
 // v0.7 (V3): tuned for the DUSK env + the building now visible through the window.
 // Key light is now WARM (golden sunset rake from the window) instead of cool.
+// v0.10 — toned WAY down so nothing blows out white. The desk lamp is now a warm
+// ACCENT (was the de-facto key); bloom is gentle so the lamp bulb + glass highlights
+// don't bloom into a white blob; exposure is neutral. The phone must read as dark glass.
 const LOOK = {
-    exposure: 1.10,            // ACES tone-mapping exposure
-    bloomStrength: 0.42,       // softer, avoids the blown "orb" bloom on the lamp
+    exposure: 1.0,             // neutral ACES exposure
+    bloomStrength: 0.14,       // gentle — no blown "orb" on the lamp / phone
     bloomRadius: 0.5,
-    bloomThreshold: 0.9,       // only the brightest highlights bloom
-    envIntensity: 1.0,         // dusk HDRI: ambient fill + glass/metal reflections
-    keyIntensity: 3.2,         // WARM window key (PRIMARY light) — the setting sun
-    lampIntensity: 9.0,        // warm desk-lamp ACCENT, not the main source
+    bloomThreshold: 0.95,      // only the very brightest highlights bloom
+    envIntensity: 0.9,         // dusk HDRI ambient + reflections
+    keyIntensity: 2.6,         // warm window key
+    lampIntensity: 2.2,        // warm desk-lamp ACCENT only (was 9.0 — it was burning out the phone)
     fillIntensity: 0.5,        // cool sky-bounce fill on the camera side
     hemiIntensity: 0.40        // gentle ambient floor so nothing reads pure black
 };
@@ -202,7 +209,8 @@ export function mountMissionHubApp(runtime, windowState, element) {
 
     const scene = {
         disposed: false, THREE: null, renderer: null, composer: null,
-        sceneGraph: null, camera: null, model: null, modelShared: false, glass: null, chamber: null, world: null,
+        sceneGraph: null, camera: null, model: null, modelShared: false, glass: null,
+        chamber: null, chamberWalls: null, world: null, worldLight: null, worldBaseDim: 1,
         envTex: null, bgTex: null, pmrem: null, resizeObserver: null, disposers: []
     };
     view.scene = scene;
@@ -249,6 +257,9 @@ async function buildScene(scene, stage, setStatus, ui) {
     }
     if (scene.disposed) return;
     scene.THREE = THREE;
+    // v0.10 — warm Bucky World into the AssetCache NOW (in parallel with the room GLB), so
+    // the miniature clone is ready when we mount it below. NO fetch happens during the descent.
+    try { preloadMissionWorld(); } catch (_e) { /* never block the room on preload */ }
 
     // ---- Renderer ----
     const W = () => Math.max(1, stage.clientWidth);
@@ -384,33 +395,73 @@ async function buildScene(scene, stage, setStatus, ui) {
     scene.model = model;
     scene.modelShared = true; // a shared AssetCache clone: detach on unmount, never deep-dispose
 
-    // ---- Glass screen (100% reflection at start) ----
+    // ---- Glass screen: DARK glass you can see THROUGH to the world inside ----
+    // v0.10: not a mirror anymore. Low reflectivity + low envMap so it never burns out
+    // white, and semi-transparent (opacity ~0.5) so the miniature Bucky World deep in the
+    // phone is subtly visible behind the glass. depthWrite:false + a high renderOrder so it
+    // composites OVER the world/chamber behind it. The descent fades opacity → 0.
     screenMesh.updateWorldMatrix(true, true);
-    const sPos = new THREE.Vector3(); screenMesh.getWorldPosition(sPos);
-    const sQuat = new THREE.Quaternion(); screenMesh.getWorldQuaternion(sQuat);
-    const sNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(sQuat).normalize(); // screen top normal
-
     const glass = new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color(0x04060a), metalness: 0.0, roughness: 0.045, ior: 1.5,
-        clearcoat: 1.0, clearcoatRoughness: 0.04, reflectivity: 0.9,
-        envMap: scene.envTex || null, envMapIntensity: 1.8,
-        transparent: true, opacity: 1.0, depthWrite: false
+        color: new THREE.Color(0x05070c), metalness: 0.0, roughness: 0.16, ior: 1.45,
+        clearcoat: 0.35, clearcoatRoughness: 0.25, reflectivity: 0.18,
+        envMap: scene.envTex || null, envMapIntensity: 0.32,
+        transparent: true, opacity: 0.5, depthWrite: false
     });
     applyMaterial(screenMesh, glass);
-    screenMesh.renderOrder = 2;
+    screenMesh.renderOrder = 3;
     scene.glass = glass;
 
-    // ---- Phone Depth Chamber (real GLB geometry; hidden until the descent) ----
-    // The PHN_* nodes are the hidden depth chamber beneath the glass. In the room
-    // overview they are INVISIBLE (no glow leak, no pillar, no portal plane). They are
-    // revealed only once the camera starts descending THROUGH the screen.
-    const chamber = [];
-    ["PHN_Chamber", "PHN_Glow", "PHN_Specks"].forEach((n) => {
+    // ---- Phone Depth Chamber: a dark shaft that is INVISIBLE from outside ----
+    // v0.10 fix for the "black plane under the desk". The PHN_Chamber walls have
+    // INWARD-facing normals (measured in Blender: face·(face−centroid) ≈ −1), so rendering
+    // them SINGLE-SIDED as THREE.FrontSide culls them from OUTSIDE the phone (their normals
+    // point away from an external camera → back faces → culled → nothing under the desk),
+    // while from INSIDE the shaft they are front-facing → the camera still sees the dark
+    // tube walls as it descends. (The previous GLB exported them doubleSided, which is what
+    // made the black box appear.) Glow + specks stay hidden until the descent.
+    const chamberWalls = model.getObjectByName ? model.getObjectByName("PHN_Chamber") : null;
+    if (chamberWalls) {
+        chamberWalls.visible = false; // shown only while the camera is INSIDE the shaft (tick)
+        chamberWalls.traverse((n) => {
+            if (n.isMesh && n.material) {
+                (Array.isArray(n.material) ? n.material : [n.material]).forEach((m) => { if (m) m.side = THREE.FrontSide; });
+                n.renderOrder = 1;
+            }
+        });
+    }
+    scene.chamberWalls = chamberWalls;
+    const chamberFx = []; // PHN_Glow + PHN_Specks — faint depth cues, revealed on descent only
+    ["PHN_Glow", "PHN_Specks"].forEach((n) => {
         const o = model.getObjectByName ? model.getObjectByName(n) : null;
-        if (o) { o.visible = false; chamber.push(o); }
+        if (o) { o.visible = false; o.traverse((c) => { c.renderOrder = 1; }); chamberFx.push(o); }
     });
-    scene.chamber = chamber;
-    debugLog("MissionHub depth chamber nodes", chamber.map((o) => o.name));
+    scene.chamber = chamberFx;
+
+    // ---- Bucky World: a MINIATURE already inside the phone (preloaded; grows on descent) ----
+    // Cloned ONCE from the AssetCache here (no fetch/parse during the descent — only the
+    // existing clone scales up). It sits deep on the descent axis, tiny, VISIBLE through the
+    // dark glass from the start; the tick grows it until the camera is INSIDE it.
+    scene.world = null; scene.worldLight = null; scene.worldBaseDim = 1;
+    try {
+        registerMissionHubAssets();
+        const world = await assetCache.acquireScene("buckyworld");
+        if (world && !scene.disposed) {
+            const wsize = new THREE.Box3().setFromObject(world).getSize(new THREE.Vector3());
+            scene.worldBaseDim = Math.max(wsize.x, wsize.y, wsize.z) || 1;
+            world.traverse((n) => { if (n.isMesh) { n.castShadow = false; n.receiveShadow = false; n.renderOrder = 0; } });
+            world.position.fromArray(CAM.worldCenter);
+            world.scale.setScalar(CAM.worldMiniScale / scene.worldBaseDim);
+            world.visible = true;
+            sceneGraph.add(world);
+            scene.world = world;
+            const wl = new THREE.PointLight(0x9fd8ff, 3.0, 2.6, 2.0); // soft fill so the little world reads
+            wl.position.set(CAM.worldCenter[0], CAM.worldCenter[1] + 0.18, CAM.worldCenter[2]);
+            sceneGraph.add(wl); scene.worldLight = wl;
+            scene.disposers.push(() => { try { sceneGraph.remove(wl); } catch (_e) {} });
+            debugLog("MissionHub Bucky World miniature mounted", CAM.worldCenter);
+        }
+    } catch (e) { logError("MissionHub mount Bucky World", e); }
+    if (scene.disposed) return;
 
     // ---- Camera ----
     const camera = new THREE.PerspectiveCamera(lensToFov(CAM.wideLens), W() / H(), 0.01, 100);
@@ -457,8 +508,8 @@ async function buildScene(scene, stage, setStatus, ui) {
     const startDescent = () => {
         if (anim.phase !== "idle") return;
         anim.phase = "descending"; anim.t = 0;
-        // reveal the hidden depth chamber now that the camera is going IN
-        (scene.chamber || []).forEach((o) => { o.visible = true; });
+        // (chamber walls are already drawn but culled from outside; the faint glow/specks
+        //  are revealed mid-descent by the tick, once the camera is looking down the shaft)
         if (ui.hint) ui.hint.textContent = "";
         setStatus("descending", "Entering the device…");
         debugLog("MissionHub descent start");
@@ -512,6 +563,15 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (Math.abs(camera.fov - fov) > 1e-3) { camera.fov = fov; camera.updateProjectionMatrix(); }
     };
 
+    // Grow the miniature Bucky World from a speck to full-size as the camera dives in.
+    const growWorld = (p, time) => {
+        if (!scene.world) return;
+        const g = p * p; // accelerating ("diving into a growing universe")
+        scene.world.scale.setScalar(lerp(CAM.worldMiniScale, CAM.worldFullScale, g) / scene.worldBaseDim);
+        scene.world.rotation.y = time * 0.15;
+        if (scene.worldLight) scene.worldLight.intensity = lerp(3.0, 10.0, p);
+    };
+
     const tick = (dt, time) => {
         if (anim.phase === "idle") {
             // gentle handheld bob over the room overview (desk + poster + phone)
@@ -519,32 +579,43 @@ async function buildScene(scene, stage, setStatus, ui) {
             camera.position.copy(wideP).add(_off);
             camera.lookAt(wideL);
             if (camera.fov !== fovWide) { camera.fov = fovWide; camera.updateProjectionMatrix(); }
-            if (glass) glass.envMapIntensity = 1.8 + Math.sin(time * 1.4) * 0.12;
+            if (glass) glass.envMapIntensity = 0.32 + Math.sin(time * 1.2) * 0.04;
+            if (scene.world) scene.world.rotation.y = time * 0.15; // the little world turns deep in the glass
             return;
         }
         if (anim.phase === "descending") {
             anim.t += dt / DESCENT_DURATION;
             const raw = clamp01(anim.t), p = smootherstep(raw); anim.p = p;
             samplePath(p);
-            // the glass fades as the camera passes DOWN through the screen plane
-            // (~p 0.50..0.64) so it sees INTO the dark chamber, not a reflection.
+            // the glass fades as the camera passes DOWN through the screen plane so it goes
+            // INTO the device (no white flash) — the world behind is already there.
             if (glass) {
-                const through = smoothstepRange(0.50, 0.64, p);
-                glass.opacity = lerp(1.0, 0.0, through);
-                glass.envMapIntensity = lerp(1.8, 0.05, through);
-                glass.roughness = lerp(0.045, 0.18, through);
+                const through = smoothstepRange(0.46, 0.62, p);
+                glass.opacity = lerp(0.5, 0.0, through);
+                glass.envMapIntensity = lerp(0.32, 0.0, through);
             }
+            growWorld(p, time);
+            // The shaft walls + depth cues (glow/specks) are drawn ONLY while the camera is
+            // INSIDE the tube — after it passes the glass (~p 0.48) and before the world
+            // fills the view (~p 0.84). Outside that window they are hidden, so nothing is
+            // ever visible from external angles (the "black plane" can't reappear).
+            const inside = p > 0.48 && p < 0.84;
+            if (scene.chamberWalls) scene.chamberWalls.visible = inside;
+            (scene.chamber || []).forEach((o) => { o.visible = inside; });
             setStatus("descending", descentLabel(p));
             if (raw >= 1) anim.phase = "arrived";
             return;
         }
         if (anim.phase === "arrived") {
-            samplePath(1); // hold at Phone_Depth_Target
+            samplePath(1); // hold inside Bucky World
+            growWorld(1, time);
+            if (scene.chamberWalls) scene.chamberWalls.visible = false;
+            (scene.chamber || []).forEach((o) => { o.visible = false; });
             if (!anim.carded) {
                 anim.carded = true;
-                setStatus("arrived", "Bucky World · loading");
-                debugLog("MissionHub arrived at Phone_Depth_Target");
-                MissionWorldEntry.enterBuckyWorld(scene, { card: ui.card }); // Phase 4 handoff
+                if (ui.card) { ui.card.classList.add("is-visible"); ui.card.setAttribute("aria-hidden", "false"); }
+                setStatus("arrived", "Bucky World");
+                debugLog("MissionHub inside Bucky World (camera within the grown world)");
             }
         }
     };
@@ -556,83 +627,18 @@ async function buildScene(scene, stage, setStatus, ui) {
     });
     setStatus("armed", "Click the phone to look closer…");
     debugLog("MissionHub cinematic scene running");
-
-    // v0.9 (Phase 4): begin background preload of Bucky World now, while the user
-    // still looks at the room, so the descent → handoff has no fetch/parse hitch.
-    MissionWorldEntry.schedulePreload(scene);
 }
 
-/**
- * MissionWorldEntry — Phase 4 PRELOAD + HANDOFF.
- *
- *     MissionHubRoom ──(click phone)──► descend through glass ──► Phone Depth Chamber
- *        ──(arrive Phone_Depth_Target)──► Bucky World
- *
- *   1. PRELOAD (schedulePreload / preloadMissionWorld) — while the room is idle, warm
- *      buckyworld.glb into the shared AssetCache (parse once) so the handoff is instant.
- *      Promise stored on `scene.worldPreload`. The room stays mounted + lit throughout.
- *   2. HANDOFF (enterBuckyWorld) — fired once when the camera reaches Phone_Depth_Target:
- *      clone the (already-parsed) world from the cache and drop it into the loading area
- *      to PROVE the transition works. No gameplay, no interactions — only the handoff.
- *
- * Contract preserved: this never touches the EventBus / mount-update-unmount / dispose
- * paths; the world is a shared cache clone (detached on unmount, never deep-disposed);
- * assets resolve via import.meta.url (GitHub-Pages-safe), exactly like the room GLB.
- */
-const MissionWorldEntry = {
-    // Phase 4 — background preload of Bucky World (idempotent; real, not inert).
-    schedulePreload(scene) {
-        if (!scene || scene.worldPreload !== undefined) return;
-        scene.worldPreload = null;            // becomes the cache promise below
-        try {
-            const idle = (cb) => (typeof window !== "undefined" && window.requestIdleCallback
-                ? window.requestIdleCallback(cb, { timeout: 1500 })
-                : setTimeout(cb, 200));
-            idle(() => {
-                if (scene.disposed || scene.worldPreload) return;
-                scene.worldPreload = preloadMissionWorld();  // warms buckyworld into the AssetCache
-            });
-        } catch (_e) { /* never block the room on preload */ }
-    },
-    // Phase 4 — fired once at Phone_Depth_Target. Clones the preloaded world + adds it.
-    enterBuckyWorld(scene, ui) {
-        if (!scene || scene.worldEntered) return;
-        scene.worldEntered = true;            // fire-once guard
-        const THREE = scene.THREE;
-        Promise.resolve(scene.worldPreload || preloadMissionWorld())
-            .then(() => assetCache.acquireScene("buckyworld"))
-            .then((world) => {
-                if (!world || scene.disposed || !scene.sceneGraph) {
-                    debugLog("MissionHub: Bucky World unavailable for handoff");
-                    return;
-                }
-                // place + scale the world into the loading area at Phone_Depth_Target
-                const dt = new THREE.Vector3().fromArray(CAM.depthTarget);
-                const box = new THREE.Box3().setFromObject(world);
-                const size = box.getSize(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z) || 1;
-                world.scale.setScalar(0.26 / maxDim);        // fit inside the chamber bottom
-                world.position.set(dt.x, dt.y - 0.13, dt.z);  // centered just below the camera
-                world.traverse((n) => { if (n.isMesh) { n.castShadow = false; n.receiveShadow = false; } });
-                scene.sceneGraph.add(world);
-                scene.world = world;                          // shared clone: detached (not freed) on unmount
-                // a soft fill so the world reads inside the dark chamber
-                const wl = new THREE.PointLight(0x9fd8ff, 6.0, 2.2, 2.0);
-                wl.position.set(dt.x, dt.y + 0.16, dt.z);
-                scene.sceneGraph.add(wl);
-                scene.disposers.push(() => { try { scene.sceneGraph && scene.sceneGraph.remove(wl); } catch (_e) {} });
-                if (ui && ui.card) { ui.card.classList.add("is-visible"); ui.card.setAttribute("aria-hidden", "false"); }
-                debugLog("MissionHub → Bucky World handoff complete (world clone added at Depth_Target)");
-            })
-            .catch((e) => logError("MissionHub Bucky World handoff", e));
-    }
-};
+// (v0.10) The old "handoff at the end" seam (MissionWorldEntry.enterBuckyWorld) is gone.
+// Bucky World is no longer loaded at Phone_Depth_Target — it is mounted as a MINIATURE at
+// scene build (visible through the glass from the start) and simply GROWN during the
+// descent (see growWorld in the tick) until the camera is inside it. `preloadMissionWorld`
+// below remains the named cache-warm hook (called at scene build + reusable at boot).
 
 /**
- * preloadMissionWorld() — the named Phase 4 hook for Bucky World. Delegates to the
- * shared AssetCache (parse-once). The GLB ships today, so this returns a real cache
- * promise resolving to a ready-to-clone world; enterBuckyWorld clones it with no
- * fetch + no re-parse. Exported so the boot/runtime can warm it on demand.
+ * preloadMissionWorld() — the named hook that warms Bucky World into the shared
+ * AssetCache (parse-once). Called at scene build so the miniature is ready to clone with
+ * no fetch/parse during the descent; also reusable from boot. Returns the cache promise.
  */
 export function preloadMissionWorld() {
     registerMissionHubAssets();
