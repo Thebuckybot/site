@@ -69,31 +69,28 @@ const STYLE_ELEMENT_ID = "vm-missionhub-styles";
 const DESCENT_DURATION = 5.5; // seconds, click → arrive at Phone_Depth_Target (slow, "expensive" descent)
 
 // Camera-into-phone path, Three.js (Y-up) world space.
-// v0.9 (Phase 4): the click no longer dollies onto a portal plane — the camera
-// physically ENTERS the device. CAM.entry/interior/depthTarget ARE the real Blender
-// Phone_Entry / Phone_Interior / Phone_Depth_Target empties (Y-up = [x, z, -y], from
-// mission_hub_v2_phone_path.json). The descent: room overview → approach → align
-// straight above the glass (looking DOWN) → descend vertically through the glass
-// (which fades) → through Entry and Interior → arrive at Depth_Target, where Bucky
-// World loads. No portal, no light beam, no pillar — a real vertical descent.
+// v0.11 — the phone now RESTS on the desk (lowered 0.113 m); these are the NEW Blender
+// Phone_* empties (Y-up = [x, z, -y]). Bucky World is mounted as a real miniature INSIDE
+// the phone chamber (visible THROUGH the now-transparent glass from the very start — the
+// phone is a glass window into another world) and GROWS during the descent until the
+// camera is inside it. No portal, no loading state — both GLBs are rendered together.
 const CAM = {
-    widePos: [1.10, 2.05, 0.55], wideLook: [-0.12, 0.74, -1.30], wideLens: 34, // room overview
-    screen:      [-0.12, 0.7817, -1.48], // PhoneScreen glass plane
-    entry:       [-0.12, 0.8517, -1.48], // Phone_Entry  — just above the glass
-    interior:    [-0.12, 0.2317, -1.48], // Phone_Interior — mid depth chamber
-    depthTarget: [-0.12, -0.3583, -1.48], // Phone_Depth_Target — the Bucky World loading area
-    // v0.10 — Bucky World is a MINIATURE that lives inside the phone and GROWS during the
-    // descent. worldCenter sits deep on the descent axis; the world scales from
-    // worldMiniScale (a speck seen through the glass) to worldFullScale (camera ends INSIDE).
-    worldCenter: [-0.12, -0.45, -1.48], worldMiniScale: 0.05, worldFullScale: 1.6
+    widePos: [1.10, 2.05, 0.55], wideLook: [-0.12, 0.63, -1.30], wideLens: 34, // room overview
+    screen:      [-0.12, 0.6688, -1.48], // PhoneScreen glass plane (phone rests on desk)
+    entry:       [-0.12, 0.7388, -1.48], // Phone_Entry  — just above the glass
+    interior:    [-0.12, 0.1188, -1.48], // Phone_Interior — mid chamber
+    depthTarget: [-0.12, -0.4712, -1.48], // Phone_Depth_Target — deep in the chamber
+    // Bucky World sits HERE inside the chamber — visible through the glass from idle — and
+    // scales worldMiniScale → worldFullScale during the descent (camera ends INSIDE it).
+    worldCenter: [-0.12, 0.25, -1.48], worldMiniScale: 0.05, worldFullScale: 1.5
 };
 // Descent keyframes (t 0..1). pos = camera position, look = aim point, lens = mm.
 const CAM_PATH = [
-    { t: 0.00, pos: [1.10, 2.05, 0.55],    look: [-0.12, 0.74, -1.30],  lens: 34 }, // overview: desk + poster + phone
-    { t: 0.30, pos: [0.34, 1.46, -0.86],   look: [-0.12, 0.80, -1.46],  lens: 40 }, // approach the phone
-    { t: 0.52, pos: [-0.12, 0.95, -1.48],  look: [-0.12, 0.781, -1.48], lens: 46 }, // align straight above the screen, looking DOWN
-    { t: 0.76, pos: [-0.12, 0.33, -1.48],  look: [-0.12, -0.30, -1.48], lens: 40 }, // descend through Entry → Interior
-    { t: 1.00, pos: [-0.12, -0.30, -1.48], look: [-0.12, -0.66, -1.48], lens: 35 }  // arrive at Depth_Target (Bucky World loads)
+    { t: 0.00, pos: [1.10, 2.05, 0.55],   look: [-0.12, 0.63, -1.30],  lens: 34 }, // overview: desk + poster + phone
+    { t: 0.30, pos: [0.30, 1.30, -0.92],  look: [-0.12, 0.62, -1.46],  lens: 40 }, // approach the phone
+    { t: 0.52, pos: [-0.12, 0.85, -1.48], look: [-0.12, 0.669, -1.48], lens: 46 }, // align straight above the glass, looking DOWN
+    { t: 0.76, pos: [-0.12, 0.52, -1.48], look: [-0.12, 0.10, -1.48],  lens: 42 }, // through the glass into the chamber (toward the world)
+    { t: 1.00, pos: [-0.12, 0.34, -1.48], look: [-0.12, -0.05, -1.48], lens: 36 }  // inside Bucky World (the grown world surrounds the camera)
 ];
 
 // v0.7 (V3): tuned for the DUSK env + the building now visible through the window.
@@ -118,8 +115,9 @@ const LOOK = {
 // ---------------------------------------------------------------------------
 // The hero room GLB is registered with the shared AssetCache, which parses it
 // ONCE and hands every open a clone (shared geometry/materials/textures). Bucky
-// World is registered with the SAME parse-once/clone path (preload capability),
-// preloaded in the background when Mission Hub opens — not at site startup.
+// World is registered the SAME way and is ALSO parsed at WEBSITE STARTUP (both GLBs
+// are warmed by vmRuntime.preloadMissionHub), so opening the app + the descent clone
+// already-cached scenes — zero GLB fetches/parses after boot.
 let _assetsRegistered = false;
 function registerMissionHubAssets() {
     if (_assetsRegistered) return;
@@ -134,10 +132,9 @@ function registerMissionHubAssets() {
             return buffer;
         }
     });
-    // Phase 4 — BUCKY WORLD. The GLB ships now, registered with preload capability
-    // (available:true) but NOT eagerly fetched at site startup — its preload is kicked
-    // off when Mission Hub opens (schedulePreload) so it is cached before the camera
-    // arrives at Phone_Depth_Target. Same parse-once/clone path as the room GLB.
+    // BUCKY WORLD — registered + parsed at WEBSITE STARTUP (vmRuntime.preloadMissionHub
+    // calls preloadMissionWorld at boot). Same parse-once/clone path as the room GLB, so
+    // by the time the player opens Mission Hub both worlds are already cached + decoded.
     assetCache.registerAsset("buckyworld", BUCKYWORLD_URL, { available: true });
 }
 
@@ -404,24 +401,23 @@ async function buildScene(scene, stage, setStatus, ui) {
     const glass = new THREE.MeshPhysicalMaterial({
         color: new THREE.Color(0x05070c), metalness: 0.0, roughness: 0.16, ior: 1.45,
         clearcoat: 0.35, clearcoatRoughness: 0.25, reflectivity: 0.18,
-        envMap: scene.envTex || null, envMapIntensity: 0.32,
-        transparent: true, opacity: 0.5, depthWrite: false
+        envMap: scene.envTex || null, envMapIntensity: 0.28,
+        transparent: true, opacity: 0.3, depthWrite: false
     });
     applyMaterial(screenMesh, glass);
     screenMesh.renderOrder = 3;
     scene.glass = glass;
 
-    // ---- Phone Depth Chamber: a dark shaft that is INVISIBLE from outside ----
-    // v0.10 fix for the "black plane under the desk". The PHN_Chamber walls have
-    // INWARD-facing normals (measured in Blender: face·(face−centroid) ≈ −1), so rendering
-    // them SINGLE-SIDED as THREE.FrontSide culls them from OUTSIDE the phone (their normals
-    // point away from an external camera → back faces → culled → nothing under the desk),
-    // while from INSIDE the shaft they are front-facing → the camera still sees the dark
-    // tube walls as it descends. (The previous GLB exported them doubleSided, which is what
-    // made the black box appear.) Glow + specks stay hidden until the descent.
+    // ---- Phone Depth Chamber: the dark interior you see THROUGH the glass ----
+    // v0.11: the chamber + its faint depth cues are visible FROM THE START — the phone is a
+    // glass window into a dark world-space. The PHN_Chamber walls have INWARD-facing normals
+    // (measured in Blender: face·(face−centroid) ≈ −1), so rendering them SINGLE-SIDED as
+    // FrontSide culls them from OUTSIDE the phone (no black box) while keeping the dark tube
+    // visible through the glass + from inside. The opened phone body + the desk hole give a
+    // real line of sight from the glass down to Bucky World (raycast-verified).
     const chamberWalls = model.getObjectByName ? model.getObjectByName("PHN_Chamber") : null;
     if (chamberWalls) {
-        chamberWalls.visible = false; // shown only while the camera is INSIDE the shaft (tick)
+        chamberWalls.visible = true; // seen through the glass from idle; culled from outside
         chamberWalls.traverse((n) => {
             if (n.isMesh && n.material) {
                 (Array.isArray(n.material) ? n.material : [n.material]).forEach((m) => { if (m) m.side = THREE.FrontSide; });
@@ -430,10 +426,10 @@ async function buildScene(scene, stage, setStatus, ui) {
         });
     }
     scene.chamberWalls = chamberWalls;
-    const chamberFx = []; // PHN_Glow + PHN_Specks — faint depth cues, revealed on descent only
+    const chamberFx = []; // PHN_Glow + PHN_Specks — faint depth cues behind the glass
     ["PHN_Glow", "PHN_Specks"].forEach((n) => {
         const o = model.getObjectByName ? model.getObjectByName(n) : null;
-        if (o) { o.visible = false; o.traverse((c) => { c.renderOrder = 1; }); chamberFx.push(o); }
+        if (o) { o.visible = true; o.traverse((c) => { c.renderOrder = 1; }); chamberFx.push(o); }
     });
     scene.chamber = chamberFx;
 
@@ -579,7 +575,7 @@ async function buildScene(scene, stage, setStatus, ui) {
             camera.position.copy(wideP).add(_off);
             camera.lookAt(wideL);
             if (camera.fov !== fovWide) { camera.fov = fovWide; camera.updateProjectionMatrix(); }
-            if (glass) glass.envMapIntensity = 0.32 + Math.sin(time * 1.2) * 0.04;
+            if (glass) glass.envMapIntensity = 0.28 + Math.sin(time * 1.2) * 0.03;
             if (scene.world) scene.world.rotation.y = time * 0.15; // the little world turns deep in the glass
             return;
         }
@@ -587,21 +583,20 @@ async function buildScene(scene, stage, setStatus, ui) {
             anim.t += dt / DESCENT_DURATION;
             const raw = clamp01(anim.t), p = smootherstep(raw); anim.p = p;
             samplePath(p);
-            // the glass fades as the camera passes DOWN through the screen plane so it goes
-            // INTO the device (no white flash) — the world behind is already there.
+            // the glass fades out as the camera passes DOWN through the screen plane (~p
+            // 0.58..0.72) so it goes INTO the device — the world behind is ALREADY there
+            // (it was visible through the glass the whole time), so there is no white flash.
             if (glass) {
-                const through = smoothstepRange(0.46, 0.62, p);
-                glass.opacity = lerp(0.5, 0.0, through);
-                glass.envMapIntensity = lerp(0.32, 0.0, through);
+                const through = smoothstepRange(0.58, 0.72, p);
+                glass.opacity = lerp(0.3, 0.0, through);
+                glass.envMapIntensity = lerp(0.28, 0.0, through);
             }
             growWorld(p, time);
-            // The shaft walls + depth cues (glow/specks) are drawn ONLY while the camera is
-            // INSIDE the tube — after it passes the glass (~p 0.48) and before the world
-            // fills the view (~p 0.84). Outside that window they are hidden, so nothing is
-            // ever visible from external angles (the "black plane" can't reappear).
-            const inside = p > 0.48 && p < 0.84;
-            if (scene.chamberWalls) scene.chamberWalls.visible = inside;
-            (scene.chamber || []).forEach((o) => { o.visible = inside; });
+            // The chamber walls + depth cues stay visible (the world's dark backdrop, seen
+            // through the glass) until the grown world fills the view near the very end.
+            const deep = p > 0.86;
+            if (scene.chamberWalls) scene.chamberWalls.visible = !deep;
+            (scene.chamber || []).forEach((o) => { o.visible = !deep; });
             setStatus("descending", descentLabel(p));
             if (raw >= 1) anim.phase = "arrived";
             return;
