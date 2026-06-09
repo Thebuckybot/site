@@ -108,6 +108,21 @@ function preloadMissionHub() {
                 fetch(hdriUrl).then((r) => (r && r.arrayBuffer ? r.arrayBuffer() : null)).catch(() => {});
             }
         } catch (_e) { /* swallow */ }
+        // v0.12 — warm the Three.js post-FX + RGBE ESM modules MissionHub imports on open, so
+        // the FIRST open is a module-cache hit (no new downloads — only clones of cached scenes).
+        // Three core + GLTF/Draco are already warmed by the AssetCache parse above. Keep the
+        // version in lockstep with MissionHubApp.js / assetCache.js (three 0.160.0).
+        try {
+            const JSM = "https://esm.sh/three@0.160.0/examples/jsm";
+            [
+                `${JSM}/loaders/RGBELoader.js`,
+                `${JSM}/postprocessing/EffectComposer.js`,
+                `${JSM}/postprocessing/RenderPass.js`,
+                `${JSM}/postprocessing/UnrealBloomPass.js`,
+                `${JSM}/postprocessing/OutputPass.js`,
+                `${JSM}/environments/RoomEnvironment.js`
+            ].forEach((u) => { import(/* @vite-ignore */ u).catch(() => {}); });
+        } catch (_e) { /* never block boot on module warm */ }
     };
     (window.requestIdleCallback ? window.requestIdleCallback(warm, { timeout: 3000 }) : setTimeout(warm, 800));
 }
