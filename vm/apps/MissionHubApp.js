@@ -1,135 +1,120 @@
 /**
- * Mission Hub app — "One GLB. One Scene. One Camera." (Phase V4 · single-world).
+ * Mission Hub app — V6 "Master World" runtime.
  *
  * WHAT THIS IS
  * -----------
- * A real smartphone lies on a dark-oak desk in a moody, HDRI-lit office. Below the
- * phone glass, INSIDE THE SAME GLB, sits the Arc1 miniature world (terrain, trees,
- * spire, gate, sky) parented under ARC1_Root at Blender-authored scale. The phone
- * screen is a pane of real glass geometry (PhoneGlass): dark and reflective from
- * across the room, with Arc1 already visible through it from frame 1. Clicking the
- * phone moves THE camera — the only camera — down through the glass, through the
- * phone throat, and into the Arc1 world. The world grows naturally through
- * perspective. No portal, no overlay, no render target, no scene swap, no loading.
+ * One Blender-authored universe in one GLB (mission_hub_master.glb): the apartment
+ * floats 500 m above the real-scale Bucky universe (Arc 1–5). The phone on the desk
+ * is an open window — below its glass there is literally a hole in the desk and
+ * 500 m of air down to the Arc 1 arrival pad. Clicking the phone flies THE camera
+ * (the only camera) through the glass, down the drop, up over the universe for the
+ * bird-eye reveal, then down into Arc 1.
  *
- * BLENDER IS THE SOURCE OF TRUTH
- * ------------------------------
- * mission_hub.glb (exported from mission_hub_v2.blend) carries the room, the phone,
- * the Arc1 prototype AND the camera-path anchors as empties:
- *   Phone_Entry        — hover point just above the glass
- *   Phone_Interior     — inside the phone throat
- *   Phone_Depth_Target — deep position at Arc1 level
- *   Arc1_Arrival_Look  — what the camera looks at on arrival
- * The runtime reads these nodes BY NAME at mount and builds the camera path from
- * their world transforms. No world-space coordinates are hardcoded here; only
- * relative offsets (room-overview framing) and timing/lens values are tuned below.
+ * No portals. No render targets. No second scene. No overlays. No fades. No loading
+ * screens. No runtime sky/HDRI/atmosphere — Blender authored all of it into the GLB
+ * (sky dome, fog cards, sun + practical lights via KHR_lights_punctual, emissives).
  *
- * STARTUP / NETWORK (proof: zero GLB downloads after boot)
- * -------------------------------------------------------
- * The single GLB is parsed ONCE into the shared AssetCache at WEBSITE STARTUP
- * (vmRuntime.preloadMissionHub -> preloadMissionHubAssets). Three.js, GLTF/Draco and
- * the post-FX modules are warmed at boot too. Opening Mission Hub clones the
- * already-decoded scene and issues NO new downloads. The cache is freed only when
- * the VM unloads (runtime.dispose).
+ * THE RUNTIME ONLY:
+ *   1. preloads the master GLB at website startup (shared AssetCache, parse once),
+ *   2. opens instantly from cache (clone, zero downloads),
+ *   3. resolves the Blender anchors by name (fails loudly if any is missing),
+ *   4. animates one camera along the anchor-built journey,
+ *   5. handles pointer interaction + resize + deterministic teardown.
  *
- * ARCHITECTURE (unchanged app contract — see docs/architecture/07-stable-systems.md)
- * ---------------------------------------------------------------------------------
- * Exports createState / render / mount / unmount (+ preloadMissionHubAssets /
- * disposeMissionHubAssets) registered in vmRuntime.js. The scene is built
- * imperatively once in `mount` and never rebuilt on resize/maximize. Three.js + post
- * FX load on demand from pinned CDNs (GitHub-Pages-safe, no build step). One
- * ResizeObserver handles all size changes. `unmount` performs deterministic teardown;
- * the AssetCache clone is DETACHED (its shared geometry/materials/textures belong to
- * the cache), while this mount's own resources (glass material, env/PMREM, renderer)
- * are disposed.
+ * BLENDER IS THE SOURCE OF TRUTH — anchors carried as empties in the GLB:
+ *   CAM_ApartmentStart  — opening shot position
+ *   CAM_PhoneHover      — above the phone, pre-entry
+ *   CAM_GlassExit       — just below the pane (the "through" moment)
+ *   CAM_DescentMid      — mid-air in the 500 m drop (same XY as the glass)
+ *   CAM_BirdEye         — reveal apex: all five arcs in frame
+ *   LOOK_Universe       — what the bird-eye looks at
+ *   CAM_Arrival         — final position on the Arc 1 arrival pad
+ *   Arc1_Arrival_Look   — final look target (the gate)
+ * plus PhoneGlass / PhoneFrame / PhoneInteriorLip (interaction + framing) and
+ * ARC1_PadRingOuter (the descent look target).
  *
- * TUNING: the CONFIG block is the single place to adjust look, journey timing, the
- * glass response and the keyframe lens values.
+ * MATERIAL POLICY: Blender materials ship as-is. The ONE exception is transmissive
+ * glass — Three.js implements KHR transmission with an internal render target
+ * (banned, and heavy on iPad), so every transmissive material is converted at mount
+ * to plain transparent physical glass: subtle tint, subtle reflection, no glow.
+ *
+ * PERFORMANCE: one scene, one camera, one scene render per frame. Optional bloom
+ * (threshold ≥ TRUE emissives only — the phone can never white-out) is skipped on
+ * touch devices. No shadow maps. Pixel ratio capped. Far plane sized to the 7 km
+ * world; near sized so the glass pass-through never clips.
  */
 import { debugLog, logError } from "../core/diagnostics.js";
-// The hero GLB is parsed ONCE into the shared AssetCache and cloned on each open
-// (no re-download / re-parse / re-decode). See core/assetCache.js.
 import { assetCache } from "../core/assetCache.js";
 
 // ---------------------------------------------------------------------------
-// CONFIG — the one place to tune the look
+// CONFIG — the one place to tune the journey + look
 // ---------------------------------------------------------------------------
 const THREE_VERSION = "0.160.0";
 const CDN = `https://esm.sh/three@${THREE_VERSION}`;
 const JSM = `${CDN}/examples/jsm`;
 
-const MODEL_URL = new URL("../assets/models/mission_hub.glb", import.meta.url).href;
-const HDRI_URL = new URL("../assets/hdri/dusk_sky_1k.hdr", import.meta.url).href;
-
+const MODEL_URL = new URL("../assets/models/mission_hub_master.glb", import.meta.url).href;
 const STYLE_ELEMENT_ID = "vm-missionhub-styles";
-const TRANSITION_DURATION = 6.0; // seconds, click -> arrived at Arc1
 
-// Blender-authored node names (the GLB is the source of truth — verified against the
-// actual export; mount() re-verifies and fails loudly if any anchor is missing).
-const NODE = {
+// Blender-authored anchor names (mount verifies every one and fails loudly).
+const ANCHOR = {
+    camStart: "CAM_ApartmentStart",
+    camHover: "CAM_PhoneHover",
+    camGlassExit: "CAM_GlassExit",
+    camDescent: "CAM_DescentMid",
+    camBirdEye: "CAM_BirdEye",
+    camArrival: "CAM_Arrival",
+    lookUniverse: "LOOK_Universe",
+    lookArrival: "Arc1_Arrival_Look",
     glass: "PhoneGlass",
     frame: "PhoneFrame",
     lip: "PhoneInteriorLip",
-    entry: "Phone_Entry",
-    interior: "Phone_Interior",
-    depth: "Phone_Depth_Target",
-    arrival: "Arc1_Arrival_Look",
-    arcRoot: "ARC1_Root",
-    phoneRig: "P_phone"
+    pad: "ARC1_PadRingOuter"
 };
-// Required at mount — a missing node is a hard, named error (never a silent guess).
-const REQUIRED_NODES = [NODE.glass, NODE.frame, NODE.entry, NODE.interior, NODE.depth, NODE.arrival, NODE.arcRoot];
-// Arc1 neon that slowly spins so the world feels alive through the glass.
-const SPIN_NODES = ["BuckyCore", "BuckyRing", "SpireGlow"];
+const REQUIRED_NODES = Object.values(ANCHOR);
 
-// Journey shape (RELATIVE framing only — every anchor position comes from the GLB).
-// overviewOffset: room-overview camera placement relative to the phone-glass centre.
-// hoverLift/hoverBack: phone-focus framing relative to Phone_Entry.
-const JOURNEY = {
-    overviewOffset: [1.22, 1.38, 2.03],
-    hoverLift: 0.45,
-    hoverBack: 0.35,
-    // timing (t) + lens (mm, full-frame vertical) per keyframe; positions/looks are
-    // resolved from the Blender anchors at mount.
-    keys: [
-        { t: 0.00, lens: 34 }, // room overview            (look: glass)
-        { t: 0.32, lens: 42 }, // phone focus              (look: glass)
-        { t: 0.52, lens: 50 }, // at Phone_Entry           (look: Phone_Interior)
-        { t: 0.68, lens: 55 }, // through the glass        (look: Phone_Depth_Target)
-        { t: 0.84, lens: 58 }, // at Phone_Interior        (look: Phone_Depth_Target)
-        { t: 1.00, lens: 46 }  // at Phone_Depth_Target    (look: Arc1_Arrival_Look)
-    ]
-};
+// Journey: timing (t), anchor-resolved position/look, lens (mm full-frame vertical).
+// Built at mount from world transforms — no world coordinates live in this file.
+const JOURNEY_DURATION = 16.0; // seconds, click -> standing on the arrival pad
+const JOURNEY_KEYS = [
+    { t: 0.00, pos: "camStart",     look: "glassCenter", lens: 32 }, // apartment
+    { t: 0.16, pos: "camHover",     look: "glassCenter", lens: 42 }, // over the phone
+    { t: 0.26, pos: "glassAbove",   look: "pad",         lens: 46 }, // nose on the pane
+    { t: 0.34, pos: "camGlassExit", look: "pad",         lens: 46 }, // THROUGH the glass
+    { t: 0.52, pos: "camDescent",   look: "pad",         lens: 40 }, // free fall
+    { t: 0.70, pos: "camBirdEye",   look: "lookUniverse", lens: 36 }, // reveal: Arc 1–5
+    { t: 1.00, pos: "camArrival",   look: "lookArrival",  lens: 40 }  // Arc 1 arrival pad
+];
 
-// Glass response (PhoneGlass is REAL geometry — a window, not a display).
-// Dark + reflective from the room; reflection AND tint fade out across GLASS_FADE so
-// the pane is fully clear (and harmless to pass through) before the camera crosses it.
-const GLASS = {
-    color: 0x0a1018,        // deep cold tint — never white
-    idleOpacity: 0.55,      // dark from a distance, Arc1 still readable below
-    idleEnv: 1.15,          // room-level reflectivity
-    roughness: 0.08,
-    fade: [0.30, 0.60]      // p-range over which reflection + tint fade to zero
-};
-
-// Room look (dusk apartment). Toned so nothing blows white; the phone reads as dark glass.
+// Look: tone + bloom only. NO runtime lights, NO env maps, NO sky, NO fog — the GLB
+// carries the sun, practicals, emissives, sky dome and fog cards from Blender.
 const LOOK = {
-    exposure: 1.0, bloomStrength: 0.14, bloomRadius: 0.5, bloomThreshold: 0.95,
-    envIntensity: 0.9, keyIntensity: 2.6, lampIntensity: 2.2, fillIntensity: 0.5, hemiIntensity: 0.40
+    exposure: 1.0,
+    bloom: { strength: 0.22, radius: 0.55, threshold: 0.9 } // emissives only — glass can never bloom
+};
+
+// Glass override (the one permitted material change; see MATERIAL POLICY above).
+const GLASS = {
+    color: 0x0a1018,   // subtle cold tint — never white, never emissive
+    opacity: 0.22,
+    roughness: 0.06
+};
+
+const PERF = {
+    maxPixelRatio: 1.75,
+    bloomOnTouch: false // iPad: skip the bloom passes, render the scene directly
 };
 
 // ---------------------------------------------------------------------------
-// Asset cache wiring
+// Asset cache wiring — parse-once at website startup, clone per open
 // ---------------------------------------------------------------------------
-// The single hero GLB is registered with the shared AssetCache (parse-once ->
-// clone-per-open) and warmed at WEBSITE STARTUP by vmRuntime.preloadMissionHub.
 let _assetsRegistered = false;
 function registerMissionHubAssets() {
     if (_assetsRegistered) return;
     _assetsRegistered = true;
-    assetCache.registerAsset("mission_hub", MODEL_URL, {
-        // Defensive: strip any orphan image / missing texture source from the GLB
-        // bytes ONCE so the cached parse — and every clone — is clean.
+    assetCache.registerAsset("mission_hub_master", MODEL_URL, {
+        // The export carries one known orphan image reference; strip it ONCE from the
+        // bytes so the cached parse — and every clone — is clean.
         transformBuffer(rawBuffer) {
             const { buffer, fixes } = patchMissingTextureSources(rawBuffer);
             if (fixes.length) debugLog("MissionHub ignored missing GLB texture references", fixes);
@@ -138,47 +123,30 @@ function registerMissionHubAssets() {
     });
 }
 
-/**
- * preloadMissionHubAssets — kick off the parse-once warm of the hub GLB. Called from
- * the VM boot sequence so the first open clones an already-parsed scene with no
- * pop-in and no network. Idempotent + best-effort; returns the cache promise.
- */
+/** Warm the master-world GLB into the shared AssetCache (idempotent, boot-time). */
 export function preloadMissionHubAssets() {
     registerMissionHubAssets();
-    return assetCache.preloadAsset("mission_hub");
+    return assetCache.preloadAsset("mission_hub_master");
 }
 
-/**
- * disposeMissionHubAssets — free the cached hub GLB. Called ONLY when the VM fully
- * unloads (runtime.dispose). App open/close never touches the cache.
- */
+/** Free the cached GLB. Called only when the whole VM unloads. */
 export function disposeMissionHubAssets() {
-    assetCache.disposeAsset("mission_hub");
+    assetCache.disposeAsset("mission_hub_master");
 }
 
 // ---------------------------------------------------------------------------
-// State
+// State + markup
 // ---------------------------------------------------------------------------
 export function createMissionHubState() {
-    return { status: "loading", detail: "Starting cinematic runtime…" };
+    return { status: "loading", detail: "Starting runtime…" };
 }
 
-// ---------------------------------------------------------------------------
-// Markup (the scene is built imperatively in mount)
-// ---------------------------------------------------------------------------
 export function renderMissionHubApp(runtime, windowState) {
     const state = windowState.appState || {};
     injectStyles();
     return `
         <div class="vm-missionhub" data-missionhub-root>
             <div class="vm-missionhub-stage" data-missionhub-stage></div>
-            <div class="vm-missionhub-vignette"></div>
-            <div class="vm-missionhub-arrivalcard" data-missionhub-card aria-hidden="true">
-                <div class="vm-missionhub-arrivalcard-inner">
-                    <span class="vm-missionhub-card-kicker">You've arrived</span>
-                    <span class="vm-missionhub-card-title">ARC 1</span>
-                </div>
-            </div>
             <div class="vm-missionhub-hud" data-missionhub-hud>
                 <span class="vm-missionhub-tag">MISSION HUB</span>
                 <span class="vm-missionhub-status" data-missionhub-statusline>${escapeText(state.detail || "")}</span>
@@ -196,15 +164,13 @@ export function mountMissionHubApp(runtime, windowState, element) {
     view.cleanups = view.cleanups || [];
     const stage = element.querySelector("[data-missionhub-stage]");
     const statusLine = element.querySelector("[data-missionhub-statusline]");
-    const card = element.querySelector("[data-missionhub-card]");
     const hint = element.querySelector("[data-missionhub-hint]");
     if (!stage) { logError("MissionHub mount", new Error("stage element missing")); return; }
 
     const scene = {
         disposed: false, THREE: null, renderer: null, composer: null, bloom: null,
-        roomScene: null, roomCam: null, model: null, modelShared: false,
-        glass: null, spin: [], envTex: null, bgTex: null, pmrem: null,
-        resizeObserver: null, disposers: []
+        world: null, camera: null, model: null,
+        glassMaterials: [], resizeObserver: null, disposers: []
     };
     view.scene = scene;
 
@@ -213,7 +179,7 @@ export function mountMissionHubApp(runtime, windowState, element) {
         if (statusLine) statusLine.textContent = detail;
     };
 
-    buildScene(scene, stage, setStatus, { card, hint }).catch((error) => {
+    buildScene(scene, stage, setStatus, { hint }).catch((error) => {
         logError("MissionHub buildScene", error);
         setStatus("error", "3D runtime unavailable — check your connection and reopen.");
     });
@@ -229,44 +195,46 @@ export function unmountMissionHubApp(runtime, windowState) {
 }
 
 // ---------------------------------------------------------------------------
-// Scene construction
+// Scene construction — load GLB, resolve anchors, build journey. Nothing else.
 // ---------------------------------------------------------------------------
 async function buildScene(scene, stage, setStatus, ui) {
-    let THREE, RGBELoader, EffectComposer, RenderPass, UnrealBloomPass, OutputPass;
+    const useBloom = PERF.bloomOnTouch || !isTouchDevice();
+    let THREE, EffectComposer, RenderPass, UnrealBloomPass, OutputPass;
     try {
-        [THREE, { RGBELoader },
-         { EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
+        const mods = await Promise.all([
             import(/* @vite-ignore */ CDN),
-            import(/* @vite-ignore */ `${JSM}/loaders/RGBELoader.js`),
-            import(/* @vite-ignore */ `${JSM}/postprocessing/EffectComposer.js`),
-            import(/* @vite-ignore */ `${JSM}/postprocessing/RenderPass.js`),
-            import(/* @vite-ignore */ `${JSM}/postprocessing/UnrealBloomPass.js`),
-            import(/* @vite-ignore */ `${JSM}/postprocessing/OutputPass.js`)
+            useBloom ? import(/* @vite-ignore */ `${JSM}/postprocessing/EffectComposer.js`) : null,
+            useBloom ? import(/* @vite-ignore */ `${JSM}/postprocessing/RenderPass.js`) : null,
+            useBloom ? import(/* @vite-ignore */ `${JSM}/postprocessing/UnrealBloomPass.js`) : null,
+            useBloom ? import(/* @vite-ignore */ `${JSM}/postprocessing/OutputPass.js`) : null
         ]);
+        THREE = mods[0];
+        if (useBloom) {
+            EffectComposer = mods[1].EffectComposer; RenderPass = mods[2].RenderPass;
+            UnrealBloomPass = mods[3].UnrealBloomPass; OutputPass = mods[4].OutputPass;
+        }
     } catch (error) {
         throw new Error(`Three.js failed to load: ${error && error.message}`);
     }
     if (scene.disposed) return;
     scene.THREE = THREE;
 
-    // ---- Renderer ----
+    // ---- Renderer (ONE pass of ONE scene per frame) ----
     const W = () => Math.max(1, stage.clientWidth);
     const H = () => Math.max(1, stage.clientHeight);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, PERF.maxPixelRatio));
     renderer.setSize(W(), H());
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = LOOK.exposure;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = false; // dusk look is sky/emissive-driven; biggest iPad win
     renderer.domElement.classList.add("vm-missionhub-canvas");
     renderer.domElement.style.touchAction = "none";
     stage.appendChild(renderer.domElement);
     scene.renderer = renderer;
 
-    // black-screen guard: a lost WebGL context (GPU reset, iPad backgrounding) leaves a frozen
-    // black canvas unless we preventDefault so the browser restores it. three re-inits on restore.
+    // Lost-context guard (GPU reset / iPad backgrounding).
     const onCtxLost = (e) => { e.preventDefault(); debugLog("MissionHub WebGL context lost"); setStatus("paused", "Graphics paused — restoring…"); };
     const onCtxRestored = () => { debugLog("MissionHub WebGL context restored"); setStatus("armed", "Look into the phone…"); };
     renderer.domElement.addEventListener("webglcontextlost", onCtxLost, false);
@@ -276,177 +244,109 @@ async function buildScene(scene, stage, setStatus, ui) {
         renderer.domElement.removeEventListener("webglcontextrestored", onCtxRestored);
     });
 
-    // ======================= THE ONE SCENE =======================
-    const roomScene = new THREE.Scene();
-    roomScene.background = new THREE.Color(0x141019);
-    roomScene.fog = new THREE.Fog(0x2b2533, 8.0, 165.0);
-    scene.roomScene = roomScene;
+    // ---- THE ONE SCENE — everything visual comes from the GLB ----
+    const world = new THREE.Scene();
+    world.background = new THREE.Color(0x05060a); // only ever visible if the sky dome is culled
+    scene.world = world;
 
-    // ---- HDRI environment (room reflections + ambient) ----
-    setStatus("loading", "Loading environment…");
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
-    scene.pmrem = pmrem;
-    try {
-        const hdr = await new Promise((res, rej) => new RGBELoader().load(HDRI_URL, res, undefined, rej));
-        if (scene.disposed) { hdr.dispose(); return; }
-        hdr.mapping = THREE.EquirectangularReflectionMapping;
-        const envTex = pmrem.fromEquirectangular(hdr).texture;
-        roomScene.environment = envTex;
-        if ("environmentIntensity" in roomScene) roomScene.environmentIntensity = LOOK.envIntensity;
-        roomScene.background = hdr;
-        if ("backgroundIntensity" in roomScene) roomScene.backgroundIntensity = 0.45;
-        if ("backgroundBlurriness" in roomScene) roomScene.backgroundBlurriness = 0.0;
-        scene.envTex = envTex;
-        scene.bgTex = hdr;
-    } catch (error) {
-        // NEVER leave the scene without an environment (the classic "black room" failure).
-        debugLog("MissionHub HDRI unavailable → procedural fallback env", error && error.message);
-        try {
-            const { RoomEnvironment } = await import(/* @vite-ignore */ `${JSM}/environments/RoomEnvironment.js`);
-            if (scene.disposed) return;
-            const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-            roomScene.environment = envTex;
-            if ("environmentIntensity" in roomScene) roomScene.environmentIntensity = LOOK.envIntensity;
-            scene.envTex = envTex;
-        } catch (e2) {
-            debugLog("MissionHub fallback env failed", e2 && e2.message);
-        }
-    }
-
-    // ---- Room lights (reproduce the Blender key/lamp/fill a GLB can't carry) ----
-    // Arc1 ships its OWN lights inside the GLB (ARC1_KeyLight / ARC1_FillLight via
-    // KHR_lights_punctual) plus unlit neon; these lights shade the room only.
-    roomScene.add(new THREE.HemisphereLight(0x9fb6e0, 0x14110d, LOOK.hemiIntensity));
-    const key = new THREE.DirectionalLight(0xffca7a, LOOK.keyIntensity);
-    key.position.set(-0.5, 2.4, -3.4); key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.radius = 5;
-    { const c = key.shadow.camera; c.near = 0.5; c.far = 8; c.left = -2; c.right = 2; c.top = 2; c.bottom = -2; c.updateProjectionMatrix(); }
-    key.target.position.set(-0.12, 0.78, -1.46);
-    roomScene.add(key); roomScene.add(key.target);
-    const lamp = new THREE.PointLight(0xffb060, LOOK.lampIntensity, 6, 2.0);
-    lamp.position.set(0.45, 1.00, -1.78); lamp.castShadow = true;
-    lamp.shadow.mapSize.set(1024, 1024); lamp.shadow.bias = -0.0006;
-    roomScene.add(lamp);
-    const fill = new THREE.DirectionalLight(0x9db4e8, LOOK.fillIntensity);
-    fill.position.set(2.0, 1.4, 1.6); roomScene.add(fill);
-
-    // ---- The GLB (parse-once cache -> clone). Room + phone + Arc1, one file. ----
-    setStatus("loading", "Loading scene…");
+    setStatus("loading", "Opening the world…");
     registerMissionHubAssets();
     let model = null;
     try {
-        model = await assetCache.acquireScene("mission_hub");
+        model = await assetCache.acquireScene("mission_hub_master");
         if (scene.disposed) { model = null; return; }
         if (!model) throw new Error("AssetCache returned no scene (parse failed or asset unavailable)");
 
-        // HIERARCHY VERIFICATION — every Blender anchor must exist, by exact name.
+        // ANCHOR VERIFICATION — every Blender anchor must exist, by exact name.
         const missing = REQUIRED_NODES.filter((nm) => !model.getObjectByName(nm));
-        if (missing.length) throw new Error(`mission_hub.glb missing required nodes: ${missing.join(", ")}`);
+        if (missing.length) throw new Error(`mission_hub_master.glb missing required nodes: ${missing.join(", ")}`);
 
-        const arcRoot = model.getObjectByName(NODE.arcRoot);
-        model.traverse((n) => {
-            if (!n.isMesh) return;
-            const name = typeof n.name === "string" ? n.name : "";
-            const noShadow = name.indexOf("EXT_") === 0;
-            n.castShadow = !noShadow; n.receiveShadow = !noShadow;
-        });
-        // The Arc1 miniature never participates in room shadow maps (perf: the whole
-        // sub-world stays out of the shadow pass; it lights itself).
-        arcRoot.traverse((n) => { if (n.isMesh) { n.castShadow = false; n.receiveShadow = false; } });
-
-        roomScene.add(model);
-        debugLog("MissionHub GLB clone acquired", MODEL_URL);
+        world.add(model);
+        debugLog("MissionHub master GLB clone acquired", MODEL_URL);
     } catch (error) {
         if (scene.disposed) return;
-        throw new Error(`mission_hub.glb failed to load from ${MODEL_URL}: ${error && error.message ? error.message : error}`);
+        throw new Error(`mission_hub_master.glb failed to load from ${MODEL_URL}: ${error && error.message ? error.message : error}`);
     }
-    scene.model = model;
-    scene.modelShared = true; // shared AssetCache clone: detach on unmount, never deep-dispose
+    scene.model = model; // shared AssetCache clone: detach on unmount, never deep-dispose
 
-    // ---- Resolve the Blender anchors (world space, post-add) ----
+    // ---- Glass: convert EVERY transmissive material to plain transparent glass.
+    // KHR transmission would make Three.js allocate an internal render target
+    // (banned + expensive). Subtle tint, subtle reflection, physically believable,
+    // no glow. These override materials are THIS MOUNT'S OWN (disposed on unmount);
+    // the cached clone's shared materials are never mutated.
+    const glassMeshes = [];
+    model.traverse((n) => {
+        if (!n.isMesh) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        if (mats.some((m) => m && (m.transmission > 0 || m._isGlassOverride))) glassMeshes.push(n);
+    });
+    glassMeshes.forEach((mesh) => {
+        const override = new THREE.MeshPhysicalMaterial({
+            color: new THREE.Color(GLASS.color),
+            metalness: 0, roughness: GLASS.roughness, ior: 1.45,
+            transparent: true, opacity: GLASS.opacity, depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        override.toneMapped = true;
+        override._isGlassOverride = true;
+        mesh.material = Array.isArray(mesh.material) ? mesh.material.map(() => override) : override;
+        mesh.castShadow = false;
+        scene.glassMaterials.push(override);
+    });
+    debugLog("MissionHub transmissive materials converted to simple glass", glassMeshes.map((m) => m.name));
+
+    // ---- Resolve anchors (world space, post-add) ----
     model.updateWorldMatrix(true, true);
-    const worldPosOf = (nm) => {
+    const worldPos = (nm) => {
         const o = model.getObjectByName(nm);
-        const v = new THREE.Vector3();
-        o.getWorldPosition(v);
-        return v;
+        return o.getWorldPosition(new THREE.Vector3());
     };
-    const glassMesh = model.getObjectByName(NODE.glass);
+    const glassMesh = model.getObjectByName(ANCHOR.glass);
     const glassCenter = new THREE.Box3().setFromObject(glassMesh).getCenter(new THREE.Vector3());
-    const pEntry = worldPosOf(NODE.entry);
-    const pInterior = worldPosOf(NODE.interior);
-    const pDepth = worldPosOf(NODE.depth);
-    const pArrival = worldPosOf(NODE.arrival);
+    const points = {
+        camStart: worldPos(ANCHOR.camStart),
+        camHover: worldPos(ANCHOR.camHover),
+        camGlassExit: worldPos(ANCHOR.camGlassExit),
+        camDescent: worldPos(ANCHOR.camDescent),
+        camBirdEye: worldPos(ANCHOR.camBirdEye),
+        camArrival: worldPos(ANCHOR.camArrival),
+        lookUniverse: worldPos(ANCHOR.lookUniverse),
+        lookArrival: worldPos(ANCHOR.lookArrival),
+        pad: worldPos(ANCHOR.pad),
+        glassCenter,
+        glassAbove: glassCenter.clone().add(new THREE.Vector3(0, 0, 0.07))
+    };
+    const path = JOURNEY_KEYS.map((k) => ({
+        t: k.t,
+        pos: points[k.pos].clone(),
+        look: points[k.look].clone(),
+        fov: lensToFov(k.lens)
+    }));
 
-    // Spin targets (Arc1 neon) — optional, never required.
-    SPIN_NODES.forEach((nm) => {
-        const o = model.getObjectByName(nm);
-        if (o) scene.spin.push(o);
-    });
-
-    // ---- Glass: a real window into Arc1 (this mount's OWN material — the cached
-    // clone's shared transmission material is replaced, never mutated) ----
-    const glass = new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color(GLASS.color),
-        metalness: 0.0, roughness: GLASS.roughness, ior: 1.45,
-        transparent: true, opacity: GLASS.idleOpacity, depthWrite: false,
-        side: THREE.DoubleSide,
-        clearcoat: 0.6, clearcoatRoughness: 0.12,
-        envMap: scene.envTex || null, envMapIntensity: GLASS.idleEnv
-    });
-    glass.toneMapped = true;
-    applyMaterial(glassMesh, glass);
-    glassMesh.castShadow = false;
-    glassMesh.renderOrder = 3;
-    scene.glass = glass;
-
-    // ---- Camera path — built ENTIRELY from the Blender anchors above ----
-    const horizBack = new THREE.Vector3(JOURNEY.overviewOffset[0], 0, JOURNEY.overviewOffset[2]).normalize();
-    const positions = [
-        glassCenter.clone().add(new THREE.Vector3().fromArray(JOURNEY.overviewOffset)),       // overview (relative framing)
-        pEntry.clone().addScaledVector(horizBack, JOURNEY.hoverBack).add(new THREE.Vector3(0, JOURNEY.hoverLift, 0)), // phone focus
-        pEntry.clone(),                                                                       // at Phone_Entry
-        pEntry.clone().lerp(pInterior, 0.5),                                                  // through the glass
-        pInterior.clone(),                                                                    // at Phone_Interior
-        pDepth.clone()                                                                        // at Phone_Depth_Target
-    ];
-    const looks = [
-        glassCenter.clone(),  // overview
-        glassCenter.clone(),  // phone focus
-        pInterior.clone(),    // at entry: look down the throat
-        pDepth.clone(),       // through glass: look at depth
-        pDepth.clone(),       // interior: still at depth
-        pArrival.clone()      // arrival: Arc1_Arrival_Look
-    ];
-    const path = JOURNEY.keys.map((k, i) => ({ t: k.t, pos: positions[i], look: looks[i], fov: lensToFov(k.lens) }));
-
-    // ---- The ONE camera ----
-    // near is tight (0.008) because the journey ends inside the Arc1 miniature
-    // (Blender scale 0.0046); far covers the apartment exterior + Arc1 sky dome.
-    const camera = new THREE.PerspectiveCamera(path[0].fov, W() / H(), 0.008, 120);
+    // ---- The ONE camera. near: glass pass-through must not clip; far: the 7 km world.
+    const camera = new THREE.PerspectiveCamera(path[0].fov, W() / H(), 0.05, 12000);
     camera.position.copy(path[0].pos);
     camera.lookAt(path[0].look);
-    scene.roomCam = camera;
+    scene.camera = camera;
 
-    // ---- Post-processing (bloom + filmic output) — ONE render pass ----
-    const composer = new EffectComposer(renderer);
-    composer.setSize(W(), H());
-    composer.addPass(new RenderPass(roomScene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(W(), H()), LOOK.bloomStrength, LOOK.bloomRadius, LOOK.bloomThreshold);
-    composer.addPass(bloom);
-    composer.addPass(new OutputPass());
-    scene.composer = composer; scene.bloom = bloom;
+    // ---- Optional bloom (desktop): emissives only. Otherwise: direct render. ----
+    let composer = null, bloom = null;
+    if (useBloom) {
+        composer = new EffectComposer(renderer);
+        composer.setSize(W(), H());
+        composer.addPass(new RenderPass(world, camera));
+        bloom = new UnrealBloomPass(new THREE.Vector2(W(), H()), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.threshold);
+        composer.addPass(bloom);
+        composer.addPass(new OutputPass());
+        scene.composer = composer; scene.bloom = bloom;
+    }
 
-    // ---- Interaction ----
-    const wideP = path[0].pos.clone();
-    const wideL = path[0].look.clone();
-    const anim = { phase: "idle", t: 0, p: 0, carded: false };
-
+    // ---- Interaction: click the phone -> start the journey ----
+    const anim = { phase: "idle", t: 0, p: 0 };
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
     const targets = [];
-    [NODE.glass, NODE.frame, NODE.lip].forEach((nm) => {
+    [ANCHOR.glass, ANCHOR.frame, ANCHOR.lip].forEach((nm) => {
         const o = model.getObjectByName(nm);
         if (o) o.traverse((c) => { if (c.isMesh) targets.push(c); });
     });
@@ -461,8 +361,8 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (anim.phase !== "idle") return;
         anim.phase = "entering"; anim.t = 0;
         if (ui.hint) ui.hint.textContent = "";
-        setStatus("entering", "Descending into Arc 1…");
-        debugLog("MissionHub enter start");
+        setStatus("entering", "Falling into the world…");
+        debugLog("MissionHub journey start");
     };
     const onMove = (ev) => {
         if (anim.phase !== "idle") { renderer.domElement.style.cursor = "default"; return; }
@@ -480,37 +380,21 @@ async function buildScene(scene, stage, setStatus, ui) {
     const resize = () => {
         if (scene.disposed || !scene.renderer) return;
         const w = W(), h = H();
-        renderer.setSize(w, h); composer.setSize(w, h); bloom.setSize(w, h);
+        renderer.setSize(w, h);
+        if (composer) { composer.setSize(w, h); bloom.setSize(w, h); }
         camera.aspect = w / h; camera.updateProjectionMatrix();
     };
     const ro = new ResizeObserver(resize); ro.observe(stage); scene.resizeObserver = ro; resize();
     if (scene.disposed) return;
 
-    // ---- Debug hook (used by the in-browser validation pass) ----
-    if (typeof window !== "undefined") {
-        window.__missionHubDebug = () => {
-            const v3 = (v) => v.toArray().map((x) => +x.toFixed(4));
-            return {
-                phase: anim.phase, p: anim.p,
-                anchors: {
-                    entry: v3(pEntry), interior: v3(pInterior),
-                    depth: v3(pDepth), arrival: v3(pArrival), glass: v3(glassCenter)
-                },
-                glassOpacity: glass.opacity, glassEnv: glass.envMapIntensity,
-                arcRootPresent: !!model.getObjectByName(NODE.arcRoot),
-                requiredNodes: REQUIRED_NODES.map((nm) => ({ name: nm, found: !!model.getObjectByName(nm) })),
-                camera: { pos: v3(camera.position), fov: +camera.fov.toFixed(2) }
-            };
-        };
-        scene.disposers.push(() => { try { delete window.__missionHubDebug; } catch (_e) {} });
-    }
-
-    // ---- Frame loop — ONE scene, ONE camera, ONE render ----
+    // ---- Frame loop — ONE scene, ONE camera, ONE scene render ----
     const clock = new THREE.Clock();
     const _off = new THREE.Vector3();
     const _pos = new THREE.Vector3();
     const _look = new THREE.Vector3();
-    const fovWide = path[0].fov;
+    const idleP = path[0].pos.clone();
+    const idleL = path[0].look.clone();
+    const fovIdle = path[0].fov;
 
     const samplePath = (p) => {
         let a = path[0], b = path[path.length - 1];
@@ -527,56 +411,41 @@ async function buildScene(scene, stage, setStatus, ui) {
     };
 
     const tick = (dt, time) => {
-        // Arc1 neon breathes whether you're in the room or inside the world.
-        for (const o of scene.spin) { o.rotation.y = time * 0.25; }
-
         if (anim.phase === "idle") {
             _off.set(Math.sin(time * 0.16) * 0.05, Math.cos(time * 0.13) * 0.025, Math.sin(time * 0.1) * 0.04);
-            camera.position.copy(wideP).add(_off);
-            camera.lookAt(wideL);
-            if (camera.fov !== fovWide) { camera.fov = fovWide; camera.updateProjectionMatrix(); }
-            glass.envMapIntensity = GLASS.idleEnv + Math.sin(time * 1.2) * 0.05;
+            camera.position.copy(idleP).add(_off);
+            camera.lookAt(idleL);
+            if (camera.fov !== fovIdle) { camera.fov = fovIdle; camera.updateProjectionMatrix(); }
             return;
         }
         if (anim.phase === "entering") {
-            anim.t += dt / TRANSITION_DURATION;
+            anim.t += dt / JOURNEY_DURATION;
             const raw = clamp01(anim.t), p = smootherstep(raw); anim.p = p;
             samplePath(p);
-            // Reflection + tint fade BEFORE the camera crosses the pane (no white
-            // screen, no clipped-plane artifact — the glass is air by then).
-            const fade = 1 - smoothstepRange(GLASS.fade[0], GLASS.fade[1], p);
-            glass.envMapIntensity = GLASS.idleEnv * fade;
-            glass.clearcoat = 0.6 * fade;
-            glass.opacity = GLASS.idleOpacity * fade;
             setStatus("entering", enterLabel(p));
-            if (raw >= 1) anim.phase = "arrived";
-            return;
-        }
-        if (anim.phase === "arrived") {
-            samplePath(1);
-            glass.envMapIntensity = 0; glass.clearcoat = 0; glass.opacity = 0;
-            if (!anim.carded) {
-                anim.carded = true;
-                if (ui.card) { ui.card.classList.add("is-visible"); ui.card.setAttribute("aria-hidden", "false"); }
-                setStatus("arrived", "Arc 1");
+            if (raw >= 1) {
+                anim.phase = "arrived";
+                setStatus("arrived", "Arc 1 — arrival pad");
                 debugLog("MissionHub arrived at Arc 1");
             }
+            return;
         }
+        samplePath(1); // arrived
     };
 
     renderer.setAnimationLoop(() => {
         if (scene.disposed) return;
         const dt = clock.getDelta(), time = clock.elapsedTime;
         tick(dt, time);
-        composer.render();
+        if (composer) composer.render(); else renderer.render(world, camera);
     });
     setStatus("armed", "Look into the phone…");
-    debugLog("MissionHub single-world scene running");
+    debugLog("MissionHub V6 master-world runtime running", { bloom: useBloom });
 }
 
 // ---------------------------------------------------------------------------
-// Helpers — GLB byte-patcher: strip a known orphan image / missing texture source
-// from the JSON chunk ONCE before the AssetCache parse.
+// Helpers — GLB byte-patcher: strip orphan image / missing texture references
+// from the JSON chunk ONCE before the AssetCache parse (the V6 export carries one).
 // ---------------------------------------------------------------------------
 function patchMissingTextureSources(arrayBuffer) {
     const input = arrayBuffer instanceof ArrayBuffer ? new Uint8Array(arrayBuffer) : new Uint8Array(arrayBuffer.buffer);
@@ -664,26 +533,22 @@ function readAscii(bytes, start, length) {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers — math + material
+// Helpers — math + device
 // ---------------------------------------------------------------------------
 function lensToFov(lens) { return 2 * Math.atan(24 / (2 * lens)) * 180 / Math.PI; } // 36x24 full-frame, vertical
-function applyMaterial(target, mat) {
-    target.traverse((n) => {
-        if (!n.isMesh) return;
-        n.material = Array.isArray(n.material) ? n.material.map(() => mat) : mat;
-    });
-    if (target.isMesh) target.material = mat;
+function isTouchDevice() {
+    try { return typeof navigator !== "undefined" && (navigator.maxTouchPoints || 0) > 1; } catch (_e) { return false; }
 }
 function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function smoothstep01(x) { x = clamp01(x); return x * x * (3 - 2 * x); }
 function smootherstep(x) { x = clamp01(x); return x * x * x * (x * (x * 6 - 15) + 10); }
-function smoothstepRange(a, b, x) { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); }
 function enterLabel(p) {
-    if (p < 0.32) return "approaching the phone";
-    if (p < 0.60) return "looking into the glass";
-    if (p < 0.84) return "passing through";
-    if (p < 1.0) return "descending into Arc 1";
+    if (p < 0.16) return "approaching the phone";
+    if (p < 0.34) return "through the glass";
+    if (p < 0.52) return "falling — 500 m to go";
+    if (p < 0.70) return "the universe below";
+    if (p < 1.0) return "descending to Arc 1";
     return "Arc 1";
 }
 
@@ -701,15 +566,13 @@ function disposeScene(scene) {
 
     // The AssetCache clone is SHARED — detach, never deep-dispose; its
     // geometry/materials/textures belong to the cache and are reused by the next open.
-    if (scene.roomScene && scene.model) { try { scene.roomScene.remove(scene.model); } catch (_) {} }
-    scene.model = null; scene.spin = [];
+    if (scene.world && scene.model) { try { scene.world.remove(scene.model); } catch (_) {} }
+    scene.model = null;
 
-    // This mount's OWN GPU resources are released here.
-    if (scene.glass) { try { scene.glass.dispose(); } catch (_) {} scene.glass = null; }
-    if (scene.envTex) { try { scene.envTex.dispose(); } catch (_) {} scene.envTex = null; }
-    if (scene.bgTex) { try { scene.bgTex.dispose(); } catch (_) {} scene.bgTex = null; }
-    if (scene.pmrem) { try { scene.pmrem.dispose(); } catch (_) {} scene.pmrem = null; }
-    scene.roomScene = null;
+    // This mount's OWN GPU resources.
+    (scene.glassMaterials || []).forEach((m) => { try { m.dispose(); } catch (_) {} });
+    scene.glassMaterials = [];
+    scene.world = null;
 
     if (scene.renderer) {
         try {
@@ -720,7 +583,7 @@ function disposeScene(scene) {
         } catch (e) { logError("MissionHub disposeRenderer", e); }
         scene.renderer = null;
     }
-    scene.roomCam = null; scene.bloom = null; scene.THREE = null;
+    scene.camera = null; scene.bloom = null; scene.THREE = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -735,21 +598,9 @@ function injectStyles() {
     const style = document.createElement("style");
     style.id = STYLE_ELEMENT_ID;
     style.textContent = `
-.vm-missionhub { position:relative; width:100%; height:100%; background:#07080b; overflow:hidden; }
+.vm-missionhub { position:relative; width:100%; height:100%; background:#05060a; overflow:hidden; }
 .vm-missionhub-stage { position:absolute; inset:0; width:100%; height:100%; }
 .vm-missionhub-canvas { display:block; width:100%; height:100%; }
-.vm-missionhub-vignette { position:absolute; inset:0; pointer-events:none; z-index:1;
-  background:radial-gradient(120% 120% at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%); }
-.vm-missionhub-arrivalcard { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  pointer-events:none; opacity:0; transition:opacity 1.2s ease; z-index:3; }
-.vm-missionhub-arrivalcard.is-visible { opacity:1; }
-.vm-missionhub-arrivalcard-inner { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;
-  padding:18px 34px; border-radius:16px;
-  background:radial-gradient(120% 120% at 50% 30%, rgba(24,46,78,.34), rgba(5,9,18,0));
-  font-family:"Segoe UI", system-ui, sans-serif; }
-.vm-missionhub-card-kicker { font-size:11px; letter-spacing:5px; text-transform:uppercase; color:#9fd8ff; }
-.vm-missionhub-card-title { font-size:30px; letter-spacing:7px; font-weight:600; color:#eaf6ff;
-  text-shadow:0 0 26px rgba(120,200,255,.6); }
 .vm-missionhub-hud { position:absolute; left:12px; bottom:12px; display:flex; flex-direction:column; gap:2px;
   padding:8px 12px; border:1px solid rgba(120,200,255,.26); border-radius:10px;
   background:rgba(8,12,20,.5); backdrop-filter:blur(6px); pointer-events:none;

@@ -81,48 +81,39 @@ import { createMailService, setMailService } from "./mail/mailService.js";
 
 const FALLBACK_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
 
-// V4 — at WEBSITE STARTUP parse THE single hero GLB ONCE into the in-memory
-// AssetCache — mission_hub.glb (room + phone + Arc1, one file) — and warm the dusk
-// HDRI into the HTTP cache. Opening Mission Hub has NO load screen / pop-in and the
-// phone descent issues ZERO extra downloads: everything lives in the one cached
-// scene. The cache is freed only when the VM unloads (see dispose()).
+// V6 — at WEBSITE STARTUP parse THE master-world GLB ONCE into the in-memory
+// AssetCache — mission_hub_master.glb (apartment @ +500 m, Arc 1–5, sky dome,
+// lights: ONE file, the whole universe). Opening Mission Hub has NO load screen /
+// pop-in and the phone journey issues ZERO extra downloads: everything lives in
+// the one cached scene. No HDRI, no env maps — Blender authored sky + lighting
+// into the GLB. The cache is freed only when the VM unloads (see dispose()).
 // Fire-once, best-effort, never blocks boot. GitHub-Pages-safe: URLs resolve from
 // import.meta.url (vm/core/ → vm/assets/…), exactly like MissionHubApp.js does.
 let _missionHubPreloaded = false;
 function preloadMissionHub() {
     if (_missionHubPreloaded || typeof window === "undefined") return;
     _missionHubPreloaded = true;
-    const hdriUrl = new URL("../assets/hdri/dusk_sky_1k.hdr", import.meta.url).href;
     const warm = () => {
-        // The hero GLB parse-once into the AssetCache at WEBSITE STARTUP (download +
+        // The master GLB parse-once into the AssetCache at WEBSITE STARTUP (download +
         // GLTF/Draco parse + texture decode), so opening Mission Hub clones the
         // already-cached scene and issues ZERO GLB fetches/parses.
-        try { preloadMissionHubAssets(); } catch (_e) { /* never block boot on preload */ } // mission_hub.glb
-        // HDRI → warm the HTTP cache (the per-open RGBELoader then hits cache). The env
-        // is renderer-bound (PMREM), so it stays a per-open decode by design.
-        try {
-            if (typeof fetch === "function") {
-                fetch(hdriUrl).then((r) => (r && r.arrayBuffer ? r.arrayBuffer() : null)).catch(() => {});
-            }
-        } catch (_e) { /* swallow */ }
-        // v0.12 — warm the Three.js post-FX + RGBE ESM modules MissionHub imports on open, so
-        // the FIRST open is a module-cache hit (no new downloads — only clones of cached scenes).
-        // Three core + GLTF/Draco are already warmed by the AssetCache parse above. Keep the
-        // version in lockstep with MissionHubApp.js / assetCache.js (three 0.160.0).
+        try { preloadMissionHubAssets(); } catch (_e) { /* never block boot on preload */ } // mission_hub_master.glb
+        // Warm the optional bloom post-FX ESM modules MissionHub may import on open
+        // (desktop only — touch devices render directly), so the FIRST open is a
+        // module-cache hit. Three core + GLTF/Draco are already warmed by the
+        // AssetCache parse above. Keep the version in lockstep with
+        // MissionHubApp.js / assetCache.js (three 0.160.0).
         try {
             const JSM = "https://esm.sh/three@0.160.0/examples/jsm";
             [
-                `${JSM}/loaders/RGBELoader.js`,
                 `${JSM}/postprocessing/EffectComposer.js`,
                 `${JSM}/postprocessing/RenderPass.js`,
                 `${JSM}/postprocessing/UnrealBloomPass.js`,
-                `${JSM}/postprocessing/OutputPass.js`,
-                `${JSM}/environments/RoomEnvironment.js`
+                `${JSM}/postprocessing/OutputPass.js`
             ].forEach((u) => { import(/* @vite-ignore */ u).catch(() => {}); });
         } catch (_e) { /* never block boot on module warm */ }
     };
-    // V4: preload IMMEDIATELY at website start (next tick — never blocks the boot
-    // frame). No extra downloads when the app opens.
+    // Preload IMMEDIATELY at website start (next tick — never blocks the boot frame).
     setTimeout(warm, 0);
 }
 
@@ -897,9 +888,9 @@ function createAppRegistry() {
             mount: mountMailApp,
             unmount: unmountMailApp
         },
-        // Mission Hub — Three.js rendering prototype (Phase v0.1/v0.2). Proves a
-        // 3D scene can live inside a standard VM window with full lifecycle.
-        // Roomy default geometry; the renderer fills whatever size it is given.
+        // Mission Hub — V6 master-world runtime. One GLB, one scene, one camera:
+        // apartment → through the phone glass → 500 m drop → bird-eye reveal →
+        // Arc 1 arrival. Roomy default geometry; the renderer fills any size.
         missionhub: {
             id: "missionhub",
             title: "Mission Hub",
