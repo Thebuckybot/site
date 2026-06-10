@@ -72,7 +72,6 @@ import {
     mountMissionHubApp,
     unmountMissionHubApp,
     preloadMissionHubAssets,
-    preloadMissionWorld,
     disposeMissionHubAssets
 } from "../apps/MissionHubApp.js";
 import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
@@ -82,12 +81,11 @@ import { createMailService, setMailService } from "./mail/mailService.js";
 
 const FALLBACK_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
 
-// v0.8 / v0.11 — at WEBSITE STARTUP (boot, during idle) parse BOTH hero GLBs ONCE
-// into the in-memory AssetCache — mission_hub.glb AND buckyworld.glb — and warm the
-// dusk HDRI into the HTTP cache. So opening Mission Hub has NO load screen / pop-in,
-// and BOTH worlds are already cached + parsed: opening the app and the phone descent
-// clone already-decoded scenes and issue ZERO GLB fetches/parses. The cache is freed
-// only when the VM unloads (see dispose()).
+// V4 — at WEBSITE STARTUP parse THE single hero GLB ONCE into the in-memory
+// AssetCache — mission_hub.glb (room + phone + Arc1, one file) — and warm the dusk
+// HDRI into the HTTP cache. Opening Mission Hub has NO load screen / pop-in and the
+// phone descent issues ZERO extra downloads: everything lives in the one cached
+// scene. The cache is freed only when the VM unloads (see dispose()).
 // Fire-once, best-effort, never blocks boot. GitHub-Pages-safe: URLs resolve from
 // import.meta.url (vm/core/ → vm/assets/…), exactly like MissionHubApp.js does.
 let _missionHubPreloaded = false;
@@ -96,11 +94,10 @@ function preloadMissionHub() {
     _missionHubPreloaded = true;
     const hdriUrl = new URL("../assets/hdri/dusk_sky_1k.hdr", import.meta.url).href;
     const warm = () => {
-        // BOTH hero GLBs parse-once into the AssetCache at WEBSITE STARTUP (download +
-        // GLTF/Draco parse + texture decode), so opening Mission Hub — and the phone
-        // descent — issue ZERO GLB fetches/parses and only clone already-cached scenes.
+        // The hero GLB parse-once into the AssetCache at WEBSITE STARTUP (download +
+        // GLTF/Draco parse + texture decode), so opening Mission Hub clones the
+        // already-cached scene and issues ZERO GLB fetches/parses.
         try { preloadMissionHubAssets(); } catch (_e) { /* never block boot on preload */ } // mission_hub.glb
-        try { preloadMissionWorld(); } catch (_e) { /* never block boot on preload */ }      // buckyworld.glb
         // HDRI → warm the HTTP cache (the per-open RGBELoader then hits cache). The env
         // is renderer-bound (PMREM), so it stays a per-open decode by design.
         try {
@@ -124,7 +121,9 @@ function preloadMissionHub() {
             ].forEach((u) => { import(/* @vite-ignore */ u).catch(() => {}); });
         } catch (_e) { /* never block boot on module warm */ }
     };
-    (window.requestIdleCallback ? window.requestIdleCallback(warm, { timeout: 3000 }) : setTimeout(warm, 800));
+    // V4: preload IMMEDIATELY at website start (next tick — never blocks the boot
+    // frame). No extra downloads when the app opens.
+    setTimeout(warm, 0);
 }
 
 export class BuckyVMRuntime {
