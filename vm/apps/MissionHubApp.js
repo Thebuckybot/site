@@ -1,49 +1,53 @@
 /**
- * Mission Hub app — V7 "Master World" runtime.
+ * Mission Hub app — V9 "Arc 1 AAA" runtime.
  *
  * WHAT THIS IS
  * -----------
- * One Blender-authored universe in one GLB (mission_hub_master.glb): the apartment
- * floats at Z+800 above a vertical WORLD MAP — Arc 1 raised island (Z+50), Arc 2
- * Chip City (Z+100) linked by a giant arch bridge, Arc 3 floating datacells
- * (Z 200–600), Arc 4 cloud layer (Z 350–550), Arc 5 virus crater (Z 0→−100), void
- * below −100. The phone on the desk is an open window — below its glass is a clear
- * 750 m drop to the Arc 1 arrival pad. Clicking the phone flies THE camera (the
- * only camera) through the glass, down the drop, up over the world for the
- * bird-eye reveal, then down into Arc 1.
+ * One Blender-authored universe in one GLB (mission_hub_master.glb). The apartment
+ * floats at Z+3000 above the world map. Arc 1 is a fully rebuilt island: sculpted
+ * terrain, a monotonic river in a carved gorge, a spawn village (5 unique houses +
+ * townhall + plaza), Yggdrasil (a ~200 m hollow world-tree with a multi-floor
+ * library inside) and instanced vegetation.
  *
- * No portals. No render targets. No second scene. No overlays. No fades. No loading
- * screens. No runtime sky/HDRI/atmosphere — Blender authored all of it into the GLB
- * (sky dome, fog cards, sun + practical lights via KHR_lights_punctual, emissives).
+ * V9 FLOW: apartment -> phone -> through the glass -> 2.9 km drop -> bird-eye
+ * world reveal (apartment can never be in frame: it is 1250 m ABOVE the bird-eye
+ * camera which looks straight down) -> descent to the Arc 1 pad -> BUCKY APPEARS
+ * (visible third-person player entity) -> player control.
  *
- * THE RUNTIME ONLY:
- *   1. preloads the master GLB at website startup (shared AssetCache, parse once),
- *   2. opens instantly from cache (clone, zero downloads),
- *   3. resolves the Blender anchors by name (fails loudly if any is missing),
- *   4. animates one camera along the anchor-built journey,
- *   5. handles pointer interaction + resize + deterministic teardown.
+ * V9 SYSTEMS (all owned by this mount, deterministically disposed):
+ *   - Rapier physics (@dimforge/rapier3d-compat): static trimesh colliders for
+ *     terrain / village / bridge / Yggdrasil / trees / rocks, dynamic ball body
+ *     for Bucky. No walk-through anywhere. River current pushes the player
+ *     downstream with real forces (no teleports).
+ *   - Third-person Bucky: round body, emissive eyes, glow ring (authored in the
+ *     GLB as BUCKY_Player/BUCKY_Body/BUCKY_Eyes/BUCKY_GlowRing). Runtime adds
+ *     squash & stretch, idle bounce and movement-facing.
+ *   - Day/night cycle (10 min): runtime sun (DirectionalLight) with realtime
+ *     rotation, colour ramp (dawn/noon/dusk/night), hemisphere ambient ramp and
+ *     sky-dome tinting. Shadows on desktop (single 2048 cascade over Arc 1),
+ *     disabled on touch devices for iPad performance.
+ *   - Wind: leaf/grass materials get a vertex sway via onBeforeCompile.
+ *   - River: flow-animated water shader (scrolling waves + bank foam via UV).
+ *   - Drifting clouds: ARC4_Cloud_* and the new high layer ARC1_CloudHi_*.
  *
  * BLENDER IS THE SOURCE OF TRUTH — anchors carried as empties in the GLB:
- *   CAM_ApartmentStart  — opening shot position
- *   CAM_PhoneHover      — above the phone, pre-entry
- *   CAM_GlassExit       — just below the pane (the "through" moment)
- *   CAM_DescentMid      — mid-air in the 500 m drop (same XY as the glass)
- *   CAM_BirdEye         — reveal apex: all five arcs in frame
- *   LOOK_Universe       — what the bird-eye looks at
- *   CAM_Arrival         — final position on the Arc 1 arrival pad
- *   Arc1_Arrival_Look   — final look target (the gate)
- * plus PhoneGlass / PhoneFrame / PhoneInteriorLip (interaction + framing) and
- * ARC1_PadRingOuter (the descent look target).
+ *   CAM_ApartmentStart / CAM_PhoneHover / CAM_GlassExit / CAM_DescentMid /
+ *   CAM_BirdEye / CAM_Arrival / LOOK_Universe / Arc1_Arrival_Look,
+ *   plus PhoneGlass / PhoneFrame / PhoneInteriorLip / ARC1_PadRingOuter and the
+ *   V9 player rig BUCKY_Player.
  *
- * MATERIAL POLICY: Blender materials ship as-is. The ONE exception is transmissive
- * glass — Three.js implements KHR transmission with an internal render target
- * (banned, and heavy on iPad), so every transmissive material is converted at mount
- * to plain transparent physical glass: subtle tint, subtle reflection, no glow.
+ * MATERIAL POLICY: Blender materials ship as-is. Exceptions (each one cloned at
+ * mount, owned + disposed by this mount, the cached clone is never mutated):
+ *   1. transmissive glass -> plain transparent physical glass (KHR transmission
+ *      would allocate an internal render target: banned, heavy on iPad),
+ *   2. leaf/grass materials -> + wind vertex sway,
+ *   3. river material -> + flow/foam shader,
+ *   4. sky dome material -> + day/night tint.
  *
  * PERFORMANCE: one scene, one camera, one scene render per frame. Optional bloom
- * (threshold ≥ TRUE emissives only — the phone can never white-out) is skipped on
- * touch devices. No shadow maps. Pixel ratio capped. Far plane sized to the 7 km
- * world; near sized so the glass pass-through never clips.
+ * desktop-only. Draco-compressed GLB (decoded once in the shared AssetCache).
+ * Pixel ratio capped. Vegetation pre-joined per type in Blender (6 draw calls
+ * instead of 560 objects).
  */
 import { debugLog, logError } from "../core/diagnostics.js";
 import { assetCache } from "../core/assetCache.js";
@@ -54,6 +58,7 @@ import { assetCache } from "../core/assetCache.js";
 const THREE_VERSION = "0.160.0";
 const CDN = `https://esm.sh/three@${THREE_VERSION}`;
 const JSM = `${CDN}/examples/jsm`;
+const RAPIER_CDN = "https://esm.sh/@dimforge/rapier3d-compat@0.12.0";
 
 const MODEL_URL = new URL("../assets/models/mission_hub_master.glb", import.meta.url).href;
 const STYLE_ELEMENT_ID = "vm-missionhub-styles";
@@ -71,62 +76,69 @@ const ANCHOR = {
     glass: "PhoneGlass",
     frame: "PhoneFrame",
     lip: "PhoneInteriorLip",
-    pad: "ARC1_PadRingOuter"
+    pad: "ARC1_PadRingOuter",
+    player: "BUCKY_Player"
 };
 const REQUIRED_NODES = Object.values(ANCHOR);
 
-// Journey (V7): timing (t), anchor-resolved position/look, lens (mm full-frame).
-// Built at mount from world transforms — no world coordinates live in this file.
-// V7 flow: apartment -> desk -> phone (HELD CLEARLY IN FRAME ~2s, no rotation
-// before the phone is visible) -> glass -> 750 m drop -> bird-eye reveal of the
-// whole world map (island / Chip City + bridge / datacells / clouds / virus
-// crater) -> descend -> Arc 1 arrival pad.
-const JOURNEY_DURATION = 18.0; // seconds, click -> standing on the arrival pad
+// Journey (V9): apartment (Z+3000) -> phone -> glass -> 2.9 km drop -> bird-eye
+// reveal -> descend to the Arc 1 pad. Bucky appears at arrival.
+const JOURNEY_DURATION = 20.0;
 const JOURNEY_KEYS = [
-    { t: 0.00, pos: "camStart",     look: "glassCenter", lens: 32 }, // apartment (already facing the desk)
-    { t: 0.12, pos: "camHover",     look: "glassCenter", lens: 44 }, // over the phone
-    { t: 0.23, pos: "camHover",     look: "glassCenter", lens: 46 }, // HOLD — phone ~2 s clearly in frame
-    { t: 0.31, pos: "glassAbove",   look: "pad",         lens: 48 }, // nose on the pane
-    { t: 0.38, pos: "camGlassExit", look: "pad",         lens: 48 }, // THROUGH the glass
-    { t: 0.54, pos: "camDescent",   look: "pad",         lens: 40 }, // free fall
-    { t: 0.70, pos: "camBirdEye",   look: "lookUniverse", lens: 26 }, // reveal: the whole world map (wide)
-    { t: 0.78, pos: "camBirdEye",   look: "lookUniverse", lens: 25 }, // DWELL — let the scale land (~1.4 s)
-    { t: 1.00, pos: "camArrival",   look: "lookArrival",  lens: 40 }  // Arc 1 arrival pad
+    { t: 0.00, pos: "camStart",     look: "glassCenter", lens: 32 },
+    { t: 0.11, pos: "camHover",     look: "glassCenter", lens: 44 },
+    { t: 0.21, pos: "camHover",     look: "glassCenter", lens: 46 }, // HOLD — phone clearly in frame
+    { t: 0.28, pos: "glassAbove",   look: "pad",         lens: 48 },
+    { t: 0.35, pos: "camGlassExit", look: "pad",         lens: 48 }, // THROUGH the glass
+    { t: 0.52, pos: "camDescent",   look: "pad",         lens: 40 }, // free fall
+    { t: 0.68, pos: "camBirdEye",   look: "lookUniverse", lens: 26 }, // world reveal
+    { t: 0.78, pos: "camBirdEye",   look: "lookUniverse", lens: 25 }, // DWELL
+    { t: 1.00, pos: "camArrival",   look: "lookArrival",  lens: 40 }  // Arc 1 pad — Bucky appears
 ];
 
-// Look: tone + bloom + one hemisphere ambient. The GLB carries the sun, practicals,
-// emissives, sky dome and fog cards from Blender. The ONE thing glTF cannot carry is
-// indirect/ambient bounce (no GI in three) — Phase E's "indirect ambient fill" is a
-// single HemisphereLight whose colors are sampled from the Blender sky-dome gradient
-// (zenith / ground haze). It is fill only — direction and mood still come from the GLB.
 const LOOK = {
     exposure: 1.0,
-    ambient: { sky: 0x32405e, ground: 0x14110e, intensity: 0.45 },
-    bloom: { strength: 0.22, radius: 0.55, threshold: 0.9 } // emissives only — glass can never bloom
+    bloom: { strength: 0.22, radius: 0.55, threshold: 0.9 }
 };
+const GLASS = { color: 0x0a1018, opacity: 0.22, roughness: 0.06 };
+const PERF = { maxPixelRatio: 1.75, bloomOnTouch: false, shadowsOnTouch: false };
 
-// Glass override (the one permitted material change; see MATERIAL POLICY above).
-const GLASS = {
-    color: 0x0a1018,   // subtle cold tint — never white, never emissive
-    opacity: 0.22,
-    roughness: 0.06
+// V9 third-person player + physics.
+const PLAYER = {
+    speed: 9.0,
+    sprint: 14.0,
+    jump: 11.0,
+    radius: 0.58,
+    camDist: 6.5,
+    camHeight: 2.2,
+    lookSpeed: 0.0042,
+    gravity: -28.0
 };
-
-const PERF = {
-    maxPixelRatio: 1.75,
-    bloomOnTouch: false // iPad: skip the bloom passes, render the scene directly
+// Static collision sources (exact-name prefixes in the GLB).
+const COLLIDE_RE = /^(ARC1_Terrain|ARC1_Gate|ARC1_Pad|VIL_House|VIL_Townhall|VIL_Fountain|VIL_Bridge|VIL_Lanterns|VIL_Benches|YGG_Trunk|YGG_Branches|VEG_Trees|VEG_Rocks|ARC_Bridge_(Deck|LowerDeck|Land))/;
+// Wind-animated material names -> sway amplitude (m).
+const WIND_MATS = {
+    M_LeafOak: 0.20, M_LeafBirch: 0.22, M_LeafPine: 0.12,
+    M_LeafCanopy: 0.45, M_LeafBush: 0.10, M_GrassTuft: 0.12
 };
-
-// V8 — explore mode (after arrival): WASD/arrows + drag-look on desktop,
-// virtual joystick (bottom-left) + drag-look on touch. Ground-snap via raycast
-// against walkable meshes (terrain, bridges, platforms) — no physics engine.
-const EXPLORE = {
-    speed: 9.0,          // m/s walk speed
-    eyeHeight: 1.8,
-    lookSpeed: 0.0042,   // rad per px drag
-    walkableRe: /^(ARC1_(Terrain|Island)|ARC_Bridge_(Deck|LowerDeck|Land)|ARC2_(Ground|Island|JumpPad)|ARC3_(Walk|Plat)|VIL_Bridge)/
+// Day/night: full cycle seconds, and ramps (t: 0 dawn, .25 noon, .5 dusk, .75 night).
+const DAYNIGHT = {
+    cycleSeconds: 600,
+    startT: 0.06, // arrive just after dawn
+    keys: [
+        { t: 0.00, sun: [1.00, 0.62, 0.40], i: 1.3, amb: [0.45, 0.40, 0.45], ai: 0.45, sky: [1.00, 0.80, 0.70] },
+        { t: 0.25, sun: [1.00, 0.98, 0.92], i: 2.6, amb: [0.55, 0.65, 0.80], ai: 0.55, sky: [1.00, 1.00, 1.00] },
+        { t: 0.50, sun: [1.00, 0.45, 0.25], i: 1.1, amb: [0.50, 0.40, 0.50], ai: 0.40, sky: [1.00, 0.70, 0.55] },
+        { t: 0.75, sun: [0.25, 0.35, 0.60], i: 0.22, amb: [0.15, 0.18, 0.32], ai: 0.30, sky: [0.30, 0.35, 0.55] },
+        { t: 1.00, sun: [1.00, 0.62, 0.40], i: 1.3, amb: [0.45, 0.40, 0.45], ai: 0.45, sky: [1.00, 0.80, 0.70] }
+    ]
 };
-const ORB_NAME = "PhoneSignalOrb"; // pulsing click-affordance above the phone
+// River current: Blender-local polyline (ARC1_Root at world (0,-500,0)) converted
+// to three.js space (x, z_blender, 500 - y_local). Water level: 94 - 72 t.
+const RIVER_LOCAL = [[-200, -470], [-150, -380], [-90, -240], [-10, -60], [60, 120], [140, 330], [120, 480], [60, 700]];
+const RIVER_PUSH = 16.0;   // m/s² downstream acceleration inside the current
+const RIVER_HALF_WIDTH = 8.5;
+const ORB_NAME = "PhoneSignalOrb";
 
 // ---------------------------------------------------------------------------
 // Asset cache wiring — parse-once at website startup, clone per open
@@ -136,8 +148,6 @@ function registerMissionHubAssets() {
     if (_assetsRegistered) return;
     _assetsRegistered = true;
     assetCache.registerAsset("mission_hub_master", MODEL_URL, {
-        // The export carries one known orphan image reference; strip it ONCE from the
-        // bytes so the cached parse — and every clone — is clean.
         transformBuffer(rawBuffer) {
             const { buffer, fixes } = patchMissingTextureSources(rawBuffer);
             if (fixes.length) debugLog("MissionHub ignored missing GLB texture references", fixes);
@@ -178,6 +188,7 @@ export function renderMissionHubApp(runtime, windowState) {
             <div class="vm-missionhub-joy" data-missionhub-joy aria-hidden="true">
                 <div class="vm-missionhub-joy-knob" data-missionhub-knob></div>
             </div>
+            <button class="vm-missionhub-jump" data-missionhub-jump aria-hidden="true" type="button">⤒</button>
         </div>
     `;
 }
@@ -191,12 +202,14 @@ export function mountMissionHubApp(runtime, windowState, element) {
     const stage = element.querySelector("[data-missionhub-stage]");
     const statusLine = element.querySelector("[data-missionhub-statusline]");
     const hint = element.querySelector("[data-missionhub-hint]");
+    const jumpBtn = element.querySelector("[data-missionhub-jump]");
     if (!stage) { logError("MissionHub mount", new Error("stage element missing")); return; }
 
     const scene = {
         disposed: false, THREE: null, renderer: null, composer: null, bloom: null,
         world: null, camera: null, model: null,
-        glassMaterials: [], resizeObserver: null, disposers: []
+        ownMaterials: [], resizeObserver: null, disposers: [],
+        physics: null, sun: null
     };
     view.scene = scene;
 
@@ -205,7 +218,7 @@ export function mountMissionHubApp(runtime, windowState, element) {
         if (statusLine) statusLine.textContent = detail;
     };
 
-    buildScene(scene, stage, setStatus, { hint }).catch((error) => {
+    buildScene(scene, stage, setStatus, { hint, jumpBtn }).catch((error) => {
         logError("MissionHub buildScene", error);
         setStatus("error", "3D runtime unavailable — check your connection and reopen.");
     });
@@ -221,10 +234,12 @@ export function unmountMissionHubApp(runtime, windowState) {
 }
 
 // ---------------------------------------------------------------------------
-// Scene construction — load GLB, resolve anchors, build journey. Nothing else.
+// Scene construction
 // ---------------------------------------------------------------------------
 async function buildScene(scene, stage, setStatus, ui) {
-    const useBloom = PERF.bloomOnTouch || !isTouchDevice();
+    const touch = isTouchDevice();
+    const useBloom = PERF.bloomOnTouch || !touch;
+    const useShadows = PERF.shadowsOnTouch || !touch;
     let THREE, EffectComposer, RenderPass, UnrealBloomPass, OutputPass;
     try {
         const mods = await Promise.all([
@@ -245,7 +260,7 @@ async function buildScene(scene, stage, setStatus, ui) {
     if (scene.disposed) return;
     scene.THREE = THREE;
 
-    // ---- Renderer (ONE pass of ONE scene per frame) ----
+    // ---- Renderer ----
     const W = () => Math.max(1, stage.clientWidth);
     const H = () => Math.max(1, stage.clientHeight);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
@@ -254,13 +269,13 @@ async function buildScene(scene, stage, setStatus, ui) {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = LOOK.exposure;
-    renderer.shadowMap.enabled = false; // dusk look is sky/emissive-driven; biggest iPad win
+    renderer.shadowMap.enabled = useShadows;
+    if (useShadows) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.classList.add("vm-missionhub-canvas");
     renderer.domElement.style.touchAction = "none";
     stage.appendChild(renderer.domElement);
     scene.renderer = renderer;
 
-    // Lost-context guard (GPU reset / iPad backgrounding).
     const onCtxLost = (e) => { e.preventDefault(); debugLog("MissionHub WebGL context lost"); setStatus("paused", "Graphics paused — restoring…"); };
     const onCtxRestored = () => { debugLog("MissionHub WebGL context restored"); setStatus("armed", "Look into the phone…"); };
     renderer.domElement.addEventListener("webglcontextlost", onCtxLost, false);
@@ -270,11 +285,11 @@ async function buildScene(scene, stage, setStatus, ui) {
         renderer.domElement.removeEventListener("webglcontextrestored", onCtxRestored);
     });
 
-    // ---- THE ONE SCENE — everything visual comes from the GLB ----
+    // ---- THE ONE SCENE ----
     const world = new THREE.Scene();
-    world.background = new THREE.Color(0x05060a); // only ever visible if the sky dome is culled
-    // Indirect ambient fill (see LOOK.ambient) — glTF carries no GI/ambient term.
-    world.add(new THREE.HemisphereLight(LOOK.ambient.sky, LOOK.ambient.ground, LOOK.ambient.intensity));
+    world.background = new THREE.Color(0x05060a);
+    const hemi = new THREE.HemisphereLight(0x32405e, 0x14110e, 0.45);
+    world.add(hemi);
     scene.world = world;
 
     setStatus("loading", "Opening the world…");
@@ -284,24 +299,17 @@ async function buildScene(scene, stage, setStatus, ui) {
         model = await assetCache.acquireScene("mission_hub_master");
         if (scene.disposed) { model = null; return; }
         if (!model) throw new Error("AssetCache returned no scene (parse failed or asset unavailable)");
-
-        // ANCHOR VERIFICATION — every Blender anchor must exist, by exact name.
         const missing = REQUIRED_NODES.filter((nm) => !model.getObjectByName(nm));
         if (missing.length) throw new Error(`mission_hub_master.glb missing required nodes: ${missing.join(", ")}`);
-
         world.add(model);
         debugLog("MissionHub master GLB clone acquired", MODEL_URL);
     } catch (error) {
         if (scene.disposed) return;
         throw new Error(`mission_hub_master.glb failed to load from ${MODEL_URL}: ${error && error.message ? error.message : error}`);
     }
-    scene.model = model; // shared AssetCache clone: detach on unmount, never deep-dispose
+    scene.model = model;
 
-    // ---- Glass: convert EVERY transmissive material to plain transparent glass.
-    // KHR transmission would make Three.js allocate an internal render target
-    // (banned + expensive). Subtle tint, subtle reflection, physically believable,
-    // no glow. These override materials are THIS MOUNT'S OWN (disposed on unmount);
-    // the cached clone's shared materials are never mutated.
+    // ---- Glass policy (own materials, cache never mutated) ----
     const glassMeshes = [];
     model.traverse((n) => {
         if (!n.isMesh) return;
@@ -319,16 +327,145 @@ async function buildScene(scene, stage, setStatus, ui) {
         override._isGlassOverride = true;
         mesh.material = Array.isArray(mesh.material) ? mesh.material.map(() => override) : override;
         mesh.castShadow = false;
-        scene.glassMaterials.push(override);
+        scene.ownMaterials.push(override);
     });
-    debugLog("MissionHub transmissive materials converted to simple glass", glassMeshes.map((m) => m.name));
 
-    // ---- Resolve anchors (world space, post-add) ----
+    // ---- V9 wind: clone leaf/grass materials, inject vertex sway ----
+    const windUniforms = [];
+    const windCloned = new Map(); // source material uuid -> own clone
+    model.traverse((n) => {
+        if (!n.isMesh) return;
+        const mats = Array.isArray(n.material) ? n.material : [n.material];
+        let changed = false;
+        const next = mats.map((m) => {
+            if (!m || !(m.name in WIND_MATS)) return m;
+            if (windCloned.has(m.uuid)) { changed = true; return windCloned.get(m.uuid); }
+            const own = m.clone();
+            const amp = WIND_MATS[m.name];
+            own.onBeforeCompile = (shader) => {
+                shader.uniforms.uWindTime = { value: 0 };
+                windUniforms.push(shader.uniforms.uWindTime);
+                shader.vertexShader = shader.vertexShader
+                    .replace("#include <common>", "#include <common>\nuniform float uWindTime;")
+                    .replace("#include <begin_vertex>", [
+                        "#include <begin_vertex>",
+                        `float windA = ${amp.toFixed(3)};`,
+                        "transformed.x += sin(uWindTime * 1.6 + position.x * 0.11 + position.z * 0.07) * windA;",
+                        "transformed.z += cos(uWindTime * 1.25 + position.x * 0.06 + position.y * 0.09) * windA * 0.7;"
+                    ].join("\n"));
+            };
+            own.customProgramCacheKey = () => `wind_${m.name}_${amp}`;
+            windCloned.set(m.uuid, own);
+            scene.ownMaterials.push(own);
+            changed = true;
+            return own;
+        });
+        if (changed) n.material = Array.isArray(n.material) ? next : next[0];
+    });
+
+    // ---- V9 river: flow + foam shader on an own clone ----
+    const riverMesh = model.getObjectByName("ARC1_River");
+    const riverUniforms = [];
+    if (riverMesh && riverMesh.material) {
+        const own = riverMesh.material.clone();
+        own.transparent = true;
+        own.defines = Object.assign({}, own.defines, { USE_UV: "" });
+        own.onBeforeCompile = (shader) => {
+            shader.uniforms.uFlowTime = { value: 0 };
+            riverUniforms.push(shader.uniforms.uFlowTime);
+            shader.fragmentShader = shader.fragmentShader
+                .replace("#include <common>", "#include <common>\nuniform float uFlowTime;")
+                .replace("#include <color_fragment>", [
+                    "#include <color_fragment>",
+                    "{",
+                    "  float fy = vUv.y * 10.0 - uFlowTime * 2.4;",
+                    "  float wave = sin(fy + sin(vUv.x * 9.0 + uFlowTime * 1.3) * 0.8) * 0.5 + 0.5;",
+                    "  diffuseColor.rgb += wave * vec3(0.03, 0.075, 0.09);",
+                    "  float bank = smoothstep(0.16, 0.0, min(vUv.x, 1.0 - vUv.x));",
+                    "  float foamN = sin(vUv.y * 34.0 - uFlowTime * 3.5) * 0.5 + 0.5;",
+                    "  float foam = bank * (0.45 + 0.55 * foamN);",
+                    "  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.92, 0.95), foam * 0.7);",
+                    "  diffuseColor.a = min(1.0, diffuseColor.a + foam * 0.35);",
+                    "}"
+                ].join("\n"));
+        };
+        own.customProgramCacheKey = () => "river_flow_v9";
+        riverMesh.material = own;
+        scene.ownMaterials.push(own);
+    }
+
+    // ---- V9 day/night: runtime sun + sky-dome tint (own material) ----
+    const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+    sun.position.set(400, 800, 300);
+    world.add(sun);
+    world.add(sun.target);
+    scene.sun = sun;
+    const islandCenter = new THREE.Vector3(0, 80, 450); // blender (0,-450,80) -> three
+    sun.target.position.copy(islandCenter);
+    if (useShadows) {
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(2048, 2048);
+        const sc = sun.shadow.camera;
+        sc.left = -520; sc.right = 520; sc.top = 700; sc.bottom = -700;
+        sc.near = 100; sc.far = 4000;
+        sun.shadow.bias = -0.0006;
+        // Only Arc 1 content participates (keeps the shadow pass cheap).
+        model.traverse((n) => {
+            if (!n.isMesh) return;
+            const nm = n.name || "";
+            if (/^(ARC1_Terrain|VIL_|YGG_|VEG_|ARC1_Gate|BUCKY_)/.test(nm)) {
+                n.castShadow = !/^(ARC1_Terrain|VEG_Grass)/.test(nm);
+                n.receiveShadow = true;
+            }
+        });
+    }
+    let skyTintTargets = [];
+    const skyDome = model.getObjectByName("UNI_SkyDome");
+    if (skyDome && skyDome.material) {
+        const own = skyDome.material.clone();
+        skyDome.material = own;
+        scene.ownMaterials.push(own);
+        skyTintTargets = [own];
+    }
+    const skyBase = skyTintTargets.map((m) => ({
+        color: m.color ? m.color.clone() : null,
+        emissive: m.emissive ? m.emissive.clone() : null
+    }));
+    const dayKeys = DAYNIGHT.keys;
+    const _c0 = new THREE.Color(), _c1 = new THREE.Color();
+    function sampleDay(t, prop, idxProp) {
+        let a = dayKeys[0], b = dayKeys[dayKeys.length - 1];
+        for (let i = 0; i < dayKeys.length - 1; i++) {
+            if (t >= dayKeys[i].t && t <= dayKeys[i + 1].t) { a = dayKeys[i]; b = dayKeys[i + 1]; break; }
+        }
+        const s = (t - a.t) / Math.max(1e-5, b.t - a.t);
+        if (idxProp) return lerp(a[idxProp], b[idxProp], s);
+        _c0.fromArray(a[prop]); _c1.fromArray(b[prop]);
+        return _c0.lerp(_c1, s);
+    }
+    function applyDayNight(dayT) {
+        const ang = dayT * Math.PI * 2 - Math.PI / 2; // dawn at horizon
+        const elev = Math.sin(ang + Math.PI / 2);
+        const r = 2200;
+        sun.position.set(
+            islandCenter.x + Math.cos(ang) * r,
+            islandCenter.y + Math.max(0.06, elev) * r * 0.8,
+            islandCenter.z + Math.sin(ang * 0.7) * r * 0.5
+        );
+        sun.color.copy(sampleDay(dayT, "sun"));
+        sun.intensity = sampleDay(dayT, null, "i");
+        hemi.color.copy(sampleDay(dayT, "amb"));
+        hemi.intensity = sampleDay(dayT, null, "ai");
+        const skyTint = sampleDay(dayT, "sky");
+        skyTintTargets.forEach((m, i) => {
+            if (m.color && skyBase[i].color) m.color.copy(skyBase[i].color).multiply(skyTint);
+            if (m.emissive && skyBase[i].emissive) m.emissive.copy(skyBase[i].emissive).multiply(skyTint);
+        });
+    }
+
+    // ---- Resolve anchors ----
     model.updateWorldMatrix(true, true);
-    const worldPos = (nm) => {
-        const o = model.getObjectByName(nm);
-        return o.getWorldPosition(new THREE.Vector3());
-    };
+    const worldPos = (nm) => model.getObjectByName(nm).getWorldPosition(new THREE.Vector3());
     const glassMesh = model.getObjectByName(ANCHOR.glass);
     const glassCenter = new THREE.Box3().setFromObject(glassMesh).getCenter(new THREE.Vector3());
     const points = {
@@ -345,19 +482,15 @@ async function buildScene(scene, stage, setStatus, ui) {
         glassAbove: glassCenter.clone().add(new THREE.Vector3(0, 0, 0.07))
     };
     const path = JOURNEY_KEYS.map((k) => ({
-        t: k.t,
-        pos: points[k.pos].clone(),
-        look: points[k.look].clone(),
-        fov: lensToFov(k.lens)
+        t: k.t, pos: points[k.pos].clone(), look: points[k.look].clone(), fov: lensToFov(k.lens)
     }));
 
-    // ---- The ONE camera. near: glass pass-through must not clip; far: the 7 km world.
-    const camera = new THREE.PerspectiveCamera(path[0].fov, W() / H(), 0.05, 12000);
+    const camera = new THREE.PerspectiveCamera(path[0].fov, W() / H(), 0.05, 14000);
     camera.position.copy(path[0].pos);
     camera.lookAt(path[0].look);
     scene.camera = camera;
 
-    // ---- Optional bloom (desktop): emissives only. Otherwise: direct render. ----
+    // ---- Bloom (desktop) ----
     let composer = null, bloom = null;
     if (useBloom) {
         composer = new EffectComposer(renderer);
@@ -369,22 +502,95 @@ async function buildScene(scene, stage, setStatus, ui) {
         scene.composer = composer; scene.bloom = bloom;
     }
 
-    // ---- V8: signal orb (own pulsing material), drifting clouds, walkables ----
+    // ---- V9 Bucky rig ----
+    const bucky = model.getObjectByName(ANCHOR.player);
+    const buckyBody = model.getObjectByName("BUCKY_Body");
+    bucky.visible = false; // appears at arrival
+    const buckySpawn = points.pad.clone();
+    buckySpawn.y += 2.0;
+
+    // ---- Ambient life: orb pulse + drifting clouds ----
     const orb = model.getObjectByName(ORB_NAME);
     if (orb && orb.material) {
-        orb.material = orb.material.clone(); // pulse THIS mount's copy, never the cache's
-        scene.glassMaterials.push(orb.material); // disposed with the other own materials
+        orb.material = orb.material.clone();
+        scene.ownMaterials.push(orb.material);
     }
     const clouds = [];
-    const walkables = [];
     model.traverse((n) => {
         if (!n.isMesh) return;
-        if (n.name.indexOf("ARC4_Cloud") === 0) clouds.push({ o: n, base: n.position.clone(), ph: Math.random() * 6.28 });
-        if (EXPLORE.walkableRe.test(n.name)) walkables.push(n);
+        if (n.name.indexOf("ARC4_Cloud") === 0 || n.name.indexOf("ARC1_CloudHi") === 0) {
+            clouds.push({ o: n, base: n.position.clone(), ph: Math.random() * 6.28, s: n.name.indexOf("ARC1_") === 0 ? 14 : 6 });
+        }
     });
-    debugLog("MissionHub V8 explore setup", { clouds: clouds.length, walkables: walkables.length, orb: !!orb });
 
-    // ---- Interaction: click the phone (or the orb) -> start the journey ----
+    // ---- V9 physics (Rapier) — built in the background during the journey ----
+    const phys = { ready: false, RAPIER: null, world: null, body: null, river: null };
+    scene.physics = phys;
+    (async () => {
+        try {
+            const RAPIER = await import(/* @vite-ignore */ RAPIER_CDN);
+            await RAPIER.init();
+            if (scene.disposed) return;
+            const pw = new RAPIER.World({ x: 0, y: PLAYER.gravity, z: 0 });
+            // static trimesh colliders
+            const tmp = new THREE.Vector3();
+            let colliderCount = 0;
+            model.updateWorldMatrix(true, true);
+            model.traverse((n) => {
+                if (!n.isMesh || !COLLIDE_RE.test(n.name || "")) return;
+                const geo = n.geometry;
+                if (!geo || !geo.attributes.position) return;
+                const pos = geo.attributes.position;
+                const verts = new Float32Array(pos.count * 3);
+                for (let i = 0; i < pos.count; i++) {
+                    tmp.fromBufferAttribute(pos, i).applyMatrix4(n.matrixWorld);
+                    verts[i * 3] = tmp.x; verts[i * 3 + 1] = tmp.y; verts[i * 3 + 2] = tmp.z;
+                }
+                let idx;
+                if (geo.index) idx = new Uint32Array(geo.index.array);
+                else { idx = new Uint32Array(pos.count); for (let i = 0; i < pos.count; i++) idx[i] = i; }
+                pw.createCollider(RAPIER.ColliderDesc.trimesh(verts, idx).setFriction(0.9));
+                colliderCount++;
+            });
+            // Bucky: dynamic ball
+            const bd = RAPIER.RigidBodyDesc.dynamic()
+                .setTranslation(buckySpawn.x, buckySpawn.y, buckySpawn.z)
+                .lockRotations()
+                .setLinearDamping(0.18)
+                .setCcdEnabled(true);
+            const body = pw.createRigidBody(bd);
+            pw.createCollider(RAPIER.ColliderDesc.ball(PLAYER.radius).setFriction(0.25).setRestitution(0.0), body);
+            // river current samples in three.js space
+            const samples = [];
+            let acc = 0, total = 0;
+            const segs = [];
+            for (let i = 0; i < RIVER_LOCAL.length - 1; i++) {
+                const L = Math.hypot(RIVER_LOCAL[i + 1][0] - RIVER_LOCAL[i][0], RIVER_LOCAL[i + 1][1] - RIVER_LOCAL[i][1]);
+                segs.push(L); total += L;
+            }
+            for (let i = 0; i < RIVER_LOCAL.length - 1; i++) {
+                const [ax, ay] = RIVER_LOCAL[i], [bx, by] = RIVER_LOCAL[i + 1];
+                const n = Math.max(2, Math.round(segs[i] / 14));
+                for (let k = 0; k < n; k++) {
+                    const tt = k / n;
+                    const t = (acc + segs[i] * tt) / total;
+                    const lx = ax + (bx - ax) * tt, ly = ay + (by - ay) * tt;
+                    const waterY = 94 - 72 * t;
+                    const dirx = (bx - ax) / segs[i], diry = (by - ay) / segs[i];
+                    // blender (x,y) -> three (x, ., 500 - y); blender +y => three -z
+                    samples.push({ x: lx, y: waterY, z: 500 - ly, dx: dirx, dz: -diry });
+                }
+                acc += segs[i];
+            }
+            phys.RAPIER = RAPIER; phys.world = pw; phys.body = body; phys.river = samples;
+            phys.ready = true;
+            debugLog("MissionHub V9 physics ready", { colliders: colliderCount, riverSamples: samples.length });
+        } catch (e) {
+            logError("MissionHub Rapier init (walking falls back to no-clip ground snap)", e);
+        }
+    })();
+
+    // ---- Interaction: click the phone -> journey ----
     const anim = { phase: "idle", t: 0, p: 0 };
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
@@ -394,8 +600,8 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (o) o.traverse((c) => { if (c.isMesh) targets.push(c); });
     });
 
-    // ---- V8 explore input: keyboard + drag-look + virtual joystick ----
-    const input = { f: 0, r: 0, joyF: 0, joyR: 0, dragging: false, lastX: 0, lastY: 0, yaw: 0, pitch: 0 };
+    // ---- input: keyboard + drag-look + joystick + jump ----
+    const input = { f: 0, r: 0, joyF: 0, joyR: 0, dragging: false, lastX: 0, lastY: 0, yaw: 0, pitch: -0.25, jump: false, sprint: false };
     const keymap = { KeyW: [1, 0], ArrowUp: [1, 0], KeyS: [-1, 0], ArrowDown: [-1, 0], KeyA: [0, -1], ArrowLeft: [0, -1], KeyD: [0, 1], ArrowRight: [0, 1] };
     const keys = new Set();
     const updateKeys = () => {
@@ -403,8 +609,16 @@ async function buildScene(scene, stage, setStatus, ui) {
         keys.forEach((k) => { const m = keymap[k]; if (m) { f += m[0]; r += m[1]; } });
         input.f = Math.max(-1, Math.min(1, f)); input.r = Math.max(-1, Math.min(1, r));
     };
-    const onKeyDown = (e) => { if (keymap[e.code] && anim.phase === "explore") { keys.add(e.code); updateKeys(); e.preventDefault(); } };
-    const onKeyUp = (e) => { if (keymap[e.code]) { keys.delete(e.code); updateKeys(); } };
+    const onKeyDown = (e) => {
+        if (anim.phase !== "explore") return;
+        if (keymap[e.code]) { keys.add(e.code); updateKeys(); e.preventDefault(); }
+        if (e.code === "Space") { input.jump = true; e.preventDefault(); }
+        if (e.code === "ShiftLeft" || e.code === "ShiftRight") input.sprint = true;
+    };
+    const onKeyUp = (e) => {
+        if (keymap[e.code]) { keys.delete(e.code); updateKeys(); }
+        if (e.code === "ShiftLeft" || e.code === "ShiftRight") input.sprint = false;
+    };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     scene.disposers.push(() => { window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); });
@@ -416,7 +630,6 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (anim.phase !== "explore") return;
         const r = renderer.domElement.getBoundingClientRect();
         const isTouch = ev.pointerType === "touch";
-        // touch in de linkeronderhoek = joystick; al het andere = camera-drag
         if (isTouch && joyId === null && ev.clientX - r.left < r.width * 0.4 && ev.clientY - r.top > r.height * 0.55) {
             joyId = ev.pointerId; joyCx = ev.clientX; joyCy = ev.clientY;
             if (joyEl) { joyEl.style.left = (ev.clientX - r.left - 55) + "px"; joyEl.style.top = (ev.clientY - r.top - 55) + "px"; joyEl.classList.add("is-active"); }
@@ -431,13 +644,13 @@ async function buildScene(scene, stage, setStatus, ui) {
             const mag = Math.min(45, Math.hypot(dx, dy)) / 45;
             const ang = Math.atan2(dy, dx);
             input.joyR = Math.cos(ang) * mag; input.joyF = -Math.sin(ang) * mag;
-            if (knobEl) { knobEl.style.transform = `translate(${Math.cos(ang) * mag * 32}px, ${Math.sin(ang) * mag * 32}px)`; }
+            if (knobEl) knobEl.style.transform = `translate(${Math.cos(ang) * mag * 32}px, ${Math.sin(ang) * mag * 32}px)`;
             return;
         }
         if (input.dragging) {
-            input.yaw -= (ev.clientX - input.lastX) * EXPLORE.lookSpeed;
-            input.pitch -= (ev.clientY - input.lastY) * EXPLORE.lookSpeed;
-            input.pitch = Math.max(-1.35, Math.min(1.35, input.pitch));
+            input.yaw -= (ev.clientX - input.lastX) * PLAYER.lookSpeed;
+            input.pitch -= (ev.clientY - input.lastY) * PLAYER.lookSpeed;
+            input.pitch = Math.max(-1.2, Math.min(0.55, input.pitch));
             input.lastX = ev.clientX; input.lastY = ev.clientY;
         }
     };
@@ -460,16 +673,12 @@ async function buildScene(scene, stage, setStatus, ui) {
         renderer.domElement.removeEventListener("pointerup", onPointerUpStage);
         renderer.domElement.removeEventListener("pointercancel", onPointerUpStage);
     });
-    const _down = new THREE.Vector3(0, -1, 0);
-    const _rayO = new THREE.Vector3();
-    const groundRay = new THREE.Raycaster();
-    const snapToGround = () => {
-        _rayO.copy(camera.position); _rayO.y += 3;
-        groundRay.set(_rayO, _down);
-        groundRay.far = 400;
-        const hits = groundRay.intersectObjects(walkables, false);
-        if (hits.length) camera.position.y = hits[0].point.y + EXPLORE.eyeHeight;
-    };
+    if (ui.jumpBtn) {
+        const onJump = (ev) => { ev.preventDefault(); if (anim.phase === "explore") input.jump = true; };
+        ui.jumpBtn.addEventListener("pointerdown", onJump);
+        scene.disposers.push(() => ui.jumpBtn.removeEventListener("pointerdown", onJump));
+    }
+
     const overPhone = (ev) => {
         const r = renderer.domElement.getBoundingClientRect();
         ndc.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
@@ -496,6 +705,12 @@ async function buildScene(scene, stage, setStatus, ui) {
         renderer.domElement.removeEventListener("pointerdown", onDown);
     });
 
+    // ---- no-physics fallback: raycast ground snap (only if Rapier failed) ----
+    const walkables = [];
+    model.traverse((n) => { if (n.isMesh && /^(ARC1_Terrain|VIL_Bridge|VIL_Townhall|ARC1_Pad)/.test(n.name || "")) walkables.push(n); });
+    const _down = new THREE.Vector3(0, -1, 0);
+    const groundRay = new THREE.Raycaster();
+
     // ---- Responsive ----
     const resize = () => {
         if (scene.disposed || !scene.renderer) return;
@@ -507,14 +722,17 @@ async function buildScene(scene, stage, setStatus, ui) {
     const ro = new ResizeObserver(resize); ro.observe(stage); scene.resizeObserver = ro; resize();
     if (scene.disposed) return;
 
-    // ---- Frame loop — ONE scene, ONE camera, ONE scene render ----
+    // ---- Frame loop ----
     const clock = new THREE.Clock();
     const _off = new THREE.Vector3();
     const _pos = new THREE.Vector3();
     const _look = new THREE.Vector3();
+    const _v = new THREE.Vector3();
     const idleP = path[0].pos.clone();
     const idleL = path[0].look.clone();
     const fovIdle = path[0].fov;
+    let dayClock = DAYNIGHT.startT * DAYNIGHT.cycleSeconds;
+    let buckyYaw = 0, buckyVy = 0, popT = -1;
 
     const samplePath = (p) => {
         let a = path[0], b = path[path.length - 1];
@@ -531,7 +749,7 @@ async function buildScene(scene, stage, setStatus, ui) {
     };
 
     const tick = (dt, time) => {
-        // V8 ambient life (all phases): pulsing signal orb + drifting clouds.
+        // ambient life
         if (orb) {
             const pulse = 1 + 0.18 * Math.sin(time * 3.2);
             orb.scale.setScalar(pulse);
@@ -540,12 +758,19 @@ async function buildScene(scene, stage, setStatus, ui) {
             }
         }
         for (const c of clouds) {
-            c.o.position.x = c.base.x + Math.sin(time * 0.05 + c.ph) * 6;
-            c.o.position.z = c.base.z + Math.cos(time * 0.04 + c.ph) * 5;
+            c.o.position.x = c.base.x + Math.sin(time * 0.05 + c.ph) * c.s;
+            c.o.position.z = c.base.z + Math.cos(time * 0.04 + c.ph) * c.s * 0.8;
+        }
+        for (const u of windUniforms) u.value = time;
+        for (const u of riverUniforms) u.value = time;
+
+        // day/night runs as soon as the player is in the world
+        if (anim.phase === "explore") {
+            dayClock += dt;
+            applyDayNight((dayClock / DAYNIGHT.cycleSeconds) % 1);
         }
 
         if (anim.phase === "idle") {
-            // No perceptible rotation before the phone is in frame.
             _off.set(Math.sin(time * 0.14) * 0.02, Math.cos(time * 0.11) * 0.012, Math.sin(time * 0.09) * 0.016);
             camera.position.copy(idleP).add(_off);
             camera.lookAt(idleL);
@@ -558,28 +783,121 @@ async function buildScene(scene, stage, setStatus, ui) {
             samplePath(p);
             setStatus("entering", enterLabel(p));
             if (raw >= 1) {
-                // hand the camera to the player: seed yaw/pitch from the arrival look
                 anim.phase = "explore";
+                bucky.visible = true;
+                popT = 0; // spawn pop animation
+                applyDayNight(DAYNIGHT.startT);
                 const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
-                input.yaw = e.y; input.pitch = e.x;
+                input.yaw = e.y; input.pitch = -0.25;
                 if (camera.fov !== 50) { camera.fov = 50; camera.updateProjectionMatrix(); }
                 setStatus("explore", "Arc 1 — verken de wereld");
-                if (ui.hint) ui.hint.textContent = isTouchDevice() ? "joystick: lopen — sleep: rondkijken" : "WASD: lopen — sleep: rondkijken";
-                debugLog("MissionHub arrived at Arc 1 — explore mode");
+                if (ui.hint) ui.hint.textContent = isTouchDevice() ? "joystick: lopen — sleep: kijken — ⤒: springen" : "WASD: lopen — shift: rennen — spatie: springen — sleep: kijken";
+                if (ui.jumpBtn && isTouchDevice()) ui.jumpBtn.classList.add("is-active");
+                debugLog("MissionHub V9 arrived — Bucky spawned, explore mode");
             }
             return;
         }
-        // ---- explore: player-controlled camera with ground snap ----
-        camera.rotation.set(input.pitch, input.yaw, 0, "YXZ");
+
+        // ---- explore: third-person Bucky ----
         const f = (input.f || 0) + input.joyF;
         const r = (input.r || 0) + input.joyR;
-        if (f !== 0 || r !== 0) {
-            const sin = Math.sin(input.yaw), cos = Math.cos(input.yaw);
-            // forward in look direction (horizontal), right perpendicular
-            camera.position.x += (-sin * f + cos * r) * EXPLORE.speed * dt;
-            camera.position.z += (-cos * f - sin * r) * EXPLORE.speed * dt;
+        const moving = Math.abs(f) > 0.05 || Math.abs(r) > 0.05;
+        const speed = input.sprint ? PLAYER.sprint : PLAYER.speed;
+        const sinY = Math.sin(input.yaw), cosY = Math.cos(input.yaw);
+        const dx = (-sinY * f + cosY * r);
+        const dz = (-cosY * f - sinY * r);
+
+        let bp; // bucky world position this frame
+        if (phys.ready) {
+            const body = phys.body;
+            const lv = body.linvel();
+            // grounded probe
+            const origin = body.translation();
+            const ray = new phys.RAPIER.Ray({ x: origin.x, y: origin.y, z: origin.z }, { x: 0, y: -1, z: 0 });
+            const hit = phys.world.castRay(ray, PLAYER.radius + 0.25, true);
+            const grounded = !!hit;
+            // desired horizontal velocity
+            const tx = dx * speed, tz = dz * speed;
+            const blend = grounded ? 0.55 : 0.08;
+            let nvx = lv.x + (tx - lv.x) * blend;
+            let nvz = lv.z + (tz - lv.z) * blend;
+            let nvy = lv.y;
+            if (input.jump && grounded) nvy = PLAYER.jump;
+            input.jump = false;
+            // river current
+            const riv = phys.river;
+            if (riv) {
+                let best = null, bd = 1e9;
+                for (let i = 0; i < riv.length; i++) {
+                    const s = riv[i];
+                    const ddx = origin.x - s.x, ddz = origin.z - s.z;
+                    const d2 = ddx * ddx + ddz * ddz;
+                    if (d2 < bd) { bd = d2; best = s; }
+                }
+                if (best && bd < RIVER_HALF_WIDTH * RIVER_HALF_WIDTH && origin.y < best.y + 1.2 && origin.y > best.y - 4) {
+                    nvx += best.dx * RIVER_PUSH * dt * 12;
+                    nvz += best.dz * RIVER_PUSH * dt * 12;
+                    nvy = Math.min(nvy + 2.0 * dt, 1.5); // buoyancy
+                    if (origin.y < best.y - 0.2) nvy += 6.0 * dt;
+                }
+            }
+            body.setLinvel({ x: nvx, y: nvy, z: nvz }, true);
+            phys.world.timestep = Math.min(dt, 1 / 30);
+            phys.world.step();
+            const tr = body.translation();
+            bp = _v.set(tr.x, tr.y - PLAYER.radius, tr.z);
+            buckyVy = body.linvel().y;
+            // fell off the world -> respawn on the pad
+            if (tr.y < -150) {
+                body.setTranslation({ x: buckySpawn.x, y: buckySpawn.y, z: buckySpawn.z }, true);
+                body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+            }
+        } else {
+            // fallback: direct move + raycast snap (no physics available)
+            bucky.getWorldPosition(_v);
+            _v.x += dx * speed * dt; _v.z += dz * speed * dt;
+            _pos.copy(_v); _pos.y += 3;
+            groundRay.set(_pos, _down); groundRay.far = 400;
+            const hits = groundRay.intersectObjects(walkables, false);
+            if (hits.length) _v.y = hits[0].point.y;
+            bp = _v;
         }
-        snapToGround();
+
+        // place the rig (bucky is parented inside the model graph -> use world->local)
+        const parent = bucky.parent;
+        parent.updateWorldMatrix(true, false);
+        bucky.position.copy(parent.worldToLocal(_pos.copy(bp)));
+
+        // facing + squash & stretch + idle bounce
+        if (moving) {
+            const targetYaw = Math.atan2(dx, dz) + Math.PI;
+            let d = targetYaw - buckyYaw;
+            while (d > Math.PI) d -= 2 * Math.PI;
+            while (d < -Math.PI) d += 2 * Math.PI;
+            buckyYaw += d * Math.min(1, dt * 10);
+        }
+        bucky.rotation.y = buckyYaw;
+        const stretch = clamp01(Math.abs(buckyVy) / 14);
+        const sq = 1 + (buckyVy > 0 ? 0.22 : -0.16) * stretch;
+        const bounce = moving ? 1 + 0.05 * Math.sin(time * 14) : 1 + 0.03 * Math.sin(time * 2.2);
+        let pop = 1;
+        if (popT >= 0) {
+            popT += dt;
+            pop = popT < 0.5 ? smoothstep01(popT / 0.5) * (1 + 0.3 * Math.sin(popT * 12)) : 1;
+            if (popT > 0.8) popT = -1;
+        }
+        bucky.scale.set((2 - sq) * pop, sq * bounce * pop, (2 - sq) * pop);
+
+        // third-person camera
+        const cd = PLAYER.camDist;
+        const cp = Math.cos(input.pitch), sp = Math.sin(input.pitch);
+        camera.position.set(
+            bp.x + sinY * cd * cp,
+            bp.y + PLAYER.camHeight - sp * cd,
+            bp.z + cosY * cd * cp
+        );
+        _look.set(bp.x, bp.y + 1.2, bp.z);
+        camera.lookAt(_look);
     };
 
     renderer.setAnimationLoop(() => {
@@ -589,12 +907,11 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (composer) composer.render(); else renderer.render(world, camera);
     });
     setStatus("armed", "Look into the phone…");
-    debugLog("MissionHub V6 master-world runtime running", { bloom: useBloom });
+    debugLog("MissionHub V9 runtime running", { bloom: useBloom, shadows: useShadows });
 }
 
 // ---------------------------------------------------------------------------
-// Helpers — GLB byte-patcher: strip orphan image / missing texture references
-// from the JSON chunk ONCE before the AssetCache parse (the V6 export carries one).
+// Helpers — GLB byte-patcher (strip orphan texture references before parse)
 // ---------------------------------------------------------------------------
 function patchMissingTextureSources(arrayBuffer) {
     const input = arrayBuffer instanceof ArrayBuffer ? new Uint8Array(arrayBuffer) : new Uint8Array(arrayBuffer.buffer);
@@ -684,7 +1001,7 @@ function readAscii(bytes, start, length) {
 // ---------------------------------------------------------------------------
 // Helpers — math + device
 // ---------------------------------------------------------------------------
-function lensToFov(lens) { return 2 * Math.atan(24 / (2 * lens)) * 180 / Math.PI; } // 36x24 full-frame, vertical
+function lensToFov(lens) { return 2 * Math.atan(24 / (2 * lens)) * 180 / Math.PI; }
 function isTouchDevice() {
     try { return typeof navigator !== "undefined" && (navigator.maxTouchPoints || 0) > 1; } catch (_e) { return false; }
 }
@@ -693,9 +1010,9 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 function smoothstep01(x) { x = clamp01(x); return x * x * (3 - 2 * x); }
 function smootherstep(x) { x = clamp01(x); return x * x * x * (x * (x * 6 - 15) + 10); }
 function enterLabel(p) {
-    if (p < 0.23) return "approaching the phone";
-    if (p < 0.38) return "through the glass";
-    if (p < 0.54) return "falling — 750 m to go";
+    if (p < 0.21) return "approaching the phone";
+    if (p < 0.35) return "through the glass";
+    if (p < 0.52) return "falling — 2.9 km to go";
     if (p < 0.72) return "the world below";
     if (p < 1.0) return "descending to Arc 1";
     return "Arc 1";
@@ -713,14 +1030,23 @@ function disposeScene(scene) {
     if (scene.resizeObserver) { try { scene.resizeObserver.disconnect(); } catch (_) {} scene.resizeObserver = null; }
     if (scene.composer) { try { scene.composer.dispose && scene.composer.dispose(); } catch (_) {} scene.composer = null; }
 
-    // The AssetCache clone is SHARED — detach, never deep-dispose; its
-    // geometry/materials/textures belong to the cache and are reused by the next open.
+    // physics (this mount's own world)
+    if (scene.physics && scene.physics.world) {
+        try { scene.physics.world.free(); } catch (_) {}
+        scene.physics = null;
+    }
+    if (scene.sun) {
+        try { if (scene.world) { scene.world.remove(scene.sun.target); scene.world.remove(scene.sun); } } catch (_) {}
+        try { if (scene.sun.shadow && scene.sun.shadow.map) scene.sun.shadow.map.dispose(); } catch (_) {}
+        scene.sun = null;
+    }
+
+    // The AssetCache clone is SHARED — detach, never deep-dispose.
     if (scene.world && scene.model) { try { scene.world.remove(scene.model); } catch (_) {} }
     scene.model = null;
 
-    // This mount's OWN GPU resources.
-    (scene.glassMaterials || []).forEach((m) => { try { m.dispose(); } catch (_) {} });
-    scene.glassMaterials = [];
+    (scene.ownMaterials || []).forEach((m) => { try { m.dispose(); } catch (_) {} });
+    scene.ownMaterials = [];
     scene.world = null;
 
     if (scene.renderer) {
@@ -763,6 +1089,10 @@ function injectStyles() {
 .vm-missionhub-joy.is-active { display:flex; }
 .vm-missionhub-joy-knob { width:44px; height:44px; border-radius:50%;
   background:rgba(120,200,255,.45); border:1px solid rgba(180,225,255,.6); }
+.vm-missionhub-jump { position:absolute; right:18px; bottom:22px; width:62px; height:62px; border-radius:50%;
+  border:2px solid rgba(120,200,255,.4); background:rgba(10,16,26,.45); color:#bfe6ff; font-size:24px;
+  display:none; align-items:center; justify-content:center; z-index:3; touch-action:none; }
+.vm-missionhub-jump.is-active { display:flex; }
     `;
     document.head.appendChild(style);
 }
