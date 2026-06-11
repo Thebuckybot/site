@@ -117,6 +117,17 @@ const PERF = {
     bloomOnTouch: false // iPad: skip the bloom passes, render the scene directly
 };
 
+// V8 — explore mode (after arrival): WASD/arrows + drag-look on desktop,
+// virtual joystick (bottom-left) + drag-look on touch. Ground-snap via raycast
+// against walkable meshes (terrain, bridges, platforms) — no physics engine.
+const EXPLORE = {
+    speed: 9.0,          // m/s walk speed
+    eyeHeight: 1.8,
+    lookSpeed: 0.0042,   // rad per px drag
+    walkableRe: /^(ARC1_(Terrain|Island)|ARC_Bridge_(Deck|LowerDeck|Land)|ARC2_(Ground|Island|JumpPad)|ARC3_(Walk|Plat)|VIL_Bridge)/
+};
+const ORB_NAME = "PhoneSignalOrb"; // pulsing click-affordance above the phone
+
 // ---------------------------------------------------------------------------
 // Asset cache wiring — parse-once at website startup, clone per open
 // ---------------------------------------------------------------------------
@@ -163,6 +174,9 @@ export function renderMissionHubApp(runtime, windowState) {
                 <span class="vm-missionhub-tag">MISSION HUB</span>
                 <span class="vm-missionhub-status" data-missionhub-statusline>${escapeText(state.detail || "")}</span>
                 <span class="vm-missionhub-hint" data-missionhub-hint>look into the phone</span>
+            </div>
+            <div class="vm-missionhub-joy" data-missionhub-joy aria-hidden="true">
+                <div class="vm-missionhub-joy-knob" data-missionhub-knob></div>
             </div>
         </div>
     `;
@@ -355,15 +369,107 @@ async function buildScene(scene, stage, setStatus, ui) {
         scene.composer = composer; scene.bloom = bloom;
     }
 
-    // ---- Interaction: click the phone -> start the journey ----
+    // ---- V8: signal orb (own pulsing material), drifting clouds, walkables ----
+    const orb = model.getObjectByName(ORB_NAME);
+    if (orb && orb.material) {
+        orb.material = orb.material.clone(); // pulse THIS mount's copy, never the cache's
+        scene.glassMaterials.push(orb.material); // disposed with the other own materials
+    }
+    const clouds = [];
+    const walkables = [];
+    model.traverse((n) => {
+        if (!n.isMesh) return;
+        if (n.name.indexOf("ARC4_Cloud") === 0) clouds.push({ o: n, base: n.position.clone(), ph: Math.random() * 6.28 });
+        if (EXPLORE.walkableRe.test(n.name)) walkables.push(n);
+    });
+    debugLog("MissionHub V8 explore setup", { clouds: clouds.length, walkables: walkables.length, orb: !!orb });
+
+    // ---- Interaction: click the phone (or the orb) -> start the journey ----
     const anim = { phase: "idle", t: 0, p: 0 };
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
     const targets = [];
-    [ANCHOR.glass, ANCHOR.frame, ANCHOR.lip].forEach((nm) => {
+    [ANCHOR.glass, ANCHOR.frame, ANCHOR.lip, ORB_NAME].forEach((nm) => {
         const o = model.getObjectByName(nm);
         if (o) o.traverse((c) => { if (c.isMesh) targets.push(c); });
     });
+
+    // ---- V8 explore input: keyboard + drag-look + virtual joystick ----
+    const input = { f: 0, r: 0, joyF: 0, joyR: 0, dragging: false, lastX: 0, lastY: 0, yaw: 0, pitch: 0 };
+    const keymap = { KeyW: [1, 0], ArrowUp: [1, 0], KeyS: [-1, 0], ArrowDown: [-1, 0], KeyA: [0, -1], ArrowLeft: [0, -1], KeyD: [0, 1], ArrowRight: [0, 1] };
+    const keys = new Set();
+    const updateKeys = () => {
+        let f = 0, r = 0;
+        keys.forEach((k) => { const m = keymap[k]; if (m) { f += m[0]; r += m[1]; } });
+        input.f = Math.max(-1, Math.min(1, f)); input.r = Math.max(-1, Math.min(1, r));
+    };
+    const onKeyDown = (e) => { if (keymap[e.code] && anim.phase === "explore") { keys.add(e.code); updateKeys(); e.preventDefault(); } };
+    const onKeyUp = (e) => { if (keymap[e.code]) { keys.delete(e.code); updateKeys(); } };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    scene.disposers.push(() => { window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); });
+
+    const joyEl = stage.parentElement.querySelector("[data-missionhub-joy]");
+    const knobEl = stage.parentElement.querySelector("[data-missionhub-knob]");
+    let joyId = null, joyCx = 0, joyCy = 0;
+    const onPointerDownStage = (ev) => {
+        if (anim.phase !== "explore") return;
+        const r = renderer.domElement.getBoundingClientRect();
+        const isTouch = ev.pointerType === "touch";
+        // touch in de linkeronderhoek = joystick; al het andere = camera-drag
+        if (isTouch && joyId === null && ev.clientX - r.left < r.width * 0.4 && ev.clientY - r.top > r.height * 0.55) {
+            joyId = ev.pointerId; joyCx = ev.clientX; joyCy = ev.clientY;
+            if (joyEl) { joyEl.style.left = (ev.clientX - r.left - 55) + "px"; joyEl.style.top = (ev.clientY - r.top - 55) + "px"; joyEl.classList.add("is-active"); }
+            return;
+        }
+        input.dragging = true; input.lastX = ev.clientX; input.lastY = ev.clientY;
+    };
+    const onPointerMoveStage = (ev) => {
+        if (anim.phase !== "explore") return;
+        if (ev.pointerId === joyId) {
+            const dx = ev.clientX - joyCx, dy = ev.clientY - joyCy;
+            const mag = Math.min(45, Math.hypot(dx, dy)) / 45;
+            const ang = Math.atan2(dy, dx);
+            input.joyR = Math.cos(ang) * mag; input.joyF = -Math.sin(ang) * mag;
+            if (knobEl) { knobEl.style.transform = `translate(${Math.cos(ang) * mag * 32}px, ${Math.sin(ang) * mag * 32}px)`; }
+            return;
+        }
+        if (input.dragging) {
+            input.yaw -= (ev.clientX - input.lastX) * EXPLORE.lookSpeed;
+            input.pitch -= (ev.clientY - input.lastY) * EXPLORE.lookSpeed;
+            input.pitch = Math.max(-1.35, Math.min(1.35, input.pitch));
+            input.lastX = ev.clientX; input.lastY = ev.clientY;
+        }
+    };
+    const onPointerUpStage = (ev) => {
+        if (ev.pointerId === joyId) {
+            joyId = null; input.joyF = 0; input.joyR = 0;
+            if (joyEl) joyEl.classList.remove("is-active");
+            if (knobEl) knobEl.style.transform = "translate(0,0)";
+            return;
+        }
+        input.dragging = false;
+    };
+    renderer.domElement.addEventListener("pointerdown", onPointerDownStage);
+    renderer.domElement.addEventListener("pointermove", onPointerMoveStage);
+    renderer.domElement.addEventListener("pointerup", onPointerUpStage);
+    renderer.domElement.addEventListener("pointercancel", onPointerUpStage);
+    scene.disposers.push(() => {
+        renderer.domElement.removeEventListener("pointerdown", onPointerDownStage);
+        renderer.domElement.removeEventListener("pointermove", onPointerMoveStage);
+        renderer.domElement.removeEventListener("pointerup", onPointerUpStage);
+        renderer.domElement.removeEventListener("pointercancel", onPointerUpStage);
+    });
+    const _down = new THREE.Vector3(0, -1, 0);
+    const _rayO = new THREE.Vector3();
+    const groundRay = new THREE.Raycaster();
+    const snapToGround = () => {
+        _rayO.copy(camera.position); _rayO.y += 3;
+        groundRay.set(_rayO, _down);
+        groundRay.far = 400;
+        const hits = groundRay.intersectObjects(walkables, false);
+        if (hits.length) camera.position.y = hits[0].point.y + EXPLORE.eyeHeight;
+    };
     const overPhone = (ev) => {
         const r = renderer.domElement.getBoundingClientRect();
         ndc.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
@@ -425,8 +531,21 @@ async function buildScene(scene, stage, setStatus, ui) {
     };
 
     const tick = (dt, time) => {
+        // V8 ambient life (all phases): pulsing signal orb + drifting clouds.
+        if (orb) {
+            const pulse = 1 + 0.18 * Math.sin(time * 3.2);
+            orb.scale.setScalar(pulse);
+            if (orb.material && orb.material.emissiveIntensity !== undefined) {
+                orb.material.emissiveIntensity = 0.7 + 0.5 * (0.5 + 0.5 * Math.sin(time * 3.2));
+            }
+        }
+        for (const c of clouds) {
+            c.o.position.x = c.base.x + Math.sin(time * 0.05 + c.ph) * 6;
+            c.o.position.z = c.base.z + Math.cos(time * 0.04 + c.ph) * 5;
+        }
+
         if (anim.phase === "idle") {
-            // V7: minimal drift — no perceptible rotation before the phone is in frame.
+            // No perceptible rotation before the phone is in frame.
             _off.set(Math.sin(time * 0.14) * 0.02, Math.cos(time * 0.11) * 0.012, Math.sin(time * 0.09) * 0.016);
             camera.position.copy(idleP).add(_off);
             camera.lookAt(idleL);
@@ -439,13 +558,28 @@ async function buildScene(scene, stage, setStatus, ui) {
             samplePath(p);
             setStatus("entering", enterLabel(p));
             if (raw >= 1) {
-                anim.phase = "arrived";
-                setStatus("arrived", "Arc 1 — arrival pad");
-                debugLog("MissionHub arrived at Arc 1");
+                // hand the camera to the player: seed yaw/pitch from the arrival look
+                anim.phase = "explore";
+                const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
+                input.yaw = e.y; input.pitch = e.x;
+                if (camera.fov !== 50) { camera.fov = 50; camera.updateProjectionMatrix(); }
+                setStatus("explore", "Arc 1 — verken de wereld");
+                if (ui.hint) ui.hint.textContent = isTouchDevice() ? "joystick: lopen — sleep: rondkijken" : "WASD: lopen — sleep: rondkijken";
+                debugLog("MissionHub arrived at Arc 1 — explore mode");
             }
             return;
         }
-        samplePath(1); // arrived
+        // ---- explore: player-controlled camera with ground snap ----
+        camera.rotation.set(input.pitch, input.yaw, 0, "YXZ");
+        const f = (input.f || 0) + input.joyF;
+        const r = (input.r || 0) + input.joyR;
+        if (f !== 0 || r !== 0) {
+            const sin = Math.sin(input.yaw), cos = Math.cos(input.yaw);
+            // forward in look direction (horizontal), right perpendicular
+            camera.position.x += (-sin * f + cos * r) * EXPLORE.speed * dt;
+            camera.position.z += (-cos * f - sin * r) * EXPLORE.speed * dt;
+        }
+        snapToGround();
     };
 
     renderer.setAnimationLoop(() => {
@@ -623,6 +757,12 @@ function injectStyles() {
 .vm-missionhub-tag { font-size:10px; letter-spacing:1.6px; color:#7fd0ff; }
 .vm-missionhub-status { font-size:12px; color:#eaf6ff; }
 .vm-missionhub-hint { font-size:10px; color:rgba(220,235,255,.55); }
+.vm-missionhub-joy { position:absolute; width:110px; height:110px; border-radius:50%;
+  border:2px solid rgba(120,200,255,.35); background:rgba(10,16,26,.35);
+  display:none; align-items:center; justify-content:center; pointer-events:none; z-index:3; }
+.vm-missionhub-joy.is-active { display:flex; }
+.vm-missionhub-joy-knob { width:44px; height:44px; border-radius:50%;
+  background:rgba(120,200,255,.45); border:1px solid rgba(180,225,255,.6); }
     `;
     document.head.appendChild(style);
 }
