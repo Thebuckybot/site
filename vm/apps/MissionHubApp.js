@@ -1,13 +1,15 @@
 /**
- * Mission Hub app — V6 "Master World" runtime.
+ * Mission Hub app — V7 "Master World" runtime.
  *
  * WHAT THIS IS
  * -----------
  * One Blender-authored universe in one GLB (mission_hub_master.glb): the apartment
- * floats 500 m above the real-scale Bucky universe (Arc 1–5). The phone on the desk
- * is an open window — below its glass there is literally a hole in the desk and
- * 500 m of air down to the Arc 1 arrival pad. Clicking the phone flies THE camera
- * (the only camera) through the glass, down the drop, up over the universe for the
+ * floats at Z+800 above a vertical WORLD MAP — Arc 1 raised island (Z+50), Arc 2
+ * Chip City (Z+100) linked by a giant arch bridge, Arc 3 floating datacells
+ * (Z 200–600), Arc 4 cloud layer (Z 350–550), Arc 5 virus crater (Z 0→−100), void
+ * below −100. The phone on the desk is an open window — below its glass is a clear
+ * 750 m drop to the Arc 1 arrival pad. Clicking the phone flies THE camera (the
+ * only camera) through the glass, down the drop, up over the world for the
  * bird-eye reveal, then down into Arc 1.
  *
  * No portals. No render targets. No second scene. No overlays. No fades. No loading
@@ -73,16 +75,22 @@ const ANCHOR = {
 };
 const REQUIRED_NODES = Object.values(ANCHOR);
 
-// Journey: timing (t), anchor-resolved position/look, lens (mm full-frame vertical).
+// Journey (V7): timing (t), anchor-resolved position/look, lens (mm full-frame).
 // Built at mount from world transforms — no world coordinates live in this file.
-const JOURNEY_DURATION = 16.0; // seconds, click -> standing on the arrival pad
+// V7 flow: apartment -> desk -> phone (HELD CLEARLY IN FRAME ~2s, no rotation
+// before the phone is visible) -> glass -> 750 m drop -> bird-eye reveal of the
+// whole world map (island / Chip City + bridge / datacells / clouds / virus
+// crater) -> descend -> Arc 1 arrival pad.
+const JOURNEY_DURATION = 18.0; // seconds, click -> standing on the arrival pad
 const JOURNEY_KEYS = [
-    { t: 0.00, pos: "camStart",     look: "glassCenter", lens: 32 }, // apartment
-    { t: 0.16, pos: "camHover",     look: "glassCenter", lens: 42 }, // over the phone
-    { t: 0.26, pos: "glassAbove",   look: "pad",         lens: 46 }, // nose on the pane
-    { t: 0.34, pos: "camGlassExit", look: "pad",         lens: 46 }, // THROUGH the glass
-    { t: 0.52, pos: "camDescent",   look: "pad",         lens: 40 }, // free fall
-    { t: 0.70, pos: "camBirdEye",   look: "lookUniverse", lens: 36 }, // reveal: Arc 1–5
+    { t: 0.00, pos: "camStart",     look: "glassCenter", lens: 32 }, // apartment (already facing the desk)
+    { t: 0.12, pos: "camHover",     look: "glassCenter", lens: 44 }, // over the phone
+    { t: 0.23, pos: "camHover",     look: "glassCenter", lens: 46 }, // HOLD — phone ~2 s clearly in frame
+    { t: 0.31, pos: "glassAbove",   look: "pad",         lens: 48 }, // nose on the pane
+    { t: 0.38, pos: "camGlassExit", look: "pad",         lens: 48 }, // THROUGH the glass
+    { t: 0.54, pos: "camDescent",   look: "pad",         lens: 40 }, // free fall
+    { t: 0.70, pos: "camBirdEye",   look: "lookUniverse", lens: 26 }, // reveal: the whole world map (wide)
+    { t: 0.78, pos: "camBirdEye",   look: "lookUniverse", lens: 25 }, // DWELL — let the scale land (~1.4 s)
     { t: 1.00, pos: "camArrival",   look: "lookArrival",  lens: 40 }  // Arc 1 arrival pad
 ];
 
@@ -418,7 +426,8 @@ async function buildScene(scene, stage, setStatus, ui) {
 
     const tick = (dt, time) => {
         if (anim.phase === "idle") {
-            _off.set(Math.sin(time * 0.16) * 0.05, Math.cos(time * 0.13) * 0.025, Math.sin(time * 0.1) * 0.04);
+            // V7: minimal drift — no perceptible rotation before the phone is in frame.
+            _off.set(Math.sin(time * 0.14) * 0.02, Math.cos(time * 0.11) * 0.012, Math.sin(time * 0.09) * 0.016);
             camera.position.copy(idleP).add(_off);
             camera.lookAt(idleL);
             if (camera.fov !== fovIdle) { camera.fov = fovIdle; camera.updateProjectionMatrix(); }
@@ -550,10 +559,10 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 function smoothstep01(x) { x = clamp01(x); return x * x * (3 - 2 * x); }
 function smootherstep(x) { x = clamp01(x); return x * x * x * (x * (x * 6 - 15) + 10); }
 function enterLabel(p) {
-    if (p < 0.16) return "approaching the phone";
-    if (p < 0.34) return "through the glass";
-    if (p < 0.52) return "falling — 500 m to go";
-    if (p < 0.70) return "the universe below";
+    if (p < 0.23) return "approaching the phone";
+    if (p < 0.38) return "through the glass";
+    if (p < 0.54) return "falling — 750 m to go";
+    if (p < 0.72) return "the world below";
     if (p < 1.0) return "descending to Arc 1";
     return "Arc 1";
 }
