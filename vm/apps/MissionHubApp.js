@@ -86,10 +86,14 @@ const JOURNEY_KEYS = [
     { t: 1.00, pos: "camArrival",   look: "lookArrival",  lens: 40 }  // Arc 1 arrival pad
 ];
 
-// Look: tone + bloom only. NO runtime lights, NO env maps, NO sky, NO fog — the GLB
-// carries the sun, practicals, emissives, sky dome and fog cards from Blender.
+// Look: tone + bloom + one hemisphere ambient. The GLB carries the sun, practicals,
+// emissives, sky dome and fog cards from Blender. The ONE thing glTF cannot carry is
+// indirect/ambient bounce (no GI in three) — Phase E's "indirect ambient fill" is a
+// single HemisphereLight whose colors are sampled from the Blender sky-dome gradient
+// (zenith / ground haze). It is fill only — direction and mood still come from the GLB.
 const LOOK = {
     exposure: 1.0,
+    ambient: { sky: 0x32405e, ground: 0x14110e, intensity: 0.45 },
     bloom: { strength: 0.22, radius: 0.55, threshold: 0.9 } // emissives only — glass can never bloom
 };
 
@@ -247,6 +251,8 @@ async function buildScene(scene, stage, setStatus, ui) {
     // ---- THE ONE SCENE — everything visual comes from the GLB ----
     const world = new THREE.Scene();
     world.background = new THREE.Color(0x05060a); // only ever visible if the sky dome is culled
+    // Indirect ambient fill (see LOOK.ambient) — glTF carries no GI/ambient term.
+    world.add(new THREE.HemisphereLight(LOOK.ambient.sky, LOOK.ambient.ground, LOOK.ambient.intensity));
     scene.world = world;
 
     setStatus("loading", "Opening the world…");
