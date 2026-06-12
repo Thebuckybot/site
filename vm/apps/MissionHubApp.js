@@ -119,7 +119,8 @@ const COLLIDE_RE = /^(ARC1_Terrain|ARC1_Gate|ARC1_Pad|VIL_House|VIL_Townhall|VIL
 // Wind-animated material names -> sway amplitude (m).
 const WIND_MATS = {
     M_LeafOak: 0.20, M_LeafBirch: 0.22, M_LeafPine: 0.12,
-    M_LeafCanopy: 0.45, M_LeafBush: 0.10, M_GrassTuft: 0.12
+    M_LeafCanopy: 0.45, M_LeafBush: 0.10, M_GrassTuft: 0.12,
+    M_FlowerYellow: 0.08, M_FlowerRed: 0.08
 };
 // Day/night: full cycle seconds, and ramps (t: 0 dawn, .25 noon, .5 dusk, .75 night).
 const DAYNIGHT = {
@@ -309,6 +310,19 @@ async function buildScene(scene, stage, setStatus, ui) {
     }
     scene.model = model;
 
+    // ---- Light sanity clamp: a GLB exported in photometric SPEC mode carries
+    // lux/candela intensities (sun ~1639 lux) that blow the whole frame to white
+    // under ACES at exposure 1. The export now uses COMPAT mode; this clamp is a
+    // guard so a future SPEC export can never white out the world again.
+    model.traverse((n) => {
+        if (!n.isLight) return;
+        if (n.intensity > 50) {
+            const fixed = n.intensity / 683; // photometric -> watt-ish authoring units
+            debugLog("MissionHub clamped photometric light", { name: n.name, from: n.intensity, to: fixed });
+            n.intensity = fixed;
+        }
+    });
+
     // ---- Glass policy (own materials, cache never mutated) ----
     const glassMeshes = [];
     model.traverse((n) => {
@@ -363,39 +377,87 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (changed) n.material = Array.isArray(n.material) ? next : next[0];
     });
 
-    // ---- V9 river: flow + foam shader on an own clone ----
+    // ---- V9.2 water system: dual scrolling normals, fresnel, env reflections,
+    // bank foam. One material owned by this mount, applied to river + pond.
     const riverMesh = model.getObjectByName("ARC1_River");
+    const pondMesh = model.getObjectByName("ARC1_Pond");
     const riverUniforms = [];
-    if (riverMesh && riverMesh.material) {
-        const own = riverMesh.material.clone();
-        own.transparent = true;
-        own.defines = Object.assign({}, own.defines, { USE_UV: "" });
-        own.onBeforeCompile = (shader) => {
-            shader.uniforms.uFlowTime = { value: 0 };
-            riverUniforms.push(shader.uniforms.uFlowTime);
+    scene.ownTextures = scene.ownTextures || [];
+    if (riverMesh) {
+        const waterNormals = makeWaterNormalTexture(THREE);
+        const skyEnv = makeSkyEnvTexture(THREE);
+        scene.ownTextures.push(waterNormals, skyEnv);
+        const water = new THREE.MeshPhysicalMaterial({
+            color: new THREE.Color(0x123e4a),
+            roughness: 0.10, metalness: 0.0,
+            transparent: true, opacity: 0.88, depthWrite: false,
+            side: THREE.DoubleSide,
+            normalMap: waterNormals,
+            normalScale: new THREE.Vector2(0.55, 0.55),
+            envMap: skyEnv, envMapIntensity: 0.85
+        });
+        water.onBeforeCompile = (shader) => {
+            shader.uniforms.uWaterTime = { value: 0 };
+            riverUniforms.push(shader.uniforms.uWaterTime);
             shader.fragmentShader = shader.fragmentShader
-                .replace("#include <common>", "#include <common>\nuniform float uFlowTime;")
+                .replace("#include <common>", "#include <common>\nuniform float uWaterTime;")
+                // dual-layer scrolling normal maps (flow runs along V = downstream)
+                .replace("#include <normal_fragment_maps>", [
+                    "vec3 mapN1 = texture2D( normalMap, vNormalMapUv * vec2( 3.0, 7.0 ) + vec2( 0.0, -uWaterTime * 0.13 ) ).xyz * 2.0 - 1.0;",
+                    "vec3 mapN2 = texture2D( normalMap, vNormalMapUv * vec2( 6.0, 13.0 ) + vec2( uWaterTime * 0.05, -uWaterTime * 0.27 ) ).xyz * 2.0 - 1.0;",
+                    "vec3 mapN = normalize( vec3( mapN1.xy + mapN2.xy, mapN1.z * mapN2.z ) );",
+                    "mapN.xy *= normalScale;",
+                    "normal = normalize( tbn * mapN );"
+                ].join("\n"))
+                // foam along banks + fresnel rim + subtle moving brightness
                 .replace("#include <color_fragment>", [
                     "#include <color_fragment>",
                     "{",
-                    "  float fy = vUv.y * 10.0 - uFlowTime * 2.4;",
-                    "  float wave = sin(fy + sin(vUv.x * 9.0 + uFlowTime * 1.3) * 0.8) * 0.5 + 0.5;",
-                    "  diffuseColor.rgb += wave * vec3(0.03, 0.075, 0.09);",
-                    "  float bank = smoothstep(0.16, 0.0, min(vUv.x, 1.0 - vUv.x));",
-                    "  float foamN = sin(vUv.y * 34.0 - uFlowTime * 3.5) * 0.5 + 0.5;",
-                    "  float foam = bank * (0.45 + 0.55 * foamN);",
-                    "  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.92, 0.95), foam * 0.7);",
-                    "  diffuseColor.a = min(1.0, diffuseColor.a + foam * 0.35);",
+                    "  vec3 V = normalize( vViewPosition );",
+                    "  float fres = pow( 1.0 - clamp( dot( normalize( vNormal ), V ), 0.0, 1.0 ), 3.0 );",
+                    "  diffuseColor.rgb += fres * vec3( 0.10, 0.16, 0.20 );",
+                    "  diffuseColor.a = mix( diffuseColor.a, 0.97, fres );",
+                    "  float fy = vUv.y * 10.0 - uWaterTime * 2.4;",
+                    "  float wave = sin( fy + sin( vUv.x * 9.0 + uWaterTime * 1.3 ) * 0.8 ) * 0.5 + 0.5;",
+                    "  diffuseColor.rgb += wave * vec3( 0.02, 0.05, 0.06 );",
+                    "  float bank = smoothstep( 0.14, 0.0, min( vUv.x, 1.0 - vUv.x ) );",
+                    "  float foamN = 0.5 + 0.5 * sin( vUv.y * 34.0 - uWaterTime * 3.5 + sin( vUv.x * 20.0 ) * 1.5 );",
+                    "  float foam = bank * ( 0.45 + 0.55 * foamN );",
+                    "  diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.88, 0.94, 0.96 ), foam * 0.75 );",
+                    "  diffuseColor.a = min( 1.0, diffuseColor.a + foam * 0.4 );",
                     "}"
                 ].join("\n"));
         };
-        own.customProgramCacheKey = () => "river_flow_v9";
-        riverMesh.material = own;
-        scene.ownMaterials.push(own);
+        water.defines = Object.assign({}, water.defines, { USE_UV: "" });
+        water.customProgramCacheKey = () => "water_v92";
+        riverMesh.material = water;
+        if (pondMesh) pondMesh.material = water;
+        scene.ownMaterials.push(water);
     }
 
+    // ---- Water surface samples (sync — also used by physics current + underwater state) ----
+    const riverSamples = buildRiverSamples();
+    const underwater = { on: false, depth: 0, fog: new THREE.FogExp2(0x0a3346, 0.04) };
+    const _uwTint = new THREE.Color(0x1c4a66);
+    const waterDepthAt = (p) => {
+        let best = null, bd = 1e9;
+        for (let i = 0; i < riverSamples.length; i++) {
+            const s = riverSamples[i];
+            const dx = p.x - s.x, dz = p.z - s.z;
+            const d2 = dx * dx + dz * dz;
+            if (d2 < bd) { bd = d2; best = s; }
+        }
+        if (!best) return -1;
+        const r = (best.r || RIVER_HALF_WIDTH) + 2;
+        if (bd > r * r) return -1;
+        return best.y - p.y; // > 0 means below the surface
+    };
+
     // ---- V9 day/night: runtime sun + sky-dome tint (own material) ----
-    const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+    // The sun is OFF until the player arrives in Arc 1 — before that the GLB's
+    // authored apartment/dusk lighting carries the frame (V9 regression fix:
+    // an always-on runtime sun washed out the apartment).
+    const sun = new THREE.DirectionalLight(0xffffff, 0.0);
     sun.position.set(400, 800, 300);
     world.add(sun);
     world.add(sun.target);
@@ -560,31 +622,9 @@ async function buildScene(scene, stage, setStatus, ui) {
                 .setCcdEnabled(true);
             const body = pw.createRigidBody(bd);
             pw.createCollider(RAPIER.ColliderDesc.ball(PLAYER.radius).setFriction(0.25).setRestitution(0.0), body);
-            // river current samples in three.js space
-            const samples = [];
-            let acc = 0, total = 0;
-            const segs = [];
-            for (let i = 0; i < RIVER_LOCAL.length - 1; i++) {
-                const L = Math.hypot(RIVER_LOCAL[i + 1][0] - RIVER_LOCAL[i][0], RIVER_LOCAL[i + 1][1] - RIVER_LOCAL[i][1]);
-                segs.push(L); total += L;
-            }
-            for (let i = 0; i < RIVER_LOCAL.length - 1; i++) {
-                const [ax, ay] = RIVER_LOCAL[i], [bx, by] = RIVER_LOCAL[i + 1];
-                const n = Math.max(2, Math.round(segs[i] / 14));
-                for (let k = 0; k < n; k++) {
-                    const tt = k / n;
-                    const t = (acc + segs[i] * tt) / total;
-                    const lx = ax + (bx - ax) * tt, ly = ay + (by - ay) * tt;
-                    const waterY = 94 - 72 * t;
-                    const dirx = (bx - ax) / segs[i], diry = (by - ay) / segs[i];
-                    // blender (x,y) -> three (x, ., 500 - y); blender +y => three -z
-                    samples.push({ x: lx, y: waterY, z: 500 - ly, dx: dirx, dz: -diry });
-                }
-                acc += segs[i];
-            }
-            phys.RAPIER = RAPIER; phys.world = pw; phys.body = body; phys.river = samples;
+            phys.RAPIER = RAPIER; phys.world = pw; phys.body = body; phys.river = riverSamples;
             phys.ready = true;
-            debugLog("MissionHub V9 physics ready", { colliders: colliderCount, riverSamples: samples.length });
+            debugLog("MissionHub V9 physics ready", { colliders: colliderCount, riverSamples: riverSamples.length });
         } catch (e) {
             logError("MissionHub Rapier init (walking falls back to no-clip ground snap)", e);
         }
@@ -768,6 +808,19 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (anim.phase === "explore") {
             dayClock += dt;
             applyDayNight((dayClock / DAYNIGHT.cycleSeconds) % 1);
+            // ---- underwater state: blue fog, depth falloff, light absorption ----
+            const depth = waterDepthAt(camera.position);
+            if (depth > 0.12) {
+                if (!underwater.on) { underwater.on = true; world.fog = underwater.fog; debugLog("MissionHub underwater enter"); }
+                underwater.depth = depth;
+                underwater.fog.density = Math.min(0.11, 0.032 + depth * 0.010); // limited sight, worse with depth
+                sun.intensity *= Math.exp(-depth * 0.16);                        // light absorption
+                hemi.color.lerp(_uwTint, 0.85);
+                hemi.intensity = Math.max(0.25, hemi.intensity * 0.8);
+            } else if (underwater.on) {
+                underwater.on = false; underwater.depth = 0; world.fog = null;
+                debugLog("MissionHub underwater exit");
+            }
         }
 
         if (anim.phase === "idle") {
@@ -834,11 +887,14 @@ async function buildScene(scene, stage, setStatus, ui) {
                     const d2 = ddx * ddx + ddz * ddz;
                     if (d2 < bd) { bd = d2; best = s; }
                 }
-                if (best && bd < RIVER_HALF_WIDTH * RIVER_HALF_WIDTH && origin.y < best.y + 1.2 && origin.y > best.y - 4) {
+                if (best && bd < RIVER_HALF_WIDTH * RIVER_HALF_WIDTH && origin.y < best.y + 1.2 && origin.y > best.y - 5) {
                     nvx += best.dx * RIVER_PUSH * dt * 12;
                     nvz += best.dz * RIVER_PUSH * dt * 12;
                     nvy = Math.min(nvy + 2.0 * dt, 1.5); // buoyancy
-                    if (origin.y < best.y - 0.2) nvy += 6.0 * dt;
+                    if (origin.y < best.y - 0.2) {
+                        nvy += 6.0 * dt;        // stronger lift when submerged
+                        nvx *= 0.93; nvz *= 0.93; // water drag — swimming is slower
+                    }
                 }
             }
             body.setLinvel({ x: nvx, y: nvy, z: nvz }, true);
@@ -999,6 +1055,93 @@ function readAscii(bytes, start, length) {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers — water system
+// ---------------------------------------------------------------------------
+/** River + pond surface samples in three.js space (x, surfaceY, z, flow dir, radius). */
+function buildRiverSamples() {
+    const samples = [];
+    let total = 0;
+    const segs = [];
+    for (let i = 0; i < RIVER_LOCAL.length - 1; i++) {
+        const L = Math.hypot(RIVER_LOCAL[i + 1][0] - RIVER_LOCAL[i][0], RIVER_LOCAL[i + 1][1] - RIVER_LOCAL[i][1]);
+        segs.push(L); total += L;
+    }
+    let acc = 0;
+    for (let i = 0; i < RIVER_LOCAL.length - 1; i++) {
+        const [ax, ay] = RIVER_LOCAL[i], [bx, by] = RIVER_LOCAL[i + 1];
+        const n = Math.max(2, Math.round(segs[i] / 12));
+        for (let k = 0; k < n; k++) {
+            const tt = k / n;
+            const t = (acc + segs[i] * tt) / total;
+            const lx = ax + (bx - ax) * tt, ly = ay + (by - ay) * tt;
+            const surfaceY = 95 - 72 * t; // matches the authored water mesh (bed + 1)
+            const dirx = (bx - ax) / segs[i], diry = (by - ay) / segs[i];
+            // blender (x,y,z) -> three (x, z, 500 - y)
+            samples.push({ x: lx, y: surfaceY, z: 500 - ly, dx: dirx, dz: -diry, r: RIVER_HALF_WIDTH });
+        }
+        acc += segs[i];
+    }
+    // source pond: blender local (-200,-470), surface z 95, radius 30
+    for (let gx = -1; gx <= 1; gx++) {
+        for (let gz = -1; gz <= 1; gz++) {
+            samples.push({ x: -200 + gx * 13, y: 95.0, z: 970 + gz * 13, dx: 0, dz: 0, r: 16 });
+        }
+    }
+    return samples;
+}
+
+/** Tileable procedural water normal map (sum of integer-wavenumber sines). */
+function makeWaterNormalTexture(THREE) {
+    const S = 256;
+    const data = new Uint8Array(S * S * 4);
+    const TWO_PI = Math.PI * 2;
+    const waves = [[3, 2, 0.55], [7, -5, 0.30], [13, 11, 0.18], [2, -9, 0.12]];
+    const h = (x, y) => {
+        let v = 0;
+        for (const [kx, ky, a] of waves) v += a * Math.sin(TWO_PI * (kx * x + ky * y) / S);
+        return v;
+    };
+    for (let y = 0; y < S; y++) {
+        for (let x = 0; x < S; x++) {
+            const dx = h(x + 1, y) - h(x - 1, y);
+            const dy = h(x, y + 1) - h(x, y - 1);
+            const inv = 1 / Math.hypot(dx, dy, 2.0);
+            const i = (y * S + x) * 4;
+            data[i] = Math.round((-dx * inv * 0.5 + 0.5) * 255);
+            data[i + 1] = Math.round((-dy * inv * 0.5 + 0.5) * 255);
+            data[i + 2] = Math.round((2.0 * inv * 0.5 + 0.5) * 255);
+            data[i + 3] = 255;
+        }
+    }
+    const tex = new THREE.DataTexture(data, S, S, THREE.RGBAFormat);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.needsUpdate = true;
+    return tex;
+}
+
+/** Tiny gradient sky cubemap for water reflections (PMREM'd internally by three). */
+function makeSkyEnvTexture(THREE) {
+    const S = 64;
+    const face = (top, bottom) => {
+        const c = document.createElement("canvas");
+        c.width = S; c.height = S;
+        const g = c.getContext("2d");
+        const grad = g.createLinearGradient(0, 0, 0, S);
+        grad.addColorStop(0, top); grad.addColorStop(1, bottom);
+        g.fillStyle = grad; g.fillRect(0, 0, S, S);
+        return c;
+    };
+    const sky = "#a8c8e8", horizon = "#d8d2c4", ground = "#1a2026";
+    const px = face(sky, horizon), nx = face(sky, horizon);
+    const pz = face(sky, horizon), nz = face(sky, horizon);
+    const py = face("#bcd8f0", sky), ny = face(ground, ground);
+    const tex = new THREE.CubeTexture([px, nx, py, ny, pz, nz]);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    return tex;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers — math + device
 // ---------------------------------------------------------------------------
 function lensToFov(lens) { return 2 * Math.atan(24 / (2 * lens)) * 180 / Math.PI; }
@@ -1047,6 +1190,8 @@ function disposeScene(scene) {
 
     (scene.ownMaterials || []).forEach((m) => { try { m.dispose(); } catch (_) {} });
     scene.ownMaterials = [];
+    (scene.ownTextures || []).forEach((t) => { try { t.dispose(); } catch (_) {} });
+    scene.ownTextures = [];
     scene.world = null;
 
     if (scene.renderer) {
