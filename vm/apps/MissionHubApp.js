@@ -115,7 +115,7 @@ const PLAYER = {
     gravity: -28.0
 };
 // Static collision sources (exact-name prefixes in the GLB).
-const COLLIDE_RE = /^(ARC1_Terrain|ARC1_Gate|ARC1_Pad|VIL_House|VIL_Townhall|VIL_Fountain|VIL_Bridge|VIL_Lanterns|VIL_Benches|VIL_Plinths|YGG_Trunk|YGG_Branches|VEGC_Trees|VEGC_Rocks|ARC_Bridge_(Deck|LowerDeck|Land))/;
+const COLLIDE_RE = /^(ARC1_Terrain|ARC1_Gate|ARC1_Pad|VIL_House|VIL_Townhall|VIL_Fountain|VIL_Bridge|VIL_Lanterns|VIL_Benches|VIL_Plinths|YGG_Trunk|YGG_Branches|VEGC_Trees|VEGC_Rocks|MTN_|ARC_Bridge_(Deck|LowerDeck|Land))/;
 // Wind-animated material names -> sway amplitude (m).
 const WIND_MATS = {
     M_LeafOak: 0.20, M_LeafBirch: 0.22, M_LeafPine: 0.12,
@@ -789,6 +789,7 @@ async function buildScene(scene, stage, setStatus, ui) {
     const fovIdle = path[0].fov;
     let dayClock = DAYNIGHT.startT * DAYNIGHT.cycleSeconds;
     let buckyYaw = 0, buckyVy = 0, popT = -1;
+    let camDistCur = PLAYER.camDist; // V10.1 camera collision: smoothed boom length
 
     const samplePath = (p) => {
         let a = path[0], b = path[path.length - 1];
@@ -972,13 +973,32 @@ async function buildScene(scene, stage, setStatus, ui) {
         }
         bucky.scale.set((2 - sq) * pop, sq * bounce * pop, (2 - sq) * pop);
 
-        // third-person camera
+        // ---- third-person camera with V10.1 collision ----
+        // Raycast (Rapier, BVH-accelerated) from Bucky's head toward the desired
+        // camera position; if a wall/ceiling/object is in between, the boom shortens
+        // so the camera can never see through geometry. Snaps in instantly, eases out.
         const cd = PLAYER.camDist;
         const cp = Math.cos(input.pitch), sp = Math.sin(input.pitch);
+        const headY = bp.y + 1.2;
+        const desX = bp.x + sinY * cd * cp;
+        const desY = bp.y + PLAYER.camHeight - sp * cd;
+        const desZ = bp.z + cosY * cd * cp;
+        let dirX = desX - bp.x, dirY = desY - headY, dirZ = desZ - bp.z;
+        const boomLen = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ) || 1;
+        dirX /= boomLen; dirY /= boomLen; dirZ /= boomLen;
+        let targetLen = boomLen;
+        if (phys.ready) {
+            const ray = new phys.RAPIER.Ray({ x: bp.x, y: headY, z: bp.z }, { x: dirX, y: dirY, z: dirZ });
+            const hit = phys.world.castRay(ray, boomLen, true, undefined, undefined, undefined, phys.body);
+            if (hit) targetLen = Math.max(0.7, hit.toi - 0.35);
+        }
+        camDistCur = targetLen < camDistCur
+            ? targetLen                                        // muur ertussen: direct inschuiven
+            : camDistCur + (targetLen - camDistCur) * Math.min(1, dt * 4); // rustig uitschuiven
         camera.position.set(
-            bp.x + sinY * cd * cp,
-            bp.y + PLAYER.camHeight - sp * cd,
-            bp.z + cosY * cd * cp
+            bp.x + dirX * camDistCur,
+            headY + dirY * camDistCur,
+            bp.z + dirZ * camDistCur
         );
         _look.set(bp.x, bp.y + 1.2, bp.z);
         camera.lookAt(_look);
