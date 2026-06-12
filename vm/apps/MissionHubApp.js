@@ -115,7 +115,7 @@ const PLAYER = {
     gravity: -28.0
 };
 // Static collision sources (exact-name prefixes in the GLB).
-const COLLIDE_RE = /^(ARC1_Terrain|ARC1_Gate|ARC1_Pad|VIL_House|VIL_Townhall|VIL_Fountain|VIL_Bridge|VIL_Lanterns|VIL_Benches|YGG_Trunk|YGG_Branches|VEG_Trees|VEG_Rocks|ARC_Bridge_(Deck|LowerDeck|Land))/;
+const COLLIDE_RE = /^(ARC1_Terrain|ARC1_Gate|ARC1_Pad|VIL_House|VIL_Townhall|VIL_Fountain|VIL_Bridge|VIL_Lanterns|VIL_Benches|VIL_Plinths|YGG_Trunk|YGG_Branches|VEGC_Trees|VEGC_Rocks|ARC_Bridge_(Deck|LowerDeck|Land))/;
 // Wind-animated material names -> sway amplitude (m).
 const WIND_MATS = {
     M_LeafOak: 0.20, M_LeafBirch: 0.22, M_LeafPine: 0.12,
@@ -437,7 +437,7 @@ async function buildScene(scene, stage, setStatus, ui) {
 
     // ---- Water surface samples (sync — also used by physics current + underwater state) ----
     const riverSamples = buildRiverSamples();
-    const underwater = { on: false, depth: 0, fog: new THREE.FogExp2(0x0a3346, 0.04) };
+    const underwater = { on: false, t: 0, depth: 0, fog: new THREE.FogExp2(0x0a3346, 0.04) };
     const _uwTint = new THREE.Color(0x1c4a66);
     const waterDepthAt = (p) => {
         let best = null, bd = 1e9;
@@ -546,6 +546,22 @@ async function buildScene(scene, stage, setStatus, ui) {
     const path = JOURNEY_KEYS.map((k) => ({
         t: k.t, pos: points[k.pos].clone(), look: points[k.look].clone(), fov: lensToFov(k.lens)
     }));
+
+    // ---- V10 chunked distance culling -------------------------------------
+    // Vegetation is exported as spatial tiles (VEGC_<Type>_<i>_<j>). Each tile is
+    // its own mesh, so three.js frustum culling works per tile; on top of that we
+    // hide tiles beyond a per-type view distance. Big wins on iPad: only nearby
+    // grass/flowers are ever drawn.
+    const CULL_DIST = { Grass: 170, Flowers: 130, Shrubs: 260, Reeds: 150, Plants: 120, Trees: 5000, Rocks: 500 };
+    const cullChunks = [];
+    model.traverse((n) => {
+        if (!n.isMesh || n.name.indexOf("VEGC_") !== 0) return;
+        const type = n.name.split("_")[1];
+        if (!n.geometry.boundingSphere) n.geometry.computeBoundingSphere();
+        const center = n.geometry.boundingSphere.center.clone().applyMatrix4(n.matrixWorld);
+        cullChunks.push({ o: n, c: center, d2: Math.pow(CULL_DIST[type] || 180, 2) });
+    });
+    debugLog("MissionHub V10 culling chunks", cullChunks.length);
 
     const camera = new THREE.PerspectiveCamera(path[0].fov, W() / H(), 0.05, 14000);
     camera.position.copy(path[0].pos);
@@ -789,6 +805,11 @@ async function buildScene(scene, stage, setStatus, ui) {
     };
 
     const tick = (dt, time) => {
+        // V10 distance culling (frustum culling per chunk is automatic in three)
+        for (let i = 0; i < cullChunks.length; i++) {
+            const ch = cullChunks[i];
+            ch.o.visible = camera.position.distanceToSquared(ch.c) < ch.d2;
+        }
         // ambient life
         if (orb) {
             const pulse = 1 + 0.18 * Math.sin(time * 3.2);
@@ -808,17 +829,22 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (anim.phase === "explore") {
             dayClock += dt;
             applyDayNight((dayClock / DAYNIGHT.cycleSeconds) % 1);
-            // ---- underwater state: blue fog, depth falloff, light absorption ----
+            // ---- underwater state: blue fog, light absorption, smooth transition ----
             const depth = waterDepthAt(camera.position);
-            if (depth > 0.12) {
+            const uwTarget = depth > 0.12 ? 1 : 0;
+            underwater.t += (uwTarget - underwater.t) * Math.min(1, dt * 6); // ~0.3s fade
+            if (underwater.t > 0.015) {
                 if (!underwater.on) { underwater.on = true; world.fog = underwater.fog; debugLog("MissionHub underwater enter"); }
-                underwater.depth = depth;
-                underwater.fog.density = Math.min(0.11, 0.032 + depth * 0.010); // limited sight, worse with depth
-                sun.intensity *= Math.exp(-depth * 0.16);                        // light absorption
-                hemi.color.lerp(_uwTint, 0.85);
-                hemi.intensity = Math.max(0.25, hemi.intensity * 0.8);
+                if (depth > 0) underwater.depth = depth;
+                const d = underwater.depth;
+                underwater.fog.density = Math.min(0.11, (0.034 + d * 0.010) * underwater.t); // limited sight, worse with depth
+                sun.intensity *= 1 - underwater.t * (1 - Math.exp(-d * 0.16));               // light absorption
+                hemi.color.lerp(_uwTint, 0.85 * underwater.t);                               // colour shift
+                hemi.intensity *= 1 - 0.25 * underwater.t;
+                renderer.toneMappingExposure = LOOK.exposure * (1 - 0.18 * underwater.t);
             } else if (underwater.on) {
                 underwater.on = false; underwater.depth = 0; world.fog = null;
+                renderer.toneMappingExposure = LOOK.exposure;
                 debugLog("MissionHub underwater exit");
             }
         }
@@ -926,7 +952,9 @@ async function buildScene(scene, stage, setStatus, ui) {
 
         // facing + squash & stretch + idle bounce
         if (moving) {
-            const targetYaw = Math.atan2(dx, dz) + Math.PI;
+            // V10 fix: Bucky's face (local +Z after glTF Y-up conversion) must point
+            // along the movement direction — no PI offset (it inverted the character).
+            const targetYaw = Math.atan2(dx, dz);
             let d = targetYaw - buckyYaw;
             while (d > Math.PI) d -= 2 * Math.PI;
             while (d < -Math.PI) d += 2 * Math.PI;
