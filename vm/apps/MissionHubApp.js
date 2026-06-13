@@ -115,7 +115,7 @@ const PLAYER = {
     gravity: -28.0
 };
 // Static collision sources (exact-name prefixes in the GLB).
-const COLLIDE_RE = /^(ARC1_Terrain|ARC1_Gate|ARC1_Pad|VIL_House|VIL_Townhall|VIL_Fountain|VIL_Bridge|VIL_Lanterns|VIL_Benches|VIL_Plinths|YGG_Trunk|YGG_Branches|VEGC_Trees|VEGC_Rocks|MTN_|ARC_Bridge_(Deck|LowerDeck|Land))/;
+const COLLIDE_RE = /^(ARC1_Terrain|ARC1_Gate|ARC1_Pad|VIL_House|VIL_Hut|VIL_Townhall|VIL_Fountain|VIL_Bridge|VIL_Lanterns|VIL_Benches|VIL_Plinths|YGG_Trunk|YGG_Branches|YGG_Entrance|VEGC_Trees|VEGC_Rocks|MTN_|MINE_Site|ARC_Bridge_(Deck|LowerDeck|Land))/;
 // Wind-animated material names -> sway amplitude (m).
 const WIND_MATS = {
     M_LeafOak: 0.20, M_LeafBirch: 0.22, M_LeafPine: 0.12,
@@ -552,14 +552,17 @@ async function buildScene(scene, stage, setStatus, ui) {
     // its own mesh, so three.js frustum culling works per tile; on top of that we
     // hide tiles beyond a per-type view distance. Big wins on iPad: only nearby
     // grass/flowers are ever drawn.
-    const CULL_DIST = { Grass: 170, Flowers: 130, Shrubs: 260, Reeds: 150, Plants: 120, Trees: 5000, Rocks: 500 };
+    const CULL_DIST = { Grass: 170, Flowers: 130, Shrubs: 260, Reeds: 150, Plants: 120, Mush: 110, Trees: 5000, Rocks: 500 };
     const cullChunks = [];
     model.traverse((n) => {
         if (!n.isMesh || n.name.indexOf("VEGC_") !== 0) return;
         const type = n.name.split("_")[1];
         if (!n.geometry.boundingSphere) n.geometry.computeBoundingSphere();
         const center = n.geometry.boundingSphere.center.clone().applyMatrix4(n.matrixWorld);
-        cullChunks.push({ o: n, c: center, d2: Math.pow(CULL_DIST[type] || 180, 2) });
+        // cull on edge-distance (center distance minus chunk radius): no popping of
+        // chunks that are half inside the view distance (V10.2 clipping fix)
+        const cut = (CULL_DIST[type] || 180) + n.geometry.boundingSphere.radius;
+        cullChunks.push({ o: n, c: center, d2: cut * cut });
     });
     debugLog("MissionHub V10 culling chunks", cullChunks.length);
 
@@ -598,6 +601,15 @@ async function buildScene(scene, stage, setStatus, ui) {
         if (!n.isMesh) return;
         if (n.name.indexOf("ARC4_Cloud") === 0 || n.name.indexOf("ARC1_CloudHi") === 0) {
             clouds.push({ o: n, base: n.position.clone(), ph: Math.random() * 6.28, s: n.name.indexOf("ARC1_") === 0 ? 14 : 6 });
+        }
+    });
+    // V10.2 mine life: spinning/bobbing drill + rising smoke puffs
+    const drill = model.getObjectByName("MINE_DrillBit");
+    const drillBaseY = drill ? drill.position.y : 0;
+    const smokes = [];
+    model.traverse((n) => {
+        if (n.isMesh && n.name.indexOf("MINE_Smoke") === 0) {
+            smokes.push({ o: n, base: n.position.clone(), ph: Math.random() * 6.28, s0: n.scale.x });
         }
     });
 
@@ -822,6 +834,17 @@ async function buildScene(scene, stage, setStatus, ui) {
         for (const c of clouds) {
             c.o.position.x = c.base.x + Math.sin(time * 0.05 + c.ph) * c.s;
             c.o.position.z = c.base.z + Math.cos(time * 0.04 + c.ph) * c.s * 0.8;
+        }
+        if (drill) {
+            drill.rotation.y += dt * 7.0;                                    // boren
+            drill.position.y = drillBaseY - 0.9 * (0.5 + 0.5 * Math.sin(time * 0.55)); // op en neer
+        }
+        for (const s of smokes) {
+            const cyc = (time * 1.1 + s.ph) % 7;
+            s.o.position.y = s.base.y + cyc * 1.6;
+            const f = 1 - cyc / 7;
+            s.o.scale.setScalar(s.s0 * (0.6 + cyc * 0.35));
+            s.o.visible = f > 0.05;
         }
         for (const u of windUniforms) u.value = time;
         for (const u of riverUniforms) u.value = time;
