@@ -199,6 +199,13 @@ class AssetCache {
         return this._cloneEntry(key, entry, deps);
     }
 
+    /** Animation clips parsed from the GLB (shared data; bind to a mixer root). */
+    acquireAnimations(key) {
+        const entry = this._entries.get(key);
+        if (!entry || entry.status !== STATUS.READY || !entry.gltf) return [];
+        return entry.gltf.animations || [];
+    }
+
     /** Synchronous clone if already parsed, else null (never triggers a load). */
     peekScene(key) {
         const entry = this._entries.get(key);

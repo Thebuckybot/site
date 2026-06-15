@@ -310,6 +310,20 @@ async function buildScene(scene, stage, setStatus, ui) {
     }
     scene.model = model;
 
+    // ---- V11 lift: AnimationMixer plays the baked lift clip (platform up/down, stops at levels) ----
+    try {
+        const clips = assetCache.acquireAnimations("mission_hub_master") || [];
+        const liftClip = clips.find((c) => c.name === "YGG_LiftAction") || clips.find((c) => /lift/i.test(c.name || ""));
+        if (liftClip) {
+            const liftMixer = new THREE.AnimationMixer(model);
+            liftMixer.clipAction(liftClip).play();
+            scene.liftMixer = liftMixer;
+            debugLog("MissionHub lift AnimationMixer started", liftClip.name, "clips:", clips.length);
+        } else {
+            debugLog("MissionHub: no lift animation clip in GLB", "clips:", clips.length);
+        }
+    } catch (e) { logError("MissionHub lift mixer init", e); }
+
     // ---- Light sanity clamp: a GLB exported in photometric SPEC mode carries
     // lux/candela intensities (sun ~1639 lux) that blow the whole frame to white
     // under ACES at exposure 1. The export now uses COMPAT mode; this clamp is a
@@ -628,6 +642,7 @@ async function buildScene(scene, stage, setStatus, ui) {
             model.updateWorldMatrix(true, true);
             model.traverse((n) => {
                 if (!n.isMesh || !COLLIDE_RE.test(n.name || "")) return;
+                if (n.name === "YGG_Trunk_LiftPlatform" || n.name === "YGG_Trunk_LiftRail") return; // animated lift -> no static collider (avoids a phantom collider stuck at ground)
                 const geo = n.geometry;
                 if (!geo || !geo.attributes.position) return;
                 const pos = geo.attributes.position;
@@ -651,6 +666,18 @@ async function buildScene(scene, stage, setStatus, ui) {
             const body = pw.createRigidBody(bd);
             pw.createCollider(RAPIER.ColliderDesc.ball(PLAYER.radius).setFriction(0.25).setRestitution(0.0), body);
             phys.RAPIER = RAPIER; phys.world = pw; phys.body = body; phys.river = riverSamples;
+            // V11: kinematic collider so the animated lift platform is rideable (follows the baked clip)
+            try {
+                const liftPlat = model.getObjectByName("YGG_Trunk_LiftPlatform");
+                if (liftPlat) {
+                    liftPlat.updateWorldMatrix(true, false);
+                    const wp = liftPlat.getWorldPosition(new THREE.Vector3());
+                    const lbody = pw.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(wp.x, wp.y, wp.z));
+                    pw.createCollider(RAPIER.ColliderDesc.cylinder(0.25, 4.5).setFriction(0.9), lbody);
+                    phys.liftBody = lbody; phys.liftNode = liftPlat;
+                    debugLog("MissionHub lift kinematic platform collider ready");
+                }
+            } catch (e) { logError("MissionHub lift kinematic collider", e); }
             phys.ready = true;
             debugLog("MissionHub V9 physics ready", { colliders: colliderCount, riverSamples: riverSamples.length });
         } catch (e) {
@@ -948,6 +975,11 @@ async function buildScene(scene, stage, setStatus, ui) {
                 }
             }
             body.setLinvel({ x: nvx, y: nvy, z: nvz }, true);
+            if (phys.liftBody && phys.liftNode) {
+                phys.liftNode.updateWorldMatrix(true, false);
+                const lp = phys.liftNode.getWorldPosition(new THREE.Vector3());
+                phys.liftBody.setNextKinematicTranslation({ x: lp.x, y: lp.y, z: lp.z });
+            }
             phys.world.timestep = Math.min(dt, 1 / 30);
             phys.world.step();
             const tr = body.translation();
@@ -1030,6 +1062,7 @@ async function buildScene(scene, stage, setStatus, ui) {
     renderer.setAnimationLoop(() => {
         if (scene.disposed) return;
         const dt = clock.getDelta(), time = clock.elapsedTime;
+        if (scene.liftMixer) scene.liftMixer.update(dt);
         tick(dt, time);
         if (composer) composer.render(); else renderer.render(world, camera);
     });
