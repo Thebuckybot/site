@@ -666,16 +666,25 @@ async function buildScene(scene, stage, setStatus, ui) {
             const body = pw.createRigidBody(bd);
             pw.createCollider(RAPIER.ColliderDesc.ball(PLAYER.radius).setFriction(0.25).setRestitution(0.0), body);
             phys.RAPIER = RAPIER; phys.world = pw; phys.body = body; phys.river = riverSamples;
-            // V11: kinematic collider so the animated lift platform is rideable (follows the baked clip)
+            // V12: kinematic collider so the animated lift platform is rideable (follows the baked clip).
+            // NOTE: YGG_Trunk_LiftPlatform's node ORIGIN is authored ~86m below its geometry, so
+            // getWorldPosition() != the visible platform. We place + track the collider by the
+            // platform GEOMETRY bounds (Box3) and carry a constant origin->surface offset.
             try {
                 const liftPlat = model.getObjectByName("YGG_Trunk_LiftPlatform");
                 if (liftPlat) {
                     liftPlat.updateWorldMatrix(true, false);
+                    const gbox = new THREE.Box3().setFromObject(liftPlat);
+                    const gc = gbox.getCenter(new THREE.Vector3());
+                    const halfH = 0.6;
+                    const standY = gbox.max.y - halfH + 0.12; // cylinder top ~= platform walk surface
                     const wp = liftPlat.getWorldPosition(new THREE.Vector3());
-                    const lbody = pw.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(wp.x, wp.y, wp.z));
-                    pw.createCollider(RAPIER.ColliderDesc.cylinder(0.25, 4.5).setFriction(0.9), lbody);
+                    phys.liftOffset = new THREE.Vector3(gc.x - wp.x, standY - wp.y, gc.z - wp.z);
+                    const lbody = pw.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased()
+                        .setTranslation(gc.x, standY, gc.z));
+                    pw.createCollider(RAPIER.ColliderDesc.cylinder(halfH, 4.6).setFriction(1.0), lbody);
                     phys.liftBody = lbody; phys.liftNode = liftPlat;
-                    debugLog("MissionHub lift kinematic platform collider ready");
+                    debugLog("MissionHub lift collider ready (geom-tracked)", gc.toArray().map((n) => +n.toFixed(1)));
                 }
             } catch (e) { logError("MissionHub lift kinematic collider", e); }
             phys.ready = true;
@@ -978,7 +987,8 @@ async function buildScene(scene, stage, setStatus, ui) {
             if (phys.liftBody && phys.liftNode) {
                 phys.liftNode.updateWorldMatrix(true, false);
                 const lp = phys.liftNode.getWorldPosition(new THREE.Vector3());
-                phys.liftBody.setNextKinematicTranslation({ x: lp.x, y: lp.y, z: lp.z });
+                const off = phys.liftOffset || { x: 0, y: 0, z: 0 };
+                phys.liftBody.setNextKinematicTranslation({ x: lp.x + off.x, y: lp.y + off.y, z: lp.z + off.z });
             }
             phys.world.timestep = Math.min(dt, 1 / 30);
             phys.world.step();

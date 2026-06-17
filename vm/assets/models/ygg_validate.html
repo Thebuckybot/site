@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yggdrasil V12 — Runtime Validator</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0f14;color:#cfe;font:13px/1.45 system-ui,sans-serif;overflow:hidden}
+  #c{position:fixed;inset:0;display:block}
+  #hud{position:fixed;left:12px;top:12px;max-width:340px;background:rgba(8,12,18,.82);
+       border:1px solid #2a3a4a;border-radius:10px;padding:10px 12px;z-index:5}
+  #hud h1{font-size:14px;margin:0 0 6px;color:#9fe6c0}
+  #shotname{color:#ffd479;font-weight:600}
+  .row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  button{background:#16222e;color:#bfe;border:1px solid #2c4153;border-radius:7px;
+         padding:5px 8px;cursor:pointer;font-size:12px}
+  button:hover{background:#1e3140}
+  button.on{background:#2b6;color:#031;border-color:#2b6}
+  #status{margin-top:8px;font-size:12px;color:#9fb}
+  #leak{margin-top:6px;font-size:12px}
+  .ok{color:#6f6}.bad{color:#f77}
+  #err{position:fixed;inset:auto 12px 12px 12px;background:#3a1417;border:1px solid #a33;
+       color:#fbb;padding:10px;border-radius:8px;display:none;z-index:9;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <h1>Yggdrasil V12 — runtime validator</h1>
+  <div>Shot: <span id="shotname">loading…</span></div>
+  <div class="row" id="shots"></div>
+  <div class="row">
+    <button id="liftBtn">⏯ lift</button>
+    <button id="leakBtn">sky-leak test</button>
+    <button id="bgBtn">bg: sky</button>
+    <button id="orbitHint">drag = orbit</button>
+  </div>
+  <div id="status">booting…</div>
+  <div id="leak"></div>
+</div>
+<div id="err"></div>
+<script type="module">
+import * as THREE from "https://esm.sh/three@0.160.0";
+import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
+import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+
+const errEl = document.getElementById("err");
+const showErr = (m)=>{ errEl.style.display="block"; errEl.textContent += m + "\n"; };
+window.addEventListener("error", e=>showErr("JS error: "+(e.message||e)));
+
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+const SKY = new THREE.Color(0x9fc7e8), DARK = new THREE.Color(0x05060a), LEAKBG = new THREE.Color(0xff00ff);
+scene.background = SKY;
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 5000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
+// lighting: GLB punctual lights load automatically; add fill so views are readable
+scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x35302a, 1.0));
+const sun = new THREE.DirectionalLight(0xfff1d8, 1.6); sun.position.set(0.5,1,0.3); scene.add(sun);
+scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+
+function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+addEventListener("resize", resize); resize();
+
+const status = (t)=>document.getElementById("status").textContent=t;
+const draco = new DRACOLoader(); draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
+const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
+
+let model, mixer, liftAction, clock=new THREE.Clock(), liftPlaying=true;
+let nodes={};
+const box=(o)=>new THREE.Box3().setFromObject(o);
+
+status("fetching mission_hub_master.glb …");
+loader.load("./mission_hub_master.glb", (gltf)=>{
+  model = gltf.scene; scene.add(model);
+  ["YGG_Trunk","YGG_Entrance","YGG_Crown","YGG_Branches","YGG_Trunk_LiftPlatform","YGG_HangingRoots","YGG_Roots"]
+    .forEach(n=>{ const o=model.getObjectByName(n); if(o) nodes[n]=o; });
+  if (gltf.animations && gltf.animations.length){
+    mixer = new THREE.AnimationMixer(model);
+    liftAction = mixer.clipAction(gltf.animations.find(a=>/lift/i.test(a.name))||gltf.animations[0]);
+    liftAction.play();
+  }
+  status("loaded ✓  nodes:"+countNodes()+"  anims:"+(gltf.animations||[]).length);
+  buildShots(); setShot(0);
+}, (p)=>{ if(p.total) status("loading "+Math.round(p.loaded/p.total*100)+"%"); },
+   (e)=>{ showErr("GLB load failed: "+(e.message||e)+"\n(serve this over http:// — file:// blocks the fetch)"); status("LOAD FAILED"); });
+
+function countNodes(){ let n=0; model.traverse(()=>n++); return n; }
+
+// ---- camera shots, derived from the trunk's own bounds (axis-agnostic) ----
+let SHOTS=[];
+function buildShots(){
+  const T=box(nodes.YGG_Trunk); const C=T.getCenter(new THREE.Vector3()); const S=T.getSize(new THREE.Vector3());
+  const R=Math.max(S.x,S.z)/2, H=S.y, floorY=T.min.y, topY=T.max.y;
+  const E = nodes.YGG_Entrance ? box(nodes.YGG_Entrance).getCenter(new THREE.Vector3()) : C.clone().add(new THREE.Vector3(R,0,0));
+  const out = new THREE.Vector3(E.x-C.x,0,E.z-C.z).normalize(); // outward toward door (horizontal)
+  const P = nodes.YGG_Trunk_LiftPlatform ? box(nodes.YGG_Trunk_LiftPlatform) : null;
+  const Pc = P ? P.getCenter(new THREE.Vector3()) : new THREE.Vector3(C.x, floorY+1, C.z);
+  const v=(x,y,z)=>new THREE.Vector3(x,y,z);
+  SHOTS=[
+   ["1 · outside the tree",         C.clone().add(out.clone().multiplyScalar(R*2.4)).setY(C.y+H*0.15), C.clone().setY(C.y)],
+   ["2 · at the entrance",          E.clone().add(out.clone().multiplyScalar(R*0.9)).setY(E.y+3),     E.clone().setY(E.y)],
+   ["3 · entering (just inside)",   E.clone().add(out.clone().multiplyScalar(-R*0.25)).setY(floorY+7), C.clone().setY(floorY+H*0.5)],
+   ["4 · lift visible",            v(Pc.x+R*0.6, floorY+10, Pc.z+R*0.6),                                Pc.clone().setY(floorY+6)],
+   ["5 · lift moving (watch)",     v(Pc.x+R*0.55, floorY+H*0.32, Pc.z+R*0.55),                          v(C.x,floorY+H*0.45,C.z)],
+   ["6 · trunk bottom",            v(C.x+R*0.5, floorY+5, C.z+R*0.5),                                   v(C.x, floorY+H*0.4, C.z)],
+   ["7 · trunk middle",            v(C.x+R*0.7, floorY+H*0.48, C.z+R*0.2),                              v(C.x-R*0.3, floorY+H*0.62, C.z-R*0.2)],
+   ["8 · trunk top (ceiling)",     v(C.x+R*0.4, floorY+H*0.55, C.z+R*0.3),                              v(C.x, topY, C.z)],
+   ["9 · collider test",           v(Pc.x+12, (P?P.max.y:floorY)+5, Pc.z+12),                           Pc.clone().setY(P?P.max.y:floorY)],
+   ["10 · sky-leak test",          v(C.x, floorY+H*0.45, C.z),                                          v(C.x+R, floorY+H*0.6, C.z)],
+  ];
+  const wrap=document.getElementById("shots"); wrap.innerHTML="";
+  SHOTS.forEach((s,i)=>{ const b=document.createElement("button"); b.textContent=String(i+1);
+    b.onclick=()=>setShot(i); b.id="sb"+i; wrap.appendChild(b); });
+  addColliderGizmo(P,Pc);
+}
+
+// collider gizmo replicating the runtime fix (geom-tracked cylinder at platform top)
+let gizmo;
+function addColliderGizmo(P,Pc){
+  if(!P) return;
+  const halfH=0.6, r=4.6, top=P.max.y, standY=top-halfH+0.12;
+  const g=new THREE.Mesh(new THREE.CylinderGeometry(r,r,halfH*2,24),
+        new THREE.MeshBasicMaterial({color:0x33ff88,wireframe:true}));
+  g.position.set(Pc.x,standY,Pc.z); g.visible=false; scene.add(g); gizmo=g;
+}
+
+let cur=0;
+function setShot(i){
+  cur=i; const s=SHOTS[i]; if(!s) return;
+  document.getElementById("shotname").textContent=s[0];
+  camera.position.copy(s[1]); controls.target.copy(s[2]); controls.update();
+  for(let k=0;k<SHOTS.length;k++){const b=document.getElementById("sb"+k); if(b) b.classList.toggle("on",k===i);}
+  const leakMode = i===9;
+  scene.background = leakMode ? LEAKBG.clone() : (bgSky?SKY.clone():DARK.clone());
+  if(gizmo) gizmo.visible = (i===8);
+  if(i===4 && liftAction){ liftPlaying=true; }
+  document.getElementById("leak").innerHTML = leakMode ? "<i>magenta = outside. Any magenta seen through a wall = a leak. Use “sky-leak test”.</i>" : "";
+}
+window.setShot=setShot;
+
+// ---- sky-leak raycast: from an interior point, fire rays in all directions ----
+function leakTest(){
+  if(!nodes.YGG_Trunk){return;}
+  const T=box(nodes.YGG_Trunk), C=T.getCenter(new THREE.Vector3()), S=T.getSize(new THREE.Vector3());
+  const origin=new THREE.Vector3(C.x, T.min.y+S.y*0.35, C.z);
+  const meshes=[]; nodes.YGG_Trunk.traverse(o=>{if(o.isMesh)meshes.push(o);});
+  const rc=new THREE.Raycaster(); rc.far=Math.max(S.x,S.y,S.z)*1.5;
+  const N=600; let escapes=0, door=0;
+  const E = nodes.YGG_Entrance ? box(nodes.YGG_Entrance).getCenter(new THREE.Vector3()) : null;
+  const doorDir = E ? new THREE.Vector3().subVectors(E,origin).normalize() : null;
+  for(let i=0;i<N;i++){
+    const y=1-(i/(N-1))*2, r=Math.sqrt(1-y*y), th=i*2.399963;
+    const d=new THREE.Vector3(Math.cos(th)*r, y, Math.sin(th)*r);
+    const hit=rc.set(origin,d), hits=rc.intersectObjects(meshes,true);
+    if(hits.length===0){
+      if(doorDir && d.dot(doorDir)>0.86) door++;   // aimed roughly at the doorway -> expected opening
+      else escapes++;
+    }
+  }
+  const el=document.getElementById("leak");
+  const ok = escapes===0;
+  el.innerHTML = `<b>Leak test:</b> <span class="${ok?'ok':'bad'}">${escapes} leak rays</span> `+
+                 `(of ${N}); ${door} through the doorway (expected). `+
+                 (ok?"✓ enclosed":"✗ holes detected");
+}
+window.leakTest=leakTest;
+document.getElementById("leakBtn").onclick=()=>{ setShot(9); leakTest(); };
+
+// lift toggle + bg toggle
+document.getElementById("liftBtn").onclick=()=>{ liftPlaying=!liftPlaying;
+  document.getElementById("liftBtn").classList.toggle("on",liftPlaying); };
+document.getElementById("liftBtn").classList.add("on");
+let bgSky=true;
+document.getElementById("bgBtn").onclick=()=>{ bgSky=!bgSky;
+  document.getElementById("bgBtn").textContent="bg: "+(bgSky?"sky":"dark");
+  if(cur!==9) scene.background=(bgSky?SKY:DARK).clone(); };
+addEventListener("keydown",e=>{ if(e.key==="ArrowRight")setShot((cur+1)%SHOTS.length);
+  if(e.key==="ArrowLeft")setShot((cur+SHOTS.length-1)%SHOTS.length); });
+
+function loop(){
+  requestAnimationFrame(loop);
+  const dt=clock.getDelta();
+  if(mixer && liftPlaying) mixer.update(dt);
+  controls.update();
+  renderer.render(scene,camera);
+}
+loop();
+</script>
+</body>
+</html>
