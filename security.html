@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bucky Security Center</title>
+  <link rel="stylesheet" href="css/security.css" />
+</head>
+<body class="sec-body">
+  <div id="sec-app" class="sec-app" aria-busy="true">
+    <!-- Sidebar -->
+    <aside class="sec-sidebar" id="sec-sidebar">
+      <div class="sec-brand">
+        <span class="sec-brand-mark">B</span>
+        <span class="sec-brand-text">Security Center</span>
+      </div>
+      <nav class="sec-nav" id="sec-nav" aria-label="Security sections"></nav>
+      <div class="sec-sidebar-foot">
+        <a class="sec-link" href="dashboard.html">← Back to Dashboard</a>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="sec-main">
+      <header class="sec-topbar">
+        <button class="sec-burger" id="sec-burger" aria-label="Toggle navigation">☰</button>
+        <div class="sec-breadcrumb" id="sec-breadcrumb"></div>
+        <div class="sec-top-actions">
+          <span class="sec-guild" id="sec-guild-name"></span>
+          <button class="sec-btn sec-btn-ghost" id="sec-refresh" title="Refresh">Refresh</button>
+        </div>
+      </header>
+
+      <main class="sec-content" id="sec-content" tabindex="-1">
+        <div class="sec-loading">Loading Security Center…</div>
+      </main>
+    </div>
+  </div>
+
+  <div class="sec-toast-host" id="sec-toast-host" aria-live="polite"></div>
+  <div class="sec-modal-host" id="sec-modal-host" aria-hidden="true"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <script type="module" src="js/security/app.js"></script>
+</body>
+</html>
