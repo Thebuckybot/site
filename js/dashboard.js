@@ -15,9 +15,11 @@ function renderNav(loggedIn, user = null) {
   // Haal navMenu op binnen de functie.
   const navMenu = document.getElementById("nav-menu");
 
-  // Als navMenu niet bestaat, stoppen we de functie.
+  // The dashboard nav (#nav-menu) only exists on dashboard.html. This module is
+  // also imported by other pages (e.g. the Security v2 SPA) purely for apiFetch,
+  // where there is legitimately no nav to render - so this is expected, not an
+  // error. Return quietly instead of logging.
   if (!navMenu) {
-    console.error("Error: The navigation menu element with ID 'nav-menu' was not found.");
     return;
   }
 
@@ -152,9 +154,9 @@ function createGuildCard(guild, guildContainer) {
   card.appendChild(img);
   card.appendChild(name);
 
-  // Klikken op de kaart navigeert direct naar de settings
+  // Selecting a guild opens the Security v2 dashboard (the new SPA).
   card.onclick = () => {
-    window.location.href = `settings.html?guild_id=${guild.id}`;
+    window.location.href = `security.html?guild_id=${guild.id}`;
   };
 
   guildContainer.appendChild(card);

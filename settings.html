@@ -7,6 +7,19 @@
   <link rel="stylesheet" href="settings.css" />
 </head>
 <body>
+  <!-- DEPRECATED PAGE. The new Security v2 Center (security.html) is the active
+       dashboard; this legacy page is kept only for the shadow-migration period
+       and is no longer linked from the main dashboard. Remove at GA cutover. -->
+  <div id="v2-deprecation" style="background:#141a2b;border-bottom:2px solid #5865f2;color:#e6e9f2;padding:10px 16px;font-family:system-ui,sans-serif;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap">
+    <span>You're on the legacy Security page. The new <strong>Security Center</strong> is now available.</span>
+    <a id="v2-open" href="security.html" style="background:#5865f2;color:#fff;padding:6px 12px;border-radius:8px;text-decoration:none;font-weight:600">Open Security v2 →</a>
+  </div>
+  <script>
+    (function () {
+      var g = new URLSearchParams(location.search).get("guild_id");
+      if (g) { var a = document.getElementById("v2-open"); if (a) a.href = "security.html?guild_id=" + g; }
+    })();
+  </script>
   <header id="guild-header">
     <div class="guild-info">
       <img id="guild-icon" alt="Guild Icon" />
