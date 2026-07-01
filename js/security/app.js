@@ -1,8 +1,9 @@
-// Security Center bootstrap: wires the shell, sidebar, routing, and refresh.
-// Each section is a lazily-imported page module exporting { render(root) }.
+// Security Center bootstrap: wires the shell, grouped sidebar, routing, refresh.
+// Internal sections are lazily-imported page modules exporting { render(root) };
+// external items (Rule Builder) navigate to the existing advanced tool.
 import { guildId } from "./api.js";
 import { el, clear } from "./ui.js";
-import { buildSidebar, setActive, sectionLabel, isSection } from "./router.js";
+import { buildSidebar, setActive, sectionLabel, isInternal, isExternal, externalUrl } from "./router.js";
 
 const appEl = document.getElementById("sec-app");
 const nav = document.getElementById("sec-nav");
@@ -11,7 +12,7 @@ const breadcrumb = document.getElementById("sec-breadcrumb");
 
 function currentKey() {
   const key = (window.location.hash || "#overview").slice(1);
-  return isSection(key) ? key : "overview";
+  return isInternal(key) ? key : "overview";
 }
 
 function setBreadcrumb(key) {
@@ -19,6 +20,11 @@ function setBreadcrumb(key) {
   breadcrumb.appendChild(el("span", { text: "Security" }));
   breadcrumb.appendChild(el("span", { class: "sep", text: "/" }));
   breadcrumb.appendChild(el("span", { text: sectionLabel(key) }));
+}
+
+function navigate(key) {
+  if (isExternal(key)) { window.location.href = externalUrl(key, guildId()); return; }
+  window.location.hash = "#" + key;
 }
 
 async function loadSection(key) {
@@ -45,7 +51,7 @@ async function loadSection(key) {
 function boot() {
   if (!guildId()) { window.location.href = "dashboard.html"; return; }
   document.getElementById("sec-guild-name").textContent = "Guild " + guildId();
-  buildSidebar(nav, (key) => { window.location.hash = "#" + key; });
+  buildSidebar(nav, navigate);
   document.getElementById("sec-refresh").addEventListener("click", () => loadSection(currentKey()));
   document.getElementById("sec-burger").addEventListener("click", () => appEl.classList.toggle("nav-open"));
   window.addEventListener("hashchange", () => loadSection(currentKey()));

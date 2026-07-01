@@ -17,6 +17,13 @@ export const ICONS = {
   snapshots: S('<path d="M4 7h4l2-2h4l2 2h4v12H4z"/><circle cx="12" cy="13" r="3"/>'),
   advanced: S('<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'),
   settings: S('<circle cx="12" cy="12" r="3"/><path d="M4 12h2M18 12h2M12 4v2M12 18v2"/>'),
+  monitoring: S('<path d="M3 12h4l2 5 4-12 2 7h6"/>'),
+  soc: S('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 9v3l2 1"/>'),
+  recovery: S('<path d="M4 12a8 8 0 1 1 2.3 5.6"/><path d="M4 20v-4h4"/>'),
+  rules: S('<path d="M6 3h9l5 5v13H6z"/><path d="M9 12h7M9 16h5"/><path d="M9 8h3"/>'),
+  liveevents: S('<circle cx="12" cy="12" r="2.5"/><path d="M5 12a7 7 0 0 1 14 0"/><path d="M2 12a10 10 0 0 1 20 0"/>'),
+  rulebuilder: S('<path d="M4 7h16M4 12h10M4 17h7"/><path d="M17 14l4 4-4 4" transform="translate(0 -7)"/>'),
+  rollback: S('<path d="M4 12a8 8 0 1 1 2.3 5.6"/><path d="M4 20v-4h4"/><path d="M12 8v4l3 2"/>'),
 };
 
 export function icon(key) { return ICONS[key] || ICONS.overview; }

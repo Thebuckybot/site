@@ -46,3 +46,29 @@ export const api = {
   patch: (p, b) => call("PATCH", p, b).then((j) => j.data),
   del: (p) => call("DELETE", p).then((j) => j.data),
 };
+
+// SOC (advanced) endpoints live under /api/soc and return raw JSON (not the v2
+// envelope). Integrated into the same Security Center; still server-authorized.
+const SOC = `${API_URL}/api/soc`;
+async function socCall(method, path, body) {
+  const gid = guildId();
+  const opts = { method, headers: {} };
+  if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  let res;
+  try { res = await apiFetch(`${SOC}/${gid}${path}`, opts); }
+  catch (e) { const err = new Error("Network error - the backend is unreachable."); err.code = "network"; throw err; }
+  let json = null;
+  try { json = await res.json(); } catch (_) { /* non-JSON */ }
+  if (!res.ok) {
+    const err = new Error((json && json.error) || `Request failed (${res.status}).`);
+    err.status = res.status; throw err;
+  }
+  return json;
+}
+
+export const soc = {
+  get: (p) => socCall("GET", p),
+  post: (p, b) => socCall("POST", p, b),
+  patch: (p, b) => socCall("PATCH", p, b),
+  del: (p) => socCall("DELETE", p),
+};
