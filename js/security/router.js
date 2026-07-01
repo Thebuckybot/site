@@ -1,6 +1,7 @@
 // Sidebar structure (flat items + collapsible groups), navigation and active
-// highlighting. SOC and Rule Builder are integrated as an advanced group inside
-// the one Security Center — not a separate product.
+// highlighting. SOC and Rule Builder are fully integrated as an advanced group
+// inside the one Security Center — every entry is an internal SPA workspace.
+// There is no "external" navigation: nothing ever leaves the Security Center.
 import { el, clear } from "./ui.js";
 import { icon } from "./icons.js";
 
@@ -19,8 +20,8 @@ export const NAV = [
     { key: "health", label: "Health" },
   ] },
   { type: "group", key: "soc", label: "SOC", items: [
-    { key: "soc", label: "SOC Dashboard" },
-    { key: "rulebuilder", label: "Rule Builder", external: true },
+    { key: "soc", label: "Overview" },
+    { key: "rulebuilder", label: "Rule Builder" },
     { key: "rules", label: "Detection Rules" },
     { key: "liveevents", label: "Live Events" },
   ] },
@@ -32,30 +33,25 @@ export const NAV = [
   { type: "item", key: "settings", label: "Settings" },
 ];
 
-// flat lookup of every internal (SPA) section -> label, and which group it's in
+// flat lookup of every SPA section -> label, and which group it's in. Every
+// section is internal (a lazily-imported page module under pages/<key>.js).
 const LABEL = {};
 const GROUP_OF = {};
 const INTERNAL = new Set();
-const EXTERNAL = new Set();
 for (const entry of NAV) {
   if (entry.type === "item") { LABEL[entry.key] = entry.label; INTERNAL.add(entry.key); }
   else {
     LABEL[entry.key] = entry.label;
     for (const it of entry.items) {
       LABEL[it.key] = it.label; GROUP_OF[it.key] = entry.key;
-      (it.external ? EXTERNAL : INTERNAL).add(it.key);
+      INTERNAL.add(it.key);
     }
   }
 }
 
 export function sectionLabel(key) { return LABEL[key] || key; }
 export function isInternal(key) { return INTERNAL.has(key); }
-export function isExternal(key) { return EXTERNAL.has(key); }
 export function groupOf(key) { return GROUP_OF[key]; }
-export function externalUrl(key, guildId) {
-  if (key === "rulebuilder") return `rule-builder.html?guild_id=${guildId}`;
-  return "#";
-}
 
 function navButton(item, onNavigate) {
   return el("button", { class: "sec-nav-item", "data-key": item.key, onclick: () => onNavigate(item.key) }, [

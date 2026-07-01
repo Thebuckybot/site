@@ -376,10 +376,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // 👇 HIER TOEVOEGEN
+  // SOC is now a section of the one Security Center — link straight into the
+  // SPA (security.html#soc), not the deprecated standalone soc.html shell.
   const socLink = document.getElementById("soc-link");
   if (socLink) {
-    socLink.href = `soc.html?guild_id=${guildId}`;
+    socLink.href = `security.html?guild_id=${guildId}#soc`;
   }
 
   loadSettings();

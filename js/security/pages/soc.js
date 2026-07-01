@@ -1,4 +1,4 @@
-import { soc, guildId } from "../api.js";
+import { soc } from "../api.js";
 import { el, statCard, pageHeader, table, badge, errorState, fmtTime } from "../ui.js";
 
 export default {
@@ -29,7 +29,7 @@ export default {
       root.appendChild(el("div", { class: "sec-actions", style: "margin-top:16px" }, [
         el("a", { class: "sec-btn sec-btn-primary", href: "#rules", text: "Manage Detection Rules" }),
         el("a", { class: "sec-btn", href: "#liveevents", text: "Live Events" }),
-        el("a", { class: "sec-btn", href: `rule-builder.html?guild_id=${guildId()}`, text: "Open Rule Builder" }),
+        el("a", { class: "sec-btn", href: "#rulebuilder", text: "Open Rule Builder" }),
       ]));
     } catch (err) { errorState(root, err, () => this.render(root)); }
   },

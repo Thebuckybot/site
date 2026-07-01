@@ -267,3 +267,58 @@
 @media (max-width: 560px) {
   .sec-grid-2, .sec-grid-3, .sec-grid-4, .sec-quick { grid-template-columns: 1fr; }
 }
+
+/* ---------------------------------------------------------------------------
+   Rule Builder (SOC) — WHEN / IF / THEN flow. Ported from the old standalone
+   rule-builder shell into the Security Center design language (crimson accent,
+   panels, rounded cards). Same tokens as everything else.
+   --------------------------------------------------------------------------- */
+.sec-rb-flow { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin: 16px 0; }
+.sec-rb-flow-label { color: var(--sec-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.sec-rb-block {
+  position: relative; background: var(--sec-panel-2); border: 1px solid var(--sec-border-strong);
+  border-left: 3px solid var(--sec-border-strong); border-radius: var(--sec-radius-sm);
+  padding: 16px 16px 16px 18px; display: flex; flex-direction: column; gap: 10px;
+}
+.sec-rb-block.when { border-left-color: var(--sec-amber); }
+.sec-rb-block.if   { border-left-color: var(--bucky-red-light); }
+.sec-rb-block.then { border-left-color: var(--sec-green); }
+.sec-rb-tag {
+  align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: .08em;
+  padding: 3px 12px; border-radius: 999px; background: var(--bucky-red-soft); color: var(--bucky-red-light);
+}
+.sec-rb-block.when .sec-rb-tag { background: rgba(224,165,58,.15); color: var(--sec-amber); }
+.sec-rb-block.then .sec-rb-tag { background: rgba(63,185,107,.15); color: var(--sec-green); }
+.sec-rb-connector { text-align: center; color: var(--sec-muted); font-size: 18px; line-height: 1; }
+.sec-rb-container { display: flex; flex-direction: column; gap: 10px; }
+.sec-rb-item {
+  position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  background: var(--sec-panel); border: 1px solid var(--sec-border); border-radius: var(--sec-radius-sm);
+  padding: 12px 40px 12px 12px; animation: secfade .2s ease;
+}
+.sec-rb-fields { display: flex; flex-wrap: wrap; gap: 10px; }
+.sec-rb-remove {
+  position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%;
+  border: 1px solid var(--sec-border-strong); background: var(--sec-panel-2); color: var(--sec-muted);
+  cursor: pointer; font-size: 12px; line-height: 1; transition: all .2s ease;
+}
+.sec-rb-remove:hover { color: #fff; background: linear-gradient(135deg, #b0303a, var(--sec-red)); border-color: transparent; }
+.sec-rb-add {
+  align-self: flex-start; background: transparent; border: 1px dashed var(--sec-border-strong);
+  color: var(--sec-muted); padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 700; transition: all .2s ease;
+}
+.sec-rb-add:hover { color: var(--sec-text); border-color: var(--bucky-red-light); }
+.sec-rb-event { min-width: 260px; }
+
+/* Rule list */
+.sec-rb-rules { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.sec-rb-rule { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; }
+.sec-rb-rule-main { min-width: 0; }
+.sec-rb-rule-title { font-weight: 800; }
+.sec-rb-rule-ctl { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+.sec-rb-code-label { color: var(--sec-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-top: 12px; }
+.sec-rb-code {
+  background: #0a0e15; border: 1px solid var(--sec-border); border-radius: 10px; padding: 12px;
+  font-size: 12px; color: var(--sec-text); overflow-x: auto; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word;
+}

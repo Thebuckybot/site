@@ -1,9 +1,10 @@
 // Security Center bootstrap: wires the shell, grouped sidebar, routing, refresh.
-// Internal sections are lazily-imported page modules exporting { render(root) };
-// external items (Rule Builder) navigate to the existing advanced tool.
+// Every section — including SOC and the Rule Builder — is a lazily-imported page
+// module exporting { render(root) }. Navigation only ever swaps the workspace;
+// it never leaves the Security Center.
 import { guildId } from "./api.js";
 import { el, clear } from "./ui.js";
-import { buildSidebar, setActive, sectionLabel, isInternal, isExternal, externalUrl } from "./router.js";
+import { buildSidebar, setActive, sectionLabel, isInternal } from "./router.js";
 
 const appEl = document.getElementById("sec-app");
 const nav = document.getElementById("sec-nav");
@@ -23,7 +24,8 @@ function setBreadcrumb(key) {
 }
 
 function navigate(key) {
-  if (isExternal(key)) { window.location.href = externalUrl(key, guildId()); return; }
+  // Internal-only: switching a section just updates the hash; the hashchange
+  // handler swaps the workspace inside the same shell.
   window.location.hash = "#" + key;
 }
 

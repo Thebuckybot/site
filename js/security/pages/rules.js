@@ -1,4 +1,4 @@
-import { soc, guildId } from "../api.js";
+import { soc } from "../api.js";
 import { el, pageHeader, table, badge, toggle, toast, errorState, confirmDialog } from "../ui.js";
 
 export default {
@@ -29,7 +29,7 @@ export default {
     try {
       root.appendChild(pageHeader("Detection Rules", "Custom SOC rules. Create new rules in the advanced Rule Builder."));
       root.appendChild(el("div", { class: "sec-actions" }, [
-        el("a", { class: "sec-btn sec-btn-primary", href: `rule-builder.html?guild_id=${guildId()}`, text: "Open Rule Builder" }),
+        el("a", { class: "sec-btn sec-btn-primary", href: "#rulebuilder", text: "Open Rule Builder" }),
       ]));
       root.appendChild(el("div", { id: "soc-rules" }));
       await load();

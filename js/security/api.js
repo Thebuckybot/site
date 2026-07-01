@@ -47,15 +47,19 @@ export const api = {
   del: (p) => call("DELETE", p).then((j) => j.data),
 };
 
-// SOC (advanced) endpoints live under /api/soc and return raw JSON (not the v2
-// envelope). Integrated into the same Security Center; still server-authorized.
-const SOC = `${API_URL}/api/soc`;
-async function socCall(method, path, body) {
+// SOC (advanced) endpoints now live under the Security namespace:
+//   /api/security/soc/*  (the legacy /api/soc/* is kept only as a temporary
+//   backend compatibility alias during migration). SOC returns raw JSON (not the
+//   v2 envelope). Fully integrated into the one Security Center; still 100%
+//   server-authorized — the frontend makes no security decisions.
+const SOC = `${API_URL}/api/security/soc`;
+async function socCall(method, path, body, { scoped = true } = {}) {
   const gid = guildId();
+  const base = scoped ? `${SOC}/${gid}` : SOC;
   const opts = { method, headers: {} };
   if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
   let res;
-  try { res = await apiFetch(`${SOC}/${gid}${path}`, opts); }
+  try { res = await apiFetch(`${base}${path}`, opts); }
   catch (e) { const err = new Error("Network error - the backend is unreachable."); err.code = "network"; throw err; }
   let json = null;
   try { json = await res.json(); } catch (_) { /* non-JSON */ }
@@ -71,4 +75,6 @@ export const soc = {
   post: (p, b) => socCall("POST", p, b),
   patch: (p, b) => socCall("PATCH", p, b),
   del: (p) => socCall("DELETE", p),
+  // Rule contract / vocabulary — guild-independent, so not guild-scoped.
+  registry: () => socCall("GET", "/rule-registry", undefined, { scoped: false }),
 };
