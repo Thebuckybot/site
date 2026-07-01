@@ -1,5 +1,6 @@
 import { api } from "../api.js";
-import { el, pageHeader, table, toggle, badge, toast, errorState, debounce } from "../ui.js";
+import { el, pageHeader, table, toggle, badge, toast, errorState, debounce, info } from "../ui.js";
+import { moduleDesc } from "../descriptions.js";
 
 export default {
   async render(root) {
@@ -13,7 +14,7 @@ export default {
         (state.cat === "all" || m.category === state.cat) &&
         (!state.q || m.label.toLowerCase().includes(state.q) || m.key.includes(state.q)));
       body.replaceChildren(table([
-        { label: "Module", render: (m) => el("div", {}, [el("strong", { text: m.label }), el("div", { class: "sec-muted", text: m.key })]) },
+        { label: "Module", render: (m) => el("div", {}, [el("strong", { text: m.label }), info(moduleDesc(m.key)), el("div", { class: "sec-muted", text: m.key })]) },
         { label: "Category", render: (m) => badge(m.category || "—", "muted") },
         { label: "Status", render: (m) => badge(m.enabled ? "Enabled" : "Disabled", m.enabled ? "ok" : "muted") },
         { label: "", render: (m) => toggle(m.enabled, async (val) => {

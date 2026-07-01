@@ -1,5 +1,6 @@
 // Sidebar sections, navigation, and active-page highlighting.
 import { el, clear } from "./ui.js";
+import { icon } from "./icons.js";
 
 export const SECTIONS = [
   { key: "overview", label: "Overview", group: "Monitor" },
@@ -16,6 +17,7 @@ export const SECTIONS = [
   { key: "emergency", label: "Emergency", group: "Operate" },
   { key: "snapshots", label: "Snapshots & Recovery", group: "Operate" },
   { key: "advanced", label: "Advanced", group: "Operate" },
+  { key: "settings", label: "Settings", group: "Operate" },
 ];
 
 const MAP = Object.fromEntries(SECTIONS.map((s) => [s.key, s]));
@@ -27,9 +29,11 @@ export function buildSidebar(navEl, onNavigate) {
     navEl.appendChild(el("div", { class: "sec-nav-group", text: g }));
     for (const s of SECTIONS.filter((x) => x.group === g)) {
       navEl.appendChild(el("button", {
-        class: "sec-nav-item", "data-key": s.key, text: s.label,
-        onclick: () => onNavigate(s.key),
-      }));
+        class: "sec-nav-item", "data-key": s.key, onclick: () => onNavigate(s.key),
+      }, [
+        el("span", { class: "ic", html: icon(s.key) }),
+        el("span", { text: s.label }),
+      ]));
     }
   }
 }

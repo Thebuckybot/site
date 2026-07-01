@@ -67,6 +67,19 @@ export function badge(text, kind = "muted") {
   return el("span", { class: `sec-badge ${kind}`, text });
 }
 
+// Accessible, pure-CSS info tooltip: an ⓘ icon that reveals `text` on hover/focus.
+export function info(text) {
+  if (!text) return document.createTextNode("");
+  return el("span", { class: "sec-info", tabindex: "0", "aria-label": text, role: "note" }, [
+    "ⓘ", el("span", { class: "sec-tip", text }),
+  ]);
+}
+
+// A page/section title with a trailing info tooltip.
+export function infoTitle(title, text, tag = "h1", cls = "sec-page-title") {
+  return el(tag, { class: cls }, [title + " ", info(text)]);
+}
+
 export function toggle(checked, onChange) {
   const input = el("input", { type: "checkbox" });
   input.checked = !!checked;
