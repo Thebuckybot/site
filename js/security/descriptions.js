@@ -49,7 +49,38 @@ export const SETTING_DESC = {
   trust: "Roles and users Security treats as trusted (immune). Keep this list tight — everyone on it can bypass protection.",
   snapshots_setting: "Automatic backups of your channels and roles. Security uses the newest one to rebuild structure after a nuke. Kept for the last few captures.",
   recovery: "Rebuilds channels and roles a nuke deleted, from the newest snapshot. It only re-creates what is missing — it never deletes your work.",
+  emergency_enable: "Raises the whole server to the strictest posture. Use during an active attack. Internally: sets emergency + raid mode so detection is hair-trigger and punishments escalate. Reversible.",
+  server_lock: "Disables sending for @everyone until you lift it. Use to freeze a raid instantly. Internally: removes Send Messages from @everyone and records the prior value so unlock restores it exactly.",
+  lift_lockdown: "Restores @everyone messaging and clears emergency posture. Use once the threat is contained.",
+  rollback_action: "Recreates channels and roles from the newest snapshot — for after a nuke. Only re-creates what is missing (never deletes). Detection ignores its own rebuild (self-action guard). Run AFTER containment, not during.",
+  quarantine_repair: "Creates or fixes the quarantine role and its channel-deny overwrites. Use if the role is missing or its permissions were tampered with. Never runs during an active attack.",
+  quarantine_perms: "The quarantine role denies: sending messages, threads, reactions, voice connect/speak, invites, TTS and application commands — everywhere.",
 };
+
+// Punishment-chain stage vocabulary — what each stage does, in plain language.
+export const STAGE_DESC = {
+  ignore: "Take no action (a no-op placeholder, useful while building a chain).",
+  warn: "Record a warning against the offender.",
+  log: "Write this action to the security log / audit history.",
+  delete_messages: "Delete the offending messages (spam, links, tokens).",
+  dm_target: "Send the offender a direct message explaining what happened.",
+  notify_staff: "Post an alert to your staff alert channel.",
+  remove_roles: "Remove all of the offender's removable roles.",
+  remove_dangerous_roles: "Remove only roles that carry dangerous permissions.",
+  remove_dangerous_permissions: "Strip dangerous permissions from the offender's roles.",
+  quarantine: "Move the offender to the quarantine role (roles are vaulted and restored on release).",
+  timeout: "Time the offender out for the configured duration.",
+  nickname_reset: "Reset an abusive nickname.",
+  remove_webhooks: "Delete webhooks involved in the abuse.",
+  channel_lockdown: "Lock the affected channel (reversible).",
+  server_lockdown: "Disable sending for @everyone server-wide (reversible).",
+  snapshot_rollback: "Roll back channels/roles from the latest snapshot (nuke recovery).",
+  emergency_mode: "Raise the server to emergency posture.",
+  kick: "Kick the offender.",
+  softban: "Ban then immediately unban to clear the offender's recent messages.",
+  ban: "Ban the offender.",
+};
+export function stageDesc(key) { return STAGE_DESC[key] || "A punishment-chain stage."; }
 
 export function moduleDesc(key) { return MODULE_DESC[key] || "A security protection module."; }
 export function settingDesc(key) { return SETTING_DESC[key] || ""; }
