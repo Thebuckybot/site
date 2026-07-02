@@ -1,10 +1,15 @@
 import { api } from "../api.js";
-import { el, pageHeader, table, toggle, toast, errorState, formModal, confirmDialog } from "../ui.js";
+import { el, pageHeader, table, toggle, toast, errorState, formModal, confirmDialog, info, emptyCard } from "../ui.js";
+import { settingDesc } from "../descriptions.js";
 
 export default {
   async render(root) {
     let data = null;
-    const load = async () => { data = await api.get("/protection"); draw(); };
+    let canEdit = false;
+    const load = async () => {
+      const [d, perms] = await Promise.all([api.get("/protection"), api.me()]);
+      data = d; canEdit = !!(perms && perms.can_edit); draw();
+    };
 
     const addTrust = async (type) => {
       const vals = await formModal({
@@ -31,34 +36,39 @@ export default {
         el("div", { class: "sec-page-title", text: "Immunity" }),
         el("div", { class: "sec-row", style: "margin:8px 0" }, [
           toggle(data.admin_immunity, (v) => setImmunity("admin_immunity", v)),
-          el("span", { text: "Administrator immunity" }),
+          el("span", {}, ["Administrator immunity ", info(settingDesc("admin_immunity"))]),
         ]),
         el("div", { class: "sec-row" }, [
           toggle(data.owner_only_immunity, (v) => setImmunity("owner_only_immunity", v)),
-          el("span", { text: "Owner-only immunity (strictest)" }),
+          el("span", {}, ["Owner-only immunity (strictest) ", info(settingDesc("owner_only_immunity"))]),
         ]),
       ]);
       const roleCol = [
         { label: "Trusted Role", render: (t) => el("code", { text: t.ref_id }) },
-        { label: "", render: (t) => el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => removeTrust(t) }) },
+        { label: "", render: (t) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => removeTrust(t) }) : el("span", { class: "sec-muted", text: "—" }) },
       ];
       const userCol = [
         { label: "Protected User", render: (t) => el("code", { text: t.ref_id }) },
-        { label: "", render: (t) => el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => removeTrust(t) }) },
+        { label: "", render: (t) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => removeTrust(t) }) : el("span", { class: "sec-muted", text: "—" }) },
       ];
-      body.replaceChildren(
-        immunity,
-        el("div", { class: "sec-actions", style: "margin-top:16px" }, [
-          el("h3", { class: "sec-page-title", style: "margin:0;flex:1", text: "Trusted Roles" }),
-          el("button", { class: "sec-btn sec-btn-primary sec-btn-sm", text: "+ Add Role", onclick: () => addTrust("role") }),
-        ]),
-        table(roleCol, data.trusted_roles),
-        el("div", { class: "sec-actions", style: "margin-top:16px" }, [
-          el("h3", { class: "sec-page-title", style: "margin:0;flex:1", text: "Protected Users" }),
-          el("button", { class: "sec-btn sec-btn-primary sec-btn-sm", text: "+ Add User", onclick: () => addTrust("user") }),
-        ]),
-        table(userCol, data.trusted_users),
-      );
+
+      const roleHead = el("div", { class: "sec-actions", style: "margin-top:16px" }, [
+        el("h3", { class: "sec-page-title", style: "margin:0;flex:1" }, ["Trusted Roles ", info(settingDesc("protection_role_setting"))]),
+      ]);
+      if (canEdit) roleHead.appendChild(el("button", { class: "sec-btn sec-btn-primary sec-btn-sm", text: "+ Add Role", onclick: () => addTrust("role") }));
+      const userHead = el("div", { class: "sec-actions", style: "margin-top:16px" }, [
+        el("h3", { class: "sec-page-title", style: "margin:0;flex:1" }, ["Protected Users ", info(settingDesc("protected_user"))]),
+      ]);
+      if (canEdit) userHead.appendChild(el("button", { class: "sec-btn sec-btn-primary sec-btn-sm", text: "+ Add User", onclick: () => addTrust("user") }));
+
+      const rolesBlock = data.trusted_roles.length
+        ? table(roleCol, data.trusted_roles)
+        : emptyCard({ title: "No trusted roles configured", message: "Add a staff role here and anti-nuke will ignore its members. Keep it to people you trust with mass actions.", actionLabel: canEdit ? "Add Role" : null, onAction: () => addTrust("role") });
+      const usersBlock = data.trusted_users.length
+        ? table(userCol, data.trusted_users)
+        : emptyCard({ title: "No protected users configured", message: "Individual users added here are ignored by anti-nuke. Most servers rely on a trusted role instead.", actionLabel: canEdit ? "Add User" : null, onAction: () => addTrust("user") });
+
+      body.replaceChildren(immunity, roleHead, rolesBlock, userHead, usersBlock);
     };
 
     try {

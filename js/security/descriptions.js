@@ -43,6 +43,12 @@ export const SETTING_DESC = {
   snapshot: "A saved picture of the server's channels and roles, used to roll back after an attack.",
   health: "An automatic score of how well the server is protected, with recommendations.",
   retention: "How long incidents, audit logs and analytics are kept before automatic cleanup.",
+  alert_channel: "Where Security posts alerts (attacks caught, members quarantined). Use a staff-only channel. Set it so you actually see what Security does.",
+  logging_channel: "Optional separate channel for detailed security logging. If unset, alerts and logs share the alert channel.",
+  protection_role_setting: "A trusted staff role that anti-nuke ignores. Give it to people you trust with mass actions; leave attackers out of it.",
+  trust: "Roles and users Security treats as trusted (immune). Keep this list tight — everyone on it can bypass protection.",
+  snapshots_setting: "Automatic backups of your channels and roles. Security uses the newest one to rebuild structure after a nuke. Kept for the last few captures.",
+  recovery: "Rebuilds channels and roles a nuke deleted, from the newest snapshot. It only re-creates what is missing — it never deletes your work.",
 };
 
 export function moduleDesc(key) { return MODULE_DESC[key] || "A security protection module."; }

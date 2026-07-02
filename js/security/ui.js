@@ -39,6 +39,19 @@ export function empty(root, msg = "Nothing here yet.") {
   root.appendChild(el("div", { class: "sec-empty", text: msg }));
 }
 
+// Informative empty state: a titled card with an explanation and an optional
+// Configure action — used instead of showing "None" / "null" anywhere.
+export function emptyCard({ title, message, actionLabel, onAction }) {
+  const card = el("div", { class: "sec-card sec-empty-card" }, [
+    el("div", { class: "sec-empty-title", text: title }),
+    el("p", { class: "sec-muted", text: message }),
+  ]);
+  if (actionLabel && typeof onAction === "function") {
+    card.appendChild(el("button", { class: "sec-btn sec-btn-primary sec-btn-sm", onclick: onAction, text: actionLabel }));
+  }
+  return card;
+}
+
 export function errorState(root, err, retry) {
   clear(root);
   const card = el("div", { class: "sec-card" }, [

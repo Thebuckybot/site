@@ -37,6 +37,8 @@ async function call(method, path, body) {
   return json; // {ok, data, page?, per_page?, total?}
 }
 
+let _permsCache = null;
+
 export const api = {
   guildId,
   get: (p) => call("GET", p).then((j) => j.data),
@@ -45,6 +47,15 @@ export const api = {
   post: (p, b) => call("POST", p, b).then((j) => j.data),
   patch: (p, b) => call("PATCH", p, b).then((j) => j.data),
   del: (p) => call("DELETE", p).then((j) => j.data),
+  // The caller's permission tier for this guild (owner / security_admin /
+  // read_only), fetched once and cached. Purely cosmetic — the backend
+  // re-authorizes every write regardless of what this returns.
+  me: async () => {
+    if (_permsCache) return _permsCache;
+    try { _permsCache = await call("GET", "/me").then((j) => j.data); }
+    catch (_) { _permsCache = { can_view: true, can_edit: false, is_owner: false, tier: "read_only" }; }
+    return _permsCache;
+  },
 };
 
 // SOC (advanced) endpoints now live under the Security namespace:

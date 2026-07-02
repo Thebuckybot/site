@@ -256,6 +256,28 @@
 .sec-settings-row .k { flex: 1; }
 .sec-settings-row .k .desc { color: var(--sec-muted); font-size: 12px; margin-top: 2px; }
 
+/* Provisioning rows (channels & roles) */
+.sec-provision-val { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
+.sec-provision-val .sec-muted { text-align: right; font-size: 12.5px; }
+.sec-ref { background: var(--sec-panel-2); border: 1px solid var(--sec-border); border-radius: 8px; padding: 3px 9px; font-size: 12.5px; color: var(--sec-text); }
+
+/* Informative empty state card */
+.sec-empty-card { border-style: dashed; }
+.sec-empty-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.sec-empty-card .sec-btn { margin-top: 12px; }
+
+/* Read-only banner (unified permission model) */
+.sec-readonly-banner {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 0 14px; padding: 11px 16px;
+  background: rgba(224, 165, 58, 0.12);
+  border: 1px solid rgba(224, 165, 58, 0.34);
+  border-radius: var(--sec-radius-sm);
+  color: var(--sec-text); font-size: 13px;
+}
+.sec-readonly-banner .ic { font-size: 15px; line-height: 1; }
+body.sec-readonly .sec-content { /* subtle hint that edits are disabled */ }
+
 /* Responsive */
 @media (max-width: 920px) {
   .sec-app { grid-template-columns: 1fr; }
