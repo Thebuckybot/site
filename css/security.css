@@ -284,6 +284,13 @@
 .sec-stage-ctl { display: flex; flex-direction: column; gap: 4px; }
 .sec-input-num { width: 92px; }
 
+/* External quarantine cards */
+.sec-ext-card { display: flex; align-items: center; gap: 12px; }
+.sec-ext-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.sec-ext-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--sec-panel-2); object-fit: cover; flex: none; }
+.sec-ext-meta { min-width: 0; }
+.sec-ext-dim { opacity: 0.6; }
+
 /* Warning card / banner (missing critical config) */
 .sec-warn-card { border: 1px solid rgba(214, 79, 79, 0.4); }
 .sec-warn-banner { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; padding: 11px 14px;

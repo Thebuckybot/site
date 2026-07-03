@@ -19,13 +19,21 @@ export default {
     };
 
     const act = async (rec, action) => {
-      const danger = action !== "release";
+      const MSG = {
+        release: "Release this member and restore their saved roles?",
+        kick: "Kick this member?",
+        ban: "Ban this member?",
+        restore: "Re-apply the quarantine role and re-contain this member? Their current roles are vaulted so a later release restores everything.",
+        close: "Close this record WITHOUT restoring roles? Use this when an admin already released the member manually.",
+        ignore: "Stop showing the out-of-sync warning for this record? It stays active but is no longer flagged.",
+      };
+      const danger = action === "kick" || action === "ban";
       if (!(await confirmDialog({
-        title: `${action[0].toUpperCase() + action.slice(1)} member`,
-        message: `${action} <@${rec.user_id}>? This is sent to the bot to perform.`,
-        danger, confirmLabel: action,
+        title: `${action[0].toUpperCase() + action.slice(1)} — <@${rec.user_id}>`.replace(/<@\d+>/, ""),
+        message: MSG[action] || `${action}?`,
+        danger, confirmLabel: action[0].toUpperCase() + action.slice(1),
       }))) return;
-      try { await api.post(`/quarantine/${rec.id}`, { action }); toast(`Queued ${action} - the bot will execute shortly.`); setTimeout(load, 1200); }
+      try { await api.post(`/quarantine/${rec.id}`, { action }); toast(`${action} queued.`); setTimeout(load, 1200); }
       catch (e) { toast(e.message, "err"); }
     };
 
@@ -81,22 +89,101 @@ export default {
         table([
           { label: "User", render: (r) => el("code", { text: r.user_id }) },
           { label: "Reason", render: (r) => el("span", { class: "sec-muted", text: r.reason || "—" }) },
-          { label: "Status", render: (r) => badge(r.status, r.status === "active" ? "warn" : "muted") },
+          { label: "Status", render: (r) => (r.status === "active" && r.sync_status === "out_of_sync")
+              ? el("span", { title: r.sync_reason || "Out of sync with Discord" }, [badge("⚠ Out of Sync", "bad")])
+              : badge(r.status, r.status === "active" ? "warn" : "muted") },
           { label: "Since", render: (r) => el("span", { text: fmtTime(r.quarantined_at) }) },
           { label: "Expires", render: (r) => el("span", { text: r.expires_at ? fmtTime(r.expires_at) : "never" }) },
-          { label: "Actions", render: (r) => el("div", { class: "sec-row" }, r.status === "active" && canEdit ? [
-            el("button", { class: "sec-btn sec-btn-sm", text: "Release", onclick: () => act(r, "release") }),
-            el("button", { class: "sec-btn sec-btn-sm", text: "Kick", onclick: () => act(r, "kick") }),
-            el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Ban", onclick: () => act(r, "ban") }),
-          ] : [el("span", { class: "sec-muted", text: "—" })]) },
+          { label: "Actions", render: (r) => {
+            if (!(r.status === "active" && canEdit)) return el("span", { class: "sec-muted", text: "—" });
+            if (r.sync_status === "out_of_sync") {
+              // Out of sync: do NOT auto-restore. Offer explicit operator choices.
+              return el("div", { class: "sec-row" }, [
+                el("button", { class: "sec-btn sec-btn-sm sec-btn-primary", text: "Restore Quarantine", onclick: () => act(r, "restore") }),
+                el("button", { class: "sec-btn sec-btn-sm", text: "Close Record", onclick: () => act(r, "close") }),
+                el("button", { class: "sec-btn sec-btn-sm sec-btn-ghost", text: "Ignore", onclick: () => act(r, "ignore") }),
+              ]);
+            }
+            return el("div", { class: "sec-row" }, [
+              el("button", { class: "sec-btn sec-btn-sm", text: "Release", onclick: () => act(r, "release") }),
+              el("button", { class: "sec-btn sec-btn-sm", text: "Kick", onclick: () => act(r, "kick") }),
+              el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Ban", onclick: () => act(r, "ban") }),
+            ]);
+          } },
         ], rows),
         pager(page, (page + 1) * (data.per_page || 10) < (data.total || 0), (p) => { page = p; load(); }),
       );
     };
 
+    // ---- external quarantine (role held manually, not managed by Bucky) - #
+    const renderExternal = async () => {
+      const host = root.querySelector("#q-external");
+      if (!host) return;
+      const [ext, ign] = await Promise.all([
+        api.get("/quarantine/external").catch(() => []),
+        api.get("/quarantine/external?status=ignored").catch(() => []),
+      ]);
+      const kids = [];
+      if (ext.length || ign.length || canEdit) {
+        const head = el("div", { class: "sec-actions", style: "align-items:center" }, [
+          el("h3", { class: "sec-page-title", style: "margin:0;flex:1" }, [
+            "External Quarantine ", info("Members who currently have the configured Quarantine role but were not put there by Bucky (an admin applied the role by hand)."),
+          ]),
+        ]);
+        if (canEdit) head.append(el("button", { class: "sec-btn sec-btn-sm", text: "Scan now", onclick: async () => {
+          try { await api.post("/quarantine/external/scan"); toast("Scan queued — results refresh within a minute."); }
+          catch (e) { toast(e.message, "err"); }
+        } }));
+        kids.push(head);
+      }
+      if (ext.length) {
+        kids.push(el("div", { class: "sec-warn-banner" }, [
+          el("span", { class: "ic", text: "⚠️" }),
+          el("span", { text: "These members have the Quarantine role but are not managed by Bucky. Adopt to let Bucky manage (and later release) them, or Ignore to hide." }),
+        ]));
+        for (const u of ext) kids.push(externalCard(u, false));
+      }
+      if (ign.length) {
+        kids.push(el("div", { class: "sec-muted", style: "margin-top:8px", text: `Ignored (${ign.length})` }));
+        for (const u of ign) kids.push(externalCard(u, true));
+      }
+      host.replaceChildren(...kids);
+    };
+
+    const externalCard = (u, isIgnored) => {
+      const meta = el("div", { class: "sec-ext-meta" }, [
+        el("div", {}, [el("strong", { text: u.username || u.user_id })]),
+        el("div", { class: "sec-muted", text: `${u.user_id}${u.first_seen ? " · seen " + fmtTime(u.first_seen) : ""}` }),
+      ]);
+      const left = el("div", { class: "sec-ext-left" }, [
+        u.avatar_url ? el("img", { class: "sec-ext-avatar", src: u.avatar_url, alt: "" }) : el("div", { class: "sec-ext-avatar" }),
+        meta,
+      ]);
+      const ctl = el("div", { class: "sec-chain-ctl" });
+      if (canEdit) {
+        if (isIgnored) {
+          ctl.append(el("button", { class: "sec-btn sec-btn-sm", text: "Un-ignore", onclick: async () => {
+            try { await api.post(`/quarantine/external/${u.user_id}/ignore`, { unignore: true }); toast("Un-ignored."); renderExternal(); }
+            catch (e) { toast(e.message, "err"); } } }));
+        } else {
+          ctl.append(
+            el("button", { class: "sec-btn sec-btn-sm sec-btn-primary", text: "Adopt into Bucky", onclick: async () => {
+              try { await api.post(`/quarantine/external/${u.user_id}/adopt`); toast("Adopt queued — Bucky will take over management shortly."); setTimeout(renderExternal, 1500); }
+              catch (e) { toast(e.message, "err"); } } }),
+            el("button", { class: "sec-btn sec-btn-sm sec-btn-ghost", text: "Ignore", onclick: async () => {
+              try { await api.post(`/quarantine/external/${u.user_id}/ignore`); toast("Ignored."); renderExternal(); }
+              catch (e) { toast(e.message, "err"); } } }),
+          );
+        }
+      }
+      return el("div", { class: `sec-card sec-ext-card ${isIgnored ? "sec-ext-dim" : ""}` }, [left, ctl]);
+    };
+
     try {
       root.appendChild(pageHeader("Quarantine", "Configure the quarantine role and manage quarantined members. Actions are validated and executed by the bot."));
       root.appendChild(configCard());
+      root.appendChild(el("div", { id: "q-external", style: "margin-top:18px" }));
+      await renderExternal();
       root.appendChild(el("div", { class: "sec-page-title", style: "margin-top:18px", text: "Quarantined members" }));
       const search = el("input", { class: "sec-input", type: "search", placeholder: "Search user / reason…" });
       search.addEventListener("input", debounce(() => { q = search.value.toLowerCase(); draw(); }));
