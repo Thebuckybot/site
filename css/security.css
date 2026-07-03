@@ -284,6 +284,17 @@
 .sec-stage-ctl { display: flex; flex-direction: column; gap: 4px; }
 .sec-input-num { width: 92px; }
 
+/* Warning card / banner (missing critical config) */
+.sec-warn-card { border: 1px solid rgba(214, 79, 79, 0.4); }
+.sec-warn-banner { display: flex; align-items: center; gap: 10px; margin: 6px 0 12px; padding: 11px 14px;
+  background: rgba(214, 79, 79, 0.12); border: 1px solid rgba(214, 79, 79, 0.34); border-radius: var(--sec-radius-sm); font-size: 13px; }
+.sec-warn-banner .ic { font-size: 15px; line-height: 1; }
+
+/* Premium / plan-limit cards */
+.sec-premium-card { border: 1px solid rgba(224, 165, 58, 0.34); background: rgba(224, 165, 58, 0.08); }
+.sec-premium-list { margin: 8px 0 12px; padding-left: 20px; color: var(--sec-text); font-size: 13px; }
+.sec-premium-list li { margin: 3px 0; }
+
 /* Read-only banner (unified permission model) */
 .sec-readonly-banner {
   display: flex; align-items: center; gap: 10px;

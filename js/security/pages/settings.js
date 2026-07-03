@@ -49,7 +49,7 @@ export default {
       const premium = ((s.retention && s.retention.tiers && s.retention.tiers.premium) || []);
       const sel = el("select", { class: "sec-select", disabled: !canEdit });
       tiers.forEach((d) => {
-        const o = el("option", { value: d, text: d === 0 ? "Unlimited" : `${d} days` });
+        const o = el("option", { value: d, text: `${d === 0 ? "Unlimited" : d + " days"} (Free)` });
         if (d === s.retention_days) o.selected = true;
         sel.appendChild(o);
       });

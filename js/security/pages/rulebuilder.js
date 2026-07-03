@@ -8,6 +8,23 @@
 import { soc } from "../api.js";
 import { el, clear, pageHeader, badge, toast, errorState, fmtTime } from "../ui.js";
 
+function usageBadge(u) {
+  if (!u) return el("span", {});
+  if (u.unlimited) return badge(`${u.used} rules · Unlimited`, "ok");
+  const kind = u.at_limit ? "bad" : (u.used / u.limit >= 0.8 ? "warn" : "ok");
+  return badge(`${u.used} / ${u.limit} rules used`, kind);
+}
+function premiumNotice(u) {
+  const ladder = (u.premium || []).map((p) =>
+    el("li", { text: `${p.tier.replace("_", " ")}: ${p.soc_rules == null ? "Unlimited" : p.soc_rules + " rules"}` }));
+  return el("div", { class: "sec-card sec-premium-card", style: "margin-top:16px" }, [
+    el("div", { class: "sec-empty-title", text: "Maximum rules reached" }),
+    el("p", { class: "sec-muted", text: `You are using all ${u.limit} rules on the Free plan. Upgrade to Bucky Premium to unlock more:` }),
+    el("ul", { class: "sec-premium-list" }, ladder),
+    el("span", { class: "sec-badge muted", text: "Premium — coming soon" }),
+  ]);
+}
+
 const MAX_CONDITIONS = 3;
 const MAX_ACTIONS = 3;
 
@@ -17,11 +34,13 @@ export default {
     let rules = [];
 
     // ---- data ---------------------------------------------------------------
+    let usage = null;
     const loadRegistry = async () => { registry = await soc.registry(); };
     const loadRules = async () => {
       const r = await soc.get("/rules");
       rules = Array.isArray(r) ? r : (r && r.rules) || [];
     };
+    const loadUsage = async () => { usage = await soc.get("/rules/usage").catch(() => null); };
 
     // ---- field rendering (select / input) with data-field = field name ------
     const renderFields = (typeValue, container, mode) => {
@@ -168,10 +187,13 @@ export default {
 
     // ---- initial paint ------------------------------------------------------
     try {
-      await Promise.all([loadRegistry(), loadRules()]);
+      await Promise.all([loadRegistry(), loadRules(), loadUsage()]);
+      const atLimit = !!(usage && usage.at_limit);
 
       root.appendChild(pageHeader("Rule Builder",
         "Compose custom SOC detection rules — WHEN an event fires, IF conditions match, THEN run actions. Part of the Security Center."));
+      root.appendChild(el("div", { class: "sec-actions", style: "margin-bottom:12px" }, [usageBadge(usage)]));
+      if (atLimit) root.appendChild(premiumNotice(usage));
 
       const eventSelect = el("select", { id: "sec-rb-event", class: "sec-select sec-rb-event" },
         (registry.events || []).map((ev) => el("option", { value: ev.value, text: ev.label })));
@@ -210,7 +232,9 @@ export default {
           ]),
         ]),
         el("div", { class: "sec-actions", style: "margin-top:16px" }, [
-          el("button", { class: "sec-btn sec-btn-primary", text: "Create Rule", onclick: saveRule }),
+          atLimit
+            ? el("button", { class: "sec-btn", disabled: true, text: "Rule limit reached" })
+            : el("button", { class: "sec-btn sec-btn-primary", text: "Create Rule", onclick: saveRule }),
           el("a", { class: "sec-btn", href: "#rules", text: "View Detection Rules" }),
         ]),
       ]);

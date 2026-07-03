@@ -64,10 +64,13 @@ export default {
         );
         if (rid) controls.append(el("button", { class: "sec-btn sec-btn-ghost sec-btn-sm", text: "Clear", onclick: clearRole }));
       }
-      const validation = rid ? null : el("p", { class: "sec-muted", text: "No quarantine role yet. Quarantine will auto-create one on first use, or press Create Role now so it's ready and locked down." });
-      return el("div", { class: "sec-card" }, [
+      const warning = rid ? null : el("div", { class: "sec-warn-banner" }, [
+        el("span", { class: "ic", text: "⚠️" }),
+        el("span", { text: "Quarantine is not ready: no quarantine role is configured, so Security cannot isolate a caught member. Press Create Role (or Select an existing one) to activate it." }),
+      ]);
+      return el("div", { class: `sec-card ${rid ? "" : "sec-warn-card"}` }, [
         infoTitle("Quarantine Role", "The locked role applied to caught members while their real roles are safely vaulted.", "div", "sec-page-title"),
-        statusRow, permRow, controls, validation,
+        warning, statusRow, permRow, controls,
       ]);
     };
 
