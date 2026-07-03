@@ -46,8 +46,27 @@ export default {
     };
     const repair = async () => {
       if (!(await confirmDialog({ title: "Create / repair quarantine role", message: settingDesc("quarantine_repair") + " Continue?", confirmLabel: "Repair" }))) return;
-      try { await api.post("/repair"); toast("Repair queued — the bot will create/fix the quarantine role shortly."); }
-      catch (e) { toast(e.message, "err"); }
+      try {
+        await api.post("/repair");
+        toast("Repair queued — updating coverage…");
+        pollCoverage();   // refresh as soon as the bot processes it (no 5-min wait)
+      } catch (e) { toast(e.message, "err"); }
+    };
+    // Poll /settings after a Repair until the stored coverage refreshes (the bot
+    // stores it the moment it applies the overwrites), then re-render. Bounded.
+    const pollCoverage = () => {
+      const baseline = settings.quarantine_coverage && settings.quarantine_coverage.synced_at;
+      let tries = 0;
+      const tick = async () => {
+        tries += 1;
+        let s2 = null;
+        try { s2 = await api.get("/settings"); } catch (_) { /* ignore */ }
+        const cov = s2 && s2.quarantine_coverage;
+        const refreshed = cov && cov.synced_at && cov.synced_at !== baseline;
+        if (refreshed || tries >= 10) { this.render(clear(root)); return; }
+        setTimeout(tick, 4000);
+      };
+      setTimeout(tick, 4000);
     };
     const clearRole = async () => {
       try { await api.post("/settings/channels", { quarantine_role_id: "" }); toast("Quarantine role cleared."); this.render(clear(root)); }
