@@ -283,6 +283,8 @@
 .sec-stage-opt-l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
 .sec-stage-ctl { display: flex; flex-direction: column; gap: 4px; }
 .sec-input-num { width: 92px; }
+.sec-dur-field { display: flex; gap: 6px; align-items: center; }
+.sec-unit { min-width: 96px; padding: 4px 8px; font-size: 12px; }
 
 /* External quarantine cards */
 .sec-ext-card { display: flex; align-items: center; gap: 12px; }

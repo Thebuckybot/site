@@ -20,6 +20,20 @@ export default {
 
     const stageTypes = reg.stages || [];
     const onFailures = reg.on_failure || ["continue", "abort"];
+    const stageMeta = reg.stage_meta || {};
+    const supportsDuration = (type) => !!(stageMeta[type] && stageMeta[type].duration);
+    const maxWhenEmpty = (type) => !!(stageMeta[type] && stageMeta[type].max_only_when_empty);
+
+    // Duration is stored as SECONDS everywhere; the unit picker is pure UX.
+    const UNITS = [["seconds", 1], ["minutes", 60], ["hours", 3600], ["days", 86400]];
+    const splitDuration = (seconds) => {
+      if (seconds == null || seconds === "") return { value: "", unit: "seconds" };
+      const s = Number(seconds);
+      for (const [name, f] of [["days", 86400], ["hours", 3600], ["minutes", 60]]) {
+        if (s >= f && s % f === 0) return { value: s / f, unit: name };
+      }
+      return { value: s, unit: "seconds" };
+    };
 
     const reload = async () => { chains = await api.get("/punishments"); paint(); };
 
@@ -44,16 +58,44 @@ export default {
 
     // ---- stage rows ----------------------------------------------------- #
     const move = (i, d) => { const j = i + d; if (j < 0 || j >= editing.stages.length) return; const [x] = editing.stages.splice(i, 1); editing.stages.splice(j, 0, x); paint(); };
+    // Duration field = number + unit picker; writes back seconds to s.duration.
+    const durationField = (s) => {
+      const init = splitDuration(s.duration);
+      const numI = el("input", { class: "sec-input sec-input-num", type: "number", min: "1",
+        placeholder: maxWhenEmpty(s.type) ? "max" : "permanent", value: init.value });
+      const unitS = el("select", { class: "sec-select sec-unit" }, UNITS.map(([n]) => {
+        const o = el("option", { value: n, text: n }); if (n === init.unit) o.selected = true; return o;
+      }));
+      const recompute = () => {
+        if (numI.value === "" || numI.value == null) { s.duration = null; return; }
+        const f = (UNITS.find((u) => u[0] === unitS.value) || [null, 1])[1];
+        s.duration = Math.round(Number(numI.value) * f);
+      };
+      numI.addEventListener("input", recompute);
+      unitS.addEventListener("change", recompute);
+      return el("div", { class: "sec-dur-field" }, [numI, unitS]);
+    };
+
     const stageRow = (s, i) => {
-      const typeSel = selectEl(stageTypes, s.type, (v) => { s.type = v; });
+      const typeSel = selectEl(stageTypes, s.type, (v) => {
+        s.type = v;
+        if (!supportsDuration(v)) s.duration = null;   // drop meaningless duration
+        paint();                                       // re-render so fields match the stage
+      });
       const failSel = selectEl(onFailures, s.on_failure || "continue", (v) => { s.on_failure = v; });
-      const delay = numEl(s.delay, "delay s", (v) => { s.delay = v; });
-      const dur = numEl(s.duration, "duration s", (v) => { s.duration = v; });
+      const delay = numEl(s.delay, "sec", (v) => { s.delay = v; });
+      const opts = [labelWrap("On fail", failSel), labelWrap("Delay (s)", delay)];
+      // Duration ONLY for stages whose handler consumes it (server also enforces this).
+      if (supportsDuration(s.type)) {
+        const label = maxWhenEmpty(s.type) ? "Duration (empty = Discord max)"
+          : "Duration (empty = permanent)";
+        opts.push(labelWrap(label, durationField(s)));
+      }
       return el("div", { class: "sec-stage-row" }, [
         el("span", { class: "sec-stage-num", text: String(i + 1) }),
         el("div", { class: "sec-stage-main" }, [
           el("div", { class: "sec-stage-type" }, [typeSel, info(stageDesc(s.type))]),
-          el("div", { class: "sec-stage-opts" }, [labelWrap("On fail", failSel), labelWrap("Delay", delay), labelWrap("Duration", dur)]),
+          el("div", { class: "sec-stage-opts" }, opts),
         ]),
         el("div", { class: "sec-stage-ctl" }, [
           iconBtn("↑", i === 0, () => move(i, -1)),
