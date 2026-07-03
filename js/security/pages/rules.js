@@ -1,16 +1,17 @@
-import { soc } from "../api.js";
+import { soc, api } from "../api.js";
 import { el, pageHeader, table, badge, toggle, toast, errorState, confirmDialog, emptyCard } from "../ui.js";
+const READONLY_TIP = "Only the Server Owner or a Trusted Administrator can modify Security settings.";
 
 // SOC rules ARE user-created (unlike the predefined module chains). This page
 // shows current usage vs the plan limit (from the centralized PlanLimits service)
 // and gates creation when the limit is reached.
 export default {
   async render(root) {
-    let rules = [], usage = null;
+    let rules = [], usage = null, canEdit = false;
     const load = async () => {
-      const [r, u] = await Promise.all([soc.get("/rules"), soc.get("/rules/usage").catch(() => null)]);
+      const [r, u, me] = await Promise.all([soc.get("/rules"), soc.get("/rules/usage").catch(() => null), api.me().catch(() => ({ can_edit: false }))]);
       rules = Array.isArray(r) ? r : (r && r.rules) || [];
-      usage = u;
+      usage = u; canEdit = !!(me && me.can_edit);
       draw();
     };
     const del = async (r) => {
@@ -39,16 +40,13 @@ export default {
     };
 
     const draw = () => {
-      const canCreate = !usage || (!usage.at_limit);
+      const canCreate = canEdit && (!usage || (!usage.at_limit));
       const head = root.querySelector("#soc-rules-head");
-      head.replaceChildren(
-        el("div", { class: "sec-actions", style: "align-items:center;gap:12px" }, [
-          usageBadge(),
-          canCreate
-            ? el("a", { class: "sec-btn sec-btn-primary", href: "#rulebuilder", text: "Open Rule Builder" })
-            : el("button", { class: "sec-btn", disabled: true, text: "Rule limit reached" }),
-        ]),
-      );
+      const headKids = [usageBadge()];
+      if (!canEdit) headKids.push(el("span", { class: "sec-muted", title: READONLY_TIP, text: "🔒 read-only" }));
+      else if (canCreate) headKids.push(el("a", { class: "sec-btn sec-btn-primary", href: "#rulebuilder", text: "Open Rule Builder" }));
+      else headKids.push(el("button", { class: "sec-btn", disabled: true, text: "Rule limit reached" }));
+      head.replaceChildren(el("div", { class: "sec-actions", style: "align-items:center;gap:12px" }, headKids));
       const body = root.querySelector("#soc-rules");
       const pc = premiumCard();
       if (!rules.length) {
@@ -63,11 +61,11 @@ export default {
         { label: "Name", key: "name" },
         { label: "Event", render: (r) => r.event_type || "—" },
         { label: "Severity", render: (r) => badge("sev " + (r.severity ?? "?"), "muted") },
-        { label: "Enabled", render: (r) => toggle(!!r.enabled, async (v) => {
+        { label: "Enabled", render: (r) => canEdit ? toggle(!!r.enabled, async (v) => {
           try { await soc.patch(`/rules/${r.id}/toggle`); r.enabled = v; toast("Rule updated."); }
           catch (e) { toast(e.message, "err"); draw(); }
-        }) },
-        { label: "", render: (r) => el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Delete", onclick: () => del(r) }) },
+        }) : badge(r.enabled ? "On" : "Off", r.enabled ? "ok" : "muted") },
+        { label: "", render: (r) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Delete", onclick: () => del(r) }) : el("span", { class: "sec-muted", text: "—" }) },
       ], rules);
       body.replaceChildren(...(pc ? [pc, tbl] : [tbl]));
     };

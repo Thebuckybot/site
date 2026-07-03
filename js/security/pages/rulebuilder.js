@@ -5,7 +5,7 @@
 // Only the shell changed: it uses the shared sidebar, breadcrumb, router,
 // ui.js helpers, the crimson design language and the unified `soc` API client
 // (which talks to /api/security/soc/*). No functionality was dropped.
-import { soc } from "../api.js";
+import { soc, api } from "../api.js";
 import { el, clear, pageHeader, badge, toast, errorState, fmtTime } from "../ui.js";
 
 function usageBadge(u) {
@@ -187,13 +187,18 @@ export default {
 
     // ---- initial paint ------------------------------------------------------
     try {
-      await Promise.all([loadRegistry(), loadRules(), loadUsage()]);
+      const [, , , me] = await Promise.all([loadRegistry(), loadRules(), loadUsage(), api.me().catch(() => ({ can_edit: false }))]);
+      const canEdit = !!(me && me.can_edit);
       const atLimit = !!(usage && usage.at_limit);
 
       root.appendChild(pageHeader("Rule Builder",
         "Compose custom SOC detection rules — WHEN an event fires, IF conditions match, THEN run actions. Part of the Security Center."));
       root.appendChild(el("div", { class: "sec-actions", style: "margin-bottom:12px" }, [usageBadge(usage)]));
-      if (atLimit) root.appendChild(premiumNotice(usage));
+      if (!canEdit) root.appendChild(el("div", { class: "sec-readonly-banner" }, [
+        el("span", { class: "ic", text: "🔒" }),
+        el("span", { text: "Read-only — only the Server Owner or a Trusted Administrator can create or edit SOC rules. You can view existing rules below." }),
+      ]));
+      if (atLimit && canEdit) root.appendChild(premiumNotice(usage));
 
       const eventSelect = el("select", { id: "sec-rb-event", class: "sec-select sec-rb-event" },
         (registry.events || []).map((ev) => el("option", { value: ev.value, text: ev.label })));
@@ -232,8 +237,8 @@ export default {
           ]),
         ]),
         el("div", { class: "sec-actions", style: "margin-top:16px" }, [
-          atLimit
-            ? el("button", { class: "sec-btn", disabled: true, text: "Rule limit reached" })
+          (!canEdit || atLimit)
+            ? el("button", { class: "sec-btn", disabled: true, text: !canEdit ? "Read-only" : "Rule limit reached" })
             : el("button", { class: "sec-btn sec-btn-primary", text: "Create Rule", onclick: saveRule }),
           el("a", { class: "sec-btn", href: "#rules", text: "View Detection Rules" }),
         ]),

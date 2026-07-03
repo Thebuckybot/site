@@ -2,9 +2,11 @@ import { api } from "../api.js";
 import { el, pageHeader, table, toggle, badge, toast, errorState, debounce, info } from "../ui.js";
 import { moduleDesc } from "../descriptions.js";
 
+const READONLY_TIP = "Only the Server Owner or a Trusted Administrator can modify Security settings.";
+
 export default {
   async render(root) {
-    let modules = [];
+    let modules = [], canEdit = false;
     const state = { q: "", cat: "all" };
 
     const draw = () => {
@@ -17,15 +19,15 @@ export default {
         { label: "Module", render: (m) => el("div", {}, [el("strong", { text: m.label }), info(moduleDesc(m.key)), el("div", { class: "sec-muted", text: m.key })]) },
         { label: "Category", render: (m) => badge(m.category || "—", "muted") },
         { label: "Status", render: (m) => badge(m.enabled ? "Enabled" : "Disabled", m.enabled ? "ok" : "muted") },
-        { label: "", render: (m) => toggle(m.enabled, async (val) => {
+        { label: "", render: (m) => canEdit ? toggle(m.enabled, async (val) => {
           try { await api.post("/modules", { key: m.key, enabled: val }); m.enabled = val; toast(`${m.label} ${val ? "enabled" : "disabled"}.`); }
           catch (e) { toast(e.message, "err"); draw(); }
-        }) },
+        }) : el("span", { class: "sec-muted", title: READONLY_TIP, text: "🔒" }) },
       ], rows));
     };
 
     try {
-      modules = await api.get("/modules");
+      [modules, { can_edit: canEdit }] = await Promise.all([api.get("/modules"), api.me().catch(() => ({ can_edit: false }))]);
       root.appendChild(pageHeader("Modules", "Enable or disable each protection. Changes apply to the bot immediately."));
       const cats = ["all", ...new Set(modules.map((m) => m.category).filter(Boolean))];
       const search = el("input", { class: "sec-input", type: "search", placeholder: "Search modules…" });

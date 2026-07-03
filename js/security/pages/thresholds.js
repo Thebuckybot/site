@@ -7,9 +7,12 @@ export default {
     let mode = "normal";
     let thresholds = [];
     let reg = { bounds: { limit: [1, 1000], window: [1, 86400] } };
+    let canEdit = false;
 
     const load = async () => {
-      [thresholds, reg] = await Promise.all([api.get("/thresholds"), getRegistry()]);
+      [thresholds, reg, { can_edit: canEdit }] = await Promise.all([
+        api.get("/thresholds"), getRegistry(), api.me().catch(() => ({ can_edit: false })),
+      ]);
       draw();
     };
 
@@ -45,7 +48,7 @@ export default {
         { label: "Limit / Window", render: (t) => el("span", { text: `${t.limit_count} / ${t.window_seconds}s` }) },
         { label: "Burst", render: (t) => el("span", { text: t.burst_limit ? `${t.burst_limit}/${t.burst_window_seconds}s` : "—" }) },
         { label: "Scaling", render: (t) => badge(t.dynamic_scale ? "by size" : "fixed", t.dynamic_scale ? "ok" : "muted") },
-        { label: "", render: (t) => el("button", { class: "sec-btn sec-btn-sm", text: "Edit", onclick: () => edit(t) }) },
+        { label: "", render: (t) => canEdit ? el("button", { class: "sec-btn sec-btn-sm", text: "Edit", onclick: () => edit(t) }) : el("span", { class: "sec-muted", title: "Only the Server Owner or a Trusted Administrator can modify Security settings.", text: "🔒" }) },
       ], rows));
     };
 

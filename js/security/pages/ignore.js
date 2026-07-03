@@ -4,11 +4,13 @@ import { el, pageHeader, table, badge, toast, errorState, formModal, confirmDial
 
 export default {
   async render(root) {
-    let entries = [], reg = { modules: [], ignore_target_types: [] };
+    let entries = [], reg = { modules: [], ignore_target_types: [] }, canEdit = false;
     let module = "anti_links";
 
     const load = async () => {
-      [entries, reg] = await Promise.all([api.get("/ignore"), getRegistry()]);
+      [entries, reg, { can_edit: canEdit }] = await Promise.all([
+        api.get("/ignore"), getRegistry(), api.me().catch(() => ({ can_edit: false })),
+      ]);
       if (reg.modules.length && !reg.modules.find((m) => m.key === module)) module = reg.modules[0].key;
       draw();
     };
@@ -38,7 +40,7 @@ export default {
       body.replaceChildren(table([
         { label: "Type", render: (e) => badge(e.target_type, "muted") },
         { label: "Target", render: (e) => el("code", { text: e.ref_id }) },
-        { label: "", render: (e) => el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => remove(e) }) },
+        { label: "", render: (e) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => remove(e) }) : el("span", { class: "sec-muted", text: "—" }) },
       ], rows));
     };
 
@@ -51,10 +53,10 @@ export default {
         sel.value = module;
       };
       sel.addEventListener("change", () => { module = sel.value; draw(); });
-      root.appendChild(el("div", { class: "sec-toolbar" }, [
-        el("span", { class: "sec-muted", text: "Module:" }), sel,
-        el("button", { class: "sec-btn sec-btn-primary sec-btn-sm", text: "+ Add Ignore", onclick: add }),
-      ]));
+      const tools = [el("span", { class: "sec-muted", text: "Module:" }), sel];
+      if (canEdit) tools.push(el("button", { class: "sec-btn sec-btn-primary sec-btn-sm", text: "+ Add Ignore", onclick: add }));
+      else tools.push(el("span", { class: "sec-muted", title: "Only the Server Owner or a Trusted Administrator can modify Security settings.", text: "🔒 read-only" }));
+      root.appendChild(el("div", { class: "sec-toolbar" }, tools));
       root.appendChild(el("div", { id: "ig-body" }));
       await load();
       await onload();
