@@ -64,6 +64,19 @@ export default {
         el("div", { class: "k" }, ["Permissions preview ", info(settingDesc("quarantine_perms"))]),
         el("div", { class: "sec-muted", style: "flex:2", text: settingDesc("quarantine_perms") }),
       ]);
+      // Channel coverage — how completely the role is locked down server-wide.
+      const cov = settings.quarantine_coverage;
+      let coverageRow = null;
+      if (rid && cov && cov.total != null) {
+        const missing = cov.total - cov.configured;
+        const val = missing === 0
+          ? badge(`Configured — ${cov.configured} / ${cov.total} channels`, "ok")
+          : badge(`Needs Repair — ${missing} channel(s) missing overwrites (${cov.coverage_pct}%)`, "bad");
+        coverageRow = el("div", { class: "sec-settings-row" }, [
+          el("div", { class: "k" }, ["Coverage ", info("Every channel and category must deny the quarantine role (view, chat, voice, threads, reactions, uploads). Repair re-applies any that were changed or added.")]),
+          val,
+        ]);
+      }
       const controls = el("div", { class: "sec-actions", style: "margin-top:8px" });
       if (canEdit) {
         controls.append(
@@ -78,7 +91,7 @@ export default {
       ]);
       return el("div", { class: `sec-card ${rid ? "" : "sec-warn-card"}` }, [
         infoTitle("Quarantine Role", "The locked role applied to caught members while their real roles are safely vaulted.", "div", "sec-page-title"),
-        warning, statusRow, permRow, controls,
+        warning, statusRow, permRow, coverageRow, controls,
       ]);
     };
 
