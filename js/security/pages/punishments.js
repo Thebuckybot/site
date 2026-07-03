@@ -66,7 +66,11 @@ export default {
     const editorPanel = () => {
       const stages = el("div", { class: "sec-stages" }, editing.stages.map((s, i) => stageRow(s, i)));
       if (!editing.stages.length) stages.appendChild(el("div", { class: "sec-muted", text: "No stages. Add the first action below." }));
-      const addSel = selectEl(stageTypes, "", (v) => { if (!v) return; editing.stages.push({ type: v, params: {}, on_failure: "continue", delay: null, duration: null }); paint(); }, "+ Add stage…");
+      const addSel = selectEl(stageTypes, "", (v) => {
+        if (!v) return;
+        if (editing.stages.length >= 6) { toast("A chain may have at most 6 stages.", "err"); return; }
+        editing.stages.push({ type: v, params: {}, on_failure: "continue", delay: null, duration: null }); paint();
+      }, "+ Add stage…");
       const nameIn = el("input", { class: "sec-input", value: editing.name || "", placeholder: "Chain name" });
       nameIn.addEventListener("input", () => { editing.name = nameIn.value; });
       return el("div", { class: "sec-card sec-chain-editor" }, [
