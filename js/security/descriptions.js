@@ -10,7 +10,7 @@ export const MODULE_DESC = {
   anti_links: "Detects links, invites and scam URLs in messages.",
   anti_tokens: "Catches leaked bot tokens and webhook URLs posted in chat.",
   anti_webhooks: "Guards against unauthorized webhook creation and webhook spam.",
-  anti_bots: "Flags unauthorized bots or apps being added to the server.",
+  anti_bots: "Flags an unauthorized (non-whitelisted) bot joining the server. An incident has TWO separate entities: the ADDED BOT that joined, and the RESPONSIBLE MEMBER who added it. The member is resolved from Discord's audit log (bot_add) and is only known when that audit evidence is available — if it cannot be resolved, the bot is still removed but no member is punished (never guessed). Fires once per joined bot (60s cooldown). Whitelist a bot via Trust (type bot/application).",
   mass_channel_delete: "Triggers when many channels are deleted in a short window.",
   mass_channel_create: "Triggers when many channels are created in a short window.",
   mass_role_delete: "Triggers when many roles are deleted in a short window.",
@@ -81,6 +81,31 @@ export const STAGE_DESC = {
   ban: "Ban the offender.",
 };
 export function stageDesc(key) { return STAGE_DESC[key] || "A punishment-chain stage."; }
+
+// SV2-MAN-003: Anti-Bot target labels + copy. Repository-consistent terminology:
+// "Added Bot" (the bot that joined) vs "Responsible Member" (the human who added it).
+export const ANTIBOT_TARGET_LABEL = {
+  added_bot: "Added Bot",
+  responsible_actor: "Responsible Member",
+};
+export const ANTIBOT_TARGET_DESC = {
+  added_bot: "Acts on the BOT that joined. Removing the added bot never touches any human.",
+  responsible_actor: "Acts on the MEMBER who added the bot. This runs ONLY when the responsible member is resolved from Discord's audit log — if attribution is unresolved it is skipped and never falls back to the bot.",
+};
+// Anti-Bot-specific stage wording so the recipient is unambiguous in the editor.
+export function antibotStageDesc(stageType, target) {
+  const who = ANTIBOT_TARGET_LABEL[target] || "the selected entity";
+  const map = {
+    kick: `Kick ${who} from the server.`,
+    ban: `Ban ${who} from the server.`,
+    timeout: `Time out ${who} (members only — resolved human).`,
+    quarantine: `Quarantine ${who}.`,
+    remove_roles: `Remove ${who}'s roles.`,
+    remove_dangerous_roles: `Remove ${who}'s dangerous roles.`,
+    remove_dangerous_permissions: `Strip dangerous permissions from ${who}.`,
+  };
+  return map[stageType] || stageDesc(stageType);
+}
 
 export function moduleDesc(key) { return MODULE_DESC[key] || "A security protection module."; }
 export function settingDesc(key) { return SETTING_DESC[key] || ""; }

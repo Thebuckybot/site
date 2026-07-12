@@ -1,7 +1,7 @@
 import { api } from "../api.js";
 import { el, pageHeader, badge, toast, errorState, info, emptyCard } from "../ui.js";
 import { getRegistry } from "../registry.js";
-import { stageDesc, moduleDesc } from "../descriptions.js";
+import { stageDesc, moduleDesc, antibotStageDesc, ANTIBOT_TARGET_LABEL, ANTIBOT_TARGET_DESC } from "../descriptions.js";
 
 // Punishment chains are PREDEFINED — exactly one per module/mode (anti_nuke normal,
 // anti_nuke hard, anti_spam, ...). Users edit the STAGES of an existing chain;
@@ -24,6 +24,18 @@ export default {
     const supportsDuration = (type) => !!(stageMeta[type] && stageMeta[type].duration);
     const maxWhenEmpty = (type) => !!(stageMeta[type] && stageMeta[type].max_only_when_empty);
 
+    // SV2-MAN-003: Anti-Bot explicit-target contract (from the registry — never
+    // hardcoded here). A targetable stage in an anti_bots chain MUST pick a target;
+    // the dropdown only offers targets valid for that stage type.
+    const antibotTargets = reg.antibot_targets || [];
+    const antibotTargetActions = reg.antibot_target_actions || {};
+    const antibotTargetable = new Set(reg.antibot_targetable_stages || []);
+    const legacyTarget = reg.antibot_legacy_default_target || "added_bot";
+    const isAntiBot = () => editing && editing.trigger_key === "anti_bots";
+    const targetableHere = (type) => isAntiBot() && antibotTargetable.has(type);
+    const validTargetsFor = (type) => antibotTargets.filter(
+      (t) => (antibotTargetActions[t] || []).includes(type));
+
     // Duration is stored as SECONDS everywhere; the unit picker is pure UX.
     const UNITS = [["seconds", 1], ["minutes", 60], ["hours", 3600], ["days", 86400]];
     const splitDuration = (seconds) => {
@@ -41,11 +53,18 @@ export default {
     // When loading a not-yet-normalized chain, surface the legacy value as the
     // canonical stage-level duration so the editor shows what actually executes,
     // and drop the legacy key so saving can never re-persist a hidden override.
-    const normalizeStage = (s) => {
+    const normalizeStage = (s, triggerKey) => {
       const st = { ...s, params: { ...(s.params || {}) } };
       if (st.type === "timeout" && st.params.seconds != null) {
         if (st.duration == null) st.duration = Number(st.params.seconds);
         delete st.params.seconds;
+      }
+      // SV2-MAN-003 legacy compatibility: a targetable anti_bots stage saved
+      // before explicit targets existed defaults to the ADDED BOT — so the editor
+      // shows exactly who it acts on and a save can never silently change it.
+      if (triggerKey === "anti_bots" && antibotTargetable.has(st.type)
+          && (st.target == null || st.target === "")) {
+        st.target = legacyTarget;
       }
       return st;
     };
@@ -60,18 +79,23 @@ export default {
         stages: editing.stages.map((s) => {
           const params = { ...(s.params || {}) };
           if (s.type === "timeout") delete params.seconds; // retired legacy key — never re-persist
-          return {
+          const out = {
             type: s.type, params, on_failure: s.on_failure || "continue",
             delay: s.delay === "" || s.delay == null ? null : Number(s.delay),
             duration: s.duration === "" || s.duration == null ? null : Number(s.duration),
           };
+          // Persist an explicit target only for anti_bots targetable stages.
+          if (editing.trigger_key === "anti_bots" && antibotTargetable.has(s.type) && s.target) {
+            out.target = s.target;
+          }
+          return out;
         }),
       };
       try { await api.post("/punishment", payload); toast("Chain saved."); editing = null; await reload(); }
       catch (e) { toast(e.message, "err"); }
     };
 
-    const openEdit = (c) => { editing = { trigger_key: c.trigger_key, mode: c.mode, name: c.name, id: c.id, stages: c.stages.map(normalizeStage) }; paint(); };
+    const openEdit = (c) => { editing = { trigger_key: c.trigger_key, mode: c.mode, name: c.name, id: c.id, stages: c.stages.map((s) => normalizeStage(s, c.trigger_key)) }; paint(); };
 
     // ---- stage rows ----------------------------------------------------- #
     const move = (i, d) => { const j = i + d; if (j < 0 || j >= editing.stages.length) return; const [x] = editing.stages.splice(i, 1); editing.stages.splice(j, 0, x); paint(); };
@@ -93,26 +117,50 @@ export default {
       return el("div", { class: "sec-dur-field" }, [numI, unitS]);
     };
 
+    // Ensure a targetable anti_bots stage always carries a VALID target for its type.
+    const fixTarget = (s) => {
+      if (!targetableHere(s.type)) { delete s.target; return; }
+      const valid = validTargetsFor(s.type);
+      if (!valid.includes(s.target)) s.target = valid[0] || legacyTarget;
+    };
+
     const stageRow = (s, i) => {
       const typeSel = selectEl(stageTypes, s.type, (v) => {
         s.type = v;
         if (!supportsDuration(v)) s.duration = null;   // drop meaningless duration
+        fixTarget(s);                                  // reset target to a valid one
         paint();                                       // re-render so fields match the stage
       });
       const failSel = selectEl(onFailures, s.on_failure || "continue", (v) => { s.on_failure = v; });
       const delay = numEl(s.delay, "sec", (v) => { s.delay = v; });
       const opts = [labelWrap("On fail", failSel), labelWrap("Delay (s)", delay)];
+      // SV2-MAN-003: explicit recipient selector for anti_bots targetable stages.
+      // Only targets valid for this stage type are offered (no bad combinations).
+      let targetNote = null;
+      if (targetableHere(s.type)) {
+        fixTarget(s);
+        const valid = validTargetsFor(s.type);
+        const targetSel = selectEl(valid.map((t) => ANTIBOT_TARGET_LABEL[t] || t), ANTIBOT_TARGET_LABEL[s.target] || s.target, (label) => {
+          const picked = valid.find((t) => (ANTIBOT_TARGET_LABEL[t] || t) === label) || valid[0];
+          s.target = picked; paint();
+        });
+        opts.push(labelWrap("Target", targetSel));
+        targetNote = el("div", { class: "sec-muted", style: "margin-top:4px",
+          text: ANTIBOT_TARGET_DESC[s.target] || "" });
+      }
       // Duration ONLY for stages whose handler consumes it (server also enforces this).
       if (supportsDuration(s.type)) {
         const label = maxWhenEmpty(s.type) ? "Duration (empty = Discord max, ~28 days)"
           : "Duration (empty = permanent)";
         opts.push(labelWrap(label, durationField(s)));
       }
+      const desc = targetableHere(s.type) ? antibotStageDesc(s.type, s.target) : stageDesc(s.type);
       return el("div", { class: "sec-stage-row" }, [
         el("span", { class: "sec-stage-num", text: String(i + 1) }),
         el("div", { class: "sec-stage-main" }, [
-          el("div", { class: "sec-stage-type" }, [typeSel, info(stageDesc(s.type))]),
+          el("div", { class: "sec-stage-type" }, [typeSel, info(desc)]),
           el("div", { class: "sec-stage-opts" }, opts),
+          ...(targetNote ? [targetNote] : []),
         ]),
         el("div", { class: "sec-stage-ctl" }, [
           iconBtn("↑", i === 0, () => move(i, -1)),
@@ -128,7 +176,9 @@ export default {
       const addSel = selectEl(stageTypes, "", (v) => {
         if (!v) return;
         if (editing.stages.length >= 6) { toast("A chain may have at most 6 stages.", "err"); return; }
-        editing.stages.push({ type: v, params: {}, on_failure: "continue", delay: null, duration: null }); paint();
+        const st = { type: v, params: {}, on_failure: "continue", delay: null, duration: null };
+        fixTarget(st);   // default a valid target if this is a targetable anti_bots stage
+        editing.stages.push(st); paint();
       }, "+ Add stage…");
       const nameIn = el("input", { class: "sec-input", value: editing.name || "", placeholder: "Chain name" });
       nameIn.addEventListener("input", () => { editing.name = nameIn.value; });
@@ -136,6 +186,10 @@ export default {
         el("div", { class: "sec-page-title" }, [`Edit chain — ${editing.trigger_key} `, badge(editing.mode, "muted")]),
         el("p", { class: "sec-muted", text: "This chain runs when this module triggers. Reorder stages, set a delay before a stage, a duration for timed actions (timeout/lock), and whether a failed stage continues or aborts the chain. The module and mode are fixed." }),
         el("p", { class: "sec-muted", text: "Timeout can never be permanent: an empty duration applies Discord's maximum (28 days, executed with a small safety margin below the hard cap). For indefinite containment use Quarantine or Ban instead." }),
+        ...(isAntiBot() ? [el("div", { class: "sec-callout", style: "border-left:3px solid #7aa2f7;padding:8px 12px;margin:8px 0;background:rgba(122,162,247,.08)" }, [
+          el("strong", { text: "Anti-Bot targets two different entities." }),
+          el("p", { class: "sec-muted", style: "margin:6px 0 0", text: "Every removal/containment stage must say WHO it acts on: the Added Bot (the bot that joined) or the Responsible Member (the human who added it). The Responsible Member is only known when Discord's audit log identifies them — if attribution is unresolved, Responsible-Member stages are SKIPPED and never fall back to the bot. Choose 'Added Bot' to remove the unauthorized bot; choose 'Responsible Member' to punish the human." }),
+        ])] : []),
         el("div", { class: "sec-settings-row" }, [el("div", { class: "k" }, ["Name"]), nameIn]),
         el("div", { class: "sec-chain-stages-head", text: "Stages" }),
         stages,
@@ -155,7 +209,10 @@ export default {
           " ", info(moduleDesc(c.trigger_key)),
         ]),
         el("div", { class: "sec-muted", text: c.name }),
-        el("div", { class: "sec-chain-flow", text: c.stages.map((s) => s.type).join(" → ") || "no stages" }),
+        el("div", { class: "sec-chain-flow", text: c.stages.map((s) => {
+          const label = (c.trigger_key === "anti_bots" && s.target) ? `${s.type}→${ANTIBOT_TARGET_LABEL[s.target] || s.target}` : s.type;
+          return label;
+        }).join("  ·  ") || "no stages" }),
       ]),
       el("div", { class: "sec-chain-ctl" }, canEdit ? [el("button", { class: "sec-btn sec-btn-sm", text: "Edit stages", onclick: () => openEdit(c) })] : [el("span", { class: "sec-muted", text: "read-only" })]),
     ]);
