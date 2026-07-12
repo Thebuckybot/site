@@ -37,6 +37,19 @@ export default {
 
     const reload = async () => { chains = await api.get("/punishments"); paint(); };
 
+    // SV2-MAN-001: `params.seconds` is the RETIRED legacy timeout-duration key.
+    // When loading a not-yet-normalized chain, surface the legacy value as the
+    // canonical stage-level duration so the editor shows what actually executes,
+    // and drop the legacy key so saving can never re-persist a hidden override.
+    const normalizeStage = (s) => {
+      const st = { ...s, params: { ...(s.params || {}) } };
+      if (st.type === "timeout" && st.params.seconds != null) {
+        if (st.duration == null) st.duration = Number(st.params.seconds);
+        delete st.params.seconds;
+      }
+      return st;
+    };
+
     // ---- persistence (edit the EXISTING chain only) --------------------- #
     const saveChain = async () => {
       if (!editing || !editing.stages.length) { toast("A chain needs at least one stage.", "err"); return; }
@@ -44,17 +57,21 @@ export default {
         trigger_key: editing.trigger_key,   // locked — never changes
         mode: editing.mode,                 // locked — part of the identity
         name: editing.name || editing.trigger_key,
-        stages: editing.stages.map((s) => ({
-          type: s.type, params: s.params || {}, on_failure: s.on_failure || "continue",
-          delay: s.delay === "" || s.delay == null ? null : Number(s.delay),
-          duration: s.duration === "" || s.duration == null ? null : Number(s.duration),
-        })),
+        stages: editing.stages.map((s) => {
+          const params = { ...(s.params || {}) };
+          if (s.type === "timeout") delete params.seconds; // retired legacy key — never re-persist
+          return {
+            type: s.type, params, on_failure: s.on_failure || "continue",
+            delay: s.delay === "" || s.delay == null ? null : Number(s.delay),
+            duration: s.duration === "" || s.duration == null ? null : Number(s.duration),
+          };
+        }),
       };
       try { await api.post("/punishment", payload); toast("Chain saved."); editing = null; await reload(); }
       catch (e) { toast(e.message, "err"); }
     };
 
-    const openEdit = (c) => { editing = { trigger_key: c.trigger_key, mode: c.mode, name: c.name, id: c.id, stages: c.stages.map((s) => ({ ...s })) }; paint(); };
+    const openEdit = (c) => { editing = { trigger_key: c.trigger_key, mode: c.mode, name: c.name, id: c.id, stages: c.stages.map(normalizeStage) }; paint(); };
 
     // ---- stage rows ----------------------------------------------------- #
     const move = (i, d) => { const j = i + d; if (j < 0 || j >= editing.stages.length) return; const [x] = editing.stages.splice(i, 1); editing.stages.splice(j, 0, x); paint(); };
@@ -87,7 +104,7 @@ export default {
       const opts = [labelWrap("On fail", failSel), labelWrap("Delay (s)", delay)];
       // Duration ONLY for stages whose handler consumes it (server also enforces this).
       if (supportsDuration(s.type)) {
-        const label = maxWhenEmpty(s.type) ? "Duration (empty = Discord max)"
+        const label = maxWhenEmpty(s.type) ? "Duration (empty = Discord max, ~28 days)"
           : "Duration (empty = permanent)";
         opts.push(labelWrap(label, durationField(s)));
       }
@@ -118,6 +135,7 @@ export default {
       return el("div", { class: "sec-card sec-chain-editor" }, [
         el("div", { class: "sec-page-title" }, [`Edit chain — ${editing.trigger_key} `, badge(editing.mode, "muted")]),
         el("p", { class: "sec-muted", text: "This chain runs when this module triggers. Reorder stages, set a delay before a stage, a duration for timed actions (timeout/lock), and whether a failed stage continues or aborts the chain. The module and mode are fixed." }),
+        el("p", { class: "sec-muted", text: "Timeout can never be permanent: an empty duration applies Discord's maximum (28 days, executed with a small safety margin below the hard cap). For indefinite containment use Quarantine or Ban instead." }),
         el("div", { class: "sec-settings-row" }, [el("div", { class: "k" }, ["Name"]), nameIn]),
         el("div", { class: "sec-chain-stages-head", text: "Stages" }),
         stages,
