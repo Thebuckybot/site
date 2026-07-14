@@ -121,18 +121,49 @@ export default {
       const ops = job.operations || [];
       if (job.status === "submitting") {
         parts.push(el("p", { class: "sec-muted", text: "Submitting…" }));
-      } else if (job.status === "planned" && ops.length) {
-        parts.push(el("p", { class: "sec-muted", text: `${ops.length} supported operation(s):` }));
-        parts.push(table([
-          { label: "Operation", render: (o) => o.type || "?" },
-          { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
-        ], ops));
-        if ((job.unsupported || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.unsupported.length} unsupported difference(s) (e.g. managed resources) — not recoverable.` }));
+      } else if (job.status === "planned" && (ops.length || (job.blocked_operations || []).length)) {
+        // `ops` (job.operations) are SAFE ops only — the exact set that would run.
+        // `blocked_operations` are ambiguous/blocked ops surfaced with reasons.
+        const blocked = job.blocked_operations || [];
+        // Server is the authority; if it didn't send `executable`, derive it.
+        const executable = (job.executable === true)
+          || (job.executable == null && ops.length > 0 && blocked.length === 0);
+
+        if (ops.length) {
+          parts.push(el("p", { class: "sec-muted", text: `${ops.length} safe operation(s) will run:` }));
+          parts.push(table([
+            { label: "Operation", render: (o) => o.type || "?" },
+            { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
+          ], ops));
+        }
+        if (blocked.length) {
+          parts.push(el("div", { class: "sec-warn", style: "margin-top:8px" }, [
+            el("strong", { text: `${blocked.length} operation(s) are BLOCKED and will NOT run:` }),
+          ]));
+          parts.push(table([
+            { label: "Operation", render: (o) => o.type || "?" },
+            { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
+            { label: "Why", render: (o) => el("span", { class: "sec-muted", text: o.reason || o.safety || "" }) },
+          ], blocked));
+        }
+        if ((job.unsupported || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.unsupported.length} unsupported difference(s) (e.g. managed resources / channel types that cannot be faithfully recreated) — not recoverable.` }));
         if ((job.extras || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.extras.length} live resource(s) not in the snapshot will be KEPT (never deleted).` }));
-        parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [
-          (() => { const b = el("button", { class: "sec-btn sec-btn-primary", text: "Confirm & Execute" }); b.addEventListener("click", confirmExec); return b; })(),
-          (() => { const b = el("button", { class: "sec-btn sec-btn-ghost", text: "Cancel" }); b.addEventListener("click", renderIdle); return b; })(),
-        ]));
+
+        if (!executable) {
+          parts.push(el("div", { class: "sec-card sec-card-warn", style: "margin-top:8px" }, [
+            el("p", { class: "sec-muted", text: blocked.length
+              ? "This plan cannot be executed while it contains blocked operations (duplicate-identity or corrupted-name risk). Resolve them, then regenerate the preview."
+              : "There is nothing safe to execute in this plan." }),
+          ]));
+          parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [
+            (() => { const b = el("button", { class: "sec-btn sec-btn-ghost", text: "New recovery" }); b.addEventListener("click", renderIdle); return b; })(),
+          ]));
+        } else {
+          parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [
+            (() => { const b = el("button", { class: "sec-btn sec-btn-primary", text: "Confirm & Execute" }); b.addEventListener("click", confirmExec); return b; })(),
+            (() => { const b = el("button", { class: "sec-btn sec-btn-ghost", text: "Cancel" }); b.addEventListener("click", renderIdle); return b; })(),
+          ]));
+        }
       } else if (job.status === "planned") {
         parts.push(el("p", { class: "sec-muted", text: "Generating preview… this page updates automatically." }));
       } else if (job.status === "queued" || job.status === "running") {
