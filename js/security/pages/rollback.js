@@ -6,8 +6,12 @@ import { validJobId, isTerminal, pollOutcome } from "./recovery_poll.js";
 // Flow: usable baseline -> POST /recovery/plan returns a REAL durable job id ->
 // poll GET /recovery/job/<id> -> preview -> confirm -> execute -> monitor.
 // The frontend NEVER invents/falls back an id and never polls 0/null/NaN.
-const JOB_TONE = { submitting: "muted", planned: "muted", queued: "muted", running: "muted",
-                   succeeded: "ok", partial: "warn", failed: "bad", stale: "bad", cancelled: "muted" };
+// SV2-MAN-005B: completion is driven by the EXPLICIT job status, not by
+// operations.length. 'planned' = still generating (poll); 'previewed' = ready
+// (stop, render preview: zero-op / safe / blocked); execution states follow.
+const JOB_TONE = { submitting: "muted", planned: "muted", previewed: "muted", queued: "muted",
+                   running: "muted", succeeded: "ok", partial: "warn", failed: "bad",
+                   stale: "bad", cancelled: "muted" };
 const MAX_POLLS = 40;   // ~2 min at 3s
 
 export default {
@@ -91,7 +95,9 @@ export default {
           stop(); job = { ...job, status: "failed", error: "Malformed recovery job response — stopping." }; renderJob(); return;
         }
         job = j; renderJob();
-        if (outcome === "terminal") stop();
+        // Both a ready preview and an execution-terminal state STOP polling. This
+        // is the explicit completion contract — never inferred from ops.length.
+        if (outcome === "terminal" || outcome === "preview-ready") stop();
       }, 3000);
     };
 
@@ -119,53 +125,64 @@ export default {
         job.error ? el("p", { class: "sec-muted", text: job.error }) : null,
       ]));
       const ops = job.operations || [];
-      if (job.status === "submitting") {
-        parts.push(el("p", { class: "sec-muted", text: "Submitting…" }));
-      } else if (job.status === "planned" && (ops.length || (job.blocked_operations || []).length)) {
-        // `ops` (job.operations) are SAFE ops only — the exact set that would run.
-        // `blocked_operations` are ambiguous/blocked ops surfaced with reasons.
+      if (job.status === "submitting" || job.status === "planned") {
+        // 'planned' = the worker has NOT finished generating the plan yet. Keep
+        // polling. (Completion is signalled by status becoming 'previewed', never
+        // inferred from operations.length.)
+        parts.push(el("p", { class: "sec-muted",
+          text: job.status === "submitting" ? "Submitting…" : "Generating preview… this page updates automatically." }));
+      } else if (job.status === "previewed") {
+        // Plan generation COMPLETE. Disambiguate via the explicit backend contract.
         const blocked = job.blocked_operations || [];
-        // Server is the authority; if it didn't send `executable`, derive it.
+        const noRecovery = (job.no_recovery_needed === true)
+          || (job.no_recovery_needed == null && ops.length === 0 && blocked.length === 0);
         const executable = (job.executable === true)
           || (job.executable == null && ops.length > 0 && blocked.length === 0);
 
-        if (ops.length) {
-          parts.push(el("p", { class: "sec-muted", text: `${ops.length} safe operation(s) will run:` }));
-          parts.push(table([
-            { label: "Operation", render: (o) => o.type || "?" },
-            { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
-          ], ops));
-        }
-        if (blocked.length) {
-          parts.push(el("div", { class: "sec-warn", style: "margin-top:8px" }, [
-            el("strong", { text: `${blocked.length} operation(s) are BLOCKED and will NOT run:` }),
-          ]));
-          parts.push(table([
-            { label: "Operation", render: (o) => o.type || "?" },
-            { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
-            { label: "Why", render: (o) => el("span", { class: "sec-muted", text: o.reason || o.safety || "" }) },
-          ], blocked));
-        }
-        if ((job.unsupported || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.unsupported.length} unsupported difference(s) (e.g. managed resources / channel types that cannot be faithfully recreated) — not recoverable.` }));
-        if ((job.extras || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.extras.length} live resource(s) not in the snapshot will be KEPT (never deleted).` }));
-
-        if (!executable) {
-          parts.push(el("div", { class: "sec-card sec-card-warn", style: "margin-top:8px" }, [
-            el("p", { class: "sec-muted", text: blocked.length
-              ? "This plan cannot be executed while it contains blocked operations (duplicate-identity or corrupted-name risk). Resolve them, then regenerate the preview."
-              : "There is nothing safe to execute in this plan." }),
+        if (noRecovery) {
+          parts.push(el("div", { class: "sec-card", style: "margin-top:8px" }, [
+            el("p", { text: `No recovery needed — the current server structure already matches snapshot #${job.snapshot_id}.` }),
           ]));
           parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [
             (() => { const b = el("button", { class: "sec-btn sec-btn-ghost", text: "New recovery" }); b.addEventListener("click", renderIdle); return b; })(),
           ]));
         } else {
-          parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [
-            (() => { const b = el("button", { class: "sec-btn sec-btn-primary", text: "Confirm & Execute" }); b.addEventListener("click", confirmExec); return b; })(),
-            (() => { const b = el("button", { class: "sec-btn sec-btn-ghost", text: "Cancel" }); b.addEventListener("click", renderIdle); return b; })(),
-          ]));
+          if (ops.length) {
+            parts.push(el("p", { class: "sec-muted", text: `${ops.length} safe operation(s) will run:` }));
+            parts.push(table([
+              { label: "Operation", render: (o) => o.type || "?" },
+              { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
+            ], ops));
+          }
+          if (blocked.length) {
+            parts.push(el("div", { class: "sec-warn", style: "margin-top:8px" }, [
+              el("strong", { text: `${blocked.length} operation(s) are BLOCKED and will NOT run:` }),
+            ]));
+            parts.push(table([
+              { label: "Operation", render: (o) => o.type || "?" },
+              { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
+              { label: "Why", render: (o) => el("span", { class: "sec-muted", text: o.reason || o.safety || "" }) },
+            ], blocked));
+          }
+          if ((job.unsupported || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.unsupported.length} unsupported difference(s) (e.g. managed resources / channel types that cannot be faithfully recreated) — not recoverable.` }));
+          if ((job.extras || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.extras.length} live resource(s) not in the snapshot will be KEPT (never deleted).` }));
+
+          if (!executable) {
+            parts.push(el("div", { class: "sec-card sec-card-warn", style: "margin-top:8px" }, [
+              el("p", { class: "sec-muted", text: blocked.length
+                ? "This plan cannot be executed while it contains blocked operations (duplicate-identity or corrupted-name risk). Resolve them, then regenerate the preview."
+                : "There is nothing safe to execute in this plan." }),
+            ]));
+            parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [
+              (() => { const b = el("button", { class: "sec-btn sec-btn-ghost", text: "New recovery" }); b.addEventListener("click", renderIdle); return b; })(),
+            ]));
+          } else {
+            parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [
+              (() => { const b = el("button", { class: "sec-btn sec-btn-primary", text: "Confirm & Execute" }); b.addEventListener("click", confirmExec); return b; })(),
+              (() => { const b = el("button", { class: "sec-btn sec-btn-ghost", text: "Cancel" }); b.addEventListener("click", renderIdle); return b; })(),
+            ]));
+          }
         }
-      } else if (job.status === "planned") {
-        parts.push(el("p", { class: "sec-muted", text: "Generating preview… this page updates automatically." }));
       } else if (job.status === "queued" || job.status === "running") {
         parts.push(el("p", { class: "sec-muted", text: "Executing on the bot… this page updates automatically." }));
       } else {
