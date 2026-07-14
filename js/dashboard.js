@@ -77,12 +77,11 @@ async function apiFetch(url, options = {}) {
   options.headers = options.headers || {};
   const token = getStoredToken();
 
-  console.log("apiFetch - Using token:", token, "for URL:", url);
-
+  // SECURITY: never log the auth token (or the Authorization header). Logging the
+  // bearer token to the browser console leaks it into console history / screen
+  // shares / support attachments. Log presence only, never the value.
   if (token) {
     options.headers["Authorization"] = `Bearer ${token}`;
-  } else {
-    console.warn("apiFetch - No token found in localStorage.");
   }
 
   options.credentials = "include";
