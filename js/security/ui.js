@@ -12,8 +12,12 @@ export function el(tag, attrs = {}, children = []) {
     else if (v !== null && v !== undefined && v !== false) node.setAttribute(k, v);
   }
   for (const c of [].concat(children)) {
-    if (c == null) continue;
-    node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    // Skip nullish / false (allows `cond && el(...)`), coerce any non-Node
+    // primitive (number, boolean, string) to a text node, and only append real
+    // Nodes. This is the render-contract fix for the "appendChild must be an
+    // instance of Node" crash caused by a render/child returning e.g. a number.
+    if (c == null || c === false) continue;
+    node.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
   }
   return node;
 }
@@ -108,8 +112,10 @@ export function table(columns, rows) {
   } else {
     for (const r of rows) {
       tbody.appendChild(el("tr", {}, columns.map((c) => {
-        const cell = c.render ? c.render(r) : document.createTextNode(r[c.key] ?? "—");
-        return el("td", {}, [typeof cell === "string" ? document.createTextNode(cell) : cell]);
+        // el() coerces strings/numbers/booleans to text and passes Nodes through,
+        // so a render() returning any primitive is safe (never crashes appendChild).
+        const cell = c.render ? c.render(r) : (r[c.key] ?? "—");
+        return el("td", {}, [cell]);
       })));
     }
   }
