@@ -70,6 +70,12 @@ export default {
     root.appendChild(infoTitle("Snapshots",
       "Structural recovery baselines you can view, inspect and capture.", "h1", "sec-page-title"));
 
+    // ---- what a snapshot IS / IS NOT (plain-language explanation) ----------- #
+    root.appendChild(el("div", { class: "sec-card", style: "margin:8px 0" }, [
+      el("p", { text: "A snapshot is a structural server backup — roles, channels, categories, permission overwrites and security settings." }),
+      el("p", { class: "sec-muted", text: "It does NOT back up messages, files, member history, emojis/stickers or webhook tokens. Recreated channels/roles receive new Discord ids. Restoring is done on Restore, with a Preview of the exact changes." }),
+    ]));
+
     // ---- health summary ---------------------------------------------------- #
     const health = el("div", { id: "snap-health" });
     root.appendChild(health);
@@ -196,6 +202,7 @@ export default {
           kv("Channels", s.channel_count == null ? "—" : String(s.channel_count)),
           kv("Incident", s.incident_id ? String(s.incident_id) : "—"),
           kv("Usable for recovery", usable ? "Yes" : "No"),
+          kv("Full Restore eligible", s.fr_eligible ? "Yes (v3)" : "No — Safe Repair only"),
         ]),
         el("div", { class: "sec-settings-row", style: "margin-top:6px" }, [
           el("div", { class: "k" }, ["Content hash"]),
@@ -236,6 +243,9 @@ function norm(s) {
     suitability: s.suitability || null,
     usable: (s.usable === true) || ["baseline", "scheduled", "manual"].includes(s.suitability),
     schema_version: s.schema_version,
+    capability_version: s.capability_version,
+    trust_state: s.trust_state || null,
+    fr_eligible: s.fr_eligible === true,
     content_hash: s.content_hash || null,
     content_hash_short: s.content_hash_short || (s.content_hash ? String(s.content_hash).slice(0, 12) : null),
     channel_count: s.channel_count,

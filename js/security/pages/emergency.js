@@ -13,10 +13,13 @@ export default {
       try { await api.post("/emergency", { action }); toast(`Queued: ${label}.`); setTimeout(() => this.render(root), 1200); }
       catch (e) { toast(e.message, "err"); }
     };
-    const rollback = async () => {
-      if (!(await confirmDialog({ title: "Roll back from snapshot", message: settingDesc("rollback_action") + " Continue?", danger: true, confirmLabel: "Roll back" }))) return;
-      try { await api.post("/recovery"); toast("Rollback queued — the bot restores from the latest snapshot."); }
-      catch (e) { toast(e.message, "err"); }
+    // SV2-MAN-006: Emergency NEVER fires a blind rollback. "Roll Back From Snapshot"
+    // routes into the central Restore console (select snapshot -> mode -> Preview ->
+    // confirm -> execute -> convergence), which enforces the full safety workflow —
+    // including the strong destructive confirmation for Full Restore. No shortcut.
+    const rollback = () => {
+      toast("Opening the Restore console…");
+      window.location.hash = "#rollback";
     };
 
     try {
