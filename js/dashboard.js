@@ -206,66 +206,96 @@ async function doLogout() {
 
 // Dashboard laden
 
-async function loadDashboard() {
-    storeTokenFromUrl();
-    const cachedGuilds = sessionStorage.getItem("user_guilds");
-    const cachedUser = sessionStorage.getItem("user_info");
+// SV2-FIN-001: multi-tab dedup — one tab's fresh /api/me result is broadcast to
+// the others so they update WITHOUT their own Discord round-trip.
+const guildChannel = ("BroadcastChannel" in window) ? new BroadcastChannel("bucky-guilds") : null;
 
+function paintMe(data) {
     const userInfo = document.getElementById("user-info");
     const guildContainer = document.getElementById("guilds-container");
-
-    // Voeg een controle toe of de elementen bestaan
-    if (cachedGuilds && cachedUser && userInfo && guildContainer) {
-        const guilds = JSON.parse(cachedGuilds);
-        const user = JSON.parse(cachedUser);
-
+    if (!data || !data.user) return;
+    if (userInfo) {
         userInfo.innerHTML = `
-            <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
-            <span>${user.username}</span>
+            <img src="https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png" class="avatar" />
+            <span>${data.user.username}</span>
         `;
-        renderGuilds(guilds, guildContainer);
-        renderNav(true, user);
-        return;
     }
+    if (guildContainer) renderGuilds(data.guilds || [], guildContainer);
+    renderNav(true, data.user);
+}
 
-    try {
-        const res = await apiFetch(`${API_URL}/api/me`);
-        const data = await res.json();
-        
-        if (!data.logged_in) {
-            clearUserData();
-            renderNav(false);
-            const redirectUrl = encodeURIComponent(window.location.href);
-            window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
-            return;
+if (guildChannel) {
+    guildChannel.onmessage = (ev) => {
+        if (ev && ev.data && ev.data.type === "me" && ev.data.payload) {
+            sessionStorage.setItem("user_info", JSON.stringify(ev.data.payload.user));
+            sessionStorage.setItem("user_guilds", JSON.stringify(ev.data.payload.guilds || []));
+            paintMe(ev.data.payload);
         }
+    };
+}
 
-        const user = data.user;
-        sessionStorage.setItem("user_info", JSON.stringify(user));
-        sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds));
-
-        // Controleer opnieuw of de elementen bestaan voordat je ze gebruikt
-        if (userInfo && guildContainer) {
-            userInfo.innerHTML = `
-                <img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png" class="avatar" />
-                <span>${user.username}</span>
-            `;
-            renderGuilds(data.guilds, guildContainer);
-        }
-        renderNav(true, user);
-    } catch (err) {
-        const msg = "Error loading dashboard: " + (err && err.message ? err.message : err);
-        console.error(msg);
-        alert(msg);
+// Revalidate against the backend. force=true bypasses the server-side cache
+// (used by "Refresh servers"). Normal loads hit the fast per-user cache.
+async function fetchMe(force) {
+    const res = await apiFetch(`${API_URL}/api/me${force ? "?refresh=1" : ""}`);
+    const data = await res.json();
+    if (!data.logged_in) {
         clearUserData();
         renderNav(false);
-        window.location.href = "/";
+        const redirectUrl = encodeURIComponent(window.location.href);
+        window.location.href = `${API_URL}/login?redirect=${redirectUrl}`;
+        return null;
+    }
+    sessionStorage.setItem("user_info", JSON.stringify(data.user));
+    sessionStorage.setItem("user_guilds", JSON.stringify(data.guilds || []));
+    if (guildChannel) guildChannel.postMessage({ type: "me", payload: data });
+    return data;
+}
+
+async function loadDashboard() {
+    storeTokenFromUrl();
+    // 1) PAINT-FIRST from the last known list for an instant UI — this is a
+    //    placeholder ONLY, never a substitute for revalidation (the old code
+    //    returned here and never refetched, so a refresh showed stale servers).
+    try {
+        const cu = sessionStorage.getItem("user_info");
+        const cg = sessionStorage.getItem("user_guilds");
+        if (cu && cg) paintMe({ user: JSON.parse(cu), guilds: JSON.parse(cg) });
+    } catch (_) { /* ignore malformed cache */ }
+
+    // 2) ALWAYS revalidate — presence is fresh (bot_guilds), the admin set is
+    //    short-TTL. A plain refresh now reflects join/leave/admin changes.
+    try {
+        const data = await fetchMe(false);
+        if (data) paintMe(data);
+    } catch (err) {
+        console.error("Error loading dashboard:", err && err.message ? err.message : err);
+        // Only hard-fail to home if we had nothing to show at all.
+        if (!sessionStorage.getItem("user_guilds")) {
+            clearUserData();
+            renderNav(false);
+            window.location.href = "/";
+        }
     }
 }
+
+// Manual "Refresh servers" — force a hard revalidation (e.g. right after
+// inviting/removing the bot). Exposed globally + wired to #refresh-servers if present.
+async function refreshServers() {
+    try {
+        const data = await fetchMe(true);
+        if (data) paintMe(data);
+    } catch (err) {
+        console.error("Refresh failed:", err);
+    }
+}
+window.refreshServers = refreshServers;
 
 // Start
 window.addEventListener("DOMContentLoaded", () => {
     storeTokenFromUrl(); // <-- Token uit ?token=... opslaan
+    const refreshBtn = document.getElementById("refresh-servers");
+    if (refreshBtn) refreshBtn.addEventListener("click", refreshServers);
     loadDashboard();
 });
 
