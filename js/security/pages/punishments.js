@@ -24,6 +24,21 @@ export default {
     const supportsDuration = (type) => !!(stageMeta[type] && stageMeta[type].duration);
     const maxWhenEmpty = (type) => !!(stageMeta[type] && stageMeta[type].max_only_when_empty);
 
+    // SV2-FIN-002: structural-only stages (e.g. snapshot_rollback) are offered ONLY
+    // on structural modules (Anti-Nuke, mass channel/role/permission changes). The
+    // contract comes from the registry — never hardcoded here — and the backend
+    // re-validates. An existing legacy value is still shown so editing never drops it.
+    const structuralOnly = new Set(reg.structural_only_stages || []);
+    const structuralCats = new Set(reg.structural_module_categories || ["structure"]);
+    const moduleCat = (key) => { const m = (reg.modules || []).find((x) => x.key === key); return m && m.category; };
+    const isStructuralModule = () => editing && structuralCats.has(moduleCat(editing.trigger_key));
+    const allowedStages = (currentType) => {
+      let base = stageTypes;
+      if (editing && !isStructuralModule()) base = stageTypes.filter((s) => !structuralOnly.has(s));
+      if (currentType && !base.includes(currentType)) return [currentType, ...base];  // keep legacy value
+      return base;
+    };
+
     // SV2-MAN-003: Anti-Bot explicit-target contract (from the registry — never
     // hardcoded here). A targetable stage in an anti_bots chain MUST pick a target;
     // the dropdown only offers targets valid for that stage type.
@@ -125,7 +140,7 @@ export default {
     };
 
     const stageRow = (s, i) => {
-      const typeSel = selectEl(stageTypes, s.type, (v) => {
+      const typeSel = selectEl(allowedStages(s.type), s.type, (v) => {
         s.type = v;
         if (!supportsDuration(v)) s.duration = null;   // drop meaningless duration
         fixTarget(s);                                  // reset target to a valid one
@@ -173,7 +188,7 @@ export default {
     const editorPanel = () => {
       const stages = el("div", { class: "sec-stages" }, editing.stages.map((s, i) => stageRow(s, i)));
       if (!editing.stages.length) stages.appendChild(el("div", { class: "sec-muted", text: "No stages. Add the first action below." }));
-      const addSel = selectEl(stageTypes, "", (v) => {
+      const addSel = selectEl(allowedStages(), "", (v) => {
         if (!v) return;
         if (editing.stages.length >= 6) { toast("A chain may have at most 6 stages.", "err"); return; }
         const st = { type: v, params: {}, on_failure: "continue", delay: null, duration: null };

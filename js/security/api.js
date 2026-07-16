@@ -11,6 +11,8 @@ export function guildId() {
   return new URLSearchParams(window.location.search).get("guild_id");
 }
 
+const REQUEST_TIMEOUT_MS = 15000;
+
 async function call(method, path, body) {
   const gid = guildId();
   const opts = { method, headers: {} };
@@ -18,13 +20,23 @@ async function call(method, path, body) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);
   }
+  // FIN-002 M3: bound every request so a slow/hung backend fails cleanly instead
+  // of spinning forever. The page renders a "not responding" state (see errorState).
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+  opts.signal = ctrl.signal;
   let res;
   try {
     res = await apiFetch(`${BASE}/${gid}${path}`, opts);
   } catch (networkErr) {
-    const e = new Error("Network error - the backend is unreachable.");
-    e.code = "network";
+    const timedOut = !!(networkErr && (networkErr.name === "AbortError" || ctrl.signal.aborted));
+    const e = new Error(timedOut
+      ? "The request timed out — the backend is slow or unreachable."
+      : "Network error - the backend is unreachable.");
+    e.code = timedOut ? "timeout" : "network";
     throw e;
+  } finally {
+    clearTimeout(timer);
   }
   let json = {};
   try { json = await res.json(); } catch (_) { /* non-JSON */ }

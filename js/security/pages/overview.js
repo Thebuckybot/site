@@ -3,6 +3,9 @@ import { el, statCard, badge, pageHeader, errorState, toast, fmtTime } from "../
 
 export default {
   async render(root) {
+    // Re-entrant safe: quick actions call render() again to refresh, so clear
+    // first — otherwise a second full copy of the page stacks on top (FIN-002 M1).
+    root.replaceChildren();
     try {
       const [ov, em, health, incRaw] = await Promise.all([
         api.get("/overview"),

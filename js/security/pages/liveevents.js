@@ -3,6 +3,8 @@ import { el, pageHeader, table, badge, errorState, fmtTime } from "../ui.js";
 
 export default {
   async render(root) {
+    // Refresh re-invokes render(); clear first so it never stacks a duplicate (FIN-002 M1).
+    root.replaceChildren();
     try {
       const data = await soc.get("/incidents?page=1").catch(() => []);
       const list = Array.isArray(data) ? data : (data && data.incidents) || [];

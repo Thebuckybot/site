@@ -99,9 +99,8 @@ async function apiFetch(url, options = {}) {
 
     return res;
   } catch (error) {
-    const msg = "apiFetch - Fetch failed: " + (error && error.message ? error.message : error);
-    console.error(msg);
-    alert(msg);
+    // FIN-002: no jarring alert() — callers render proper error/timeout states.
+    console.error("apiFetch - Fetch failed:", error && error.message ? error.message : error);
     throw error;
   }
 }

@@ -27,7 +27,7 @@ export const NAV = [
   ] },
   { type: "group", key: "recovery", label: "Recovery", items: [
     { key: "snapshots", label: "Snapshots" },
-    { key: "rollback", label: "Rollback" },
+    { key: "rollback", label: "Restore" },
     { key: "emergency", label: "Emergency" },
   ] },
   { type: "item", key: "settings", label: "Settings" },
