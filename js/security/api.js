@@ -51,14 +51,33 @@ async function call(method, path, body) {
 
 let _permsCache = null;
 
+// SV2-READONLY-001: a client-side write guard (defense in depth). The backend is
+// the source of truth and re-authorizes every write, but when the cached tier is
+// read-only we reject mutating calls before they leave the browser — so a stray,
+// forgotten, or devtools-triggered control fails fast with a clear message instead
+// of a confusing 403. Reads are never blocked here.
+function assertWritable() {
+  if (_permsCache && _permsCache.can_edit === false) {
+    const e = new Error("Read-only: you do not have permission to make changes here.");
+    e.code = "read_only";
+    e.status = 403;
+    throw e;
+  }
+}
+
+export function isReadOnly() {
+  return !!(_permsCache && _permsCache.can_edit === false);
+}
+
 export const api = {
   guildId,
+  isReadOnly,
   get: (p) => call("GET", p).then((j) => j.data),
   // paginated GETs need the envelope (page/total), so expose raw too
   getRaw: (p) => call("GET", p),
-  post: (p, b) => call("POST", p, b).then((j) => j.data),
-  patch: (p, b) => call("PATCH", p, b).then((j) => j.data),
-  del: (p) => call("DELETE", p).then((j) => j.data),
+  post: (p, b) => { assertWritable(); return call("POST", p, b).then((j) => j.data); },
+  patch: (p, b) => { assertWritable(); return call("PATCH", p, b).then((j) => j.data); },
+  del: (p) => { assertWritable(); return call("DELETE", p).then((j) => j.data); },
   // The caller's permission tier for this guild (owner / security_admin /
   // read_only), fetched once and cached. Purely cosmetic — the backend
   // re-authorizes every write regardless of what this returns.
@@ -95,9 +114,9 @@ async function socCall(method, path, body, { scoped = true } = {}) {
 
 export const soc = {
   get: (p) => socCall("GET", p),
-  post: (p, b) => socCall("POST", p, b),
-  patch: (p, b) => socCall("PATCH", p, b),
-  del: (p) => socCall("DELETE", p),
+  post: (p, b) => { assertWritable(); return socCall("POST", p, b); },
+  patch: (p, b) => { assertWritable(); return socCall("PATCH", p, b); },
+  del: (p) => { assertWritable(); return socCall("DELETE", p); },
   // Rule contract / vocabulary — guild-independent, so not guild-scoped.
   registry: () => socCall("GET", "/rule-registry", undefined, { scoped: false }),
 };

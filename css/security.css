@@ -314,7 +314,20 @@
   color: var(--sec-text); font-size: 13px;
 }
 .sec-readonly-banner .ic { font-size: 15px; line-height: 1; }
-body.sec-readonly .sec-content { /* subtle hint that edits are disabled */ }
+
+/* SV2-READONLY-001: global read-only safety net. Any control explicitly marked as
+   a write ([data-write] / .sec-write) is removed when the caller is read-only, so a
+   page that forgets to gate a control cannot expose it. The backend stays the
+   source of truth; this is defense-in-depth for the UI. */
+body.sec-readonly [data-write],
+body.sec-readonly .sec-write { display: none !important; }
+/* Subtle inline "Read Only" pill (for headers/toolbars). */
+.sec-readonly-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: rgba(224, 165, 58, 0.14); border: 1px solid rgba(224, 165, 58, 0.34);
+  color: var(--sec-text); letter-spacing: .02em;
+}
 
 /* Responsive */
 @media (max-width: 920px) {

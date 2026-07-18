@@ -27,7 +27,14 @@ export default {
     };
 
     try {
-      const cfg = await load();
+      // SV2-READONLY-001: switch-mode and import are WRITES — render them only for
+      // editors. Export (a read) stays available to everyone.
+      const [cfg, perms] = await Promise.all([load(), api.me().catch(() => ({ can_edit: false }))]);
+      const canEdit = !!perms.can_edit;
+      const actions = [];
+      if (canEdit) actions.push(el("button", { class: "sec-btn", "data-write": "1", text: "Switch Normal/Hard", onclick: () => switchMode(cfg) }));
+      actions.push(el("button", { class: "sec-btn", text: "Export JSON", onclick: () => exportCfg(cfg) }));
+      if (canEdit) actions.push(el("button", { class: "sec-btn sec-btn-primary", "data-write": "1", text: "Import JSON", onclick: importCfg }));
       root.replaceChildren(
         pageHeader("Advanced", "Mode, configuration export/import, and raw settings."),
         el("div", { class: "sec-grid sec-grid-3" }, [
@@ -37,12 +44,10 @@ export default {
         ]),
         el("div", { class: "sec-card", style: "margin-top:16px" }, [
           el("div", { class: "sec-page-title", text: "Configuration" }),
-          el("div", { class: "sec-actions" }, [
-            el("button", { class: "sec-btn", text: "Switch Normal/Hard", onclick: () => switchMode(cfg) }),
-            el("button", { class: "sec-btn", text: "Export JSON", onclick: () => exportCfg(cfg) }),
-            el("button", { class: "sec-btn sec-btn-primary", text: "Import JSON", onclick: importCfg }),
-          ]),
-          el("p", { class: "sec-muted", text: "Imports are validated server-side; malformed configurations are rejected." }),
+          el("div", { class: "sec-actions" }, actions),
+          el("p", { class: "sec-muted", text: canEdit
+            ? "Imports are validated server-side; malformed configurations are rejected."
+            : "Read-only access — export is available; switching mode and importing are disabled." }),
         ]),
       );
     } catch (err) { errorState(root, err, () => this.render(root)); }

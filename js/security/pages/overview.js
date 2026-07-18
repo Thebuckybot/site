@@ -38,17 +38,23 @@ export default {
         statCard("Risk Level", Math.round(ov.risk_level || 0)),
       ]));
 
-      // Row 3 — quick actions
+      // Row 3 — quick actions. SV2-READONLY-001: the mode-switch is a WRITE, so it
+      // is only rendered for editors; read-only users see the navigation shortcuts.
+      const perms = await api.me().catch(() => ({ can_edit: false }));
+      const canEdit = !!perms.can_edit;
       const hard = String(ov.mode) === "hard";
-      const quick = el("div", { class: "sec-quick", style: "margin-top:20px" }, [
+      const quickItems = [
         el("a", { href: "#modules" }, [el("span", { class: "qa-t", text: "Configure Modules" }), el("span", { class: "qa-d", text: "Turn protections on or off" })]),
-        el("button", { onclick: async () => {
+      ];
+      if (canEdit) {
+        quickItems.push(el("button", { "data-write": "1", onclick: async () => {
           try { await api.post("/protection", { mode: hard ? "normal" : "hard" }); toast(`Mode set to ${hard ? "normal" : "hard"}.`); this.render(root); }
           catch (e) { toast(e.message, "err"); }
-        } }, [el("span", { class: "qa-t", text: hard ? "Switch to Normal" : "Enable Hard Mode" }), el("span", { class: "qa-d", text: "Change detection strictness" })]),
-        el("a", { href: "#soc" }, [el("span", { class: "qa-t", text: "Open SOC" }), el("span", { class: "qa-d", text: "Advanced rule-based detection" })]),
-        el("a", { href: "#emergency" }, [el("span", { class: "qa-t", text: "Emergency Center" }), el("span", { class: "qa-d", text: "Lockdown & emergency mode" })]),
-      ]);
+        } }, [el("span", { class: "qa-t", text: hard ? "Switch to Normal" : "Enable Hard Mode" }), el("span", { class: "qa-d", text: "Change detection strictness" })]));
+      }
+      quickItems.push(el("a", { href: "#soc" }, [el("span", { class: "qa-t", text: "Open SOC" }), el("span", { class: "qa-d", text: "Advanced rule-based detection" })]));
+      quickItems.push(el("a", { href: "#emergency" }, [el("span", { class: "qa-t", text: "Emergency Center" }), el("span", { class: "qa-d", text: "Lockdown & emergency mode" })]));
+      const quick = el("div", { class: "sec-quick", style: "margin-top:20px" }, quickItems);
       root.appendChild(el("h2", { class: "sec-page-title", style: "margin-top:26px;font-size:16px", text: "Quick Actions" }));
       root.appendChild(quick);
 
