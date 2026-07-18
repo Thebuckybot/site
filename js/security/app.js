@@ -6,21 +6,30 @@ import { guildId, api } from "./api.js";
 import { el, clear } from "./ui.js";
 import { buildSidebar, setActive, sectionLabel, isInternal } from "./router.js";
 
-// One place renders the read-only banner, driven by the server's /me tier.
-async function applyPermissionBanner() {
+// One place renders the read-only INDICATOR, driven by the server's /me tier. It
+// adds the `sec-readonly` body class (which drives the write-hiding safety net) and
+// a small pill inside the EXISTING topbar actions. It deliberately does NOT inject a
+// banner or any new child into the `.sec-app` grid — a third grid item would break
+// the two-column auto-placement and displace the sidebar/main (SV2-READONLY-002).
+// The pill lives in `.sec-main`'s flow, so grid geometry is byte-identical to
+// Administrator mode; the only visual differences are hidden write controls + pill.
+async function applyReadonlyIndicator() {
   try {
     const perms = await api.me();
-    if (perms && !perms.can_edit) {
-      document.body.classList.add("sec-readonly");
-      let banner = document.getElementById("sec-readonly-banner");
-      if (!banner) {
-        banner = el("div", { id: "sec-readonly-banner", class: "sec-readonly-banner" }, [
-          el("span", { class: "ic", text: "🔒" }),
-          el("span", { text: "Read-only — you can view everything, but only the server owner or a whitelisted Security Admin can make changes." }),
-        ]);
-        appEl.insertBefore(banner, appEl.firstChild);
-      }
-    }
+    if (!perms || perms.can_edit) return;
+    document.body.classList.add("sec-readonly");
+    if (document.getElementById("sec-readonly-pill")) return;
+    const pill = el("span", {
+      id: "sec-readonly-pill", class: "sec-readonly-pill", role: "status",
+      title: "Read-only access — only the server owner or a whitelisted Security Admin can make changes.",
+    }, [
+      el("span", { class: "ic", "aria-hidden": "true", text: "🔒" }),
+      el("span", { text: "Read Only" }),
+    ]);
+    const actions = document.querySelector(".sec-top-actions");
+    const refresh = document.getElementById("sec-refresh");
+    if (actions && refresh) actions.insertBefore(pill, refresh);
+    else if (actions) actions.appendChild(pill);
   } catch (_) { /* non-fatal: reads still work, writes 403 server-side */ }
 }
 
@@ -76,7 +85,7 @@ function boot() {
   document.getElementById("sec-burger").addEventListener("click", () => appEl.classList.toggle("nav-open"));
   window.addEventListener("hashchange", () => loadSection(currentKey()));
   appEl.setAttribute("aria-busy", "false");
-  applyPermissionBanner();
+  applyReadonlyIndicator();
   loadSection(currentKey());
 }
 
