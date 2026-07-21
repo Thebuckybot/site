@@ -23,12 +23,12 @@ export default {
       if (!top.length) {
         card.appendChild(el("p", { class: "sec-muted", text: "No incidents in the last 7 days." }));
       } else if (window.Chart) {
-        const canvas = el("canvas", { height: 120 });
-        card.appendChild(canvas);
+        const canvas = el("canvas");
+        card.appendChild(el("div", { class: "sec-chart" }, [canvas]));
         new window.Chart(canvas.getContext("2d"), {
           type: "bar",
           data: { labels: top.map((t) => t.module), datasets: [{ label: "Incidents", data: top.map((t) => t.count), backgroundColor: "#5865f2" }] },
-          options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: "#94a0bd" } }, y: { ticks: { color: "#94a0bd" }, beginAtZero: true } } },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: "#94a0bd" } }, y: { ticks: { color: "#94a0bd" }, beginAtZero: true } } },
         });
       } else {
         // graceful fallback bars if Chart.js did not load
@@ -49,12 +49,12 @@ export default {
       if (!pts.length) {
         tl.appendChild(el("p", { class: "sec-muted", text: "No incidents in the last 14 days." }));
       } else if (window.Chart) {
-        const canvas = el("canvas", { height: 120 });
-        tl.appendChild(canvas);
+        const canvas = el("canvas");
+        tl.appendChild(el("div", { class: "sec-chart" }, [canvas]));
         new window.Chart(canvas.getContext("2d"), {
           type: "line",
           data: { labels: pts.map((p) => p.day), datasets: [{ label: "Incidents", data: pts.map((p) => p.count), borderColor: "#5865f2", backgroundColor: "rgba(88,101,242,.2)", tension: .3, fill: true }] },
-          options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: "#94a0bd" } }, y: { ticks: { color: "#94a0bd" }, beginAtZero: true } } },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: "#94a0bd" } }, y: { ticks: { color: "#94a0bd" }, beginAtZero: true } } },
         });
       } else {
         pts.forEach((p) => tl.appendChild(el("div", { class: "sec-row", style: "margin:4px 0" }, [

@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { el, pageHeader, table, badge, toast, errorState, confirmDialog, emptyCard, alertBox } from "../ui.js";
+import { el, pageHeader, table, badge, toast, errorState, confirmDialog, emptyCard, alertBox, accordion } from "../ui.js";
 import { validJobId, isTerminal, pollOutcome } from "./recovery_poll.js";
 
 // SV2-MAN-006: the central RESTORE console — the ONLY structural execution surface.
@@ -230,31 +230,34 @@ export default {
           parts.push(el("div", { class: "sec-card", style: "margin-top:8px" }, [el("p", { text: msg })]));
           parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [mkGhost("New recovery", renderIdle)]));
         } else {
+          // Collapsible operation groups. Desktop shows them expanded (the richer
+          // experience); phones collapse them so a large recovery stays scannable.
+          const openByDefault = !window.matchMedia("(max-width: 820px)").matches;
           if (ops.length) {
-            parts.push(el("p", { class: "sec-muted", text: `${ops.length} operation(s) will run:` }));
-            parts.push(table([
+            parts.push(accordion({ title: "Operations to run", count: ops.length, open: openByDefault, body: () => table([
               { label: "Operation", render: (o) => o.type || "?" },
               { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
               { label: "Change", render: (o) => el("span", { class: "sec-muted", text: o.change_class || "" }) },
-            ], ops));
+            ], ops) }));
           }
           const deletes = ops.filter((o) => o.destructive);
           if (deletes.length) {
-            parts.push(alertBox({ kind: "danger", message: el("strong", { text: `${deletes.length} resource(s) will be DELETED (Full Restore):` }) }));
-            parts.push(table([
+            // The destructive warning stays ALWAYS visible; only the detail collapses.
+            parts.push(alertBox({ kind: "danger", message: el("strong", { text: `${deletes.length} resource(s) will be DELETED (Full Restore).` }) }));
+            parts.push(accordion({ title: "Resources to delete", count: deletes.length, tone: "danger", open: openByDefault, body: () => table([
               { label: "Type", render: (o) => o.resource || "?" },
               { label: "Name", render: (o) => (o.target && o.target.name) || "—" },
               { label: "Live id", render: (o) => el("code", { text: (o.target && o.target.id) || "—" }) },
               { label: "Why extra", render: (o) => el("span", { class: "sec-muted", text: o.reason || "" }) },
-            ], deletes));
+            ], deletes) }));
           }
           if (blocked.length) {
-            parts.push(alertBox({ kind: "warn", message: el("strong", { text: `${blocked.length} operation(s) are BLOCKED and will NOT run:` }) }));
-            parts.push(table([
+            parts.push(alertBox({ kind: "warn", message: el("strong", { text: `${blocked.length} operation(s) are BLOCKED and will NOT run.` }) }));
+            parts.push(accordion({ title: "Blocked operations", count: blocked.length, tone: "warn", open: openByDefault, body: () => table([
               { label: "Operation", render: (o) => o.type || "?" },
               { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
               { label: "Why", render: (o) => el("span", { class: "sec-muted", text: o.reason || o.safety || "" }) },
-            ], blocked));
+            ], blocked) }));
           }
           if ((job.unsupported || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.unsupported.length} unsupported difference(s) — not recoverable.` }));
           if (extras.length && !deletes.length) parts.push(el("p", { class: "sec-muted", text: `${extras.length} live resource(s) not in the snapshot will be KEPT.` }));

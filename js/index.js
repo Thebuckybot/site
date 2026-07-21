@@ -84,16 +84,23 @@ function init() {
   initNav();
   ScrollTrigger.config({ ignoreMobileResize: true });
 
-  if (REDUCE) {
-    document.body.classList.add("no-motion");
+  const mobile = window.matchMedia("(max-width: 820px)").matches;
+
+  // Phones & reduced-motion: keep it static and battery-friendly — no GSAP
+  // timelines, no infinite loops, no scroll-scrubbed parallax. Content is fully
+  // visible immediately; the CSS delivers the condensed vertical layout.
+  if (REDUCE || mobile) {
+    if (REDUCE) document.body.classList.add("no-motion");
     return;
   }
 
+  // Tablet + desktop: entrance reveals, coin float, hero parallax.
   initHero();
   initProductSections();
   initCoins();
+  // The horizontal pinned storytelling is a desktop / large-laptop experience only.
   ScrollTrigger.matchMedia({
-    "(min-width: 821px)": function () { initHorizontal(); },
+    "(min-width: 1025px)": function () { initHorizontal(); },
   });
 }
 

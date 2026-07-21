@@ -83,6 +83,10 @@ function boot() {
   buildSidebar(nav, navigate);
   document.getElementById("sec-refresh").addEventListener("click", () => loadSection(currentKey()));
   document.getElementById("sec-burger").addEventListener("click", () => appEl.classList.toggle("nav-open"));
+  // Mobile drawer: tap the scrim or press Escape to close it.
+  const scrim = document.getElementById("sec-scrim");
+  if (scrim) scrim.addEventListener("click", () => appEl.classList.remove("nav-open"));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") appEl.classList.remove("nav-open"); });
   window.addEventListener("hashchange", () => loadSection(currentKey()));
   appEl.setAttribute("aria-busy", "false");
   applyReadonlyIndicator();

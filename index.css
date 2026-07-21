@@ -156,13 +156,28 @@
   .feature-cards { grid-template-columns: 1fr; }
   .arcade-cards { grid-template-columns: 1fr 1fr; }
 }
-/* Stack the horizontal flagship on small screens (no pin) */
-@media (max-width: 820px) {
+/* Tablets & below (≤1024): stack the flagship vertically — no horizontal pin,
+   no sideways swiping. Desktop (≥1025) keeps the horizontal storytelling. */
+@media (max-width: 1024px) {
   .flagship { height: auto; overflow: visible; }
   .hwrap { display: block; width: 100%; }
-  .hpanel { width: 100%; height: auto; min-height: auto; padding: 70px 22px; }
+  .hpanel { width: 100%; height: auto; min-height: auto; padding: 84px 5vw; }
   .hrail { display: none; }
-  .browser img { max-height: none; }
+  .browser img, .intro-visual .browser img { max-height: none; }
+}
+/* ---- Mobile (≤820): a purpose-built, condensed vertical experience ----
+   Security intro (with the Overview image) + ONE representative dashboard
+   image (Recovery) + key features + CTA. No six-screenshot swipe. */
+@media (max-width: 820px) {
+  .hpanel { padding: 60px 22px; }
+  .flagship .m-hide { display: none; }          /* hide Modules / SOC / Thresholds / Emergency panels */
+  .showcase-step { display: none; }             /* drop the "0X / 06" tour markers */
+  /* Economy: a single hero coin instead of the 4-piece desktop composition */
+  .coin-2, .coin-3, .coin-4 { display: none; }
+  .coin-stage { position: static; height: auto; max-width: none; text-align: center; }
+  .coin-1 { position: static; width: 210px; max-width: 60%; margin: 0 auto; }
+  /* Shorter copy: keep the lead + bullets, drop the longer paragraph */
+  .product-text > p:not(.lead), .intro-text > p:not(.lead) { display: none; }
 }
 /* Reduced motion / no-JS-motion: stacked layout so all panels are reachable */
 body.no-motion .flagship { height: auto; overflow: visible; }
