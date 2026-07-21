@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cookie Policy — Bucky</title>
+  <meta name="description" content="How Bucky uses cookies and local storage." />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="public.css" />
+  <link rel="stylesheet" href="legal.css" />
+  <script src="js/nav-auth.js" type="module"></script>
+</head>
+<body>
+  <nav class="site-nav" id="site-nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><span class="mark">B</span><span>Bucky</span></a>
+      <button class="hamburger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <ul id="nav-menu"></ul>
+    </div>
+  </nav>
+
+  <header class="legal-hero">
+    <span class="eyebrow">Legal</span>
+    <h1>Cookie Policy</h1>
+    <p class="updated">Last updated: 21 July 2026</p>
+  </header>
+
+  <div class="legal-body">
+    <aside class="legal-toc">
+      <h4>On this page</h4>
+      <a href="#what">What are cookies</a>
+      <a href="#use">How Bucky uses them</a>
+      <a href="#types">Cookies &amp; storage we use</a>
+      <a href="#thirdparty">Third-party content</a>
+      <a href="#manage">Managing cookies</a>
+      <a href="#changes">Changes</a>
+      <a href="#contact">Contact</a>
+    </aside>
+
+    <main class="legal-content">
+      <h2 id="what">What are cookies?</h2>
+      <p>Cookies are small files stored by your browser. Similar technologies include <strong>localStorage</strong> and <strong>sessionStorage</strong>, which let a site remember information on your device. This policy covers all of these, together "cookies".</p>
+
+      <h2 id="use">How Bucky uses them</h2>
+      <p>Bucky uses only what is needed to sign you in and remember your preferences. We do not use advertising or cross-site tracking cookies, and we do not sell any data collected this way.</p>
+
+      <h2 id="types">Cookies &amp; storage we use</h2>
+      <table class="legal-table">
+        <thead><tr><th>Name</th><th>Type</th><th>Purpose</th><th>Duration</th></tr></thead>
+        <tbody>
+          <tr><td>Session cookie</td><td>Essential</td><td>Keeps you signed in to the dashboard after Discord authentication</td><td>Session</td></tr>
+          <tr><td>api_token</td><td>Essential (localStorage)</td><td>Authenticates dashboard API requests</td><td>Until logout</td></tr>
+          <tr><td>Onboarding / UI preferences</td><td>Functional (localStorage)</td><td>Remembers dashboard tour progress and interface preferences</td><td>Until cleared</td></tr>
+        </tbody>
+      </table>
+      <p>Essential cookies are required for the Service to function and cannot be switched off from within the app. Functional storage improves your experience and can be cleared at any time from your browser.</p>
+
+      <h2 id="thirdparty">Third-party content</h2>
+      <p>The site loads a small number of resources from third parties (for example, web fonts and script libraries from their content-delivery networks). These providers may set their own cookies or receive your IP address as part of serving that content. We keep such dependencies to a minimum.</p>
+
+      <h2 id="manage">Managing cookies</h2>
+      <p>You can clear or block cookies and local storage through your browser settings, and you can sign out of the dashboard to remove your session token. Blocking essential cookies will prevent the dashboard from working.</p>
+
+      <h2 id="changes">Changes to this policy</h2>
+      <p>We may update this Cookie Policy as the Service evolves. Changes will be posted here with an updated date.</p>
+
+      <h2 id="contact">Contact</h2>
+      <p>Questions about cookies? Reach us through the <a href="contact.html">Contact</a> page. See also our <a href="privacy.html">Privacy Policy</a>.</p>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a class="brand" href="index.html"><span class="mark">B</span><span>Bucky</span></a>
+        <p>Security, economy and interactive storytelling for your Discord server — one platform, endlessly configurable.</p>
+      </div>
+      <div class="footer-col"><h4>Product</h4>
+        <a href="index.html#security">Security</a><a href="dashboard.html">Dashboard</a><a href="arcade.html">Arcade</a>
+        <a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&scope=bot%20applications.commands&permissions=8">Invite Bucky</a>
+      </div>
+      <div class="footer-col"><h4>Legal &amp; support</h4>
+        <a href="privacy.html">Privacy Policy</a><a href="tos.html">Terms of Service</a><a href="cookie.html">Cookie Policy</a><a href="contact.html">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 Bucky Bot. All rights reserved.</div>
+  </footer>
+
+  <script>
+    (function(){var hb=document.querySelector('.hamburger'),m=document.getElementById('nav-menu');if(!hb||!m)return;
+    hb.addEventListener('click',function(){var o=hb.getAttribute('aria-expanded')==='true';hb.setAttribute('aria-expanded',String(!o));hb.classList.toggle('open');m.classList.toggle('open');});})();
+  </script>
+</body>
+</html>

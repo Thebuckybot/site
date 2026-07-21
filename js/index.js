@@ -1,375 +1,100 @@
+/* Bucky landing — GSAP scroll experience (dark V2).
+   Horizontal-pinned Security flagship showcase, hero intro/parallax, reveals,
+   and a progress rail. Fully honours prefers-reduced-motion. */
 gsap.registerPlugin(ScrollTrigger);
+gsap.config({ nullTargetWarn: false });
 
-/* =====================================================
-   GLOBAL SETTINGS
-===================================================== */
+const REDUCE = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-gsap.config({
-  nullTargetWarn: false
-});
-
-/* =====================================================
-   NAVBAR TRANSFORM
-===================================================== */
-
-function initNavbar() {
-
-  gsap.to(".navbar", {
-    scrollTrigger: {
-      trigger: ".hero",
-      start: "bottom top",
-      toggleActions: "play none none reverse"
-    },
-    backgroundColor: "rgba(255,255,255,0.95)",
-    paddingTop: "0.5rem",
-    paddingBottom: "0.5rem",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-    duration: 0.3,
-    ease: "power2.out"
-  });
-
+function initNav() {
+  const nav = document.querySelector(".site-nav");
+  if (!nav) return;
+  const sync = () => nav.classList.toggle("scrolled", window.scrollY > 40);
+  sync();
+  window.addEventListener("scroll", sync, { passive: true });
 }
 
-/* =====================================================
-   HERO INTRO ANIMATION
-===================================================== */
-
-function initHeroIntro() {
-
+function initHero() {
   const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-
-  tl.from(".hero-text h1", {
-    y: 80,
-    opacity: 0,
-    duration: 1
-  })
-  .from(".hero-text p", {
-    y: 40,
-    opacity: 0,
-    duration: 0.8
-  }, "-=0.6")
-  .from(".cta-btn", {
-    y: 30,
-    opacity: 1,
-    duration: 0.6
-  }, "-=0.6")
-}
-
-/* =====================================================
-   HERO PARALLAX
-===================================================== */
-
-function initHeroParallax() {
-
-  gsap.to(".bucky", {
-    scrollTrigger: {
-      trigger: ".hero",
-      start: "top top",
-      end: "bottom top",
-      scrub: true
-    },
-    y: 760,
-    x: 200,
-    scale: 0.45,
-    rotate: 250,
-    ease: "none"
+  tl.from(".hero-eyebrow", { y: 20, opacity: 0, duration: 0.6 })
+    .from(".hero-text h1", { y: 44, opacity: 0, duration: 0.9 }, "-=0.3")
+    .from(".hero-text p", { y: 30, opacity: 0, duration: 0.7 }, "-=0.6")
+    .from(".hero-cta", { y: 24, opacity: 0, duration: 0.6 }, "-=0.5")
+    .from(".hero-visual img", { scale: 0.9, opacity: 0, duration: 1.0 }, "-=0.8");
+  gsap.to(".hero-visual img", {
+    yPercent: 12,
+    scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true },
   });
-
-  gsap.to(".hero-text", {
-    scrollTrigger: {
-      trigger: ".hero",
-      start: "top top",
-      end: "bottom top",
-      scrub: true
-    },
-    y: -220,
-    opacity: 0,
-    ease: "none"
-  });
-
 }
-
-/* =====================================================
-   HORIZONTAL MASTER
-===================================================== */
 
 function initHorizontal() {
+  const wrap = document.querySelector(".hwrap");
+  const panels = gsap.utils.toArray(".hpanel");
+  const rail = document.getElementById("hrail");
+  if (!wrap || panels.length < 2) return;
 
-  const horizontalWrapper = document.querySelector(".horizontal-wrapper");
-  const panels = gsap.utils.toArray(".panel");
-
-  const horizontalTween = gsap.to(panels, {
-    xPercent: -100 * (panels.length - 1),
-    ease: "none"
-  });
+  const tween = gsap.to(panels, { xPercent: -100 * (panels.length - 1), ease: "none" });
 
   ScrollTrigger.create({
-    trigger: ".horizontal-section",
+    trigger: ".flagship",
     start: "top top",
-    end: () => "+=" + horizontalWrapper.offsetWidth,
+    end: () => "+=" + wrap.offsetWidth,
     pin: true,
-    scrub: true,
-    animation: horizontalTween
+    scrub: 0.6,
+    animation: tween,
+    invalidateOnRefresh: true,
+    onUpdate: (self) => { if (rail) rail.style.width = (self.progress * 100).toFixed(2) + "%"; },
   });
 
-  panels.forEach(panel => {
-
-    gsap.from(panel.querySelectorAll("h2, p, li"), {
-      opacity: 0,
-      y: 60,
-      duration: 0.8,
-      stagger: 0.08,
-      ease: "power2.out",
-      scrollTrigger: {
-        trigger: panel,
-        containerAnimation: horizontalTween,
-        start: "center 75%",
-        toggleActions: "play none none reverse"
-      }
-    });
-
-  });
-
-  return horizontalTween;
-
-}
-
-/* =====================================================
-   CURRENCY FLOAT ANIMATION
-===================================================== */
-
-function initCurrencyFloat() {
-
-  gsap.utils.toArray(".currency-item").forEach((item, i) => {
-
-    gsap.to(item, {
-      y: -20,
-      duration: 2 + i,
-      repeat: -1,
-      yoyo: true,
-      ease: "sine.inOut"
-    });
-
-  });
-
-}
-
-/* =====================================================
-   ARCADE CARD HOVER
-===================================================== */
-
-function initArcadeCards() {
-
-  const cards = document.querySelectorAll(".game-card");
-
-  cards.forEach(card => {
-
-    card.addEventListener("mouseenter", () => {
-      gsap.to(card, {
-        scale: 1.05,
-        rotateY: 8,
-        duration: 0.4,
-        ease: "power2.out"
+  panels.forEach((p) => {
+    const items = p.querySelectorAll("[data-rv]");
+    if (items.length) {
+      gsap.from(items, {
+        opacity: 0, y: 50, duration: 0.7, stagger: 0.08, ease: "power2.out",
+        scrollTrigger: { trigger: p, containerAnimation: tween, start: "left 68%", toggleActions: "play none none reverse" },
       });
-    });
-
-    card.addEventListener("mouseleave", () => {
-      gsap.to(card, {
-        scale: 1,
-        rotateY: 0,
-        duration: 0.4,
-        ease: "power2.out"
+    }
+    const frame = p.querySelector(".browser");
+    if (frame) {
+      gsap.from(frame, {
+        opacity: 0, scale: 0.92, y: 40, duration: 0.9, ease: "power2.out",
+        scrollTrigger: { trigger: p, containerAnimation: tween, start: "left 78%", toggleActions: "play none none reverse" },
       });
-    });
-
-  });
-
-}
-
-/* =====================================================
-   BACKGROUND COLOR TRANSITIONS
-===================================================== */
-
-function initBackgroundTransitions(horizontalTween) {
-
-  const panels = gsap.utils.toArray(".panel");
-
-  panels.forEach(panel => {
-
-    ScrollTrigger.create({
-      trigger: panel,
-      containerAnimation: horizontalTween,
-      start: "center center",
-      onEnter: () => {
-        gsap.to("body", {
-          backgroundColor: getComputedStyle(panel).backgroundColor,
-          duration: 0.6
-        });
-      },
-      onEnterBack: () => {
-        gsap.to("body", {
-          backgroundColor: getComputedStyle(panel).backgroundColor,
-          duration: 0.6
-        });
-      }
-    });
-
-  });
-
-}
-
-
-
-
-/* =====================================================
-   PANEL IMAGE DEPTH
-===================================================== */
-
-function initPanelDepth(horizontalTween) {
-
-  gsap.utils.toArray(".panel-image").forEach(img => {
-
-    gsap.from(img, {
-      scale: 0.85,
-      y: 80,
-      opacity: 0,
-      duration: 1,
-      scrollTrigger: {
-        trigger: img,
-        containerAnimation: horizontalTween,
-        start: "left center",
-        toggleActions: "play none none reverse"
-      }
-    });
-
-  });
-
-}
-
-/* =====================================================
-   PANEL LINK REVEAL
-===================================================== */
-
-function initPanelLinks(horizontalTween) {
-
-  gsap.utils.toArray(".panel-link").forEach(link => {
-
-    gsap.from(link, {
-      x: -30,
-      opacity: 0,
-      duration: 0.6,
-      scrollTrigger: {
-        trigger: link,
-        containerAnimation: horizontalTween,
-        start: "left 80%"
-      }
-    });
-
-  });
-
-}
-
-/* =====================================================
-   CURRENCY CHAOS MOTION
-===================================================== */
-
-function initCurrencyChaos() {
-
-  gsap.utils.toArray(".currency-item").forEach((item, i) => {
-
-    gsap.to(item, {
-      y: "random(-40, 40)",
-      x: "random(-20, 20)",
-      rotation: "random(-20, 20)",
-      duration: 6 + i,
-      repeat: -1,
-      yoyo: true,
-      ease: "sine.inOut"
-    });
-
-  });
-
-}
-
-
-/* =====================================================
-   NAVBAR HORIZONTAL MODE (FIXED)
-===================================================== */
-
-function initHorizontalNavbar(horizontalTween) {
-
-  ScrollTrigger.create({
-    trigger: ".horizontal-section",
-    start: "top top",
-    end: () => "+=" + document.querySelector(".horizontal-wrapper").offsetWidth,
-    scrub: false,
-    onEnter: () => {
-      document.querySelector(".navbar")
-        .classList.add("nav-horizontal");
-    },
-    onEnterBack: () => {
-      document.querySelector(".navbar")
-        .classList.add("nav-horizontal");
-    },
-    onLeave: () => {
-      document.querySelector(".navbar")
-        .classList.remove("nav-horizontal");
-    },
-    onLeaveBack: () => {
-      document.querySelector(".navbar")
-        .classList.remove("nav-horizontal");
     }
   });
-
 }
 
-
-/* =====================================================
-   INIT (RESPONSIVE VIA MATCHMEDIA)
-===================================================== */
+function initReveals() {
+  gsap.utils.toArray(".fcard").forEach((c, i) => {
+    gsap.from(c, {
+      opacity: 0, y: 40, duration: 0.6, delay: (i % 3) * 0.06, ease: "power2.out",
+      scrollTrigger: { trigger: c, start: "top 86%", toggleActions: "play none none reverse" },
+    });
+  });
+  const finalKids = document.querySelectorAll(".final-inner > *");
+  if (finalKids.length) {
+    gsap.from(finalKids, {
+      opacity: 0, y: 30, duration: 0.7, stagger: 0.1, ease: "power2.out",
+      scrollTrigger: { trigger: ".final", start: "top 78%" },
+    });
+  }
+}
 
 function init() {
+  initNav();
+  ScrollTrigger.config({ ignoreMobileResize: true });
 
-  // Algemene animaties (altijd)
-  initNavbar();
-  initHeroIntro();
-  initHeroParallax();
+  if (REDUCE) {
+    // No motion: stack the flagship so every panel is reachable, no animation.
+    document.body.classList.add("no-motion");
+    return;
+  }
 
-  // Voorkomt iOS resize chaos
-  ScrollTrigger.config({
-    ignoreMobileResize: true
-  });
-
+  initHero();
   ScrollTrigger.matchMedia({
-
-    /* ================= MOBILE ================= */
-    "(max-width: 768px)": function() {
-
-      // Geen horizontal scroll
-      initCurrencyFloat();
-      initCurrencyChaos();
-      initArcadeCards();
-
-    },
-
-    /* ================= TABLET + DESKTOP ================= */
-    "(min-width: 769px)": function() {
-
-      const horizontalTween = initHorizontal();
-
-      initHorizontalNavbar(horizontalTween);
-      initBackgroundTransitions(horizontalTween);
-      initPanelDepth(horizontalTween);
-      initPanelLinks(horizontalTween);
-
-      initCurrencyFloat();
-      initCurrencyChaos();
-      initArcadeCards();
-
-    }
-
+    "(min-width: 821px)": function () { initHorizontal(); initReveals(); },
+    "(max-width: 820px)": function () { initReveals(); },
   });
-
 }
 
 window.addEventListener("load", init);

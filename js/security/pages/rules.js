@@ -1,5 +1,5 @@
 import { soc, api } from "../api.js";
-import { el, pageHeader, table, badge, toggle, toast, errorState, confirmDialog, emptyCard } from "../ui.js";
+import { el, pageHeader, table, badge, toggle, toast, errorState, confirmDialog, emptyCard, alertBox } from "../ui.js";
 const READONLY_TIP = "Only the Server Owner or a Trusted Administrator can modify Security settings.";
 
 // SOC rules ARE user-created (unlike the predefined module chains). This page
@@ -31,12 +31,11 @@ export default {
       if (!usage || !usage.at_limit) return null;
       const ladder = (usage.premium || []).map((p) =>
         el("li", { text: `${p.tier.replace("_", " ")}: ${p.soc_rules == null ? "Unlimited" : p.soc_rules + " rules"}` }));
-      return el("div", { class: "sec-card sec-premium-card" }, [
-        el("div", { class: "sec-empty-title", text: "Maximum rules reached" }),
-        el("p", { class: "sec-muted", text: `You are using all ${usage.limit} rules on the Free plan. Upgrade to Bucky Premium to unlock more:` }),
-        el("ul", { class: "sec-premium-list" }, ladder),
+      return alertBox({ kind: "premium", title: "Maximum rules reached", icon: el("span", { text: "★" }), message: el("div", {}, [
+        el("p", { class: "sec-muted", style: "margin:0 0 8px", text: `You are using all ${usage.limit} rules on the Free plan. Upgrade to Bucky Premium to unlock more:` }),
+        el("ul", { class: "sec-premium-list", style: "margin:0 0 8px" }, ladder),
         el("span", { class: "sec-badge muted", text: "Premium — coming soon" }),
-      ]);
+      ]) });
     };
 
     const draw = () => {

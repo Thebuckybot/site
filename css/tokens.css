@@ -1,0 +1,95 @@
+/* Bucky Platform — shared design tokens (Dashboard UI V2 foundation).
+   Single source of truth for colour, spacing, type, radius, elevation, motion
+   and z-index. Imported by every surface (dashboard, landing, legal) so the
+   three stylesheets stop redefining the same values.
+
+   Purely ADDITIVE: existing --sec-* / --bucky-* variables keep working. This
+   file fills the gaps the codebase never tokenised (spacing, type scale,
+   motion, z-index) and provides canonical brand tokens the other stylesheets
+   can migrate onto over time. Nothing here overrides existing dashboard styling. */
+:root {
+  /* Brand crimson ramp */
+  --bk-red-900: #5f1329;
+  --bk-red-700: #7a1a37;
+  --bk-red:     #8B1E3F;
+  --bk-red-500: #a3264d;
+  --bk-red-300: #c24f6f;
+  --bk-red-100: #e7b9c6;
+  --bk-red-soft: rgba(139, 30, 63, 0.18);
+  --bk-glow:     0 6px 20px rgba(139, 30, 63, 0.30);
+  --bk-glow-lg:  0 12px 34px rgba(139, 30, 63, 0.38);
+
+  /* Dark surfaces (dashboard) */
+  --bk-bg-1:   #0b0f16;
+  --bk-bg-2:   #141a26;
+  --bk-panel:  #151b28;
+  --bk-panel-2:#1c2434;
+  --bk-panel-3:#26324a;
+  --bk-border:        rgba(255, 255, 255, 0.07);
+  --bk-border-strong: rgba(255, 255, 255, 0.12);
+  --bk-text:  #eef1f6;
+  --bk-muted: #a7b0c2;                 /* nudged lighter than #98a2b8 for AA */
+
+  /* Light surfaces (landing / legal) */
+  --bk-l-bg:      #f4f5f7;
+  --bk-l-surface: #ffffff;
+  --bk-l-text:    #111318;
+  --bk-l-muted:   #5a6172;
+  --bk-l-border:  rgba(0, 0, 0, 0.08);
+
+  /* Semantic */
+  --bk-green:  #3fb96b;
+  --bk-amber:  #e0a53a;
+  --bk-danger: #d64f4f;
+  --bk-green-soft:  rgba(63, 185, 107, 0.15);
+  --bk-amber-soft:  rgba(224, 165, 58, 0.15);
+  --bk-danger-soft: rgba(214, 79, 79, 0.15);
+
+  /* Spacing scale (4px base) */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 48px;
+
+  /* Radius */
+  --radius-sm: 12px; --radius: 18px; --radius-lg: 24px; --radius-pill: 999px;
+
+  /* Type scale + weight ladder */
+  --fs-xs: 11px; --fs-sm: 12.5px; --fs-base: 14px; --fs-md: 16px;
+  --fs-lg: 20px; --fs-xl: 22px; --fs-2xl: 28px; --fs-3xl: 36px; --fs-4xl: 48px;
+  --fw-regular: 400; --fw-medium: 600; --fw-semibold: 700; --fw-bold: 800;
+  --font-sans: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+
+  /* Elevation */
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.30);
+  --shadow:    0 14px 34px rgba(0, 0, 0, 0.45);
+
+  /* Motion */
+  --dur-fast: 0.15s; --dur: 0.25s; --dur-slow: 0.4s;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Z-index scale (named, replaces the ad-hoc 5/40/50/60/9999 spread) */
+  --z-base: 1; --z-topbar: 10; --z-drawer: 40; --z-toast: 50;
+  --z-modal: 60; --z-tooltip: 70; --z-tour: 80;
+}
+
+/* Spacing / layout utilities — used to retire scattered inline styles. */
+.u-stack > * + *    { margin-top: var(--space-4); }
+.u-stack-sm > * + * { margin-top: var(--space-2); }
+.u-row     { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.u-cluster { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.u-spacer  { flex: 1; }
+.mt-1 { margin-top: var(--space-1); } .mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); } .mt-4 { margin-top: var(--space-4); }
+.mt-5 { margin-top: var(--space-5); } .mt-6 { margin-top: var(--space-6); }
+
+/* Respect the OS "reduce motion" setting everywhere this file is loaded.
+   (JS-driven GSAP timelines need their own guard; handled separately.) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

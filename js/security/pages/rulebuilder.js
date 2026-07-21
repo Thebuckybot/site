@@ -6,7 +6,7 @@
 // ui.js helpers, the crimson design language and the unified `soc` API client
 // (which talks to /api/security/soc/*). No functionality was dropped.
 import { soc, api } from "../api.js";
-import { el, clear, pageHeader, badge, toast, errorState, fmtTime } from "../ui.js";
+import { el, clear, pageHeader, badge, toast, errorState, fmtTime, alertBox } from "../ui.js";
 
 function usageBadge(u) {
   if (!u) return el("span", {});
@@ -17,12 +17,11 @@ function usageBadge(u) {
 function premiumNotice(u) {
   const ladder = (u.premium || []).map((p) =>
     el("li", { text: `${p.tier.replace("_", " ")}: ${p.soc_rules == null ? "Unlimited" : p.soc_rules + " rules"}` }));
-  return el("div", { class: "sec-card sec-premium-card", style: "margin-top:16px" }, [
-    el("div", { class: "sec-empty-title", text: "Maximum rules reached" }),
-    el("p", { class: "sec-muted", text: `You are using all ${u.limit} rules on the Free plan. Upgrade to Bucky Premium to unlock more:` }),
-    el("ul", { class: "sec-premium-list" }, ladder),
+  return alertBox({ kind: "premium", title: "Maximum rules reached", icon: el("span", { text: "★" }), message: el("div", {}, [
+    el("p", { class: "sec-muted", style: "margin:0 0 8px", text: `You are using all ${u.limit} rules on the Free plan. Upgrade to Bucky Premium to unlock more:` }),
+    el("ul", { class: "sec-premium-list", style: "margin:0 0 8px" }, ladder),
     el("span", { class: "sec-badge muted", text: "Premium — coming soon" }),
-  ]);
+  ]) });
 }
 
 const MAX_CONDITIONS = 3;
@@ -194,10 +193,8 @@ export default {
       root.appendChild(pageHeader("Rule Builder",
         "Compose custom SOC detection rules — WHEN an event fires, IF conditions match, THEN run actions. Part of the Security Center."));
       root.appendChild(el("div", { class: "sec-actions", style: "margin-bottom:12px" }, [usageBadge(usage)]));
-      if (!canEdit) root.appendChild(el("div", { class: "sec-readonly-banner" }, [
-        el("span", { class: "ic", text: "🔒" }),
-        el("span", { text: "Read-only — only the Server Owner or a Trusted Administrator can create or edit SOC rules. You can view existing rules below." }),
-      ]));
+      if (!canEdit) root.appendChild(alertBox({ kind: "warn", icon: el("span", { text: "🔒" }),
+        message: "Read-only — only the Server Owner or a Trusted Administrator can create or edit SOC rules. You can view existing rules below." }));
       if (atLimit && canEdit) root.appendChild(premiumNotice(usage));
 
       const eventSelect = el("select", { id: "sec-rb-event", class: "sec-select sec-rb-event" },

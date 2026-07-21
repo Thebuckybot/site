@@ -3,95 +3,118 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Privacy Policy - Bucky</title>
-  <link rel="stylesheet" href="style-old.css" />
+  <title>Privacy Policy — Bucky</title>
+  <meta name="description" content="How Bucky collects, uses, stores and protects your data." />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="public.css" />
+  <link rel="stylesheet" href="legal.css" />
   <script src="js/nav-auth.js" type="module"></script>
 </head>
 <body>
-  <div class="container">
-    <!-- Navigation bar -->
-    <nav>
-      <div class="nav-left">
-        <img class="nav-pfp" src="pics/buckypfp.JPEG" alt="Bucky Profile Picture" />
-        <h1><a href="index.html">Bucky</a></h1>
-      </div>
+  <nav class="site-nav" id="site-nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><span class="mark">B</span><span>Bucky</span></a>
+      <button class="hamburger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <ul id="nav-menu"></ul>
+    </div>
+  </nav>
 
-      <button class="hamburger" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu">
-        <div></div>
-        <div></div>
-        <div></div>
-      </button>
+  <header class="legal-hero">
+    <span class="eyebrow">Legal</span>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: 21 July 2026</p>
+  </header>
 
-      <ul id="nav-menu">
-        <li><a href="tos.html">Terms of Service</a></li>
-        <li><a href="privacy.html" aria-current="page">Privacy Policy</a></li>
-        <!-- Login of Dashboard knop wordt door nav-auth.js toegevoegd -->
-      </ul>
-    </nav>
+  <div class="legal-body">
+    <aside class="legal-toc">
+      <h4>On this page</h4>
+      <a href="#intro">Overview</a>
+      <a href="#collect">What we collect</a>
+      <a href="#use">How we use it</a>
+      <a href="#basis">Lawful basis</a>
+      <a href="#retention">Retention</a>
+      <a href="#sharing">Sharing &amp; processors</a>
+      <a href="#rights">Your rights</a>
+      <a href="#security">Security</a>
+      <a href="#children">Children</a>
+      <a href="#changes">Changes</a>
+      <a href="#contact">Contact</a>
+    </aside>
 
+    <main class="legal-content">
+      <h2 id="intro">Overview</h2>
+      <p>This Privacy Policy explains how Bucky ("Bucky", "we", "our" or "us") collects, uses, stores and protects information when you use the Bucky Discord bot, dashboard and related services (together, the "Service"). We collect the minimum data required to operate the Service and we never sell it.</p>
+      <div class="legal-card"><p>By adding Bucky to a server or signing in to the dashboard, you agree to the practices described here and in our <a href="tos.html">Terms of Service</a> and <a href="cookie.html">Cookie Policy</a>.</p></div>
 
-    <!-- Main content -->
-    <main>
-      <h2>Privacy Policy</h2>
+      <h2 id="collect">Information we collect</h2>
+      <p>We collect only what is needed to provide each feature. Application answers, message contents and direct messages are not stored.</p>
+      <table class="legal-table">
+        <thead><tr><th>Category</th><th>Examples</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Discord identifiers</td><td>User ID, Server (guild) ID, role &amp; channel IDs</td><td>Associate settings and data with the right account and server</td></tr>
+          <tr><td>Security configuration</td><td>Module toggles, thresholds, punishment chains, ignore rules, SOC rules</td><td>Run and enforce your server's protection</td></tr>
+          <tr><td>Security events</td><td>Incident metadata, audit-log derived events, quarantine records, snapshots of server structure</td><td>Detection, recovery and the audit trail</td></tr>
+          <tr><td>Economy &amp; gameplay</td><td>Balances, inventory, level/progression, mission &amp; arc state</td><td>Power the economy, arcade and story features</td></tr>
+          <tr><td>Reminders</td><td>Reminder text and scheduled time</td><td>Deliver reminders you create</td></tr>
+          <tr><td>Technical</td><td>Session token, IP address at sign-in, basic request logs</td><td>Authentication, security and abuse prevention</td></tr>
+        </tbody>
+      </table>
 
-      <p>This Privacy Policy describes how Bucky ("we", "our", or "us") collects, uses, and stores your information when you use our Discord bot (the "Service").</p>
+      <h2 id="use">How we use your information</h2>
+      <p>Your data is used solely to operate and improve the Service: authenticating dashboard access, enforcing security settings, powering the economy and story systems, delivering reminders, and diagnosing problems. We do <strong>not</strong> sell, rent or monetise your data, and we do not use it for advertising.</p>
 
-      <h3>Information We Collect</h3>
-      <p>We collect only the information necessary to provide core functionality of the bot. This includes:</p>
+      <h2 id="basis">Lawful basis for processing</h2>
+      <p>Where the GDPR or similar laws apply, we rely on: <strong>performance of a contract</strong> (to provide features you request), <strong>legitimate interests</strong> (to keep servers secure and prevent abuse), and <strong>consent</strong> (for optional cookies, withdrawable at any time).</p>
+
+      <h2 id="retention">Data retention</h2>
+      <p>We keep data for as long as it is needed to provide the Service. Security snapshots and incident records are retained to support recovery and the audit trail; you can delete snapshots from the dashboard. If Bucky is removed from a server, associated configuration and security data may be deleted after a reasonable period unless earlier deletion is requested.</p>
+
+      <h2 id="sharing">Sharing &amp; sub-processors</h2>
+      <p>We do not share personal data with third parties for their own purposes. We rely on a small number of processors to run the Service:</p>
       <ul>
-        <li><strong>User ID:</strong> Used to associate data with your Discord account.</li>
-        <li><strong>Server ID:</strong> Stored for features like server-specific settings and application tracking.</li>
-        <li><strong>Economy Data:</strong> Including currency balances (cash, bank), inventory, level progression, and shop items.</li>
-        <li><strong>Applications:</strong> Only your User ID and the Server ID where you applied are stored. Application answers are not saved.</li>
-        <li><strong>Reminders:</strong> Content and scheduled time of reminders you set using the bot.</li>
+        <li><strong>Discord</strong> — the platform the Service operates on; governed by Discord's own <a href="https://discord.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</li>
+        <li><strong>Hosting &amp; database providers</strong> — to store configuration and run the bot and dashboard.</li>
       </ul>
+      <p>We may disclose information if required by law or to protect the rights, safety and security of our users and the Service.</p>
 
-      <h3>How We Use Your Information</h3>
-      <p>Your data is used solely to power the features of the bot, such as currency systems, reminders, applications, leaderboards, and profiles.</p>
-      <p>We do <strong>not</strong> sell, share, or monetize your data.</p>
+      <h2 id="rights">Your rights</h2>
+      <p>Depending on your location, you may have the right to access, correct, export or delete your data, to object to or restrict certain processing, and to withdraw consent. To exercise any of these, contact us via the <a href="contact.html">Contact</a> page with your Discord User ID. We respond to verified requests within a reasonable timeframe.</p>
 
-      <h3>Data Retention</h3>
-      <p>We store your data as long as it is needed for bot functionality. If you leave a server or stop using the bot, your data may remain stored unless a deletion request is made.</p>
+      <h2 id="security">Security</h2>
+      <p>We use industry-standard measures to protect your data, including encrypted transport, scoped access tokens and least-privilege access to production systems. No method of transmission or storage is completely secure, but we work to protect your information and to promptly address any issues.</p>
 
-      <h3>Third-Party Services</h3>
-      <p>We do not share your personal data with third-party services. However, Discord may collect and handle data independently as described in their <a href="https://discord.com/privacy" target="_blank">Privacy Policy</a>.</p>
+      <h2 id="children">Children's privacy</h2>
+      <p>The Service is not directed to anyone under the minimum age required to use Discord in their country (at least 13). We do not knowingly collect data from children below that age. If you believe a child has provided us data, contact us and we will delete it.</p>
 
-      <h3>Data Deletion</h3>
-      <p>You can request your data to be deleted by contacting us via Discord. Please include your User ID and Discord tag.</p>
+      <h2 id="changes">Changes to this policy</h2>
+      <p>We may update this policy from time to time. Material changes will be reflected here with an updated date, and where appropriate we will provide additional notice.</p>
 
-      <h3>Security</h3>
-      <p>We use standard practices to protect your data from unauthorized access or disclosure. However, no method of transmission over the internet is completely secure.</p>
-
-      <h3>Changes to This Policy</h3>
-      <p>We may update this Privacy Policy at any time. Changes will be reflected on this page with an updated effective date.</p>
-
-      <h3>Contact</h3>
-      <p>If you have any questions about this policy, you can contact us:</p>
-      <ul>
-        <li>Via Discord ticket in our support server</li>
-        <li>Or by messaging the bot owner directly</li>
-      </ul>
-
-      <a class="back-link" href="index.html">← Back to Home</a>
+      <h2 id="contact">Contact</h2>
+      <p>Questions about privacy or a data request? Reach us through the <a href="contact.html">Contact</a> page or our Discord support server.</p>
     </main>
-
-    <!-- Footer -->
-    <footer>
-      &copy; 2025 Bucky Bot. All rights reserved.
-    </footer>
   </div>
 
-  <!-- Hamburger menu script -->
-  <script>
-    const hamburger = document.querySelector('.hamburger');
-    const navMenu = document.getElementById('nav-menu');
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a class="brand" href="index.html"><span class="mark">B</span><span>Bucky</span></a>
+        <p>Security, economy and interactive storytelling for your Discord server — one platform, endlessly configurable.</p>
+      </div>
+      <div class="footer-col"><h4>Product</h4>
+        <a href="index.html#security">Security</a><a href="dashboard.html">Dashboard</a><a href="arcade.html">Arcade</a>
+        <a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&scope=bot%20applications.commands&permissions=8">Invite Bucky</a>
+      </div>
+      <div class="footer-col"><h4>Legal &amp; support</h4>
+        <a href="privacy.html">Privacy Policy</a><a href="tos.html">Terms of Service</a><a href="cookie.html">Cookie Policy</a><a href="contact.html">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 Bucky Bot. All rights reserved.</div>
+  </footer>
 
-    hamburger.addEventListener('click', () => {
-      const expanded = hamburger.getAttribute('aria-expanded') === 'true';
-      hamburger.setAttribute('aria-expanded', !expanded);
-      hamburger.classList.toggle('open');
-      navMenu.classList.toggle('open');
-    });
+  <script>
+    (function(){var hb=document.querySelector('.hamburger'),m=document.getElementById('nav-menu');if(!hb||!m)return;
+    hb.addEventListener('click',function(){var o=hb.getAttribute('aria-expanded')==='true';hb.setAttribute('aria-expanded',String(!o));hb.classList.toggle('open');m.classList.toggle('open');});})();
   </script>
 </body>
 </html>

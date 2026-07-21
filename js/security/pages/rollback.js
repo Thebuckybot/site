@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { el, pageHeader, table, badge, toast, errorState, confirmDialog, emptyCard } from "../ui.js";
+import { el, pageHeader, table, badge, toast, errorState, confirmDialog, emptyCard, alertBox } from "../ui.js";
 import { validJobId, isTerminal, pollOutcome } from "./recovery_poll.js";
 
 // SV2-MAN-006: the central RESTORE console — the ONLY structural execution surface.
@@ -240,8 +240,7 @@ export default {
           }
           const deletes = ops.filter((o) => o.destructive);
           if (deletes.length) {
-            parts.push(el("div", { class: "sec-warn", style: "margin-top:8px" }, [
-              el("strong", { text: `${deletes.length} resource(s) will be DELETED (Full Restore):` })]));
+            parts.push(alertBox({ kind: "danger", message: el("strong", { text: `${deletes.length} resource(s) will be DELETED (Full Restore):` }) }));
             parts.push(table([
               { label: "Type", render: (o) => o.resource || "?" },
               { label: "Name", render: (o) => (o.target && o.target.name) || "—" },
@@ -250,8 +249,7 @@ export default {
             ], deletes));
           }
           if (blocked.length) {
-            parts.push(el("div", { class: "sec-warn", style: "margin-top:8px" }, [
-              el("strong", { text: `${blocked.length} operation(s) are BLOCKED and will NOT run:` })]));
+            parts.push(alertBox({ kind: "warn", message: el("strong", { text: `${blocked.length} operation(s) are BLOCKED and will NOT run:` }) }));
             parts.push(table([
               { label: "Operation", render: (o) => o.type || "?" },
               { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
@@ -262,10 +260,9 @@ export default {
           if (extras.length && !deletes.length) parts.push(el("p", { class: "sec-muted", text: `${extras.length} live resource(s) not in the snapshot will be KEPT.` }));
 
           if (!executable) {
-            parts.push(el("div", { class: "sec-card sec-card-warn", style: "margin-top:8px" }, [
-              el("p", { class: "sec-muted", text: blocked.length
-                ? "This plan cannot be executed while it contains blocked operations (duplicate-identity or corrupted-name risk). Resolve them, then regenerate the preview."
-                : "There is nothing safe to execute in this plan." })]));
+            parts.push(alertBox({ kind: "warn", message: blocked.length
+              ? "This plan cannot be executed while it contains blocked operations (duplicate-identity or corrupted-name risk). Resolve them, then regenerate the preview."
+              : "There is nothing safe to execute in this plan." }));
             parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [mkGhost("New recovery", renderIdle)]));
           } else {
             const runBtn = el("button", { class: `sec-btn ${destructive ? "sec-btn-danger" : "sec-btn-primary"}`,

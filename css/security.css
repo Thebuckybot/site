@@ -409,3 +409,136 @@ body.sec-readonly .sec-write { display: none !important; }
   box-shadow: 0 0 0 1px rgba(0,0,0,.25) inset; }
 .sec-role-name { font-weight: 600; }
 .sec-preview .sec-actions { flex-wrap: wrap; gap: 6px; }
+
+/* =====================================================================
+   DASHBOARD UI V2 — Design-system additions (APPENDED, additive).
+   Nothing above this line is modified. New components: consolidated Alert,
+   StatusPill, Tabs, Accordion, ProgressBar, Timeline, Dropdown, Tooltip,
+   sticky/sortable/responsive tables, touch-target floors, sticky helpers.
+   Uses shared tokens from css/tokens.css with --sec-* fallbacks.
+   ===================================================================== */
+
+/* Alert / callout — ONE component replacing sec-warn-banner /
+   sec-readonly-banner / sec-premium-card / sec-warn-card. */
+.sec-alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 15px;
+  border-radius: var(--sec-radius-sm); border: 1px solid var(--sec-border-strong);
+  background: var(--sec-panel-2); color: var(--sec-text); font-size: 13px; line-height: 1.5; margin: 0 0 14px; }
+.sec-alert .sec-alert-ic { flex: 0 0 auto; margin-top: 1px; display: inline-flex; }
+.sec-alert .sec-alert-body { min-width: 0; }
+.sec-alert .sec-alert-title { font-weight: 800; margin-bottom: 2px; }
+.sec-alert.info    { background: var(--bucky-red-soft); border-color: rgba(139, 30, 63, 0.34); }
+.sec-alert.ok      { background: var(--bk-green-soft, rgba(63,185,107,.15)); border-color: rgba(63, 185, 107, 0.34); }
+.sec-alert.warn    { background: var(--bk-amber-soft, rgba(224,165,58,.15)); border-color: rgba(224, 165, 58, 0.34); }
+.sec-alert.danger  { background: var(--bk-danger-soft, rgba(214,79,79,.15)); border-color: rgba(214, 79, 79, 0.40); }
+.sec-alert.premium { background: rgba(224, 165, 58, 0.08); border-color: rgba(224, 165, 58, 0.34); }
+
+/* Status pill — dot + label + tone (unifies badge / dot / one-off pill usage). */
+.sec-pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px;
+  border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: var(--sec-panel-2); border: 1px solid var(--sec-border); color: var(--sec-text); }
+.sec-pill .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; background: var(--sec-muted); }
+.sec-pill.ok   .dot { background: var(--sec-green); box-shadow: 0 0 8px rgba(63, 185, 107, 0.5); }
+.sec-pill.warn .dot { background: var(--sec-amber); box-shadow: 0 0 8px rgba(224, 165, 58, 0.5); }
+.sec-pill.bad  .dot { background: var(--sec-red);   box-shadow: 0 0 8px rgba(214, 79, 79, 0.5); }
+.sec-pill.brand .dot { background: var(--bucky-red-light); }
+
+/* Tabs */
+.sec-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--sec-border); margin: 0 0 18px; flex-wrap: wrap; }
+.sec-tab { appearance: none; border: 0; background: none; color: var(--sec-muted); font: inherit;
+  font-size: 13.5px; font-weight: 700; padding: 10px 14px; cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; transition: color var(--dur, .25s) var(--ease, ease), border-color var(--dur, .25s) var(--ease, ease); }
+.sec-tab:hover { color: var(--sec-text); }
+.sec-tab[aria-selected="true"] { color: var(--sec-text); border-bottom-color: var(--bucky-red-light); }
+.sec-tab:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 2px; border-radius: 6px; }
+
+/* Accordion */
+.sec-acc { border: 1px solid var(--sec-border); border-radius: var(--sec-radius-sm);
+  background: var(--sec-panel); overflow: hidden; margin-bottom: 10px; }
+.sec-acc-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 13px 15px;
+  background: none; border: 0; color: var(--sec-text); font: inherit; font-weight: 700; cursor: pointer;
+  text-align: left; transition: background var(--dur, .25s) var(--ease, ease); }
+.sec-acc-head:hover { background: var(--sec-panel-2); }
+.sec-acc-head .chev { margin-left: auto; transition: transform var(--dur, .25s) var(--ease, ease); opacity: .7; }
+.sec-acc.open .sec-acc-head .chev { transform: rotate(90deg); }
+.sec-acc-count { font-size: 12px; font-weight: 800; color: var(--sec-muted); background: var(--sec-panel-2);
+  border: 1px solid var(--sec-border); border-radius: 999px; padding: 1px 9px; }
+.sec-acc.tone-danger .sec-acc-count { color: var(--sec-red); border-color: rgba(214,79,79,.34); }
+.sec-acc.tone-warn   .sec-acc-count { color: var(--sec-amber); border-color: rgba(224,165,58,.34); }
+.sec-acc-body { display: none; padding: 6px 15px 15px; border-top: 1px solid var(--sec-border); }
+.sec-acc.open .sec-acc-body { display: block; animation: secfade .2s ease; }
+
+/* Progress bar */
+.sec-progress { height: 8px; border-radius: 999px; background: var(--sec-panel-2);
+  overflow: hidden; border: 1px solid var(--sec-border); }
+.sec-progress > span { display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--bucky-red), var(--bucky-red-light)); transition: width var(--dur-slow, .4s) var(--ease, ease); }
+.sec-progress.ok   > span { background: linear-gradient(90deg, #2f9d57, var(--sec-green)); }
+.sec-progress.warn > span { background: linear-gradient(90deg, #c98a20, var(--sec-amber)); }
+
+/* Timeline */
+.sec-timeline { position: relative; margin: 0; padding: 0 0 0 22px; list-style: none; }
+.sec-timeline::before { content: ""; position: absolute; left: 6px; top: 4px; bottom: 4px; width: 2px; background: var(--sec-border-strong); }
+.sec-tl-item { position: relative; padding: 0 0 16px 6px; }
+.sec-tl-item::before { content: ""; position: absolute; left: -22px; top: 3px; width: 11px; height: 11px;
+  border-radius: 50%; background: var(--sec-panel); border: 2px solid var(--bucky-red-light); }
+.sec-tl-item.ok::before   { border-color: var(--sec-green); }
+.sec-tl-item.bad::before  { border-color: var(--sec-red); }
+.sec-tl-item.warn::before { border-color: var(--sec-amber); }
+.sec-tl-time { font-size: 12px; color: var(--sec-muted); }
+.sec-tl-title { font-weight: 700; }
+
+/* Dropdown menu */
+.sec-menu-wrap { position: relative; display: inline-block; }
+.sec-menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 180px; background: var(--sec-panel);
+  border: 1px solid var(--sec-border-strong); border-radius: var(--sec-radius-sm); box-shadow: var(--sec-shadow);
+  padding: 6px; z-index: var(--z-tooltip, 70); display: none; }
+.sec-menu.open { display: block; animation: secfade .15s ease; }
+.sec-menu-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 11px; border: 0;
+  background: none; color: var(--sec-text); font: inherit; font-size: 13px; text-align: left; border-radius: 9px; cursor: pointer; }
+.sec-menu-item:hover { background: var(--sec-panel-2); }
+.sec-menu-item.danger { color: #f0a3a3; }
+
+/* Generalised positional tooltip (distinct from the inline ⓘ info tooltip). */
+.sec-tt { position: relative; display: inline-flex; }
+.sec-tt-pop { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: #0a0e15; border: 1px solid var(--sec-border-strong); color: var(--sec-text); padding: 8px 10px;
+  border-radius: 9px; font-size: 12px; font-weight: 500; max-width: 260px; box-shadow: var(--sec-shadow);
+  z-index: var(--z-tooltip, 70); opacity: 0; visibility: hidden; transition: opacity var(--dur, .25s) var(--ease, ease); }
+.sec-tt:hover .sec-tt-pop, .sec-tt:focus-within .sec-tt-pop { opacity: 1; visibility: visible; }
+
+/* Sticky table headers (opt-in via .sec-table-sticky on the wrap). */
+.sec-table-sticky { max-height: min(70vh, 640px); overflow: auto; }
+.sec-table-sticky thead th { position: sticky; top: 0; background: var(--sec-panel-2); z-index: 1; }
+
+/* Sortable header affordance. */
+.sec-table th.sortable { cursor: pointer; user-select: none; }
+.sec-table th.sortable:hover { color: var(--sec-text); }
+.sec-table th .sort-ind { opacity: .5; margin-left: 4px; font-size: 10px; }
+.sec-table th[aria-sort="ascending"] .sort-ind,
+.sec-table th[aria-sort="descending"] .sort-ind { opacity: 1; }
+
+/* Responsive tables → stacked "label: value" cards under 560px
+   (opt-in via .sec-table-responsive on the wrap; cells need data-label). */
+@media (max-width: 560px) {
+  .sec-table-responsive table, .sec-table-responsive thead, .sec-table-responsive tbody,
+  .sec-table-responsive th, .sec-table-responsive td, .sec-table-responsive tr { display: block; }
+  .sec-table-responsive thead { position: absolute; left: -9999px; }
+  .sec-table-responsive tr { border: 1px solid var(--sec-border); border-radius: var(--sec-radius-sm);
+    margin-bottom: 10px; padding: 6px 12px; background: var(--sec-panel); }
+  .sec-table-responsive td { border: 0; padding: 7px 0; display: flex; justify-content: space-between; gap: 14px; }
+  .sec-table-responsive td::before { content: attr(data-label); color: var(--sec-muted); font-weight: 700; font-size: 12px; }
+}
+
+/* Touch-target floors on small screens / coarse pointers. */
+@media (max-width: 920px) {
+  .sec-btn, .sec-nav-item, .sec-tab, .sec-menu-item { min-height: 40px; }
+  .sec-btn-sm { min-height: 36px; }
+}
+@media (pointer: coarse) {
+  .sec-info, .sec-rb-remove { min-width: 32px; min-height: 32px; }
+}
+
+/* Sticky summary / action-bar helpers (used by the Recovery redesign). */
+.sec-sticky-top { position: sticky; top: 64px; z-index: 2; }
+.sec-sticky-bottom { position: sticky; bottom: 0; z-index: 2;
+  background: linear-gradient(0deg, var(--sec-bg2), transparent); padding-top: 10px; }

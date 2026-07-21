@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { el, pageHeader, table, badge, pager, toast, errorState, confirmDialog, fmtTime, debounce, info, infoTitle, formModal } from "../ui.js";
+import { el, pageHeader, table, badge, pager, toast, errorState, confirmDialog, fmtTime, debounce, info, infoTitle, formModal, alertBox } from "../ui.js";
 import { settingDesc } from "../descriptions.js";
 
 export default {
@@ -104,10 +104,8 @@ export default {
         );
         if (rid) controls.append(el("button", { class: "sec-btn sec-btn-ghost sec-btn-sm", text: "Clear", onclick: clearRole }));
       }
-      const warning = rid ? null : el("div", { class: "sec-warn-banner" }, [
-        el("span", { class: "ic", text: "⚠️" }),
-        el("span", { text: "Quarantine is not ready: no quarantine role is configured, so Security cannot isolate a caught member. Press Create Role (or Select an existing one) to activate it." }),
-      ]);
+      const warning = rid ? null : alertBox({ kind: "warn", icon: el("span", { text: "⚠️" }),
+        message: "Quarantine is not ready: no quarantine role is configured, so Security cannot isolate a caught member. Press Create Role (or Select an existing one) to activate it." });
       return el("div", { class: `sec-card ${rid ? "" : "sec-warn-card"}` }, [
         infoTitle("Quarantine Role", "The locked role applied to caught members while their real roles are safely vaulted.", "div", "sec-page-title"),
         warning, statusRow, permRow, coverageRow, controls,
@@ -169,10 +167,8 @@ export default {
         kids.push(head);
       }
       if (ext.length) {
-        kids.push(el("div", { class: "sec-warn-banner" }, [
-          el("span", { class: "ic", text: "⚠️" }),
-          el("span", { text: "These members have the Quarantine role but are not managed by Bucky. Adopt to let Bucky manage (and later release) them, or Ignore to hide." }),
-        ]));
+        kids.push(alertBox({ kind: "warn", icon: el("span", { text: "⚠️" }),
+          message: "These members have the Quarantine role but are not managed by Bucky. Adopt to let Bucky manage (and later release) them, or Ignore to hide." }));
         for (const u of ext) kids.push(externalCard(u, false));
       }
       if (ign.length) {

@@ -130,11 +130,11 @@ export function table(columns, rows) {
         // el() coerces strings/numbers/booleans to text and passes Nodes through,
         // so a render() returning any primitive is safe (never crashes appendChild).
         const cell = c.render ? c.render(r) : (r[c.key] ?? "—");
-        return el("td", {}, [cell]);
+        return el("td", { "data-label": c.label }, [cell]);
       })));
     }
   }
-  return el("div", { class: "sec-table-wrap" }, [el("table", { class: "sec-table" }, [thead, tbody])]);
+  return el("div", { class: "sec-table-wrap sec-table-responsive" }, [el("table", { class: "sec-table" }, [thead, tbody])]);
 }
 
 export function pager(page, hasNext, onChange) {
@@ -255,4 +255,175 @@ export function fmtTime(iso) {
 export function debounce(fn, ms = 300) {
   let t;
   return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard UI V2 — additional components (APPENDED, additive). Nothing above
+// is modified; table() keeps its original behaviour. New: alertBox, statusPill,
+// tabs, accordion, progressBar, timeline, dropdown, tooltip, and an enhanced
+// dataTable (sortable / searchable / sticky / responsive). All reuse el(),
+// clear() and debounce() defined earlier in this module.
+// ---------------------------------------------------------------------------
+
+// One callout replacing sec-warn-banner / sec-readonly-banner /
+// sec-premium-card / sec-warn-card. kind: info | ok | warn | danger | premium.
+export function alertBox({ title, message, kind = "info", icon: ic } = {}) {
+  const body = el("div", { class: "sec-alert-body" }, [
+    title ? el("div", { class: "sec-alert-title", text: title }) : null,
+    message ? (message instanceof Node ? message : el("div", { text: message })) : null,
+  ]);
+  return el("div", { class: `sec-alert ${kind}`, role: kind === "danger" ? "alert" : "note" }, [
+    ic ? el("span", { class: "sec-alert-ic", "aria-hidden": "true" }, [ic]) : null,
+    body,
+  ]);
+}
+
+// Status indicator: coloured dot + label. tone: ok | warn | bad | brand | muted.
+export function statusPill(label, tone = "muted") {
+  return el("span", { class: `sec-pill ${tone}` }, [el("span", { class: "dot" }), el("span", { text: label })]);
+}
+
+// Tabs. items: [{ label, content: Node | () => Node }]. Keyboard: ←/→ move.
+export function tabs(items, { initial = 0, onChange } = {}) {
+  const panel = el("div", { class: "sec-tab-panel" });
+  const btns = [];
+  const select = (i) => {
+    btns.forEach((b, j) => b.setAttribute("aria-selected", j === i ? "true" : "false"));
+    clear(panel);
+    const c = items[i] && items[i].content;
+    if (c) panel.appendChild(typeof c === "function" ? c() : c);
+    if (onChange) onChange(i, items[i]);
+  };
+  const bar = el("div", { class: "sec-tabs", role: "tablist" }, items.map((it, i) => {
+    const b = el("button", { class: "sec-tab", role: "tab", type: "button", text: it.label, onclick: () => select(i) });
+    b.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const n = (i + (e.key === "ArrowRight" ? 1 : items.length - 1)) % items.length;
+        btns[n].focus(); select(n);
+      }
+    });
+    btns.push(b); return b;
+  }));
+  const wrap = el("div", {}, [bar, panel]);
+  select(initial);
+  return wrap;
+}
+
+// Collapsible section. body: Node | () => Node. tone: "danger" | "warn" for the count chip.
+export function accordion({ title, count, body, open = false, tone } = {}) {
+  const bodyWrap = el("div", { class: "sec-acc-body" }, [typeof body === "function" ? body() : body]);
+  const head = el("button", { class: "sec-acc-head", type: "button", "aria-expanded": open ? "true" : "false" }, [
+    el("span", { text: title }),
+    count != null ? el("span", { class: "sec-acc-count", text: String(count) }) : null,
+    el("span", { class: "chev", html: "&#8250;" }),
+  ]);
+  const root = el("div", { class: `sec-acc${open ? " open" : ""}${tone ? " tone-" + tone : ""}` }, [head, bodyWrap]);
+  head.addEventListener("click", () => {
+    const isOpen = root.classList.toggle("open");
+    head.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  });
+  return root;
+}
+
+// Progress bar 0–100. tone: "" | "ok" | "warn".
+export function progressBar(pct, tone = "") {
+  const v = Math.max(0, Math.min(100, Number(pct) || 0));
+  return el("div", { class: `sec-progress ${tone}`, role: "progressbar",
+    "aria-valuenow": String(Math.round(v)), "aria-valuemin": "0", "aria-valuemax": "100" },
+    [el("span", { style: `width:${v}%` })]);
+}
+
+// Vertical timeline. items: [{ time, title, detail, tone }].
+export function timeline(items) {
+  return el("ul", { class: "sec-timeline" }, (items || []).map((it) =>
+    el("li", { class: `sec-tl-item ${it.tone || ""}` }, [
+      it.time ? el("div", { class: "sec-tl-time", text: it.time }) : null,
+      el("div", { class: "sec-tl-title", text: it.title }),
+      it.detail ? el("div", { class: "sec-muted", text: it.detail }) : null,
+    ])));
+}
+
+// Dropdown menu. items: [{ label, onClick, danger }]. Closes on outside click.
+export function dropdown(triggerLabel, items) {
+  const menu = el("div", { class: "sec-menu", role: "menu" }, items.map((it) =>
+    el("button", { class: `sec-menu-item ${it.danger ? "danger" : ""}`, type: "button", role: "menuitem", text: it.label,
+      onclick: () => { menu.classList.remove("open"); it.onClick && it.onClick(); } })));
+  const trigger = el("button", { class: "sec-btn sec-btn-sm", type: "button", "aria-haspopup": "true", "aria-expanded": "false",
+    onclick: (e) => { e.stopPropagation(); const o = menu.classList.toggle("open"); trigger.setAttribute("aria-expanded", o ? "true" : "false"); } },
+    [triggerLabel]);
+  document.addEventListener("click", () => { menu.classList.remove("open"); trigger.setAttribute("aria-expanded", "false"); });
+  return el("div", { class: "sec-menu-wrap" }, [trigger, menu]);
+}
+
+// Positional hover/focus tooltip wrapping any child.
+export function tooltip(child, text) {
+  return el("span", { class: "sec-tt", tabindex: "0" }, [
+    child instanceof Node ? child : document.createTextNode(String(child)),
+    el("span", { class: "sec-tt-pop", role: "tooltip", text }),
+  ]);
+}
+
+// Enhanced table: click-to-sort headers (aria-sort), optional search box,
+// sticky header, responsive stacked-card mode. Column shape is a superset of
+// table()'s: { key, label, render, sortable?, sortValue? }. table() is untouched.
+export function dataTable(columns, rows, opts = {}) {
+  const { search = false, sticky = false, responsive = true, searchKeys } = opts;
+  let sortIdx = -1, sortDir = 1, query = "";
+
+  const host = el("div", {});
+  const wrap = el("div", { class: "sec-table-wrap" + (sticky ? " sec-table-sticky" : "") + (responsive ? " sec-table-responsive" : "") });
+
+  const render = () => {
+    let data = rows.slice();
+    if (query) {
+      const q = query.toLowerCase();
+      const keys = searchKeys || columns.map((c) => c.key).filter(Boolean);
+      data = data.filter((r) => keys.some((k) => String(r[k] ?? "").toLowerCase().includes(q)));
+    }
+    if (sortIdx >= 0) {
+      const col = columns[sortIdx];
+      data.sort((a, b) => {
+        const av = col.sortValue ? col.sortValue(a) : a[col.key];
+        const bv = col.sortValue ? col.sortValue(b) : b[col.key];
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        return (av > bv ? 1 : av < bv ? -1 : 0) * sortDir;
+      });
+    }
+    const thead = el("thead", {}, [el("tr", {}, columns.map((c, i) => {
+      const sortable = c.sortable !== false && (c.key || c.sortValue);
+      const th = el("th", sortable ? { class: "sortable", role: "button", tabindex: "0",
+        "aria-sort": sortIdx === i ? (sortDir === 1 ? "ascending" : "descending") : "none" } : {},
+        [c.label, sortable ? el("span", { class: "sort-ind", text: sortIdx === i ? (sortDir === 1 ? "▲" : "▼") : "↕" }) : null]);
+      if (sortable) {
+        const onSort = () => { if (sortIdx === i) sortDir *= -1; else { sortIdx = i; sortDir = 1; } render(); };
+        th.addEventListener("click", onSort);
+        th.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSort(); } });
+      }
+      return th;
+    }))]);
+    const tbody = el("tbody", {});
+    if (!data.length) {
+      tbody.appendChild(el("tr", {}, [el("td", { colspan: columns.length }, [el("div", { class: "sec-empty", text: query ? "No matches." : "No records." })])]));
+    } else {
+      for (const r of data) {
+        tbody.appendChild(el("tr", {}, columns.map((c) => {
+          const cell = c.render ? c.render(r) : (r[c.key] ?? "—");
+          return el("td", { "data-label": c.label }, [cell]);
+        })));
+      }
+    }
+    clear(wrap);
+    wrap.appendChild(el("table", { class: "sec-table" }, [thead, tbody]));
+  };
+
+  if (search) {
+    const box = el("input", { class: "sec-input", type: "search", placeholder: "Search…", "aria-label": "Search table" });
+    box.addEventListener("input", debounce((e) => { query = e.target.value || ""; render(); }, 200));
+    host.appendChild(el("div", { class: "sec-toolbar" }, [box]));
+  }
+  host.appendChild(wrap);
+  render();
+  return host;
 }
