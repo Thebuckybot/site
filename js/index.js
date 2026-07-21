@@ -6,20 +6,6 @@ gsap.config({ nullTargetWarn: false });
 
 const REDUCE = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/* ---- number formatting for the stats band ---- */
-function fmtNum(v, el) {
-  const dec = parseInt(el.dataset.decimals || "0", 10);
-  const suffix = el.dataset.suffix || "";
-  if (el.dataset.format === "compact") {
-    if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1).replace(/\.0$/, "") + "M" + suffix;
-    if (v >= 1e3) return (v / 1e3).toFixed(0) + "K" + suffix;
-  }
-  return v.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suffix;
-}
-function setFinalStats() {
-  document.querySelectorAll("[data-count]").forEach((el) => { el.textContent = fmtNum(parseFloat(el.dataset.count), el); });
-}
-
 function initNav() {
   const nav = document.querySelector(".site-nav");
   if (!nav) return;
@@ -79,8 +65,8 @@ function initProductSections() {
     if (media) gsap.from(media, { opacity: 0, y: 46, scale: 0.96, duration: 0.8, ease: "power2.out",
       scrollTrigger: { trigger: sec, start: "top 72%", toggleActions: "play none none reverse" } });
   });
-  // section headings for stats/community + final
-  revealBatch(".stats .section-head", { mod: 1, start: "top 80%" });
+  // section headings (features + why)
+  revealBatch(".features .section-head", { mod: 1, start: "top 80%" });
 }
 
 function initCoins() {
@@ -94,33 +80,18 @@ function initCoins() {
   });
 }
 
-function initStats() {
-  gsap.utils.toArray("[data-count]").forEach((el) => {
-    const target = parseFloat(el.dataset.count);
-    const obj = { v: 0 };
-    ScrollTrigger.create({
-      trigger: el, start: "top 88%", once: true,
-      onEnter: () => gsap.to(obj, { v: target, duration: 1.6, ease: "power2.out",
-        onUpdate: () => { el.textContent = fmtNum(obj.v, el); },
-        onComplete: () => { el.textContent = fmtNum(target, el); } }),
-    });
-  });
-}
-
 function init() {
   initNav();
   ScrollTrigger.config({ ignoreMobileResize: true });
 
   if (REDUCE) {
     document.body.classList.add("no-motion");
-    setFinalStats();          // show real numbers, no animation
     return;
   }
 
   initHero();
   initProductSections();
   initCoins();
-  initStats();
   ScrollTrigger.matchMedia({
     "(min-width: 821px)": function () { initHorizontal(); },
   });

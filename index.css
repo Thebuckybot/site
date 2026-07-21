@@ -117,14 +117,9 @@
 .plink { display: inline-flex; align-items: center; gap: 8px; color: var(--bk-red-300); font-weight: 700; text-decoration: none; }
 .plink:hover { color: #fff; }
 
-/* ---------- Community / stats ---------- */
-.stats { padding: 96px 24px; text-align: center; position: relative; overflow: hidden; }
-.stats::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, rgba(139, 30, 63, 0.16), transparent 60%); z-index: 0; }
-.stats-inner { position: relative; z-index: 2; max-width: 1040px; margin: auto; }
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 40px; }
-.stat-num { font-size: clamp(2.2rem, 4.4vw, 3.3rem); font-weight: 800; letter-spacing: -0.02em;
-  background: linear-gradient(120deg, #fff, var(--bk-red-300)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.stat-label { color: var(--bk-muted); font-weight: 600; margin-top: 6px; font-size: 14px; }
+/* ---------- Why Bucky (capability pillars) ---------- */
+.trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1080px; margin: 0 auto; }
+.trust-grid .feature-card p { font-size: 14.5px; }
 
 /* ---------- Final CTA ---------- */
 .final { position: relative; padding: 120px 24px; text-align: center; overflow: hidden; }
@@ -154,7 +149,7 @@
   .product-feats { justify-items: start; text-align: left; max-width: 380px; margin-inline: auto; }
   .product-feats { margin-bottom: 28px; }
   .coin-stage { height: 340px; max-width: 420px; margin: 0 auto; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 30px 18px; }
+  .trust-grid { grid-template-columns: 1fr; }
   .browser img { max-height: none; }
 }
 @media (max-width: 560px) {
