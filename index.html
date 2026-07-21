@@ -44,6 +44,33 @@
     <span class="scroll-hint">Scroll to explore ↓</span>
   </section>
 
+  <!-- FEATURES OVERVIEW -->
+  <section class="features" id="features">
+    <div class="section-head">
+      <span class="eyebrow">The platform</span>
+      <h2>One bot. Four superpowers.</h2>
+      <p>Bucky protects your server, then gives your community reasons to stay.</p>
+    </div>
+    <div class="feature-cards">
+      <a class="feature-card" href="#security">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>Security</h3><p>Real-time protection, SOC rules &amp; one-click recovery.</p>
+      </a>
+      <a class="feature-card" href="#economy">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h5M9.5 13.5h5"/></svg></div>
+        <h3>Economy</h3><p>Currency, banking, rare drops &amp; leaderboards.</p>
+      </a>
+      <a class="feature-card" href="#adventures">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg></div>
+        <h3>Adventures</h3><p>Five story arcs, a hundred missions each.</p>
+      </a>
+      <a class="feature-card" href="#arcade">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 12h3M8.5 10.5v3M15.5 11.5h.01M18 13.5h.01"/></svg></div>
+        <h3>Arcade</h3><p>Instant in-server games &amp; live events.</p>
+      </a>
+    </div>
+  </section>
+
   <!-- FLAGSHIP: SECURITY + DASHBOARD SHOWCASE (horizontal) -->
   <section class="flagship" id="security">
     <div class="hwrap">
@@ -53,7 +80,7 @@
         <div class="hpanel-inner">
           <div class="intro-grid">
             <div class="intro-text">
-              <span class="eyebrow" data-rv>Bucky Security</span>
+              <span class="eyebrow" data-rv>Bucky Security · flagship</span>
               <h2 data-rv>Enterprise-grade protection, made effortless.</h2>
               <p class="lead" data-rv>Your Discord server, monitored 24/7.</p>
               <p data-rv>Bucky's SOC engine watches the audit log in real time, catches nukes, raids and spam as they happen, and can restore your entire server from a trusted snapshot in minutes.</p>
@@ -63,7 +90,7 @@
                 <li data-rv>One-click snapshot recovery</li>
                 <li data-rv>Full audit trail &amp; emergency lockdown</li>
               </ul>
-              <div class="showcase-cta" style="justify-content:flex-start" data-rv>
+              <div class="hero-cta" style="justify-content:flex-start" data-rv>
                 <a class="btn btn-primary" href="dashboard.html">Open Security Dashboard →</a>
                 <span class="showcase-step">Keep scrolling to tour it →</span>
               </div>
@@ -81,119 +108,131 @@
         </div>
       </div>
 
-      <!-- Panels 1–6 — dashboard showcases -->
-      <!-- MODULES -->
-      <div class="hpanel">
-        <div class="hpanel-inner showcase">
-          <div class="showcase-head">
-            <span class="eyebrow" data-rv>Modules</span>
-            <h3 data-rv>Every layer of protection, one toggle away.</h3>
-            <p data-rv>Anti-nuke, anti-spam, anti-raid, join gating and more — switch each layer on or off and see its status update instantly.</p>
-          </div>
-          <div class="browser" data-rv>
-            <div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — modules</span></div>
-            <picture><source srcset="assets/images/dashboard/modules.webp" type="image/webp"><img src="assets/images/dashboard/modules.png" alt="Modules" loading="lazy" width="1600" height="1000"></picture>
-          </div>
-          <div class="showcase-step" data-rv><b>02</b> / 06 · Modules</div>
-        </div>
-      </div>
+      <!-- MODULES --><div class="hpanel"><div class="hpanel-inner showcase">
+        <div class="showcase-head"><span class="eyebrow" data-rv>Modules</span><h3 data-rv>Every layer of protection, one toggle away.</h3><p data-rv>Anti-nuke, anti-spam, anti-raid, join gating and more — switch each layer on or off and watch its status update instantly.</p></div>
+        <div class="browser" data-rv><div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — modules</span></div>
+          <picture><source srcset="assets/images/dashboard/modules.webp" type="image/webp"><img src="assets/images/dashboard/modules.png" alt="Modules" loading="lazy" width="1600" height="1000"></picture></div>
+        <div class="showcase-step" data-rv><b>02</b> / 06 · Modules</div></div></div>
 
-      <!-- SOC -->
-      <div class="hpanel">
-        <div class="hpanel-inner showcase">
-          <div class="showcase-head">
-            <span class="eyebrow" data-rv>SOC engine</span>
-            <h3 data-rv>Build detection rules like sentences.</h3>
-            <p data-rv>WHEN an event fires, IF your conditions match, THEN run actions. Compose powerful automations without touching code.</p>
-          </div>
-          <div class="browser" data-rv>
-            <div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — soc</span></div>
-            <picture><source srcset="assets/images/dashboard/soc.webp" type="image/webp"><img src="assets/images/dashboard/soc.png" alt="SOC detection rules" loading="lazy" width="1600" height="1000"></picture>
-          </div>
-          <div class="showcase-step" data-rv><b>03</b> / 06 · SOC</div>
-        </div>
-      </div>
+      <!-- SOC --><div class="hpanel"><div class="hpanel-inner showcase">
+        <div class="showcase-head"><span class="eyebrow" data-rv>SOC engine</span><h3 data-rv>Build detection rules like sentences.</h3><p data-rv>WHEN an event fires, IF your conditions match, THEN run actions. Compose powerful automations without touching code.</p></div>
+        <div class="browser" data-rv><div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — soc</span></div>
+          <picture><source srcset="assets/images/dashboard/soc.webp" type="image/webp"><img src="assets/images/dashboard/soc.png" alt="SOC detection rules" loading="lazy" width="1600" height="1000"></picture></div>
+        <div class="showcase-step" data-rv><b>03</b> / 06 · SOC</div></div></div>
 
-      <!-- RECOVERY -->
-      <div class="hpanel">
-        <div class="hpanel-inner showcase">
-          <div class="showcase-head">
-            <span class="eyebrow" data-rv>Recovery</span>
-            <h3 data-rv>Undo an entire attack in minutes.</h3>
-            <p data-rv>Preview exactly what will change, then restore your server's structure from a trusted snapshot. Safe Repair never deletes; Full Restore asks first.</p>
-          </div>
-          <div class="browser" data-rv>
-            <div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — recovery</span></div>
-            <picture><source srcset="assets/images/dashboard/recovery.webp" type="image/webp"><img src="assets/images/dashboard/recovery.png" alt="Recovery &amp; restore" loading="lazy" width="1600" height="1000"></picture>
-          </div>
-          <div class="showcase-step" data-rv><b>04</b> / 06 · Recovery</div>
-        </div>
-      </div>
+      <!-- RECOVERY --><div class="hpanel"><div class="hpanel-inner showcase">
+        <div class="showcase-head"><span class="eyebrow" data-rv>Recovery</span><h3 data-rv>Undo an entire attack in minutes.</h3><p data-rv>Preview exactly what will change, then restore your server's structure from a trusted snapshot. Safe Repair never deletes; Full Restore asks first.</p></div>
+        <div class="browser" data-rv><div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — recovery</span></div>
+          <picture><source srcset="assets/images/dashboard/recovery.webp" type="image/webp"><img src="assets/images/dashboard/recovery.png" alt="Recovery &amp; restore" loading="lazy" width="1600" height="1000"></picture></div>
+        <div class="showcase-step" data-rv><b>04</b> / 06 · Recovery</div></div></div>
 
-      <!-- THRESHOLDS -->
-      <div class="hpanel">
-        <div class="hpanel-inner showcase">
-          <div class="showcase-head">
-            <span class="eyebrow" data-rv>Thresholds</span>
-            <h3 data-rv>Tune sensitivity to your server.</h3>
-            <p data-rv>Decide exactly how many deletes, joins or messages count as an attack. Strict for small servers, relaxed for busy ones.</p>
-          </div>
-          <div class="browser" data-rv>
-            <div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — thresholds</span></div>
-            <picture><source srcset="assets/images/dashboard/thresholds.webp" type="image/webp"><img src="assets/images/dashboard/thresholds.png" alt="Thresholds" loading="lazy" width="1600" height="1000"></picture>
-          </div>
-          <div class="showcase-step" data-rv><b>05</b> / 06 · Thresholds</div>
-        </div>
-      </div>
+      <!-- THRESHOLDS --><div class="hpanel"><div class="hpanel-inner showcase">
+        <div class="showcase-head"><span class="eyebrow" data-rv>Thresholds</span><h3 data-rv>Tune sensitivity to your server.</h3><p data-rv>Decide exactly how many deletes, joins or messages count as an attack. Strict for small servers, relaxed for busy ones.</p></div>
+        <div class="browser" data-rv><div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — thresholds</span></div>
+          <picture><source srcset="assets/images/dashboard/thresholds.webp" type="image/webp"><img src="assets/images/dashboard/thresholds.png" alt="Thresholds" loading="lazy" width="1600" height="1000"></picture></div>
+        <div class="showcase-step" data-rv><b>05</b> / 06 · Thresholds</div></div></div>
 
-      <!-- EMERGENCY -->
-      <div class="hpanel">
-        <div class="hpanel-inner showcase">
-          <div class="showcase-head">
-            <span class="eyebrow" data-rv>Emergency</span>
-            <h3 data-rv>Contain incidents the moment they start.</h3>
-            <p data-rv>One tap for server-wide lockdown or hard mode. Every emergency action is logged so you always know what happened.</p>
-          </div>
-          <div class="browser" data-rv>
-            <div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — emergency</span></div>
-            <picture><source srcset="assets/images/dashboard/emergency.webp" type="image/webp"><img src="assets/images/dashboard/emergency.png" alt="Emergency center" loading="lazy" width="1600" height="1000"></picture>
-          </div>
-          <div class="showcase-step" data-rv><b>06</b> / 06 · Emergency</div>
-        </div>
-      </div>
+      <!-- EMERGENCY --><div class="hpanel"><div class="hpanel-inner showcase">
+        <div class="showcase-head"><span class="eyebrow" data-rv>Emergency</span><h3 data-rv>Contain incidents the moment they start.</h3><p data-rv>One tap for server-wide lockdown or hard mode. Every emergency action is logged so you always know what happened.</p></div>
+        <div class="browser" data-rv><div class="browser-bar"><span class="b-dot r"></span><span class="b-dot y"></span><span class="b-dot g"></span><span class="url">bucky · security center — emergency</span></div>
+          <picture><source srcset="assets/images/dashboard/emergency.webp" type="image/webp"><img src="assets/images/dashboard/emergency.png" alt="Emergency center" loading="lazy" width="1600" height="1000"></picture></div>
+        <div class="showcase-step" data-rv><b>06</b> / 06 · Emergency</div></div></div>
 
     </div>
     <div class="hrail" id="hrail"></div>
   </section>
 
-  <!-- BEYOND SECURITY -->
-  <section class="beyond" id="more">
-    <div class="beyond-head">
-      <span class="eyebrow">More than security</span>
-      <h2>A whole platform behind the shield.</h2>
-      <p>Bucky keeps your server safe — then gives your community reasons to stay.</p>
+  <!-- ECONOMY -->
+  <section class="product" id="economy">
+    <div class="product-glow" style="background:radial-gradient(circle,rgba(224,165,58,0.16),transparent 60%);top:-140px;right:-160px"></div>
+    <div class="product-inner">
+      <div class="product-text">
+        <span class="eyebrow">Economy</span>
+        <h2>A living economy your community can feel.</h2>
+        <p class="lead">Coins, banks, rare drops and progression — fully synced between Discord and your dashboard.</p>
+        <p>Members earn and spend, climb the leaderboard, upgrade their bank and chase rare collectibles. You tune the rules; Bucky keeps every balance perfectly in sync.</p>
+        <ul class="product-feats">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Persistent currency &amp; upgradeable banking</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Item rarity, drops &amp; collectibles</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Leaderboards &amp; progression</li>
+        </ul>
+        <a class="btn btn-primary" href="dashboard.html">Manage economy →</a>
+      </div>
+      <div class="product-media">
+        <div class="coin-stage">
+          <img class="coin coin-1" src="assets/images/products/1currency.webp" alt="Bucky currency" loading="lazy">
+          <img class="coin coin-2" src="assets/images/products/3luckychipCASINO.webp" alt="Lucky chip" loading="lazy">
+          <img class="coin coin-3" src="assets/images/products/4banknote.webp" alt="Banknote" loading="lazy">
+          <img class="coin coin-4" src="assets/images/products/2bank.webp" alt="Bank vault" loading="lazy">
+        </div>
+      </div>
     </div>
-    <div class="beyond-grid">
-      <div class="fcard">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h5M9.5 13.5h5"/></svg></div>
-        <h3>Dynamic economy</h3>
-        <p>A living currency system with banks, rare drops and progression — fully synced between Discord and your dashboard.</p>
-        <ul><li>Persistent currency &amp; banking</li><li>Item rarity &amp; drops</li><li>Leaderboards &amp; upgrades</li></ul>
-        <a class="flink" href="dashboard.html">Manage economy →</a>
+  </section>
+
+  <!-- ADVENTURES -->
+  <section class="product reverse" id="adventures">
+    <div class="product-glow" style="background:radial-gradient(circle,rgba(63,185,107,0.14),transparent 60%);bottom:-160px;left:-160px"></div>
+    <div class="product-inner">
+      <div class="product-text">
+        <span class="eyebrow">Adventures</span>
+        <h2>Multiplayer story arcs that pull people back.</h2>
+        <p class="lead">Five arcs. A hundred missions each. One evolving world.</p>
+        <p>Your community unlocks the story together, mission by mission. Cooldowns keep it paced, progression keeps it sticky, and the world reacts as your server advances.</p>
+        <ul class="product-feats">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Shared multiplayer missions</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Arc progression &amp; cooldown mechanics</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Persistent, server-wide story state</li>
+        </ul>
+        <a class="btn btn-primary" href="dashboard.html">Continue the story →</a>
       </div>
-      <div class="fcard">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg></div>
-        <h3>Multiplayer story arcs</h3>
-        <p>Five story arcs, a hundred missions each. Your community unlocks the world together as it progresses.</p>
-        <ul><li>Shared multiplayer missions</li><li>Arc progression system</li><li>Persistent story state</li></ul>
-        <a class="flink" href="dashboard.html">Continue the story →</a>
+      <div class="product-media">
+        <div class="art-frame art-tilt">
+          <img src="assets/images/products/8arcOneIntro.webp" alt="Arc One — The Awakening" loading="lazy">
+          <span class="art-badge"><span class="pulse" style="width:8px;height:8px;border-radius:50%;background:var(--bk-green);display:inline-block"></span> Arc 1 · The Awakening</span>
+        </div>
       </div>
-      <div class="fcard">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 12h3M8.5 10.5v3M15.5 11.5h.01M18 13.5h.01"/></svg></div>
-        <h3>Arcade &amp; live events</h3>
-        <p>Blackjack, coinflip, slots and scheduled live events — launch games instantly, right inside your server.</p>
-        <ul><li>Instant in-server games</li><li>Scheduled live events</li><li>Rewards tied to the economy</li></ul>
-        <a class="flink" href="arcade.html">Open the arcade →</a>
+    </div>
+  </section>
+
+  <!-- ARCADE -->
+  <section class="product" id="arcade">
+    <div class="product-glow" style="background:radial-gradient(circle,rgba(139,30,63,0.22),transparent 60%);top:-120px;left:-140px"></div>
+    <div class="product-inner">
+      <div class="product-media">
+        <div class="art-frame art-tilt">
+          <img src="assets/images/products/arcadeIntroBG.webp" alt="Bucky Arcade" loading="lazy">
+          <span class="art-badge"><span class="pulse" style="width:8px;height:8px;border-radius:50%;background:#f4bf50;display:inline-block"></span> Live event in progress</span>
+        </div>
+      </div>
+      <div class="product-text">
+        <span class="eyebrow">Arcade &amp; live events</span>
+        <h2>Launch games instantly, right in your server.</h2>
+        <p class="lead">Blackjack, coinflip, slots and scheduled live events.</p>
+        <p>Every game ties back into the economy, so wins actually matter. Spin up a live event and watch the channel light up.</p>
+        <div class="arcade-cards">
+          <div class="game-card"><span class="gic">🃏</span>Blackjack</div>
+          <div class="game-card"><span class="gic">🪙</span>Coinflip</div>
+          <div class="game-card"><span class="gic">🎰</span>Slots</div>
+          <div class="game-card"><span class="gic">✨</span>Live Events</div>
+        </div>
+        <a class="btn btn-primary" href="arcade.html" style="margin-top:24px">Open the arcade →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMUNITY / STATS -->
+  <section class="stats" id="community">
+    <div class="stats-inner">
+      <div class="section-head" style="margin-bottom:8px">
+        <span class="eyebrow">Community</span>
+        <h2>Trusted by growing servers everywhere.</h2>
+        <p>Bucky is built for communities that want to grow safely — and have fun doing it.</p>
+      </div>
+      <div class="stats-grid">
+        <div><div class="stat-num" data-count="12000" data-suffix="+">0</div><div class="stat-label">Servers protected</div></div>
+        <div><div class="stat-num" data-count="3400000" data-suffix="+" data-format="compact">0</div><div class="stat-label">Members reached</div></div>
+        <div><div class="stat-num" data-count="1200000" data-suffix="+" data-format="compact">0</div><div class="stat-label">Missions played</div></div>
+        <div><div class="stat-num" data-count="99.9" data-suffix="%" data-decimals="1">0</div><div class="stat-label">Uptime</div></div>
       </div>
     </div>
   </section>
@@ -220,9 +259,9 @@
       <div class="footer-col">
         <h4>Product</h4>
         <a href="index.html#security">Security</a>
-        <a href="dashboard.html">Dashboard</a>
+        <a href="index.html#economy">Economy</a>
+        <a href="index.html#adventures">Adventures</a>
         <a href="arcade.html">Arcade</a>
-        <a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&scope=bot%20applications.commands&permissions=8">Invite Bucky</a>
       </div>
       <div class="footer-col">
         <h4>Legal &amp; support</h4>

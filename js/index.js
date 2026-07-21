@@ -1,10 +1,24 @@
-/* Bucky landing — GSAP scroll experience (dark V2).
-   Horizontal-pinned Security flagship showcase, hero intro/parallax, reveals,
-   and a progress rail. Fully honours prefers-reduced-motion. */
+/* Bucky landing — GSAP scroll experience (dark V2, refinement pass).
+   Horizontal Security flagship + dedicated Economy/Adventures/Arcade sections,
+   floating coin art, art parallax, animated stats. Honours reduced-motion. */
 gsap.registerPlugin(ScrollTrigger);
 gsap.config({ nullTargetWarn: false });
 
 const REDUCE = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---- number formatting for the stats band ---- */
+function fmtNum(v, el) {
+  const dec = parseInt(el.dataset.decimals || "0", 10);
+  const suffix = el.dataset.suffix || "";
+  if (el.dataset.format === "compact") {
+    if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1).replace(/\.0$/, "") + "M" + suffix;
+    if (v >= 1e3) return (v / 1e3).toFixed(0) + "K" + suffix;
+  }
+  return v.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suffix;
+}
+function setFinalStats() {
+  document.querySelectorAll("[data-count]").forEach((el) => { el.textContent = fmtNum(parseFloat(el.dataset.count), el); });
+}
 
 function initNav() {
   const nav = document.querySelector(".site-nav");
@@ -21,10 +35,7 @@ function initHero() {
     .from(".hero-text p", { y: 30, opacity: 0, duration: 0.7 }, "-=0.6")
     .from(".hero-cta", { y: 24, opacity: 0, duration: 0.6 }, "-=0.5")
     .from(".hero-visual img", { scale: 0.9, opacity: 0, duration: 1.0 }, "-=0.8");
-  gsap.to(".hero-visual img", {
-    yPercent: 12,
-    scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true },
-  });
+  gsap.to(".hero-visual img", { yPercent: 12, scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true } });
 }
 
 function initHorizontal() {
@@ -32,52 +43,68 @@ function initHorizontal() {
   const panels = gsap.utils.toArray(".hpanel");
   const rail = document.getElementById("hrail");
   if (!wrap || panels.length < 2) return;
-
   const tween = gsap.to(panels, { xPercent: -100 * (panels.length - 1), ease: "none" });
-
   ScrollTrigger.create({
-    trigger: ".flagship",
-    start: "top top",
-    end: () => "+=" + wrap.offsetWidth,
-    pin: true,
-    scrub: 0.6,
-    animation: tween,
-    invalidateOnRefresh: true,
+    trigger: ".flagship", start: "top top", end: () => "+=" + wrap.offsetWidth,
+    pin: true, scrub: 0.6, animation: tween, invalidateOnRefresh: true,
     onUpdate: (self) => { if (rail) rail.style.width = (self.progress * 100).toFixed(2) + "%"; },
   });
-
   panels.forEach((p) => {
     const items = p.querySelectorAll("[data-rv]");
-    if (items.length) {
-      gsap.from(items, {
-        opacity: 0, y: 50, duration: 0.7, stagger: 0.08, ease: "power2.out",
-        scrollTrigger: { trigger: p, containerAnimation: tween, start: "left 68%", toggleActions: "play none none reverse" },
-      });
-    }
+    if (items.length) gsap.from(items, { opacity: 0, y: 50, duration: 0.7, stagger: 0.08, ease: "power2.out",
+      scrollTrigger: { trigger: p, containerAnimation: tween, start: "left 68%", toggleActions: "play none none reverse" } });
     const frame = p.querySelector(".browser");
-    if (frame) {
-      gsap.from(frame, {
-        opacity: 0, scale: 0.92, y: 40, duration: 0.9, ease: "power2.out",
-        scrollTrigger: { trigger: p, containerAnimation: tween, start: "left 78%", toggleActions: "play none none reverse" },
-      });
-    }
+    if (frame) gsap.from(frame, { opacity: 0, scale: 0.92, y: 40, duration: 0.9, ease: "power2.out",
+      scrollTrigger: { trigger: p, containerAnimation: tween, start: "left 78%", toggleActions: "play none none reverse" } });
   });
 }
 
-function initReveals() {
-  gsap.utils.toArray(".fcard").forEach((c, i) => {
-    gsap.from(c, {
-      opacity: 0, y: 40, duration: 0.6, delay: (i % 3) * 0.06, ease: "power2.out",
-      scrollTrigger: { trigger: c, start: "top 86%", toggleActions: "play none none reverse" },
+function revealBatch(selector, opts = {}) {
+  gsap.utils.toArray(selector).forEach((elm, i) => {
+    gsap.from(elm, {
+      opacity: 0, y: opts.y || 40, duration: 0.65, delay: (i % (opts.mod || 4)) * 0.06, ease: "power2.out",
+      scrollTrigger: { trigger: elm, start: opts.start || "top 86%", toggleActions: "play none none reverse" },
     });
   });
-  const finalKids = document.querySelectorAll(".final-inner > *");
-  if (finalKids.length) {
-    gsap.from(finalKids, {
-      opacity: 0, y: 30, duration: 0.7, stagger: 0.1, ease: "power2.out",
-      scrollTrigger: { trigger: ".final", start: "top 78%" },
+}
+
+function initProductSections() {
+  revealBatch(".feature-card", { mod: 4 });
+  // text + media of each product section
+  gsap.utils.toArray(".product").forEach((sec) => {
+    const text = sec.querySelectorAll(".product-text > *");
+    const media = sec.querySelector(".product-media");
+    if (text.length) gsap.from(text, { opacity: 0, y: 34, duration: 0.6, stagger: 0.07, ease: "power2.out",
+      scrollTrigger: { trigger: sec, start: "top 72%", toggleActions: "play none none reverse" } });
+    if (media) gsap.from(media, { opacity: 0, y: 46, scale: 0.96, duration: 0.8, ease: "power2.out",
+      scrollTrigger: { trigger: sec, start: "top 72%", toggleActions: "play none none reverse" } });
+  });
+  // section headings for stats/community + final
+  revealBatch(".stats .section-head", { mod: 1, start: "top 80%" });
+}
+
+function initCoins() {
+  gsap.utils.toArray(".coin").forEach((c, i) => {
+    gsap.to(c, { y: "+=18", rotation: i % 2 ? 5 : -5, duration: 2.6 + i * 0.5, repeat: -1, yoyo: true, ease: "sine.inOut" });
+  });
+  // subtle parallax on the framed art
+  gsap.utils.toArray(".art-tilt").forEach((a) => {
+    gsap.fromTo(a, { yPercent: 6 }, { yPercent: -6, ease: "none",
+      scrollTrigger: { trigger: a, start: "top bottom", end: "bottom top", scrub: true } });
+  });
+}
+
+function initStats() {
+  gsap.utils.toArray("[data-count]").forEach((el) => {
+    const target = parseFloat(el.dataset.count);
+    const obj = { v: 0 };
+    ScrollTrigger.create({
+      trigger: el, start: "top 88%", once: true,
+      onEnter: () => gsap.to(obj, { v: target, duration: 1.6, ease: "power2.out",
+        onUpdate: () => { el.textContent = fmtNum(obj.v, el); },
+        onComplete: () => { el.textContent = fmtNum(target, el); } }),
     });
-  }
+  });
 }
 
 function init() {
@@ -85,15 +112,17 @@ function init() {
   ScrollTrigger.config({ ignoreMobileResize: true });
 
   if (REDUCE) {
-    // No motion: stack the flagship so every panel is reachable, no animation.
     document.body.classList.add("no-motion");
+    setFinalStats();          // show real numbers, no animation
     return;
   }
 
   initHero();
+  initProductSections();
+  initCoins();
+  initStats();
   ScrollTrigger.matchMedia({
-    "(min-width: 821px)": function () { initHorizontal(); initReveals(); },
-    "(max-width: 820px)": function () { initReveals(); },
+    "(min-width: 821px)": function () { initHorizontal(); },
   });
 }
 
