@@ -21,8 +21,12 @@ export const MODULE_DESC = {
   mass_ban: "Detects an unusually fast burst of bans.",
   mass_kick: "Detects an unusually fast burst of kicks.",
   dangerous_perm_escalation: "Flags a role being granted dangerous permissions like Administrator.",
-  vanity_url_change: "Detects tampering with the server's vanity URL or identity.",
+  vanity_url_change: "Detects tampering with the server's vanity URL or identity (name/icon). Vanity URLs are only exposed by Discord on boost-level 3 servers; on lower tiers this watches name and icon changes.",
   integration_abuse: "Detects suspicious integration creation or abuse.",
+  mass_thread_create: "Triggers when many threads are created in a short window (thread-spam nuke).",
+  mass_thread_delete: "Triggers when many threads are deleted in a short window.",
+  mass_invite_create: "Triggers when many invites are created in a short window (invite farming).",
+  mass_unban: "Detects a moderator rapidly unbanning accounts (raid-account restoration).",
 };
 
 export const SETTING_DESC = {
