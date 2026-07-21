@@ -628,9 +628,21 @@ body.sec-readonly .sec-write { display: none !important; }
   .sec-tip, .sec-tt-pop { max-width: min(260px, 82vw); }
 }
 
-/* Topbar breathing room on small phones — hide the guild label (still reachable
-   via the drawer's "Switch server") and let the breadcrumb truncate. */
+/* Active-server chip in the top bar (icon + name) — always visible. */
+.sec-guild.has-server { display: inline-flex; align-items: center; gap: 8px; max-width: 260px; }
+.sec-server-ic { width: 22px; height: 22px; border-radius: 7px; object-fit: cover; flex: 0 0 auto;
+  border: 1px solid var(--sec-border-strong); background: var(--sec-panel-2); }
+.sec-server-nm { font-weight: 700; color: var(--sec-text); overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; max-width: 180px; }
+
+/* Small phones: keep the ACTIVE SERVER visible (icon + shortened name) and drop
+   the "Security /" breadcrumb prefix to make room. Never hide the server. */
 @media (max-width: 560px) {
-  .sec-guild { display: none; }
-  .sec-breadcrumb { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sec-breadcrumb .crumb-root { display: none; }
+  .sec-server-nm { max-width: 100px; }
+  .sec-topbar { gap: 8px; }
+  /* read-only becomes an icon-only pill so the server chip always fits */
+  .sec-readonly-pill { padding: 3px 8px; gap: 0; }
+  .sec-readonly-pill > span:last-child { display: none; }
 }
+@media (max-width: 400px) { .sec-breadcrumb { display: none; } }

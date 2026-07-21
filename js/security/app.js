@@ -45,8 +45,8 @@ function currentKey() {
 
 function setBreadcrumb(key) {
   clear(breadcrumb);
-  breadcrumb.appendChild(el("span", { text: "Security" }));
-  breadcrumb.appendChild(el("span", { class: "sep", text: "/" }));
+  breadcrumb.appendChild(el("span", { class: "crumb-root", text: "Security" }));
+  breadcrumb.appendChild(el("span", { class: "sep crumb-root", text: "/" }));
   breadcrumb.appendChild(el("span", { text: sectionLabel(key) }));
 }
 
@@ -77,9 +77,34 @@ async function loadSection(key) {
   appEl.classList.remove("nav-open");
 }
 
+// Show the ACTIVE SERVER (icon + name) in the top bar so it is always obvious
+// which server is being managed. The picker caches name/icon in localStorage
+// (frontend-only); a deep link with no cache falls back to the id.
+function setServerChip() {
+  const host = document.getElementById("sec-guild-name");
+  if (!host) return;
+  const id = guildId();
+  let g = null;
+  try { g = JSON.parse(localStorage.getItem("bucky_active_guild") || "null"); } catch (_) { /* ignore */ }
+  host.innerHTML = "";
+  host.classList.remove("has-server");
+  if (g && String(g.id) === String(id) && g.name) {
+    host.classList.add("has-server");
+    const img = document.createElement("img");
+    img.className = "sec-server-ic"; img.alt = "";
+    img.src = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64`
+                     : "https://cdn.discordapp.com/embed/avatars/0.png";
+    const nm = document.createElement("span");
+    nm.className = "sec-server-nm"; nm.textContent = g.name; nm.title = g.name;
+    host.append(img, nm);
+  } else {
+    host.textContent = "Server " + (id || "");
+  }
+}
+
 function boot() {
   if (!guildId()) { window.location.href = "dashboard.html"; return; }
-  document.getElementById("sec-guild-name").textContent = "Guild " + guildId();
+  setServerChip();
   buildSidebar(nav, navigate);
   document.getElementById("sec-refresh").addEventListener("click", () => loadSection(currentKey()));
   document.getElementById("sec-burger").addEventListener("click", () => appEl.classList.toggle("nav-open"));

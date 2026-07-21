@@ -106,17 +106,80 @@ async function apiFetch(url, options = {}) {
 }
 
 
-// Nieuwe render functie, gebaseerd op het plan
+// Render the server list: premium cards, alphabetical, with search + count.
+// Falls back to a polished empty state when there is nothing to manage.
 function renderGuilds(guilds, guildContainer) {
-    if (!guildContainer) {
-      console.warn("renderGuilds werd aangeroepen, maar guildContainer bestaat niet.");
+    if (!guildContainer) return;
+    guildContainer.innerHTML = "";
+    const search = document.getElementById("picker-search");
+    const count = document.getElementById("picker-count");
+
+    if (!guilds || !guilds.length) {
+      if (search) search.hidden = true;
+      if (count) count.textContent = "";
+      renderEmpty(guildContainer);
       return;
     }
-    guildContainer.innerHTML = "";
-    guilds.forEach(guild => {
-      // De serverdata is al gefilterd, dus render de kaart direct
-      createGuildCard(guild, guildContainer);
+
+    const sorted = guilds.slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    sorted.forEach((guild) => createGuildCard(guild, guildContainer));
+
+    if (count) count.textContent = `${sorted.length} server${sorted.length === 1 ? "" : "s"}`;
+    if (search) {
+      const show = sorted.length > 8;   // only surface search for long lists
+      search.hidden = !show;
+      if (show) wireFilter(guildContainer);
+    }
+}
+
+// Live client-side filter (only wired when the search box is shown).
+function wireFilter(guildContainer) {
+    const input = document.getElementById("server-filter");
+    if (!input || input._wired) return;
+    input._wired = true;
+    input.addEventListener("input", () => {
+      const q = input.value.trim().toLowerCase();
+      let shown = 0;
+      guildContainer.querySelectorAll(".server-card").forEach((c) => {
+        const match = !q || (c.getAttribute("data-name") || "").includes(q);
+        c.style.display = match ? "" : "none";
+        if (match) shown++;
+      });
+      const count = document.getElementById("picker-count");
+      if (count) count.textContent = shown ? `${shown} server${shown === 1 ? "" : "s"}` : "No matches";
     });
+}
+
+// Skeleton cards while the server list is loading (instead of a blank page).
+function renderSkeleton(guildContainer, n = 8) {
+    if (!guildContainer) return;
+    guildContainer.innerHTML = "";
+    for (let i = 0; i < n; i++) {
+      const card = document.createElement("div");
+      card.className = "server-card skeleton";
+      card.innerHTML = '<div class="sk sk-icon"></div><div class="sk sk-line"></div><div class="sk sk-line short"></div>';
+      guildContainer.appendChild(card);
+    }
+}
+
+// Polished empty state: explains what happened + offers an obvious next step.
+function renderEmpty(guildContainer) {
+    const wrap = document.createElement("div");
+    wrap.className = "picker-empty";
+    wrap.innerHTML =
+      '<div class="e-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="14" width="18" height="5" rx="1.5"/><path d="M7 6.5h.01M7 16.5h.01"/></svg></div>' +
+      '<h2>No manageable servers yet</h2>' +
+      '<p>You need <strong>Manage&nbsp;Server</strong> permission on a server that has Bucky. Invite Bucky to a server you manage, then refresh — it will appear here.</p>' +
+      '<div class="e-actions"></div>';
+    const actions = wrap.querySelector(".e-actions");
+    const invite = document.createElement("a");
+    invite.className = "btn btn-primary"; invite.href = getInviteURL(); invite.textContent = "Invite Bucky";
+    const refresh = document.createElement("button");
+    refresh.type = "button"; refresh.className = "btn btn-ghost"; refresh.textContent = "Refresh";
+    refresh.addEventListener("click", () => { if (window.refreshServers) window.refreshServers(); });
+    actions.append(invite, refresh);
+    guildContainer.innerHTML = "";
+    guildContainer.appendChild(wrap);
 }
 
 
@@ -133,29 +196,50 @@ if (inviteButton) {
 }
 
 
-// Serverkaart genereren
+// Premium server card: icon + name + status + reveal CTA. Rendered as a <button>
+// so keyboard/Enter selection and focus states work for free.
 function createGuildCard(guild, guildContainer) {
-  const card = document.createElement("div");
-  // De servers die getoond worden hebben altijd de bot, dus de rand is altijd groen
-  card.className = `guild-card green-border`;
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "server-card";
+  card.setAttribute("data-name", (guild.name || "").toLowerCase());
+  card.setAttribute("aria-label", `Open ${guild.name || "server"} dashboard`);
 
   const img = document.createElement("img");
+  img.className = "s-icon";
+  img.loading = "lazy";
   img.src = guild.icon
-    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`
+    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
     : "https://cdn.discordapp.com/embed/avatars/0.png";
-  img.alt = guild.name;
-  img.className = "guild-icon";
+  img.alt = "";
 
-  const name = document.createElement("h3");
-  name.textContent = guild.name;
+  const name = document.createElement("div");
+  name.className = "s-name";
+  name.textContent = guild.name || "Unnamed server";
+  name.title = guild.name || "";
 
-  card.appendChild(img);
-  card.appendChild(name);
+  const meta = document.createElement("div");
+  meta.className = "s-meta";
+  const dot = document.createElement("span"); dot.className = "dot";
+  const mtext = document.createElement("span"); mtext.textContent = "Bucky active";
+  meta.append(dot, mtext);
 
-  // Selecting a guild opens the Security v2 dashboard (the new SPA).
-  card.onclick = () => {
-    window.location.href = `security.html?guild_id=${guild.id}`;
-  };
+  const cta = document.createElement("div");
+  cta.className = "s-cta";
+  cta.textContent = "Open dashboard →";
+
+  card.append(img, name, meta, cta);
+
+  card.addEventListener("click", () => {
+    // Remember the chosen server (name + icon) so the dashboard top bar can show
+    // it without another round-trip. Frontend-only; no backend/SQL involved.
+    try {
+      localStorage.setItem("bucky_active_guild", JSON.stringify({ id: guild.id, name: guild.name, icon: guild.icon || null }));
+    } catch (_) { /* storage disabled — dashboard falls back to the id */ }
+    guildContainer.querySelectorAll(".server-card.selected").forEach((c) => c.classList.remove("selected"));
+    card.classList.add("selected");
+    setTimeout(() => { window.location.href = `security.html?guild_id=${guild.id}`; }, 160);
+  });
 
   guildContainer.appendChild(card);
 }
@@ -214,10 +298,18 @@ function paintMe(data) {
     const guildContainer = document.getElementById("guilds-container");
     if (!data || !data.user) return;
     if (userInfo) {
-        userInfo.innerHTML = `
-            <img src="https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png" class="avatar" />
-            <span>${data.user.username}</span>
-        `;
+        // Build via DOM (never innerHTML with a username) to avoid HTML injection.
+        userInfo.innerHTML = "";
+        const av = document.createElement("img");
+        av.src = data.user.avatar
+          ? `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png?size=64`
+          : "https://cdn.discordapp.com/embed/avatars/0.png";
+        av.alt = "";
+        const meta = document.createElement("div");
+        const nm = document.createElement("div"); nm.className = "u-name"; nm.textContent = data.user.username || "You";
+        const role = document.createElement("div"); role.className = "u-role"; role.textContent = "Signed in";
+        meta.append(nm, role);
+        userInfo.append(av, meta);
     }
     if (guildContainer) renderGuilds(data.guilds || [], guildContainer);
     renderNav(true, data.user);
@@ -260,7 +352,8 @@ async function loadDashboard() {
         const cu = sessionStorage.getItem("user_info");
         const cg = sessionStorage.getItem("user_guilds");
         if (cu && cg) paintMe({ user: JSON.parse(cu), guilds: JSON.parse(cg) });
-    } catch (_) { /* ignore malformed cache */ }
+        else renderSkeleton(document.getElementById("guilds-container"));
+    } catch (_) { renderSkeleton(document.getElementById("guilds-container")); }
 
     // 2) ALWAYS revalidate — presence is fresh (bot_guilds), the admin set is
     //    short-TTL. A plain refresh now reflects join/leave/admin changes.
