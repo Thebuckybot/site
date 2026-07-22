@@ -51,29 +51,33 @@
 
 /* Intro panel */
 .intro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
-.intro-grid h2 { font-size: clamp(2rem, 3.6vw, 3.1rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin: 14px 0 18px; }
-.intro-grid .lead { font-size: 1.22rem; color: var(--bk-text); font-weight: 600; margin: 0 0 14px; }
-.intro-grid p { color: var(--bk-muted); line-height: 1.8; margin: 0 0 8px; max-width: 560px; }
-.feat-list { list-style: none; padding: 0; margin: 22px 0 26px; display: grid; gap: 12px; }
+.intro-grid h2 { font-size: clamp(1.9rem, 3.2vw, 2.75rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.12; margin: 10px 0 12px; }
+.intro-grid .lead { font-size: 1.22rem; color: var(--bk-text); font-weight: 600; margin: 0 0 10px; }
+.intro-grid p { color: var(--bk-muted); line-height: 1.72; margin: 0 0 8px; max-width: 540px; }
+.feat-list { list-style: none; padding: 0; margin: 18px 0 22px; display: grid; gap: 12px; }
 .feat-list li { position: relative; padding-left: 28px; color: var(--bk-text); opacity: 0.92; }
 .feat-list li::before { content: ""; position: absolute; left: 0; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--bk-red); box-shadow: 0 0 10px rgba(139, 30, 63, 0.7); }
 .intro-visual { position: relative; display: flex; justify-content: center; }
 
 /* Dashboard showcase */
-.showcase { display: grid; gap: 22px; justify-items: center; text-align: center; }
-.showcase-head { max-width: 760px; }
-.showcase-head h3 { font-size: clamp(1.7rem, 3vw, 2.4rem); font-weight: 800; letter-spacing: -0.02em; margin: 10px 0 12px; }
-.showcase-head p { color: var(--bk-muted); font-size: 1.05rem; line-height: 1.7; margin: 0; }
+.showcase { display: grid; gap: 16px; justify-items: center; text-align: center; }
+.showcase-head { max-width: 720px; }
+.showcase-head h3 { font-size: clamp(1.6rem, 2.7vw, 2.2rem); font-weight: 800; letter-spacing: -0.02em; margin: 6px 0 10px; }
+/* Constrain the description to a comfortable measure so it wraps to shorter,
+   more readable lines instead of stretching the full head width. */
+.showcase-head p { color: var(--bk-muted); font-size: 1.05rem; line-height: 1.65; margin: 0 auto; max-width: 620px; }
 
 /* Browser frame — aspect-preserving, viewport-fitted, never stretched/cropped */
-.browser { display: inline-block; max-width: min(1040px, 100%); border-radius: 16px; overflow: hidden;
+.browser { display: inline-block; max-width: min(940px, 100%); border-radius: 16px; overflow: hidden;
   border: 1px solid var(--bk-border-strong); background: var(--bk-panel); box-shadow: 0 50px 110px rgba(0, 0, 0, 0.6); }
 .browser-bar { display: flex; align-items: center; gap: 8px; padding: 10px 15px; background: rgba(11, 15, 22, 0.7); border-bottom: 1px solid var(--bk-border); }
 .browser-bar .b-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; }
 .browser-bar .b-dot.r { background: #ec6a5e; } .browser-bar .b-dot.y { background: #f4bf50; } .browser-bar .b-dot.g { background: #61c554; }
 .browser-bar .url { margin-left: 12px; font-size: 12px; color: var(--bk-muted); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.browser img { display: block; width: auto; height: auto; max-width: 100%; max-height: 58vh; }
-.intro-visual .browser img { max-height: 66vh; }
+/* Screenshots trimmed ~12% so the image no longer dominates the panel and the
+   heading/description above it read as balanced rather than top-heavy. */
+.browser img { display: block; width: auto; height: auto; max-width: 100%; max-height: 51vh; }
+.intro-visual .browser img { max-height: 58vh; }
 .showcase-step { color: var(--bk-muted); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
 .showcase-step b { color: var(--bk-red-300); }
 
