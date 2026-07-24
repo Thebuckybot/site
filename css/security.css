@@ -141,15 +141,23 @@
   padding: 9px 16px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 700;
   font-family: inherit; transition: all 0.22s ease;
 }
-.sec-btn:hover { transform: translateY(-1px); border-color: var(--bucky-red-light); }
+/* Same hover move as the public .btn family (--lift-hover), so a button feels
+   identical whichever surface the user is on. Was -1px here versus -2px there. */
+.sec-btn:hover { transform: translateY(var(--lift-hover)); border-color: var(--bucky-red-light); }
 .sec-btn-primary {
   background: linear-gradient(135deg, var(--bucky-red), var(--bucky-red-light));
   border-color: transparent; color: #fff; box-shadow: var(--bucky-glow);
 }
 .sec-btn-primary:hover { box-shadow: var(--bucky-glow-lg); }
 .sec-btn-danger { background: linear-gradient(135deg, #b0303a, var(--sec-red)); border-color: transparent; color: #fff; }
+/* Danger had no hover of its own, so it inherited the crimson accent border
+   from .sec-btn:hover -- a red outline on an already-red button. Keep the
+   border transparent and let the shadow carry the state instead. */
+.sec-btn-danger:hover { border-color: transparent; box-shadow: 0 12px 34px rgba(176, 48, 58, 0.42); }
 .sec-btn-ghost { background: transparent; }
 .sec-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+/* css/tokens.css only collapses the duration, so the lift would still jump. */
+@media (prefers-reduced-motion: reduce) { .sec-btn:hover { transform: none; } }
 .sec-btn-sm { padding: 6px 12px; font-size: 12px; }
 .sec-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 18px; }
 

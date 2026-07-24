@@ -67,6 +67,7 @@
   --dur-fast: 0.15s; --dur: 0.25s; --dur-slow: 0.4s;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --lift-hover: -2px;    /* one hover-lift distance for every button surface */
 
   /* Z-index scale (named, replaces the ad-hoc 5/40/50/60/9999 spread) */
   --z-base: 1; --z-topbar: 10; --z-drawer: 40; --z-toast: 50;
