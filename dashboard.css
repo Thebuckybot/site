@@ -32,8 +32,14 @@
 /* Server grid */
 .server-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(212px, 1fr)); gap: 18px; }
 
-/* Server card */
+/* Server card
+   NOTE: this card is a real <button> (js/dashboard.js), and a button does NOT
+   inherit body's colour — the UA sheet applies `color: ButtonText` (black) to the
+   element itself, which beat inheritance and left .s-name at 1.25:1 on the dark
+   card. .s-meta / .s-cta were unaffected because they declare their own colour.
+   Setting the colour here fixes the cause rather than patching one child. */
 .server-card { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 11px;
+  color: var(--bk-text);
   padding: 26px 18px 20px; border-radius: 20px; cursor: pointer; border: 1px solid var(--bk-border);
   background: linear-gradient(160deg, var(--bk-panel), rgba(28, 36, 52, 0.72));
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
