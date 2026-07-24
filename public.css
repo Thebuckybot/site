@@ -32,7 +32,13 @@ img { max-width: 100%; display: block; }
   color: var(--bk-muted); text-decoration: none; font-weight: 600; font-size: 14px;
   padding: 8px 12px; border-radius: 9px; transition: color .2s var(--ease), background .2s var(--ease);
 }
-#nav-menu li a:hover { color: var(--bk-text); background: var(--bk-panel-2); }
+/* The auth CTAs are pills with their own crimson gradient, so they must not get
+   the plain nav-link hover: `#nav-menu li a:hover` outranks `#login-link:hover`
+   on specificity and painted --bk-panel-2 straight over the gradient. Excluding
+   them here is cheaper than out-specifying it downstream. #logout-btn needs no
+   exclusion -- it is a <button>, so this selector never matched it, which is why
+   that one button always behaved correctly. */
+#nav-menu li a:not(#login-link):not(#dashboard-link):hover { color: var(--bk-text); background: var(--bk-panel-2); }
 /* JS-injected auth CTAs (ids come from nav-auth.js) */
 #dashboard-link, #login-link, #logout-btn, #discord-login-button {
   display: inline-flex; align-items: center; justify-content: center; min-width: 104px; padding: 9px 18px;
@@ -42,6 +48,13 @@ img { max-width: 100%; display: block; }
 }
 #login-link { padding: 0; background: linear-gradient(135deg, var(--bk-red), var(--bk-red-500)); }
 #login-link button { all: unset; padding: 9px 18px; cursor: pointer; color: #fff; font-weight: 700; }
+/* These two are <a>s inside #nav-menu li, so the generic `#nav-menu li a` rule
+   (0,1,0,2) also outranked their own `transition: all` and left them animating
+   only colour and background -- the lift and glow snapped. Match that
+   specificity so the pill animates every property it actually changes.
+   #logout-btn is a <button> and keeps the transition from the rule above. */
+#nav-menu li a#login-link, #nav-menu li a#dashboard-link { transition: all var(--dur) var(--ease); }
+
 /* #discord-login-button is deliberately absent: it is the <button> nested inside
    the #login-link anchor, so lifting it too would double the movement. */
 #dashboard-link:hover, #login-link:hover, #logout-btn:hover { transform: translateY(var(--lift-hover)); box-shadow: var(--bk-glow-lg); }
