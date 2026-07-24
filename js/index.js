@@ -19,7 +19,10 @@ function initHero() {
   tl.from(".hero-eyebrow", { y: 20, opacity: 0, duration: 0.6 })
     .from(".hero-text h1", { y: 44, opacity: 0, duration: 0.9 }, "-=0.3")
     .from(".hero-text p", { y: 30, opacity: 0, duration: 0.7 }, "-=0.6")
-    .from(".hero-cta", { y: 24, opacity: 0, duration: 0.6 }, "-=0.5")
+    // Scoped to .hero: the class is reused by the flagship panel (which has its
+    // own data-rv reveal) and by the final CTA, and an unscoped selector fired
+    // this timeline on both of them off-screen at page load.
+    .from(".hero .hero-cta", { y: 24, opacity: 0, duration: 0.6 }, "-=0.5")
     .from(".hero-visual img", { scale: 0.9, opacity: 0, duration: 1.0 }, "-=0.8");
   gsap.to(".hero-visual img", { yPercent: 12, scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true } });
 }
@@ -80,6 +83,46 @@ function initCoins() {
   });
 }
 
+// Soft entrance reveals for the parts GSAP does not cover.
+//
+// Two distinct gaps:
+//   1. The final CTA and the footer are never animated, on any viewport.
+//   2. Phones (<=820px) bail out of GSAP entirely below, so the sections it
+//      would otherwise reveal get nothing at all. Wiring them here is safe
+//      precisely because GSAP is guaranteed not to run on that viewport --
+//      there is no double-animation risk.
+//
+// The CSS start state lives behind html.js-reveal, which we only set once we
+// know we can reveal again, so a JS failure can never leave content hidden.
+function initReveal() {
+  if (REDUCE) return;                 // honour the OS setting: no observer at all
+  if (!("IntersectionObserver" in window)) return;
+
+  const targets = [".final-inner > *", ".site-footer .footer-brand", ".site-footer .footer-col"];
+  if (window.matchMedia("(max-width: 820px)").matches) {
+    targets.push(".feature-card", ".product-text > *", ".product-media", ".features .section-head");
+  }
+
+  const els = document.querySelectorAll(targets.join(","));
+  if (!els.length) return;
+
+  document.documentElement.classList.add("js-reveal");
+  els.forEach((el, i) => {
+    el.classList.add("reveal");
+    el.style.setProperty("--rv-delay", (i % 4) * 60 + "ms");   // gentle stagger, resets per group
+  });
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-in");
+      io.unobserve(entry.target);          // reveal once; never re-hide on scroll-up
+    });
+  }, { rootMargin: "0px 0px -10% 0px", threshold: 0.1 });
+
+  els.forEach((el) => io.observe(el));
+}
+
 function init() {
   initNav();
   ScrollTrigger.config({ ignoreMobileResize: true });
@@ -105,3 +148,8 @@ function init() {
 }
 
 window.addEventListener("load", init);
+
+// Deliberately NOT on `load`: this script sits at the end of <body>, so the DOM
+// is ready here, and setting the reveal state now means it is in place before
+// the sections below the fold are ever painted.
+initReveal();

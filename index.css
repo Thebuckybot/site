@@ -192,6 +192,29 @@
   /* Shorter copy: keep the lead + bullets, drop the longer paragraph */
   .product-text > p:not(.lead), .intro-text > p:not(.lead) { display: none; }
 }
+/* ---- Entrance reveals (IntersectionObserver, js/index.js) ----
+   GSAP already reveals the hero, feature cards, product sections and section
+   heads -- but only on tablet/desktop, and it never touched the final CTA or the
+   footer on any viewport. These rules cover exactly those gaps.
+
+   The hidden start state is gated behind .js-reveal on <html>, which the script
+   only sets once it has an IntersectionObserver and is actually going to reveal
+   the elements again. Without JS -- or if GSAP throws before our code runs --
+   the class is never added and everything stays plainly visible. */
+.js-reveal .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity .55s var(--ease-out) var(--rv-delay, 0ms),
+              transform .55s var(--ease-out) var(--rv-delay, 0ms);
+  will-change: opacity, transform;
+}
+.js-reveal .reveal.is-in { opacity: 1; transform: none; }
+/* The script already bails on reduce; this is the belt-and-braces half, and it
+   also overrides the global 0.001ms transition squash from css/tokens.css. */
+@media (prefers-reduced-motion: reduce) {
+  .js-reveal .reveal { opacity: 1; transform: none; transition: none; }
+}
+
 /* Reduced motion / no-JS-motion: stacked layout so all panels are reachable */
 body.no-motion .flagship { height: auto; overflow: visible; }
 body.no-motion .hwrap { display: block; width: 100%; }
