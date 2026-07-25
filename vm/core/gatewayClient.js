@@ -313,8 +313,11 @@ function fetchMyLeaks(limit) {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 4.3 OSINT expansion — the live Leak Database (public, read-only).
+// Phase 4.3 OSINT expansion — the live Leak Database (read-only).
 // All powered by REAL player_exposures via the backend osint_service.
+// Mixed auth: stats and the incident INDEX are aggregates and stay anonymous;
+// the operator window and one incident's DETAIL carry resolved identities and
+// are login-gated, so those two send credentials.
 // ---------------------------------------------------------------------------
 // `test` (a positive integer) switches any read to the fictional simulation
 // dataset (the `+leaks test N` tooling) — visualisation only, never the DB.
@@ -333,14 +336,29 @@ function fetchLeakIncidents(test) {
     return request("/api/leaks/incidents" + _qs({ test }));
 }
 
-/** One incident + a page of its affected operators (lazy detail load). */
+/**
+ * One incident + a page of its affected operators (lazy detail load).
+ * Login required — see the note on fetchLeakOperators.
+ */
 function fetchLeakIncident(incidentId, page, test) {
-    return request("/api/leaks/incident/" + encodeURIComponent(String(incidentId || "")) + _qs({ page, test }));
+    return request(
+        "/api/leaks/incident/" + encodeURIComponent(String(incidentId || "")) + _qs({ page, test }),
+        { credentials: "include" }
+    );
 }
 
-/** The bounded exposed-operator window the VM browses client-side. */
+/**
+ * The bounded exposed-operator window the VM browses client-side.
+ *
+ * Login required. These two reads used to be anonymous, but they resolve the
+ * operator's handle and email from the real Discord username, so the backend now
+ * gates them with `api_login_required`. `credentials: "include"` is what makes an
+ * operator who is signed in but has no localStorage api_token (the Bearer seam
+ * below is only primed when the VM is mounted with one) still authenticate, via
+ * the session cookie — same as every other gated call in this module.
+ */
 function fetchLeakOperators(limit, test) {
-    return request("/api/leaks/operators" + _qs({ limit, test }));
+    return request("/api/leaks/operators" + _qs({ limit, test }), { credentials: "include" });
 }
 
 // ---------------------------------------------------------------------------
