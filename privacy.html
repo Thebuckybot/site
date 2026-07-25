@@ -23,7 +23,7 @@
   <header class="legal-hero">
     <span class="eyebrow">Legal</span>
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: 21 July 2026</p>
+    <p class="updated">Last updated: 25 July 2026</p>
   </header>
 
   <div class="legal-body">
@@ -48,14 +48,17 @@
       <div class="legal-card"><p>By adding Bucky to a server or signing in to the dashboard, you agree to the practices described here and in our <a href="tos.html">Terms of Service</a> and <a href="cookie.html">Cookie Policy</a>.</p></div>
 
       <h2 id="collect">Information we collect</h2>
-      <p>We collect only what is needed to provide each feature. Application answers, message contents and direct messages are not stored.</p>
+      <p>We collect only what is needed to provide each feature. Application answers, ordinary message contents and direct messages are not stored: security detections record the metadata of what triggered them (for a blocked link, the domain only) rather than the message itself.</p>
+      <p>Support tickets are the exception. Messages sent inside a ticket, and the transcript generated when it is closed, are stored so staff can handle and review the request; they are deleted 48 hours after the ticket is closed. A transcript that has already been posted into a Discord channel stays there, because it is then a Discord message under Discord's own retention.</p>
       <table class="legal-table">
         <thead><tr><th>Category</th><th>Examples</th><th>Why</th></tr></thead>
         <tbody>
           <tr><td>Discord identifiers</td><td>User ID, Server (guild) ID, role &amp; channel IDs</td><td>Associate settings and data with the right account and server</td></tr>
           <tr><td>Security configuration</td><td>Module toggles, thresholds, punishment chains, ignore rules, SOC rules</td><td>Run and enforce your server's protection</td></tr>
-          <tr><td>Security events</td><td>Incident metadata, audit-log derived events, quarantine records, snapshots of server structure</td><td>Detection, recovery and the audit trail</td></tr>
+          <tr><td>Security events</td><td>Incident metadata, audit-log derived events, quarantine records including a cached username &amp; avatar URL, snapshots of server structure</td><td>Detection, recovery and the audit trail</td></tr>
           <tr><td>Economy &amp; gameplay</td><td>Balances, inventory, level/progression, mission &amp; arc state</td><td>Power the economy, arcade and story features</td></tr>
+          <tr><td>Support tickets</td><td>Ticket messages and transcripts, with the display name of each author</td><td>Handle your request and let staff review how it was handled</td></tr>
+          <tr><td>Giveaways</td><td>Entries, and the display name of each drawn winner</td><td>Draw winners and show who won</td></tr>
           <tr><td>Reminders</td><td>Reminder text and scheduled time</td><td>Deliver reminders you create</td></tr>
           <tr><td>Technical</td><td>Session token, IP address at sign-in, basic request logs</td><td>Authentication, security and abuse prevention</td></tr>
         </tbody>
@@ -68,12 +71,23 @@
       <p>Where the GDPR or similar laws apply, we rely on: <strong>performance of a contract</strong> (to provide features you request), <strong>legitimate interests</strong> (to keep servers secure and prevent abuse), and <strong>consent</strong> (for optional cookies, withdrawable at any time).</p>
 
       <h2 id="retention">Data retention</h2>
-      <p>We keep data for as long as it is needed to provide the Service. Security snapshots and incident records are retained to support recovery and the audit trail; you can delete snapshots from the dashboard. If Bucky is removed from a server, associated configuration and security data may be deleted after a reasonable period unless earlier deletion is requested.</p>
+      <p>Data that expires on a fixed schedule is deleted automatically:</p>
+      <table class="legal-table">
+        <thead><tr><th>Data</th><th>Retention</th></tr></thead>
+        <tbody>
+          <tr><td>Security incidents, audit log, rule executions and risk history</td><td>14 days by default; a server can set its own window in the dashboard</td></tr>
+          <tr><td>Ticket messages and transcripts</td><td>48 hours after the ticket is closed</td></tr>
+          <tr><td>Giveaway entries</td><td>72 hours after the giveaway ends or is cancelled</td></tr>
+        </tbody>
+      </table>
+      <p>Everything else is kept for as long as it is needed to provide the Service. Configuration, economy and progression data have no fixed expiry, because deleting them would reset your server or your account. Security snapshots are kept to support recovery and you can delete them from the dashboard at any time. If Bucky is removed from a server, associated configuration and security data may be deleted after a reasonable period unless earlier deletion is requested.</p>
 
       <h2 id="sharing">Sharing &amp; sub-processors</h2>
       <p>We do not share personal data with third parties for their own purposes. We rely on a small number of processors to run the Service:</p>
       <ul>
         <li><strong>Discord</strong> — the platform the Service operates on; governed by Discord's own <a href="https://discord.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</li>
+        <li><strong>Google Translate</strong> — receives the text you ask Bucky to translate, and only then; it is the primary translation provider.</li>
+        <li><strong>MyMemory</strong> — receives the same text as a fallback when Google Translate does not answer; governed by <a href="https://mymemory.translated.net/doc/en/privacy.php" target="_blank" rel="noopener">its own privacy policy</a>.</li>
         <li><strong>Hosting &amp; database providers</strong> — to store configuration and run the bot and dashboard.</li>
       </ul>
       <p>We may disclose information if required by law or to protect the rights, safety and security of our users and the Service.</p>
