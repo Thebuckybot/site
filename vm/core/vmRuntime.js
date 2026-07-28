@@ -66,15 +66,12 @@ import {
     mountMailApp,
     unmountMailApp
 } from "../apps/MailApp.js";
-import {
-    createMissionHubState,
-    renderMissionHubApp,
-    mountMissionHubApp,
-    unmountMissionHubApp,
-    preloadMissionHubAssets,
-    disposeMissionHubAssets
-} from "../apps/MissionHubApp.js";
-import { renderPlaceholderApp } from "../apps/PlaceholderApp.js";
+// MissionHubApp is NOT imported statically. It is locked (see the `missionhub`
+// entry in createAppRegistry), and a static import would keep its ~68 KB in the
+// initial module graph for a module nobody can open. It is pulled in on demand
+// by loadMissionHubModule() below, which is what the preload and dispose paths
+// use once the app is unlocked again.
+import { renderPlaceholderApp, renderLockedApp } from "../apps/PlaceholderApp.js";
 import { gatewayClient } from "./gatewayClient.js";
 import { assetCache } from "./assetCache.js";
 import { createMailService, setMailService } from "./mail/mailService.js";
@@ -90,6 +87,16 @@ const FALLBACK_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
 // Fire-once, best-effort, never blocks boot. GitHub-Pages-safe: URLs resolve from
 // import.meta.url (vm/core/ → vm/assets/…), exactly like MissionHubApp.js does.
 let _missionHubPreloaded = false;
+// Resolved module promise, or null while Mission Hub has never been touched.
+// dispose() checks it so it never imports the module just to tear down assets
+// that were never loaded.
+let _missionHubModule = null;
+function loadMissionHubModule() {
+    if (!_missionHubModule) {
+        _missionHubModule = import("../apps/MissionHubApp.js");
+    }
+    return _missionHubModule;
+}
 function preloadMissionHub() {
     if (_missionHubPreloaded || typeof window === "undefined") return;
     _missionHubPreloaded = true;
@@ -97,7 +104,9 @@ function preloadMissionHub() {
         // The master GLB parse-once into the AssetCache at WEBSITE STARTUP (download +
         // GLTF/Draco parse + texture decode), so opening Mission Hub clones the
         // already-cached scene and issues ZERO GLB fetches/parses.
-        try { preloadMissionHubAssets(); } catch (_e) { /* never block boot on preload */ } // mission_hub_master.glb
+        loadMissionHubModule()
+            .then((m) => { try { m.preloadMissionHubAssets(); } catch (_e) {} })
+            .catch(() => {}); // mission_hub_master.glb
         // Warm the optional bloom post-FX ESM modules MissionHub may import on open
         // (desktop only — touch devices render directly), so the FIRST open is a
         // module-cache hit. Three core + GLTF/Draco are already warmed by the
@@ -143,9 +152,19 @@ export class BuckyVMRuntime {
                 .then((m) => { try { m.getBuckyNet(); } catch (_e) {} })
                 .catch(() => {});
         } catch (_e) { /* never block VM boot on preload priming */ }
-        // v0.7 (V3) — Phase 4: prime the Mission Hub cinematic's heavy assets now, so
-        // the click-to-open later is instant (no loading screen / asset pop-in).
-        try { preloadMissionHub(); } catch (_e) { /* never block VM boot on preload */ }
+        // Mission Hub is LOCKED (arc missions + 3D world parked), so priming its
+        // assets here would be ~11 MB on every page load for something nobody can
+        // open. preloadMissionHub() is deliberately NOT called at boot any more.
+        //
+        // Nothing else pulls three.js in: MissionHubApp.js and assetCache.js have
+        // no static imports at all, and the CDN modules arrive only through
+        // AssetCache._defaultLoadDeps()'s dynamic import(). Dropping this call
+        // therefore drops three.js, GLTFLoader, DRACOLoader, SkeletonUtils, the
+        // Draco decoder wasm and the bloom post-FX modules with it - measured, not
+        // assumed. Rapier was already lazy.
+        //
+        // When Mission Hub is unlocked again, call preloadMissionHub() from the
+        // app's open path, not from this constructor.
         this.debug = Boolean(options.debug);
         setDebugMode(this.debug);
         this.mode = "embedded";
@@ -802,7 +821,15 @@ export class BuckyVMRuntime {
         try { if (this._onPageHide) window.removeEventListener("pagehide", this._onPageHide); } catch (_e) { /* ignore */ }
         try { this.teardownWindows(); } catch (_e) { /* ignore */ }
         try { this.teardownDesktopView(); } catch (_e) { /* ignore */ }
-        try { disposeMissionHubAssets(); } catch (_e) { /* ignore */ }
+        // Only if Mission Hub was actually loaded this session — otherwise there
+        // is nothing to dispose and importing the module now would defeat the
+        // point of keeping it out of the graph. assetCache.disposeAll() below
+        // covers the shared cache either way.
+        if (_missionHubModule) {
+            _missionHubModule
+                .then((m) => { try { m.disposeMissionHubAssets(); } catch (_e) {} })
+                .catch(() => {});
+        }
         try { assetCache.disposeAll(); } catch (_e) { /* ignore */ }
         debugLog("BuckyVMRuntime disposed");
     }
@@ -888,21 +915,29 @@ function createAppRegistry() {
             mount: mountMailApp,
             unmount: unmountMailApp
         },
-        // Mission Hub — V6 master-world runtime. One GLB, one scene, one camera:
-        // apartment → through the phone glass → 500 m drop → bird-eye reveal →
-        // Arc 1 arrival. Roomy default geometry; the renderer fills any size.
+        // Mission Hub — LOCKED. The V6 master-world runtime is intact (apartment
+        // → through the phone glass → 500 m drop → Arc 1 arrival), but the arc
+        // missions and the 3D world are parked, so opening it would pull ~11 MB
+        // for a screen with nothing behind it.
+        //
+        // The app stays in the registry rather than being removed: the taskbar,
+        // `missionhub.link` on the desktop and `apps.sys` all reference it, and
+        // an entry that opens to a clear "switched off" panel is better than a
+        // dead icon or a missing one. To restore it, put back createState /
+        // render / mount / unmount from MissionHubApp.js (dynamically imported
+        // via loadMissionHubModule) and drop the `locked` flag.
         missionhub: {
             id: "missionhub",
             title: "Mission Hub",
             label: "Mission Hub",
             icon: "HUB",
-            width: 760,
-            height: 520,
+            width: 470,
+            height: 390,
             singleInstance: true,
-            createState: createMissionHubState,
-            render: renderMissionHubApp,
-            mount: mountMissionHubApp,
-            unmount: unmountMissionHubApp
+            locked: true,
+            description: "Mission Hub is offline while the arc missions and the 3D world are being built.",
+            lockNote: "Your organization, economy and progression are unaffected.",
+            render: (runtime) => renderLockedApp(runtime.apps.missionhub)
         },
         database: placeholder("database", "Database", "Database viewer under construction."),
         osint: placeholder("osint", "OSINT", "Investigation toolkit under construction.")

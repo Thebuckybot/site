@@ -45,7 +45,9 @@ const SEED_ORGS = [
         members: null,
     },
     {
-        id: "null", name: "Null Division", emblem: "∅", color: "#9098A8",
+        // Slug is "nulldiv": "null" is a trapdoor in JS, JSON, YAML, URL paths
+        // and CSV. Display name and emblem are unchanged.
+        id: "nulldiv", name: "Null Division", emblem: "∅", color: "#9098A8",
         tagline: "Leave no trace. Trust no one. Move clean.",
         description: "Null Division does not announce itself. It operates out of the unindexed sectors and recruits operators who value disappearance over influence.",
         philosophy: "The cleanest signature is no signature at all.",
@@ -290,7 +292,7 @@ export function registerOrganizationsSite(registry) {
         title: "Grid Organisations",
         type: "home",
         keywords: ["organizations", "organisations", "factions", "orgs", "cytek",
-                   "null", "aether", "vanta", "affiliation", "guild"],
+                   "nulldiv", "null division", "aether", "vanta", "affiliation", "guild"],
         description: "The four founding organisations of the Grid — permanent affiliations and their philosophies.",
         tags: ["organizations", "identity"],
         render: () => renderHome(),

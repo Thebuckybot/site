@@ -922,6 +922,32 @@ body.vm-focus-active .arcade-vm-bay {
     box-shadow: 0 0 22px rgba(82,255,243,.22);
 }
 
+/* A module that exists but is switched off, not one still being built. Amber
+   instead of the placeholder's cyan, so the two read differently at a glance. */
+.vm-locked-app {
+    background: radial-gradient(circle at center, rgba(224,162,16,.10), transparent 52%);
+}
+
+.vm-locked-badge {
+    width: 76px;
+    height: 76px;
+    display: grid;
+    place-items: center;
+    font-size: 30px;
+    border: 1px solid rgba(224,162,16,.45);
+    border-radius: 50%;
+    box-shadow: 0 0 22px rgba(224,162,16,.18);
+}
+
+.vm-locked-app span {
+    color: rgba(224,162,16,.9);
+}
+
+.vm-locked-note {
+    color: rgba(232,255,255,.5);
+    font-size: 12px;
+}
+
 .vm-taskbar {
     position: absolute;
     left: 10px;
