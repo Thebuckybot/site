@@ -37,7 +37,7 @@ const TTL = gatewayClient.softRefreshTtl || 60000;
  */
 const SEED_ORGS = [
     {
-        id: "cytek", name: "CyTek Industries", emblem: "⧁", color: "#10E0C8",
+        id: "cytek", name: "CyTek Industries", emblem: "⧁", color: "#E0A210",
         tagline: "Engineer the next layer of the Grid.",
         description: "CyTek Industries is the Grid's largest engineering conglomerate. They build the relays, the protocols and the tools every other operator depends on.",
         philosophy: "Build first, refine later. Tools beat manifestos.",
@@ -47,7 +47,7 @@ const SEED_ORGS = [
     {
         // Slug is "nulldiv": "null" is a trapdoor in JS, JSON, YAML, URL paths
         // and CSV. Display name and emblem are unchanged.
-        id: "nulldiv", name: "Null Division", emblem: "∅", color: "#9098A8",
+        id: "nulldiv", name: "Null Division", emblem: "∅", color: "#626C7E",
         tagline: "Leave no trace. Trust no one. Move clean.",
         description: "Null Division does not announce itself. It operates out of the unindexed sectors and recruits operators who value disappearance over influence.",
         philosophy: "The cleanest signature is no signature at all.",
@@ -55,7 +55,7 @@ const SEED_ORGS = [
         members: null,
     },
     {
-        id: "aether", name: "Aether Systems", emblem: "⯂", color: "#E0A210",
+        id: "aether", name: "Aether Systems", emblem: "⯂", color: "#102A54",
         tagline: "Order through architecture.",
         description: "Aether Systems is the old establishment — the consortium that wrote the standards everyone else now follows.",
         philosophy: "Well-defined process is the only durable defence.",
@@ -63,7 +63,7 @@ const SEED_ORGS = [
         members: null,
     },
     {
-        id: "vanta", name: "Vanta Collective", emblem: "▽", color: "#E0457B",
+        id: "vanta", name: "Vanta Collective", emblem: "▽", color: "#2BE04A",
         tagline: "The Grid is no one's property.",
         description: "Vanta Collective is a loose, decentralised crew of operators who reject the corporate stack on principle.",
         philosophy: "Resilience is a swarm property. There is no centre.",
