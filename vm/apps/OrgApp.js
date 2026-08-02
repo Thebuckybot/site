@@ -53,13 +53,13 @@ const BODY_LIMIT = 500;
 // afbeelding: de hele VM rendert iconen als tekst, en een <img> hier zou het
 // enige in zijn soort zijn.
 const TABS = [
-    { key: "overview", label: "Overzicht", glyph: "▣" },
+    { key: "overview", label: "Overview", glyph: "▣" },
     { key: "feed", label: "Feed", glyph: "▤" },
     { key: "upgrades", label: "Upgrades", glyph: "▦" },
     { key: "treasury", label: "Treasury", glyph: "▥" },
-    { key: "election", label: "Verkiezing", glyph: "▧" },
-    { key: "members", label: "Leden", glyph: "▢" },
-    { key: "card", label: "Jij", glyph: "□" }
+    { key: "election", label: "Election", glyph: "▧" },
+    { key: "members", label: "Members", glyph: "▢" },
+    { key: "card", label: "You", glyph: "□" }
 ];
 
 const RANK_LABEL = {
@@ -195,10 +195,10 @@ function renderOrgInner(runtime, windowState) {
 
     if (s.loading && !s.viewer && !s.standings.length) {
         return shell(s, `<p class="og-boot"><span class="og-boot-dot"></span>
-            verbinden met de organisatie…</p>`, false);
+            connecting to the organization…</p>`, false);
     }
     if (s.error) {
-        return shell(s, empty("Geen verbinding", s.error), false);
+        return shell(s, empty("No connection", s.error), false);
     }
     if (!s.viewer) {
         return shell(s, renderOutsider(s), false);
@@ -281,23 +281,22 @@ function renderOutsider(s) {
         <div class="og-col og-col-main">
             <section class="og-panel og-locked">${CORRUPT}
                 <span class="og-locked-mark">■</span>
-                <h2>Alleen leden</h2>
-                <p>Je kijkt van buitenaf naar deze organisatie. De ranglijst is
-                    openbaar; de feed, de treasury, de upgrades en de verkiezing
-                    zijn dat niet.</p>
+                <h2>Members only</h2>
+                <p>You are looking at this organization from the outside. The league
+                    table is public; the feed, the treasury, the upgrades
+                    and the election are not.</p>
                 <button class="og-join" data-org-join>
-                    Hoe word ik lid? <code>+chooseorg</code>
+                    How do I join? <code>+chooseorg</code>
                 </button>
-                <p class="og-faint">Je kiest één keer, en die keuze is
-                    permanent. Lees de vier eerst.</p>
+                <p class="og-faint">You choose once, and the choice is permanent. Read all four
+                    first.</p>
             </section>
         </div>
         <div class="og-col og-col-side">
             <section class="og-panel og-rank">${CORRUPT}
-                <div class="og-eyebrow">Ranglijst — REP per actief lid</div>
+                <div class="og-eyebrow">League table — REP per active member</div>
                 <ol class="og-rank-list">${rijen}</ol>
-                <p class="og-faint">Dit is wat iedereen mag zien, ook zonder
-                    organisatie.</p>
+                <p class="og-faint">This is what anybody may see, organization or not.</p>
             </section>
         </div>
     </div>`;
@@ -324,7 +323,7 @@ function renderOverview(s) {
     // klapte de volgende regel op `org.credits`.
     const org = s.data.overview;
     if (!org || !org.credits) {
-        return empty("Nog niets", "Deze organisatie heeft nog geen gegevens.");
+        return empty("Nothing yet", "This organization has no data yet.");
     }
     const aankondiging = ((s.data.overview_env || {}).announcements || [])[0];
 
@@ -372,13 +371,13 @@ function renderIdentity(org, s) {
                 ${t.tagline ? `<p class="og-motto">// ${escapeHtml(t.tagline)}</p>` : ""}
             </div>
             <dl class="og-ident-rep">
-                <dt>REP deze termijn</dt>
+                <dt>REP this term</dt>
                 <dd data-count="${Number(org.rep) || 0}">${num(org.rep)}</dd>
             </dl>
         </div>
         <div class="og-ident-facts">
-            ${fact("Leden", `${num(org.active)} / ${num(org.members)}`)}
-            ${fact("Ranglijst", mij >= 0 ? `#${mij + 1} / ${s.standings.length}` : "—")}
+            ${fact("Members", `${num(org.active)} / ${num(org.members)}`)}
+            ${fact("Standing", mij >= 0 ? `#${mij + 1} / ${s.standings.length}` : "—")}
             ${fact("Credits", num(org.credits.available))}
         </div>
     </header>`;
@@ -405,26 +404,26 @@ function renderTerm(org) {
     const c = org.campaign;
     if (!c) {
         return `<section class="og-panel og-term is-idle">
-            <div class="og-eyebrow">Campagne</div>
-            <p class="og-term-idle">Er loopt geen campagne. De leider opent er een
-                met <code>+campaign</code> in #treasury.</p>
+            <div class="og-eyebrow">Campaign</div>
+            <p class="og-term-idle">No campaign is running. The Leader opens one with
+                <code>+campaign</code> in #treasury.</p>
         </section>`;
     }
     const dagen = dagenTot(c.deadline);
     return `<section class="og-panel og-term">${CORRUPT}
         <div class="og-term-head">
-            <span class="og-eyebrow">Campagne</span>
+            <span class="og-eyebrow">Campaign</span>
             <span class="og-term-name">${escapeHtml(c.title || "")}</span>
             <span class="og-term-left">${dagen === null ? "—"
-                : `nog ${num(dagen)} ${dagen === 1 ? "dag" : "dagen"}`}</span>
+                : `${num(dagen)} ${dagen === 1 ? "day" : "days"} left`}</span>
         </div>
         ${meter(c.percent, c.full)}
         <div class="og-term-foot">
             <span class="og-mono">${num(c.raised)}</span>
-            <span class="og-faint">van ${num(c.goal)}</span>
+            <span class="og-faint">of ${num(c.goal)}</span>
             <span class="og-term-pct og-mono">${c.percent}%</span>
         </div>
-        ${c.full ? `<p class="og-flag">Pot is vol — de Leader kan nu kopen.</p>` : ""}
+        ${c.full ? `<p class="og-flag">Pot is full — the Leader can buy now.</p>` : ""}
     </section>`;
 }
 
@@ -470,7 +469,7 @@ function renderStandings(s, org) {
         </li>`;
     }).join("");
     return `<section class="og-panel og-rank">${CORRUPT}
-        <div class="og-eyebrow">Ranglijst — REP per actief lid</div>
+        <div class="og-eyebrow">League table — REP per active member</div>
         <ol class="og-rank-list">${rijen}</ol>
     </section>`;
 }
@@ -483,13 +482,13 @@ function mijnAvatar(s) {
 function renderAnnouncementCard(a) {
     if (!a) {
         return `<section class="og-panel og-ann is-empty">
-            <div class="og-eyebrow">Recente aankondiging</div>
-            <p class="og-faint">Nog niets aangekondigd. De leider plaatst er een
-                met <code>+organnounce</code>.</p>
+            <div class="og-eyebrow">Latest announcement</div>
+            <p class="og-faint">Nothing announced yet. The Leader posts one with
+                <code>+organnounce</code>.</p>
         </section>`;
     }
     return `<section class="og-panel og-ann">${CORRUPT}
-        <div class="og-eyebrow">Recente aankondiging</div>
+        <div class="og-eyebrow">Latest announcement</div>
         <div class="og-ann-head">
             ${userChip(a.author_id, "leader")}
             <time class="og-faint og-mono">${escapeHtml(shortTime(a.created_at))}</time>
@@ -512,7 +511,7 @@ function renderTreasurySummary(org) {
             ${donut(pctVol)}
         </div>
         <div class="og-treas-goal">
-            <span class="og-faint">Doel: volgende upgrade</span>
+            <span class="og-faint">Target: next upgrade</span>
             <span class="og-mono">${c ? num(c.goal) : "—"}</span>
         </div>
         ${meter(pctVol, c && c.full)}
@@ -554,11 +553,11 @@ function renderFeed(s) {
         <div class="og-col og-col-main">
             ${f.can_post ? renderComposer(s) : renderPostingOff(f)}
             ${wortels.length ? `<ul class="og-feed">${lijst}</ul>` : empty(
-                "Nog geen gesprek",
+                "No conversation yet",
                 f.can_post
-                    ? "Jij mag als eerste iets zeggen. Alles wat hier staat is "
-                      + "zichtbaar voor je hele organisatie."
-                    : "Er is hier nog niets gezegd.")}
+                    ? "You can be the first to say something. Everything here is "
+                      + "visible to your whole organization."
+                    : "Nothing has been said here yet.")}
         </div>
         <div class="og-col og-col-side">
             ${renderFeedContext(s, f)}
@@ -575,13 +574,13 @@ function renderFeed(s) {
  */
 function renderPostingOff(f) {
     return `<section class="og-panel og-composer is-off">${CORRUPT}
-        <div class="og-eyebrow">Praten</div>
+        <div class="og-eyebrow">Talking</div>
         <p class="og-off">
             <span class="og-off-mark">\u25A0</span>
-            ${escapeHtml(f.post_note || "Alleen leden van deze organisatie "
-                + "kunnen hier posten.")}
+            ${escapeHtml(f.post_note || "Only members of this organization "
+                + "can post here.")}
         </p>
-        <p class="og-faint">Lezen, melden en verwijderen blijven werken.</p>
+        <p class="og-faint">Reading, reporting and deleting keep working.</p>
     </section>`;
 }
 
@@ -589,28 +588,28 @@ function renderFeedContext(s, f) {
     const org = s.data.overview || {};
     const c = org.campaign;
     return `<section class="og-panel">${CORRUPT}
-        <div class="og-eyebrow">Waar je praat</div>
+        <div class="og-eyebrow">Where you are talking</div>
         <p class="og-thread">
             <span class="og-thread-mark">\u25B8</span>
             ${s.campaignId && c
-                ? `de draad van <strong>${escapeHtml(c.title || "de campagne")}</strong>`
-                : "de algemene draad van je organisatie"}
+                ? `the thread of <strong>${escapeHtml(c.title || "the campaign")}</strong>`
+                : "your organization's general thread"}
         </p>
-        <div class="og-eyebrow">Huisregels</div>
+        <div class="og-eyebrow">House rules</div>
         <ul class="og-rules">
-            <li>Maximaal ${num(BODY_LIMIT)} tekens per bericht.</li>
-            <li>Een paar seconden tussen twee berichten.</li>
-            <li>Meld wat niet hoort — dat telt, en de leiding ziet het.</li>
-            ${f.can_moderate ? `<li class="og-rule-mod">Jij mag berichten van
-                anderen verwijderen.</li>` : ""}
+            <li>At most ${num(BODY_LIMIT)} characters per message.</li>
+            <li>A few seconds between two messages.</li>
+            <li>Report what does not belong — it counts, and the
+                leadership sees it.</li>
+            ${f.can_moderate ? `<li class="og-rule-mod">You may delete other people's messages.</li>` : ""}
         </ul>
     </section>`;
 }
 
 function reportButton(p, f) {
     return f.reported && f.reported[p.id]
-        ? `<span class="og-reported og-mono">Gemeld</span>`
-        : `<button data-org-report="${p.id}">Melden</button>`;
+        ? `<span class="og-reported og-mono">Reported</span>`
+        : `<button data-org-report="${p.id}">Report</button>`;
 }
 
 /**
@@ -628,14 +627,14 @@ function renderPost(p, f, antwoorden) {
     return `<li class="og-post${p.mine ? " is-mine" : ""}" data-post="${p.id}">
         <div class="og-post-head">
             ${userChip(p.author_id, p.author_rank, "", p.mine ? f.mijnAvatar : "")}
-            ${vraag ? `<span class="og-tag">Open vraag</span>` : ""}
+            ${vraag ? `<span class="og-tag">Open question</span>` : ""}
             <time class="og-post-time og-mono">${escapeHtml(shortTime(p.created_at))}</time>
         </div>
         <div class="og-post-body">${escapeHtml(p.body)}</div>
         <div class="og-post-tools">
-            ${f.can_post ? `<button data-org-reply="${p.id}">Antwoord</button>` : ""}
+            ${f.can_post ? `<button data-org-reply="${p.id}">Reply</button>` : ""}
             ${reportButton(p, f)}
-            ${magWeg ? `<button data-org-delete="${p.id}">Verwijder</button>` : ""}
+            ${magWeg ? `<button data-org-delete="${p.id}">Delete</button>` : ""}
             ${antwoorden.length ? `<span class="og-chip og-mono">
                 <i>\u25AD</i>${antwoorden.length}</span>` : ""}
             ${p.reports ? `<span class="og-chip is-warn og-mono">
@@ -656,7 +655,7 @@ function renderReply(r, f) {
         <div class="og-post-tools">
             ${reportButton(r, f)}
             ${(r.mine || f.can_moderate)
-                ? `<button data-org-delete="${r.id}">Verwijder</button>` : ""}
+                ? `<button data-org-delete="${r.id}">Delete</button>` : ""}
             ${r.reports ? `<span class="og-chip is-warn og-mono">
                 <i>\u25B3</i>${r.reports}</span>` : ""}
         </div>
@@ -681,20 +680,20 @@ function renderComposer(s) {
     const bijna = over <= 60;
     return `<form class="og-panel og-composer" data-org-composer>${CORRUPT}
         ${s.replyTo ? `<div class="og-replying og-mono">
-            <span>Antwoord op #${s.replyTo}</span>
-            <button type="button" data-org-cancel-reply>annuleer</button></div>` : ""}
+            <span>Replying to #${s.replyTo}</span>
+            <button type="button" data-org-cancel-reply>cancel</button></div>` : ""}
         <div class="og-composer-row">
             <img class="og-avatar" alt=""
                  src="${escapeHtml(avatar(s.viewer ? s.viewer.user_id : "0",
                                           mijnAvatar(s)))}">
             <textarea data-org-draft maxlength="${BODY_LIMIT}"
-                placeholder="Wat wil je delen met je organisatie?"
+                placeholder="What do you want to share with your organization?"
                 ${s.posting ? "disabled" : ""}>${escapeHtml(s.draft || "")}</textarea>
         </div>
         <div class="og-composer-foot">
             <span class="og-count og-mono${over < 0 ? " is-over" : bijna ? " is-near" : ""}"
                   >${over}</span>
-            <button type="submit" ${s.posting ? "disabled" : ""}>Plaatsen</button>
+            <button type="submit" ${s.posting ? "disabled" : ""}>Post</button>
         </div>
         ${s.postError ? `<p class="og-error">${escapeHtml(s.postError)}</p>` : ""}
     </form>`;
@@ -704,7 +703,7 @@ function shortTime(iso) {
     if (!iso) return "";
     const d = new Date(iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z");
     if (isNaN(d.getTime())) return "";
-    return d.toLocaleString([], { month: "short", day: "numeric",
+    return d.toLocaleString("en-GB", { month: "short", day: "numeric",
                                   hour: "2-digit", minute: "2-digit" });
 }
 
@@ -721,8 +720,8 @@ function renderTreasury(s) {
     const d = s.data.treasury || s.data.overview_env || {};
     const org = d.item || s.data.overview;
     if (!org || !org.treasury) {
-        return empty("Nog geen treasury",
-            "Zodra je organisatie een campagne afrondt komt hier geld te staan.");
+        return empty("No treasury yet",
+            "Money appears here as soon as your organization finishes a campaign.");
     }
     const c = org.campaign;
     const pctVol = c ? c.percent : 0;
@@ -731,7 +730,7 @@ function renderTreasury(s) {
     return `<div class="og-split">
         <div class="og-col og-col-main">
             <section class="og-panel og-treas">${CORRUPT}
-                <div class="og-eyebrow">Saldo</div>
+                <div class="og-eyebrow">Balance</div>
                 <div class="og-treas-row">
                     <div class="og-treas-figure">
                         <span class="og-treas-amount og-mono"
@@ -741,20 +740,19 @@ function renderTreasury(s) {
                     ${donut(pctVol)}
                 </div>
                 <div class="og-treas-goal">
-                    <span class="og-faint">${c ? "Doel: volgende upgrade"
-                        : "Geen doel — er loopt geen campagne"}</span>
+                    <span class="og-faint">${c ? "Target: next upgrade"
+                        : "No target — no campaign running"}</span>
                     <span class="og-mono">${c ? num(c.goal) : "—"}</span>
                 </div>
                 ${meter(pctVol, c && c.full)}
-                ${c && c.full ? `<p class="og-flag">Pot is vol — de Leader kan nu
-                    kopen.</p>` : ""}
+                ${c && c.full ? `<p class="og-flag">Pot is full — the Leader can buy now.</p>` : ""}
             </section>
             ${renderDonors(c)}
             ${renderTransactions(c)}
         </div>
         <div class="og-col og-col-side">
             ${renderBank(org)}
-            ${renderRate(rente, "Bankrente van je organisatie")}
+            ${renderRate(rente, "Your organization's bank interest")}
         </div>
     </div>`;
 }
@@ -763,14 +761,14 @@ function renderDonors(c) {
     const donateurs = (c && c.donors) || [];
     if (!donateurs.length) {
         return `<section class="og-panel">${CORRUPT}
-            <div class="og-eyebrow">Top-donateurs</div>
-            <p class="og-faint">Nog niemand heeft gedoneerd. Met
-                <code>+org donate</code> in Discord sta jij hier als eerste.</p>
+            <div class="og-eyebrow">Top donors</div>
+            <p class="og-faint">Nobody has donated yet. With
+                <code>+org donate</code> in Discord you are first on this list.</p>
         </section>`;
     }
     const top = Math.max(1, ...donateurs.map((d) => Number(d.amount) || 0));
     return `<section class="og-panel">${CORRUPT}
-        <div class="og-eyebrow">Top-donateurs — deze campagne</div>
+        <div class="og-eyebrow">Top donors — this campaign</div>
         <ol class="og-donors">${donateurs.map((d, i) => `
             <li class="og-donor">
                 <span class="og-donor-pos og-mono">${i + 1}</span>
@@ -795,54 +793,54 @@ function renderDonors(c) {
 function renderTransactions(c) {
     if (!c) {
         return `<section class="og-panel">${CORRUPT}
-            <div class="og-eyebrow">Recente bewegingen</div>
-            <p class="og-faint">Er is nog niets bewogen. Bewegingen verschijnen
-                zodra er een campagne loopt.</p>
+            <div class="og-eyebrow">Recent movements</div>
+            <p class="og-faint">Nothing has moved yet. Movements appear as soon as a
+                campaign is running.</p>
         </section>`;
     }
     const rijen = (c.donors || []).map((d) => ({
-        soort: "in", label: `Donatie van ${shortId(d.user_id)}`, bedrag: d.amount
+        soort: "in", label: `Donation from ${shortId(d.user_id)}`, bedrag: d.amount
     }));
     if (Number(c.from_bank) > 0) {
-        rijen.push({ soort: "in", label: "Overboeking uit de org-bank",
+        rijen.push({ soort: "in", label: "Transfer from the org bank",
                      bedrag: c.from_bank });
     }
     if (!rijen.length) {
         return `<section class="og-panel">${CORRUPT}
-            <div class="og-eyebrow">Recente bewegingen</div>
-            <p class="og-faint">Nog geen bewegingen op deze campagne.</p>
+            <div class="og-eyebrow">Recent movements</div>
+            <p class="og-faint">No movements on this campaign yet.</p>
         </section>`;
     }
     return `<section class="og-panel">${CORRUPT}
-        <div class="og-eyebrow">Recente bewegingen</div>
+        <div class="og-eyebrow">Recent movements</div>
         <ul class="og-ledger">${rijen.map((r) => `
             <li class="og-ledger-row is-${r.soort}">
                 <span class="og-ledger-sign og-mono">${r.soort === "in" ? "+" : "−"}</span>
                 <span class="og-ledger-label">${escapeHtml(r.label)}</span>
                 <span class="og-ledger-amount og-mono">${num(r.bedrag)}</span>
             </li>`).join("")}</ul>
-        <p class="og-faint">Alleen de bewegingen van de lopende campagne. De
-            volledige historie staat in #treasury.</p>
+        <p class="og-faint">Only the movements of the running campaign. The full
+            history is in #treasury.</p>
     </section>`;
 }
 
 function renderBank(org) {
     const cr = org.credits || { earned: 0, spent: 0, available: 0 };
     return `<section class="og-panel">${CORRUPT}
-        <div class="og-eyebrow">Org-bank</div>
+        <div class="og-eyebrow">Org bank</div>
         <div class="og-bank-row">
             <span class="og-bank-amount og-mono">${num(org.treasury.bank_balance)}</span>
-            <span class="og-faint">shards van de leden</span>
+            <span class="og-faint">shards from the members</span>
         </div>
-        <p class="og-faint">Alleen de Leader schuift hier iets uit door, en nooit
-            meer dan de campagne nog nodig heeft.</p>
+        <p class="og-faint">Only the Leader moves anything out of here, and never
+            more than the campaign still needs.</p>
         <div class="og-eyebrow">Credits</div>
         <div class="og-credits">
-            ${creditCell("Beschikbaar", cr.available, true)}
-            ${creditCell("Verdiend", cr.earned)}
-            ${creditCell("Uitgegeven", cr.spent)}
+            ${creditCell("Available", cr.available, true)}
+            ${creditCell("Earned", cr.earned)}
+            ${creditCell("Spent", cr.spent)}
         </div>
-        <p class="og-faint">Eén afgeronde campagne is één credit.</p>
+        <p class="og-faint">One finished campaign is one credit.</p>
     </section>`;
 }
 
@@ -863,11 +861,11 @@ function renderRate(i, kop) {
             ${rateRow("Rank bonus", i.rank, true)}
             ${rateRow("Research bonus", i.upgrades, true)}
             <div class="og-rate-row is-total">
-                <span>Totaal</span><span class="og-mono">${pct(i.total)}%</span></div>
+                <span>Total</span><span class="og-mono">${pct(i.total)}%</span></div>
         </div>
         <p class="og-faint">${i.enabled
-            ? `Uitbetaald elke ${num(i.every_days)} dagen op je banksaldo.`
-            : "Rente staat nog uit."}</p>
+            ? `Paid out every ${num(i.every_days)} days into your bank balance.`
+            : "Interest is still switched off."}</p>
     </section>`;
 }
 
@@ -890,12 +888,12 @@ function rateRow(label, waarde, plus) {
 function renderUpgrades(s) {
     const d = s.data.upgrades || {};
     const u = d.item;
-    if (!u) return empty("Nog geen research", "Er is nog niets te onderzoeken.");
+    if (!u) return empty("No research yet", "There is nothing to research yet.");
     if (!u.items.length) {
         return `<div class="og-split"><div class="og-col og-col-main">
-            ${empty("De catalogus is leeg",
-                "Zodra er upgrades zijn verschijnen ze hier. Credits verdien je "
-                + "door campagnes af te ronden.")}
+            ${empty("The catalogue is empty",
+                "Upgrades appear here as soon as there are any. You earn credits "
+                + "by finishing campaigns.")}
         </div><div class="og-col og-col-side">
             ${renderCreditPanel(u.credits, u.enabled)}
         </div></div>`;
@@ -922,9 +920,9 @@ function renderUpgrades(s) {
             }).join("")}</nav>
             ${items.length ? `<ul class="og-upgrades">${
                 items.map((it) => renderUpgrade(it, u)).join("")}</ul>`
-                : empty("Komt in v3",
-                        "Deze tak bestaat al in de interface maar nog niet in het "
-                        + "spel. Hij verschijnt zodra hij aan gaat.")}
+                : empty("Coming in v3",
+                        "This branch exists in the interface but not yet in the "
+                        + "game. It shows up the moment it is switched on.")}
         </div>
         <div class="og-col og-col-side">
             ${renderCreditPanel(u.credits, u.enabled)}
@@ -937,15 +935,15 @@ function renderCreditPanel(cr, aan) {
     return `<section class="og-panel">${CORRUPT}
         <div class="og-eyebrow">Credits</div>
         <div class="og-credits">
-            ${creditCell("Beschikbaar", c.available, true)}
-            ${creditCell("Verdiend", c.earned)}
-            ${creditCell("Uitgegeven", c.spent)}
+            ${creditCell("Available", c.available, true)}
+            ${creditCell("Earned", c.earned)}
+            ${creditCell("Spent", c.spent)}
         </div>
-        <p class="og-faint">Eén afgeronde campagne is één credit. Een campagne
-            die faalt levert er geen op.</p>
+        <p class="og-faint">One finished campaign is one credit. A campaign that
+            fails yields none.</p>
         ${aan ? "" : `<p class="og-off"><span class="og-off-mark">■</span>
-            Research staat nog uit.</p>`}
-        <p class="og-faint">Kiezen en kopen doet de Leader in #command.</p>
+            Research is still switched off.</p>`}
+        <p class="og-faint">The Leader chooses and buys in #command.</p>
     </section>`;
 }
 
@@ -969,13 +967,13 @@ function renderUpgrade(it, u) {
             <span class="og-faint">Effect</span>
             <span>${escapeHtml(it.effect)}</span></p>` : ""}
         <div class="og-pips">${pips.join("")}</div>
-        ${it.maxed ? `<p class="og-upgrade-max og-mono">Maximaal niveau bereikt</p>` : `
+        ${it.maxed ? `<p class="og-upgrade-max og-mono">Maximum level reached</p>` : `
             <div class="og-upgrade-cost">
-                <span class="og-faint">Kost volgend level</span>
+                <span class="og-faint">Next level costs</span>
                 <span class="og-mono">${num(it.next_price)} credits</span>
             </div>
             ${meter(deel, genoeg)}`}
-        ${genoeg ? `<p class="og-flag">Beschikbaar — de Leader kiest in Discord.</p>` : ""}
+        ${genoeg ? `<p class="og-flag">Available — the Leader buys in Discord.</p>` : ""}
     </li>`;
 }
 
@@ -991,9 +989,9 @@ function renderElection(s) {
     const e = (s.data.election || {}).item;
     if (!e) {
         return `<div class="og-split"><div class="og-col og-col-main">
-            ${empty("Nog geen verkiezing",
-                "Elke termijn gaat de top op contributie automatisch op de "
-                + "kandidatenlijst. Er is niets om je voor aan te melden.")}
+            ${empty("No election yet",
+                "Every term the top contributors go on the ballot "
+                + "automatically. There is nothing to sign up for.")}
         </div><div class="og-col og-col-side">${renderBallotNote(null)}</div></div>`;
     }
     const totaal = e.candidates.reduce((n, c) => n + (Number(c.votes) || 0), 0);
@@ -1013,23 +1011,23 @@ function renderIncumbent(e, winnaar, totaal) {
     const deel = totaal ? Math.round(stemmen / totaal * 100) : 0;
     const dagen = dagenSinds(e.closed_at);
     return `<section class="og-panel og-leader">${CORRUPT}
-        <div class="og-eyebrow">Huidige leider — termijn ${num(e.term)}</div>
+        <div class="og-eyebrow">Current leader — term ${num(e.term)}</div>
         <div class="og-leader-row">
             <img class="og-leader-avatar" alt=""
                  src="${escapeHtml(avatar(e.winner_user_id))}">
             <div class="og-leader-name">
                 <strong>${escapeHtml(shortId(e.winner_user_id))}</strong>
                 <span class="og-badge">Leader</span>
-                <p class="og-faint">${dagen === null ? "gekozen"
-                    : `sinds ${num(dagen)} ${dagen === 1 ? "dag" : "dagen"}`}</p>
+                <p class="og-faint">${dagen === null ? "elected"
+                    : `for ${num(dagen)} ${dagen === 1 ? "day" : "days"}`}</p>
             </div>
         </div>
         <div class="og-leader-result">
-            <span class="og-mono">${num(stemmen)} / ${num(totaal)} stemmen</span>
+            <span class="og-mono">${num(stemmen)} / ${num(totaal)} votes</span>
             <span class="og-mono og-leader-pct">${deel}%</span>
         </div>
         ${meter(deel)}
-        <p class="og-closed og-mono">Gesloten</p>
+        <p class="og-closed og-mono">Closed</p>
     </section>`;
 }
 
@@ -1037,9 +1035,9 @@ function renderBallot(e, totaal) {
     const dagen = dagenTot(e.closes_at);
     return `<section class="og-panel">${CORRUPT}
         <div class="og-ballot-head">
-            <span class="og-eyebrow">Kandidaten — termijn ${num(e.term)}</span>
+            <span class="og-eyebrow">Candidates — term ${num(e.term)}</span>
             <span class="og-term-left og-mono">${dagen === null ? "open"
-                : `nog ${num(dagen)} ${dagen === 1 ? "dag" : "dagen"}`}</span>
+                : `${num(dagen)} ${dagen === 1 ? "day" : "days"} left`}</span>
         </div>
         <ol class="og-cands">${e.candidates.map((c, i) => {
             const stemmen = Number(c.votes) || 0;
@@ -1060,15 +1058,15 @@ function renderBallot(e, totaal) {
 
 function renderBallotNote(e) {
     return `<section class="og-panel">${CORRUPT}
-        <div class="og-eyebrow">Stemmen doe je in Discord</div>
-        <p class="og-faint">Het stembiljet staat in <code>#announcements</code>.
-            Dit scherm is het venster erop — hier valt niets te klikken, en dat is
-            met opzet: één stembus.</p>
-        ${e && e.open ? `<p class="og-faint">Je mag je stem wijzigen zolang de
-            bus open is.</p>` : ""}
-        <div class="og-eyebrow">Hoe je op de lijst komt</div>
-        <p class="og-faint">Automatisch. De hoogste contributies van de termijn
-            staan op het biljet — er is niets om je voor aan te melden.</p>
+        <div class="og-eyebrow">Voting happens in Discord</div>
+        <p class="og-faint">The ballot is in <code>#announcements</code>.
+            This screen is the window onto it — there is nothing to click
+            here, and that is deliberate: one ballot box.</p>
+        ${e && e.open ? `<p class="og-faint">You may change your vote for as long as the box is
+            open.</p>` : ""}
+        <div class="og-eyebrow">How you get on the list</div>
+        <p class="og-faint">Automatic. The highest contributions of the term are on
+            the ballot — there is nothing to sign up for.</p>
     </section>`;
 }
 
@@ -1091,8 +1089,8 @@ function renderMembers(s) {
     const d = s.data.members || {};
     const leden = d.items || [];
     if (!leden.length) {
-        return empty("Nog geen leden",
-            "Zodra spelers zich aansluiten staan ze hier, op rang gegroepeerd.");
+        return empty("No members yet",
+            "As soon as players join they appear here, grouped by rank.");
     }
     const groepen = new Map();
     leden.forEach((m) => {
@@ -1119,7 +1117,7 @@ function renderMembers(s) {
                         ? `<span class="og-crown" title="Leader">♔</span>` : ""}
                     <span class="og-member-contrib og-mono">${num(m.contribution)}</span>
                     <span class="og-dot${m.active ? " is-on" : ""}"
-                          title="${m.active ? "actief deze termijn" : "niet actief"}"></span>
+                          title="${m.active ? "active this term" : "not active"}"></span>
                 </li>`).join("")}</ul>
         </section>`).join("");
 
@@ -1127,10 +1125,10 @@ function renderMembers(s) {
         <div class="og-col og-col-main">${kolom(volgorde.slice(0, helft))}</div>
         <div class="og-col og-col-side">${kolom(volgorde.slice(helft))}
             <section class="og-panel">${CORRUPT}
-                <div class="og-eyebrow">Rang volgt contributie</div>
-                <p class="og-faint">De eerste rangen verdien je vanzelf. Officer en
-                    hoger wijst de Leader aan. Het bolletje betekent: deze termijn
-                    iets bijgedragen.</p>
+                <div class="og-eyebrow">Rank follows contribution</div>
+                <p class="og-faint">You earn the first ranks by playing. Officer and above
+                    are appointed by the Leader. The dot means: contributed
+                    something this term.</p>
             </section>
         </div>
     </div>`;
@@ -1140,7 +1138,7 @@ function renderMembers(s) {
 function renderCard(s) {
     const d = (s.data.card || {}).item;
     const v = s.viewer;
-    if (!d || !v) return empty("Nog geen kaart", "Je gegevens laden nog.");
+    if (!d || !v) return empty("No card yet", "Your data is still loading.");
     const orde = d.rank_order || [];
     const idx = orde.indexOf(v.rank);
     const leden = ((s.data.members || {}).items) || [];
@@ -1157,28 +1155,28 @@ function renderCard(s) {
                         <strong>${escapeHtml(shortId(v.user_id))}</strong>
                         <span class="og-badge">${escapeHtml(RANK_LABEL[v.rank] || v.rank)}</span>
                         ${String(v.user_id) === String(d.leader_id)
-                            ? `<p class="og-faint">Jij leidt deze organisatie.</p>`
-                            : `<p class="og-faint">Lid van deze organisatie.</p>`}
+                            ? `<p class="og-faint">You lead this organization.</p>`
+                            : `<p class="og-faint">Member of this organization.</p>`}
                     </div>
                 </div>
                 <div class="og-ident-facts og-you-facts">
-                    ${fact("Deze termijn", num(v.season_contribution))}
-                    ${fact("Levenslang", num(v.contribution))}
-                    ${fact("In de org", plek ? `#${plek} / ${num(leden.length)}` : "—")}
+                    ${fact("This term", num(v.season_contribution))}
+                    ${fact("Lifetime", num(v.contribution))}
+                    ${fact("In the org", plek ? `#${plek} / ${num(leden.length)}` : "—")}
                 </div>
-                <div class="og-eyebrow">Rang</div>
+                <div class="og-eyebrow">Rank</div>
                 <div class="og-ladder">${orde.map((r, n) => `
                     <span class="og-rung${n <= idx ? " is-on" : ""}"
                           title="${escapeHtml(RANK_LABEL[r] || r)}"></span>`).join("")}
                 </div>
                 <p class="og-faint">${idx >= 0 && idx < orde.length - 1
-                    ? `Volgende rang: ${escapeHtml(RANK_LABEL[orde[idx + 1]] || orde[idx + 1])}`
-                    : "Hoogste rang."}</p>
+                    ? `Next rank: ${escapeHtml(RANK_LABEL[orde[idx + 1]] || orde[idx + 1])}`
+                    : "Highest rank."}</p>
             </section>
             ${renderCipher(d)}
         </div>
         <div class="og-col og-col-side">
-            ${renderRate(d.interest || {}, "Jouw bankrente")}
+            ${renderRate(d.interest || {}, "Your bank interest")}
             ${renderCreditPanel(d.credits, true)}
         </div>
     </div>`;
@@ -1186,14 +1184,14 @@ function renderCard(s) {
 
 function renderCipher(d) {
     return `<section class="og-panel">${CORRUPT}
-        <div class="og-eyebrow">Cipher-saldo</div>
+        <div class="og-eyebrow">Cipher balance</div>
         <div class="og-cipher">
             <span class="og-cipher-mark">◆</span>
             <span class="og-cipher-value og-mono">${num(d.cipher || 0)}</span>
             <span class="og-faint">cipher</span>
         </div>
-        <p class="og-faint">Premiumvaluta uit de kwartaaluitkering. Telt niet mee
-            in je net worth.</p>
+        <p class="og-faint">Premium currency from the quarterly payout. Does not
+            count towards your net worth.</p>
     </section>`;
 }
 
