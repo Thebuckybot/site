@@ -6677,3 +6677,387 @@ body.vm-focus-active .arcade-vm-bay {
 }
 
 .og-rule-mod { color: var(--org-ink-dim); }
+
+/* --- TREASURY ------------------------------------------------------------- */
+.og-donors, .og-ledger, .og-members, .og-cands, .og-upgrades {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.og-donor {
+    display: grid;
+    grid-template-columns: 14px 24px minmax(46px, auto) minmax(40px, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.og-donor-pos { font-size: 10.5px; color: var(--org-ink-faint); }
+.og-donor-id { font-size: 11.5px; color: var(--org-ink-dim); }
+
+.og-donor-bar, .og-cand-bar {
+    height: 6px;
+    border-radius: 1px;
+    background: var(--org-raise);
+    overflow: hidden;
+}
+
+.og-donor-bar > i, .og-cand-bar > i {
+    display: block;
+    height: 100%;
+    width: var(--fill);
+    background: var(--org);
+    transform-origin: left center;
+    animation: og-fill .8s cubic-bezier(.16,1,.3,1) both;
+}
+
+.og-donor-amount { font-size: 11.5px; color: var(--org-ink); white-space: nowrap; }
+
+.og-ledger-row {
+    display: grid;
+    grid-template-columns: 14px 1fr auto;
+    align-items: baseline;
+    gap: 9px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--org-line-soft);
+    font-size: 12.5px;
+}
+
+.og-ledger-row:last-child { border-bottom: 0; }
+
+.og-ledger-label {
+    color: var(--org-ink-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.og-ledger-amount { color: var(--org-ink); white-space: nowrap; }
+
+/* Plus en min zijn de enige plek waar een kleur buiten het orgpalet mag. Geld
+   dat binnenkomt en geld dat weggaat moet je in een lijst kunnen scannen zonder
+   te lezen, en een teken alleen leest daarvoor te traag. */
+.og-ledger-row.is-in .og-ledger-sign { color: #7ee08a; }
+.og-ledger-row.is-out .og-ledger-sign { color: #ff5f7a; }
+.og-ledger-row.is-out .og-ledger-amount { color: #ff8fa1; }
+
+.og-bank-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.og-bank-amount { font-size: 20px; color: var(--org-ink); }
+.og-credits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+
+.og-credit {
+    padding: 7px 9px;
+    border: 1px solid var(--org-line-soft);
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.og-credit.is-main { border-color: var(--org-a40); background: var(--org-a12); }
+.og-credit-value { font-size: 17px; color: var(--org-ink); }
+.og-credit.is-main .og-credit-value { color: var(--org); }
+
+.og-credit-label {
+    font-size: 9px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--org-ink-faint);
+}
+
+/* --- UPGRADES ------------------------------------------------------------- */
+.og-cats { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.og-cat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--org-line);
+    border-radius: 2px;
+    background: var(--org-surface);
+    color: var(--org-ink-faint);
+    font: inherit;
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color .14s ease, border-color .14s ease, background .14s ease;
+}
+
+.og-cat:hover:not(:disabled) { color: var(--org-ink); border-color: var(--org-a40); }
+
+.og-cat.is-active {
+    background: var(--org);
+    border-color: var(--org);
+    color: var(--org-bg);
+    font-weight: 600;
+}
+
+.og-cat.is-locked { opacity: .55; cursor: not-allowed; }
+.og-lock { font-size: 8px; opacity: .8; }
+.og-upgrades { gap: 9px; }
+
+.og-upgrade {
+    position: relative;
+    padding: 11px 13px;
+    border: 1px solid var(--org-line);
+    border-radius: 3px;
+    background: var(--org-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.og-upgrade::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 14px;
+    height: 2px;
+    background: var(--org-line);
+}
+
+/* Genoeg credits: de kaart licht op. Dit is het enige moment waarop deze app
+   iets aanraadt, dus het mag opvallen. */
+.og-upgrade.is-ready {
+    border-color: var(--org);
+    box-shadow: 0 0 26px -10px var(--org-a64);
+}
+
+.og-upgrade.is-ready::before { background: var(--org); }
+.og-upgrade-head { display: flex; align-items: center; gap: 9px; }
+.og-upgrade-icon { color: var(--org); font-size: 14px; }
+.og-upgrade-name { font-size: 14px; font-weight: 600; }
+
+.og-upgrade-level {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--org-ink-faint);
+    white-space: nowrap;
+}
+
+.og-upgrade-blurb { margin: 0; font-size: 12.5px; color: var(--org-ink-dim); }
+
+.og-upgrade-effect {
+    margin: 0;
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--org-glow);
+}
+
+.og-pips { display: flex; gap: 3px; }
+
+.og-pips i {
+    flex: 1 1 0;
+    height: 9px;
+    border-radius: 1px;
+    border: 1px solid var(--org-a24);
+    background: var(--org-raise);
+}
+
+.og-pips i.is-on {
+    background: var(--org);
+    border-color: var(--org);
+    box-shadow: 0 0 8px -3px var(--org-a64);
+}
+
+.og-upgrade-cost {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.og-upgrade-max { margin: 0; font-size: 11px; color: var(--org-ink-faint); }
+
+/* --- VERKIEZING ----------------------------------------------------------- */
+.og-leader-row, .og-you { display: flex; align-items: center; gap: 14px; }
+
+.og-leader-avatar {
+    width: 68px;
+    height: 68px;
+    flex: 0 0 auto;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 2px solid var(--org);
+    background: var(--org-raise);
+    box-shadow: 0 0 20px -8px var(--org-a64);
+    filter: saturate(.9) brightness(.94);
+}
+
+.og-leader-name { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.og-leader-name strong { font-size: 19px; font-weight: 600; }
+.og-leader-name .og-badge { align-self: flex-start; }
+.og-leader-name p { margin: 0; }
+
+.og-leader-result {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--org-ink-dim);
+}
+
+.og-leader-pct { color: var(--org); font-size: 17px; }
+
+.og-closed {
+    margin: 0;
+    align-self: flex-start;
+    padding: 2px 9px 1px;
+    border: 1px solid var(--org-line);
+    border-radius: 2px;
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--org-ink-faint);
+}
+
+.og-ballot-head { display: flex; align-items: baseline; gap: 10px; }
+
+.og-cand {
+    display: grid;
+    grid-template-columns: 14px 24px minmax(60px, auto) minmax(40px, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 0;
+}
+
+.og-cand-who { display: flex; flex-direction: column; min-width: 0; }
+.og-cand-who span:first-child { font-size: 12px; color: var(--org-ink); }
+.og-cand-who span:last-child { font-size: 10.5px; }
+.og-cand-pct { font-size: 12px; color: var(--org); white-space: nowrap; }
+
+/* --- LEDEN ---------------------------------------------------------------- */
+.og-group-head { display: flex; align-items: baseline; gap: 8px; }
+.og-group-count { margin-left: auto; font-size: 11px; color: var(--org); }
+
+.og-member {
+    display: grid;
+    grid-template-columns: 24px minmax(40px, auto) auto minmax(30px, 1fr) 8px;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+}
+
+.og-member-id { font-size: 11.5px; color: var(--org-ink-dim); }
+.og-crown { color: var(--org); font-size: 12px; line-height: 1; }
+
+.og-member-contrib {
+    text-align: right;
+    font-size: 11.5px;
+    color: var(--org-ink-faint);
+    white-space: nowrap;
+}
+
+.og-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--org-raise);
+    border: 1px solid var(--org-line);
+}
+
+.og-dot.is-on {
+    background: var(--org);
+    border-color: var(--org);
+    box-shadow: 0 0 7px -1px var(--org-a64);
+}
+
+/* --- JOUW KAART ----------------------------------------------------------- */
+.og-you-facts { border-top: 1px solid var(--org-line-soft); margin: 0 -13px; }
+.og-you-facts .og-fact { padding: 8px 13px; }
+.og-ladder { display: flex; gap: 4px; }
+
+.og-rung {
+    flex: 1 1 0;
+    height: 8px;
+    border-radius: 1px;
+    background: var(--org-raise);
+    border: 1px solid var(--org-a24);
+}
+
+.og-rung.is-on { background: var(--org); border-color: var(--org); }
+.og-rate { border: 1px solid var(--org-line); border-radius: 2px; overflow: hidden; }
+
+.og-rate-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 11px;
+    font-size: 12.5px;
+    border-bottom: 1px solid var(--org-line-soft);
+}
+
+.og-rate-row:last-child { border-bottom: 0; }
+.og-rate-row span:first-child { color: var(--org-ink-faint); }
+
+.og-rate-row.is-total {
+    background: var(--org-a12);
+    font-weight: 600;
+    font-size: 13.5px;
+}
+
+.og-rate-row.is-total span:first-child { color: var(--org-ink); }
+.og-rate-row.is-total span:last-child { color: var(--org); }
+
+.og-cipher { display: flex; align-items: baseline; gap: 9px; }
+.og-cipher-mark { color: var(--org); font-size: 15px; }
+.og-cipher-value { font-size: 24px; color: var(--org-ink); }
+
+/* --- NIET-LID ------------------------------------------------------------- */
+.og-locked { align-items: center; text-align: center; gap: 12px; }
+
+.og-locked-mark {
+    width: 54px;
+    height: 54px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--org-a40);
+    border-radius: 4px;
+    color: var(--org);
+    font-size: 24px;
+    background: var(--org-a12);
+}
+
+.og-locked h2 {
+    margin: 0;
+    font-size: 15px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--org-ink);
+}
+
+.og-locked p {
+    margin: 0;
+    max-width: 46ch;
+    color: var(--org-ink-dim);
+    font-size: 13px;
+}
+
+.og-join {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 20px;
+    border: 1px solid var(--org);
+    border-radius: 2px;
+    background: var(--org-a12);
+    color: var(--org);
+    font: inherit;
+    font-size: 11.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .16s ease, box-shadow .16s ease;
+}
+
+.og-join:hover { background: var(--org-a24); box-shadow: 0 0 24px -8px var(--org-a64); }
+.og-join code { background: none; padding: 0; }

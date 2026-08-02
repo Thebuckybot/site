@@ -145,12 +145,6 @@ function shortId(userId) {
     return s.length > 6 ? "…" + s.slice(-4) : s;
 }
 
-function bar(percent, full) {
-    const p = Math.max(0, Math.min(100, Number(percent) || 0));
-    return `<div class="vm-orgapp-bar${full ? " is-full" : ""}">
-        <div class="vm-orgapp-bar-fill" style="width:${p}%"></div>
-    </div>`;
-}
 
 function empty(title, body) {
     return `<div class="vm-orgapp-empty">
@@ -184,6 +178,7 @@ export function createOrgState(user) {
         postError: "",
         campaignId: null,
         campagneGezocht: false,
+        upgradeCat: "",
         reported: {}
     };
 }
@@ -260,21 +255,52 @@ function renderTab(s) {
 }
 
 /* ---- niet-lid ---------------------------------------------------- */
+/**
+ * Wat iemand ziet die (nog) nergens bij hoort.
+ *
+ * Links waarom hij hier niets kan, rechts het enige dat wel openbaar is: de
+ * ranglijst. Dat is geen troostprijs maar precies de informatie waar iemand die
+ * nog moet kiezen iets aan heeft - hoe de vier ervoor staan.
+ *
+ * De knop opent niets. `+chooseorg` gebeurt in Discord, en een knop die alleen
+ * een commando toont is eerlijker dan een knop die doet alsof hij je aanmeldt.
+ */
 function renderOutsider(s) {
-    const rows = s.standings.map((o, i) => `
-        <li class="vm-orgapp-rank-row" style="--vm-org-accent:${escapeHtml(o.theme.color)}">
-            <span class="vm-orgapp-rank-pos">${i + 1}</span>
-            <span class="vm-orgapp-rank-emblem">${escapeHtml(o.emblem || "◇")}</span>
-            <span class="vm-orgapp-rank-name">${escapeHtml(o.name)}</span>
-            <span class="vm-orgapp-rank-score">${num(o.score)}</span>
+    const top = Math.max(1, ...s.standings.map((o) => Number(o.score) || 0));
+    const rijen = s.standings.map((o, i) => `
+        <li class="og-rank-row" style="--row:${accentColour((o.theme || {}).color)}">
+            <span class="og-rank-pos og-mono">${i + 1}</span>
+            <span class="og-rank-mark">${escapeHtml(o.emblem || "◇")}</span>
+            <span class="og-rank-name">${escapeHtml(o.name)}</span>
+            <span class="og-rank-bar"><i style="--fill:${
+                Math.max(4, Math.round((Number(o.score) || 0) / top * 100))}%"></i></span>
+            <span class="og-rank-score og-mono">${num(o.score)}</span>
         </li>`).join("");
-    return `
-        ${empty("You are not in an organization",
-                "Type +chooseorg in Discord to join one. It is permanent, so read "
-                + "the four first — the board below is how they are doing right now.")}
-        <h3 class="vm-orgapp-h">Reputation per active member</h3>
-        <ol class="vm-orgapp-rank">${rows || ""}</ol>
-        ${discordNote("Joining happens in Discord with +chooseorg.")}`;
+
+    return `<div class="og-split">
+        <div class="og-col og-col-main">
+            <section class="og-panel og-locked">${CORRUPT}
+                <span class="og-locked-mark">■</span>
+                <h2>Alleen leden</h2>
+                <p>Je kijkt van buitenaf naar deze organisatie. De ranglijst is
+                    openbaar; de feed, de treasury, de upgrades en de verkiezing
+                    zijn dat niet.</p>
+                <button class="og-join" data-org-join>
+                    Hoe word ik lid? <code>+chooseorg</code>
+                </button>
+                <p class="og-faint">Je kiest één keer, en die keuze is
+                    permanent. Lees de vier eerst.</p>
+            </section>
+        </div>
+        <div class="og-col og-col-side">
+            <section class="og-panel og-rank">${CORRUPT}
+                <div class="og-eyebrow">Ranglijst — REP per actief lid</div>
+                <ol class="og-rank-list">${rijen}</ol>
+                <p class="og-faint">Dit is wat iedereen mag zien, ook zonder
+                    organisatie.</p>
+            </section>
+        </div>
+    </div>`;
 }
 
 /* ---- overzicht --------------------------------------------------- */
@@ -499,36 +525,7 @@ function donut(percent) {
     return `<div class="og-donut" style="--fill:${p}"><span class="og-mono">${p}%</span></div>`;
 }
 
-function stat(label, value, sub) {
-    // Ook al geven alle aanroepers vandaag `num()`, `pct()` of een letterlijke
-    // string mee: dit was de enige onbeschermde sink in het bestand, en een
-    // aanroeper die er ooit een naam in stopt hoort geen gat te openen.
-    return `<div class="vm-orgapp-stat">
-        <div class="vm-orgapp-stat-value">${escapeHtml(value)}</div>
-        <div class="vm-orgapp-stat-label">${escapeHtml(label)}</div>
-        ${sub ? `<div class="vm-orgapp-stat-sub">${escapeHtml(sub)}</div>` : ""}
-    </div>`;
-}
 
-function renderCampaignBlock(c) {
-    return `<section class="vm-orgapp-card">
-        <div class="vm-orgapp-card-head">
-            <span class="vm-orgapp-card-title">${escapeHtml(c.title || "Campaign")}</span>
-            <span class="vm-orgapp-card-pct">${c.percent}%</span>
-        </div>
-        ${bar(c.percent, c.full)}
-        <div class="vm-orgapp-card-line">
-            <span>${num(c.raised)}</span><span class="vm-orgapp-dim">of ${num(c.goal)}</span>
-        </div>
-        ${c.full ? `<div class="vm-orgapp-full">
-            The pot is full — the leader can buy an upgrade now.</div>` : ""}
-        ${c.donors && c.donors.length ? `<ul class="vm-orgapp-donors">${
-            c.donors.map((d) => `<li>${userChip(d.user_id)}
-                <span class="vm-orgapp-donor-amount">${num(d.amount)}</span></li>`).join("")
-        }</ul>` : `<div class="vm-orgapp-dim">Nobody has donated yet.</div>`}
-        ${discordNote("Donate with +org donate in Discord.")}
-    </section>`;
-}
 
 /* ---- feed -------------------------------------------------------- */
 /**
@@ -712,180 +709,492 @@ function shortTime(iso) {
 }
 
 /* ---- treasury ---------------------------------------------------- */
+/**
+ * De treasury: wat de organisatie heeft, wat het doel is, en wie het bracht.
+ *
+ * Links het geld, rechts de rente en de bank. De transactielijst is AFGELEID
+ * uit de donaties van de lopende campagne - er is geen transactieroute, en die
+ * bouwen zou een backendwijziging zijn in een visuele ronde. Wat er staat is
+ * dus waar; er staat alleen niet alles.
+ */
 function renderTreasury(s) {
-    const d = s.data.treasury;
-    if (!d || !d.item) return empty("Nothing yet", "No treasury for this organization.");
-    const org = d.item;
+    const d = s.data.treasury || s.data.overview_env || {};
+    const org = d.item || s.data.overview;
+    if (!org || !org.treasury) {
+        return empty("Nog geen treasury",
+            "Zodra je organisatie een campagne afrondt komt hier geld te staan.");
+    }
     const c = org.campaign;
-    const i = d.interest || {};
-    return `
-        <div class="vm-orgapp-stats">
-            ${stat("Treasury", num(org.treasury.balance), "working capital")}
-            ${stat("Bank", num(org.treasury.bank_balance), "member deposits")}
-            ${stat("Donated", num(org.treasury.total_donated), "lifetime")}
+    const pctVol = c ? c.percent : 0;
+    const rente = d.interest || {};
+
+    return `<div class="og-split">
+        <div class="og-col og-col-main">
+            <section class="og-panel og-treas">${CORRUPT}
+                <div class="og-eyebrow">Saldo</div>
+                <div class="og-treas-row">
+                    <div class="og-treas-figure">
+                        <span class="og-treas-amount og-mono"
+                              >${num(org.treasury.balance)}</span>
+                        <span class="og-faint">shards</span>
+                    </div>
+                    ${donut(pctVol)}
+                </div>
+                <div class="og-treas-goal">
+                    <span class="og-faint">${c ? "Doel: volgende upgrade"
+                        : "Geen doel — er loopt geen campagne"}</span>
+                    <span class="og-mono">${c ? num(c.goal) : "—"}</span>
+                </div>
+                ${meter(pctVol, c && c.full)}
+                ${c && c.full ? `<p class="og-flag">Pot is vol — de Leader kan nu
+                    kopen.</p>` : ""}
+            </section>
+            ${renderDonors(c)}
+            ${renderTransactions(c)}
         </div>
-        ${c ? renderCampaignBlock(c) : empty("No campaign running",
-            "The treasury only fills while a campaign is open.")}
-        <h3 class="vm-orgapp-h">Bank rate</h3>
-        <div class="vm-orgapp-rate">
-            ${rateRow("Base", i.base)}
-            ${rateRow("Organization", i.org)}
-            ${rateRow("Your rank", i.rank)}
-            ${rateRow("Research", i.upgrades)}
-            <div class="vm-orgapp-rate-row is-total">
-                <span>Total</span><span>${pct(i.total)}%</span></div>
+        <div class="og-col og-col-side">
+            ${renderBank(org)}
+            ${renderRate(rente, "Bankrente van je organisatie")}
         </div>
-        ${i.enabled ? "" : discordNote("Interest is switched off right now.")}
-        ${renderAnnouncements(d.announcements || [])}`;
+    </div>`;
 }
 
-function rateRow(label, value) {
-    return `<div class="vm-orgapp-rate-row">
-        <span>${escapeHtml(label)}</span><span>${pct(value)}%</span></div>`;
-}
-
-function renderAnnouncements(list) {
-    if (!list.length) {
-        return `<h3 class="vm-orgapp-h">Announcements</h3>${
-            empty("No announcements", "Your leader posts these with +organnounce.")}`;
+function renderDonors(c) {
+    const donateurs = (c && c.donors) || [];
+    if (!donateurs.length) {
+        return `<section class="og-panel">${CORRUPT}
+            <div class="og-eyebrow">Top-donateurs</div>
+            <p class="og-faint">Nog niemand heeft gedoneerd. Met
+                <code>+org donate</code> in Discord sta jij hier als eerste.</p>
+        </section>`;
     }
-    return `<h3 class="vm-orgapp-h">Announcements</h3>
-        <ul class="vm-orgapp-announce">${list.map((a) => `
-            <li><div class="vm-orgapp-post-head">${userChip(a.author_id)}
-                <time class="vm-orgapp-post-time">${escapeHtml(shortTime(a.created_at))}</time></div>
-            <div class="vm-orgapp-post-body">${escapeHtml(a.body)}</div></li>`).join("")}
-        </ul>`;
+    const top = Math.max(1, ...donateurs.map((d) => Number(d.amount) || 0));
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Top-donateurs — deze campagne</div>
+        <ol class="og-donors">${donateurs.map((d, i) => `
+            <li class="og-donor">
+                <span class="og-donor-pos og-mono">${i + 1}</span>
+                <img class="og-avatar" alt="" src="${escapeHtml(avatar(d.user_id))}">
+                <span class="og-donor-id og-mono">${escapeHtml(shortId(d.user_id))}</span>
+                <span class="og-donor-bar"><i style="--fill:${
+                    Math.max(4, Math.round((Number(d.amount) || 0) / top * 100))
+                }%"></i></span>
+                <span class="og-donor-amount og-mono">${num(d.amount)}</span>
+            </li>`).join("")}</ol>
+    </section>`;
 }
 
-/* ---- upgrades ---------------------------------------------------- */
+/**
+ * Recente transacties.
+ *
+ * AFGELEID uit wat er wel is: elke donatie aan de lopende campagne is een plus,
+ * en wat uit de organisatiebank is doorgeschoven staat er als eigen regel bij.
+ * Een echte grootboeklijst vraagt een route die er niet is - liever vijf regels
+ * die kloppen dan tien die verzonnen zijn.
+ */
+function renderTransactions(c) {
+    if (!c) {
+        return `<section class="og-panel">${CORRUPT}
+            <div class="og-eyebrow">Recente bewegingen</div>
+            <p class="og-faint">Er is nog niets bewogen. Bewegingen verschijnen
+                zodra er een campagne loopt.</p>
+        </section>`;
+    }
+    const rijen = (c.donors || []).map((d) => ({
+        soort: "in", label: `Donatie van ${shortId(d.user_id)}`, bedrag: d.amount
+    }));
+    if (Number(c.from_bank) > 0) {
+        rijen.push({ soort: "in", label: "Overboeking uit de org-bank",
+                     bedrag: c.from_bank });
+    }
+    if (!rijen.length) {
+        return `<section class="og-panel">${CORRUPT}
+            <div class="og-eyebrow">Recente bewegingen</div>
+            <p class="og-faint">Nog geen bewegingen op deze campagne.</p>
+        </section>`;
+    }
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Recente bewegingen</div>
+        <ul class="og-ledger">${rijen.map((r) => `
+            <li class="og-ledger-row is-${r.soort}">
+                <span class="og-ledger-sign og-mono">${r.soort === "in" ? "+" : "−"}</span>
+                <span class="og-ledger-label">${escapeHtml(r.label)}</span>
+                <span class="og-ledger-amount og-mono">${num(r.bedrag)}</span>
+            </li>`).join("")}</ul>
+        <p class="og-faint">Alleen de bewegingen van de lopende campagne. De
+            volledige historie staat in #treasury.</p>
+    </section>`;
+}
+
+function renderBank(org) {
+    const cr = org.credits || { earned: 0, spent: 0, available: 0 };
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Org-bank</div>
+        <div class="og-bank-row">
+            <span class="og-bank-amount og-mono">${num(org.treasury.bank_balance)}</span>
+            <span class="og-faint">shards van de leden</span>
+        </div>
+        <p class="og-faint">Alleen de Leader schuift hier iets uit door, en nooit
+            meer dan de campagne nog nodig heeft.</p>
+        <div class="og-eyebrow">Credits</div>
+        <div class="og-credits">
+            ${creditCell("Beschikbaar", cr.available, true)}
+            ${creditCell("Verdiend", cr.earned)}
+            ${creditCell("Uitgegeven", cr.spent)}
+        </div>
+        <p class="og-faint">Eén afgeronde campagne is één credit.</p>
+    </section>`;
+}
+
+function creditCell(label, waarde, nadruk) {
+    return `<div class="og-credit${nadruk ? " is-main" : ""}">
+        <span class="og-credit-value og-mono">${num(waarde)}</span>
+        <span class="og-credit-label">${escapeHtml(label)}</span>
+    </div>`;
+}
+
+/** De rentesplitsing. Eén component, twee gebruikers: treasury en jouw kaart. */
+function renderRate(i, kop) {
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">${escapeHtml(kop)}</div>
+        <div class="og-rate">
+            ${rateRow("Basisrente", i.base)}
+            ${rateRow("Org bonus", i.org, true)}
+            ${rateRow("Rank bonus", i.rank, true)}
+            ${rateRow("Research bonus", i.upgrades, true)}
+            <div class="og-rate-row is-total">
+                <span>Totaal</span><span class="og-mono">${pct(i.total)}%</span></div>
+        </div>
+        <p class="og-faint">${i.enabled
+            ? `Uitbetaald elke ${num(i.every_days)} dagen op je banksaldo.`
+            : "Rente staat nog uit."}</p>
+    </section>`;
+}
+
+function rateRow(label, waarde, plus) {
+    const v = Number(waarde) || 0;
+    return `<div class="og-rate-row">
+        <span>${escapeHtml(label)}</span>
+        <span class="og-mono">${plus && v > 0 ? "+" : ""}${pct(v)}%</span>
+    </div>`;
+}
+
+/* ---- upgrades ----------------------------------------------------- */
+/**
+ * De catalogus, met de categorieën als tabs.
+ *
+ * ATTACK staat er leeg en op slot in. Dat is geen decoratie: een leider die
+ * niet ziet dat er een hele tak aan komt, denkt dat de catalogus af is. De
+ * categorieën komen uit de config, dus v3 hoeft alleen het slotje weg te halen.
+ */
 function renderUpgrades(s) {
-    const d = s.data.upgrades;
-    if (!d || !d.item) return empty("Nothing yet", "No research data.");
+    const d = s.data.upgrades || {};
     const u = d.item;
+    if (!u) return empty("Nog geen research", "Er is nog niets te onderzoeken.");
     if (!u.items.length) {
-        return empty("No upgrades yet", "The catalogue is empty for now.");
+        return `<div class="og-split"><div class="og-col og-col-main">
+            ${empty("De catalogus is leeg",
+                "Zodra er upgrades zijn verschijnen ze hier. Credits verdien je "
+                + "door campagnes af te ronden.")}
+        </div><div class="og-col og-col-side">
+            ${renderCreditPanel(u.credits, u.enabled)}
+        </div></div>`;
     }
-    const byCat = {};
-    u.items.forEach((it) => { (byCat[it.category] = byCat[it.category] || []).push(it); });
-    const cats = (u.categories.length ? u.categories
-        : Object.keys(byCat).map((k) => ({ key: k, name: k })));
 
-    return `
-        <div class="vm-orgapp-stats">
-            ${stat("Credits", num(u.credits.available), "unspent")}
-            ${stat("Earned", num(u.credits.earned), "campaigns finished")}
-            ${stat("Spent", num(u.credits.spent))}
+    const perCat = {};
+    u.items.forEach((it) => { (perCat[it.category] = perCat[it.category] || []).push(it); });
+    const cats = u.categories.length ? u.categories
+        : Object.keys(perCat).map((k) => ({ key: k, name: k }));
+    const actief = s.upgradeCat && perCat[s.upgradeCat] ? s.upgradeCat
+        : (cats.find((c) => !c.locked && (perCat[c.key] || []).length) || cats[0]).key;
+    const items = perCat[actief] || [];
+
+    return `<div class="og-split">
+        <div class="og-col og-col-main">
+            <nav class="og-cats">${cats.map((c) => {
+                const leeg = !(perCat[c.key] || []).length;
+                return `<button class="og-cat${c.key === actief ? " is-active" : ""}${
+                    leeg ? " is-locked" : ""}" data-org-cat="${escapeHtml(c.key)}"
+                    ${leeg ? "disabled" : ""}>
+                    ${escapeHtml(c.name || c.key)}
+                    ${leeg ? `<span class="og-lock">▮</span>` : ""}
+                </button>`;
+            }).join("")}</nav>
+            ${items.length ? `<ul class="og-upgrades">${
+                items.map((it) => renderUpgrade(it, u)).join("")}</ul>`
+                : empty("Komt in v3",
+                        "Deze tak bestaat al in de interface maar nog niet in het "
+                        + "spel. Hij verschijnt zodra hij aan gaat.")}
         </div>
-        ${cats.map((c) => {
-            const items = byCat[c.key] || [];
-            if (!items.length) return "";
-            return `<h3 class="vm-orgapp-h">${escapeHtml(c.name || c.key)}</h3>
-                <ul class="vm-orgapp-upgrades">${items.map(renderUpgrade).join("")}</ul>`;
-        }).join("")}
-        ${u.enabled ? "" : discordNote("Research is switched off right now.")}
-        ${discordNote("Only the leader buys, and it happens in Discord in #command.")}`;
+        <div class="og-col og-col-side">
+            ${renderCreditPanel(u.credits, u.enabled)}
+        </div>
+    </div>`;
 }
 
-function renderUpgrade(it) {
+function renderCreditPanel(cr, aan) {
+    const c = cr || { earned: 0, spent: 0, available: 0 };
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Credits</div>
+        <div class="og-credits">
+            ${creditCell("Beschikbaar", c.available, true)}
+            ${creditCell("Verdiend", c.earned)}
+            ${creditCell("Uitgegeven", c.spent)}
+        </div>
+        <p class="og-faint">Eén afgeronde campagne is één credit. Een campagne
+            die faalt levert er geen op.</p>
+        ${aan ? "" : `<p class="og-off"><span class="og-off-mark">■</span>
+            Research staat nog uit.</p>`}
+        <p class="og-faint">Kiezen en kopen doet de Leader in #command.</p>
+    </section>`;
+}
+
+function renderUpgrade(it, u) {
     const pips = [];
     for (let i = 0; i < it.max_level; i += 1) {
-        pips.push(`<span class="vm-orgapp-pip${i < it.level ? " is-on" : ""}"></span>`);
+        pips.push(`<i class="${i < it.level ? "is-on" : ""}"></i>`);
     }
-    return `<li class="vm-orgapp-upgrade">
-        <div class="vm-orgapp-upgrade-head">
-            <span class="vm-orgapp-upgrade-name">${escapeHtml(it.name)}</span>
-            <span class="vm-orgapp-pips">${pips.join("")}</span>
+    const genoeg = !it.maxed && u.enabled
+        && Number(u.credits.available) >= Number(it.next_price);
+    const deel = it.maxed ? 100 : Math.min(100, Math.round(
+        (Number(u.credits.available) || 0) / Math.max(1, Number(it.next_price)) * 100));
+    return `<li class="og-upgrade${genoeg ? " is-ready" : ""}">${CORRUPT}
+        <div class="og-upgrade-head">
+            <span class="og-upgrade-icon">◈</span>
+            <span class="og-upgrade-name">${escapeHtml(it.name)}</span>
+            <span class="og-upgrade-level og-mono">Level ${it.level} / ${it.max_level}</span>
         </div>
-        <div class="vm-orgapp-dim">${escapeHtml(it.blurb)}</div>
-        <div class="vm-orgapp-upgrade-foot">
-            <span>Level ${it.level} / ${it.max_level}</span>
-            <span>${it.maxed ? "Maxed"
-                : `Next: ${num(it.next_price)} credit(s)`}</span>
-        </div>
+        <p class="og-upgrade-blurb">${escapeHtml(it.blurb || "")}</p>
+        ${it.effect ? `<p class="og-upgrade-effect">
+            <span class="og-faint">Effect</span>
+            <span>${escapeHtml(it.effect)}</span></p>` : ""}
+        <div class="og-pips">${pips.join("")}</div>
+        ${it.maxed ? `<p class="og-upgrade-max og-mono">Maximaal niveau bereikt</p>` : `
+            <div class="og-upgrade-cost">
+                <span class="og-faint">Kost volgend level</span>
+                <span class="og-mono">${num(it.next_price)} credits</span>
+            </div>
+            ${meter(deel, genoeg)}`}
+        ${genoeg ? `<p class="og-flag">Beschikbaar — de Leader kiest in Discord.</p>` : ""}
     </li>`;
 }
 
-/* ---- leden ------------------------------------------------------- */
-function renderMembers(s) {
-    const d = s.data.members;
-    if (!d || !d.items || !d.items.length) {
-        return empty("No members yet", "Nobody has joined this organization.");
-    }
-    return `<ul class="vm-orgapp-members">${d.items.map((m) => `
-        <li class="vm-orgapp-member${m.active ? "" : " is-idle"}">
-            ${userChip(m.user_id, m.rank)}
-            <span class="vm-orgapp-member-contrib">${num(m.contribution)}</span>
-        </li>`).join("")}</ul>
-        ${discordNote("Rank follows contribution. +myorg in Discord shows yours.")}`;
-}
-
-/* ---- verkiezing -------------------------------------------------- */
+/* ---- verkiezing --------------------------------------------------- */
+/**
+ * Twee toestanden uit één component.
+ *
+ * Gesloten toont de zittende leider en met welke uitslag; open toont de
+ * kandidaten met hun stemmen. Het stemmen zelf gebeurt in Discord, en dat staat
+ * op het scherm waar iemand anders naar een knop zou zoeken.
+ */
 function renderElection(s) {
-    const d = s.data.election;
-    const e = d && d.item;
+    const e = (s.data.election || {}).item;
     if (!e) {
-        return empty("No election yet",
-            "Elections open once a term. The ballot appears in #announcements.");
+        return `<div class="og-split"><div class="og-col og-col-main">
+            ${empty("Nog geen verkiezing",
+                "Elke termijn gaat de top op contributie automatisch op de "
+                + "kandidatenlijst. Er is niets om je voor aan te melden.")}
+        </div><div class="og-col og-col-side">${renderBallotNote(null)}</div></div>`;
     }
-    const rows = e.candidates.map((c, i) => `
-        <li class="vm-orgapp-cand${e.winner_user_id === c.user_id ? " is-winner" : ""}">
-            <span class="vm-orgapp-rank-pos">${i + 1}</span>
-            ${userChip(c.user_id)}
-            <span class="vm-orgapp-cand-votes">${num(c.votes)} vote(s)</span>
-        </li>`).join("");
-    return `
-        <div class="vm-orgapp-stats">
-            ${stat("Term", num(e.term))}
-            ${stat("Status", e.open ? "Open" : "Closed")}
+    const totaal = e.candidates.reduce((n, c) => n + (Number(c.votes) || 0), 0);
+    const winnaar = e.candidates.find((c) => c.user_id === e.winner_user_id);
+    return `<div class="og-split">
+        <div class="og-col og-col-main">
+            ${e.open ? renderBallot(e, totaal) : renderIncumbent(e, winnaar, totaal)}
         </div>
-        ${e.candidates.length ? `<ul class="vm-orgapp-cands">${rows}</ul>`
-            : empty("No candidates", "The shortlist is drawn from contribution.")}
-        ${discordNote(e.open
-            ? "Voting happens in Discord — the ballot is in #announcements."
-            : "This election is closed.")}`;
+        <div class="og-col og-col-side">
+            ${renderBallotNote(e)}
+        </div>
+    </div>`;
 }
 
-/* ---- jouw kaart -------------------------------------------------- */
+function renderIncumbent(e, winnaar, totaal) {
+    const stemmen = winnaar ? Number(winnaar.votes) || 0 : 0;
+    const deel = totaal ? Math.round(stemmen / totaal * 100) : 0;
+    const dagen = dagenSinds(e.closed_at);
+    return `<section class="og-panel og-leader">${CORRUPT}
+        <div class="og-eyebrow">Huidige leider — termijn ${num(e.term)}</div>
+        <div class="og-leader-row">
+            <img class="og-leader-avatar" alt=""
+                 src="${escapeHtml(avatar(e.winner_user_id))}">
+            <div class="og-leader-name">
+                <strong>${escapeHtml(shortId(e.winner_user_id))}</strong>
+                <span class="og-badge">Leader</span>
+                <p class="og-faint">${dagen === null ? "gekozen"
+                    : `sinds ${num(dagen)} ${dagen === 1 ? "dag" : "dagen"}`}</p>
+            </div>
+        </div>
+        <div class="og-leader-result">
+            <span class="og-mono">${num(stemmen)} / ${num(totaal)} stemmen</span>
+            <span class="og-mono og-leader-pct">${deel}%</span>
+        </div>
+        ${meter(deel)}
+        <p class="og-closed og-mono">Gesloten</p>
+    </section>`;
+}
+
+function renderBallot(e, totaal) {
+    const dagen = dagenTot(e.closes_at);
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-ballot-head">
+            <span class="og-eyebrow">Kandidaten — termijn ${num(e.term)}</span>
+            <span class="og-term-left og-mono">${dagen === null ? "open"
+                : `nog ${num(dagen)} ${dagen === 1 ? "dag" : "dagen"}`}</span>
+        </div>
+        <ol class="og-cands">${e.candidates.map((c, i) => {
+            const stemmen = Number(c.votes) || 0;
+            const deel = totaal ? Math.round(stemmen / totaal * 100) : 0;
+            return `<li class="og-cand">
+                <span class="og-rank-pos og-mono">${i + 1}</span>
+                <img class="og-avatar" alt="" src="${escapeHtml(avatar(c.user_id))}">
+                <div class="og-cand-who">
+                    <span class="og-mono">${escapeHtml(shortId(c.user_id))}</span>
+                    <span class="og-faint og-mono">${num(c.contribution)}</span>
+                </div>
+                <span class="og-cand-bar"><i style="--fill:${deel}%"></i></span>
+                <span class="og-cand-pct og-mono">${deel}%</span>
+            </li>`;
+        }).join("")}</ol>
+    </section>`;
+}
+
+function renderBallotNote(e) {
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Stemmen doe je in Discord</div>
+        <p class="og-faint">Het stembiljet staat in <code>#announcements</code>.
+            Dit scherm is het venster erop — hier valt niets te klikken, en dat is
+            met opzet: één stembus.</p>
+        ${e && e.open ? `<p class="og-faint">Je mag je stem wijzigen zolang de
+            bus open is.</p>` : ""}
+        <div class="og-eyebrow">Hoe je op de lijst komt</div>
+        <p class="og-faint">Automatisch. De hoogste contributies van de termijn
+            staan op het biljet — er is niets om je voor aan te melden.</p>
+    </section>`;
+}
+
+function dagenSinds(iso) {
+    if (!iso) return null;
+    const d = new Date(iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z");
+    if (isNaN(d.getTime())) return null;
+    return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
+}
+
+/* ---- leden -------------------------------------------------------- */
+/**
+ * Gegroepeerd op rang, hoogste eerst.
+ *
+ * De volgorde komt uit `rank_index` dat de backend meestuurt, niet uit een
+ * lijst hier: de rangorde staat in het servertemplate en hoort op één plek te
+ * leven.
+ */
+function renderMembers(s) {
+    const d = s.data.members || {};
+    const leden = d.items || [];
+    if (!leden.length) {
+        return empty("Nog geen leden",
+            "Zodra spelers zich aansluiten staan ze hier, op rang gegroepeerd.");
+    }
+    const groepen = new Map();
+    leden.forEach((m) => {
+        if (!groepen.has(m.rank)) groepen.set(m.rank, []);
+        groepen.get(m.rank).push(m);
+    });
+    const volgorde = [...groepen.entries()].sort(
+        (a, b) => (b[1][0].rank_index || 0) - (a[1][0].rank_index || 0));
+
+    const leiderId = (s.data.overview || {}).leader_id;
+    const helft = Math.ceil(volgorde.length / 2);
+    const kolom = (paar) => paar.map(([rang, rijen]) => `
+        <section class="og-panel">${CORRUPT}
+            <div class="og-group-head">
+                <span class="og-eyebrow">${escapeHtml(RANK_LABEL[rang] || rang)}</span>
+                <span class="og-group-count og-mono">${rijen.length}</span>
+            </div>
+            <ul class="og-members">${rijen.map((m) => `
+                <li class="og-member">
+                    <img class="og-avatar" alt="" src="${escapeHtml(avatar(m.user_id,
+                        m.user_id === (s.viewer || {}).user_id ? mijnAvatar(s) : ""))}">
+                    <span class="og-member-id og-mono">${escapeHtml(shortId(m.user_id))}</span>
+                    ${String(m.user_id) === String(leiderId)
+                        ? `<span class="og-crown" title="Leader">♔</span>` : ""}
+                    <span class="og-member-contrib og-mono">${num(m.contribution)}</span>
+                    <span class="og-dot${m.active ? " is-on" : ""}"
+                          title="${m.active ? "actief deze termijn" : "niet actief"}"></span>
+                </li>`).join("")}</ul>
+        </section>`).join("");
+
+    return `<div class="og-split">
+        <div class="og-col og-col-main">${kolom(volgorde.slice(0, helft))}</div>
+        <div class="og-col og-col-side">${kolom(volgorde.slice(helft))}
+            <section class="og-panel">${CORRUPT}
+                <div class="og-eyebrow">Rang volgt contributie</div>
+                <p class="og-faint">De eerste rangen verdien je vanzelf. Officer en
+                    hoger wijst de Leader aan. Het bolletje betekent: deze termijn
+                    iets bijgedragen.</p>
+            </section>
+        </div>
+    </div>`;
+}
+
+/* ---- jouw kaart --------------------------------------------------- */
 function renderCard(s) {
-    const d = s.data.card;
+    const d = (s.data.card || {}).item;
     const v = s.viewer;
-    if (!d || !d.item || !v) return empty("Nothing yet", "No card data.");
-    const i = d.item.interest || {};
-    const order = d.item.rank_order || [];
-    const idx = order.indexOf(v.rank);
-    return `
-        <div class="vm-orgapp-you">
-            ${userChip(v.user_id, v.rank, "is-big")}
+    if (!d || !v) return empty("Nog geen kaart", "Je gegevens laden nog.");
+    const orde = d.rank_order || [];
+    const idx = orde.indexOf(v.rank);
+    const leden = ((s.data.members || {}).items) || [];
+    const plek = leden.length
+        ? leden.findIndex((m) => String(m.user_id) === String(v.user_id)) + 1 : 0;
+
+    return `<div class="og-split">
+        <div class="og-col og-col-main">
+            <section class="og-panel">${CORRUPT}
+                <div class="og-you">
+                    <img class="og-leader-avatar" alt=""
+                         src="${escapeHtml(avatar(v.user_id, mijnAvatar(s)))}">
+                    <div class="og-leader-name">
+                        <strong>${escapeHtml(shortId(v.user_id))}</strong>
+                        <span class="og-badge">${escapeHtml(RANK_LABEL[v.rank] || v.rank)}</span>
+                        ${String(v.user_id) === String(d.leader_id)
+                            ? `<p class="og-faint">Jij leidt deze organisatie.</p>`
+                            : `<p class="og-faint">Lid van deze organisatie.</p>`}
+                    </div>
+                </div>
+                <div class="og-ident-facts og-you-facts">
+                    ${fact("Deze termijn", num(v.season_contribution))}
+                    ${fact("Levenslang", num(v.contribution))}
+                    ${fact("In de org", plek ? `#${plek} / ${num(leden.length)}` : "—")}
+                </div>
+                <div class="og-eyebrow">Rang</div>
+                <div class="og-ladder">${orde.map((r, n) => `
+                    <span class="og-rung${n <= idx ? " is-on" : ""}"
+                          title="${escapeHtml(RANK_LABEL[r] || r)}"></span>`).join("")}
+                </div>
+                <p class="og-faint">${idx >= 0 && idx < orde.length - 1
+                    ? `Volgende rang: ${escapeHtml(RANK_LABEL[orde[idx + 1]] || orde[idx + 1])}`
+                    : "Hoogste rang."}</p>
+            </section>
+            ${renderCipher(d)}
         </div>
-        <div class="vm-orgapp-stats">
-            ${stat("Contribution", num(v.contribution), "lifetime")}
-            ${stat("This term", num(v.season_contribution))}
-            ${stat("Personal REP", num(v.personal_rep))}
+        <div class="og-col og-col-side">
+            ${renderRate(d.interest || {}, "Jouw bankrente")}
+            ${renderCreditPanel(d.credits, true)}
         </div>
-        <h3 class="vm-orgapp-h">Rank</h3>
-        <div class="vm-orgapp-ladder">${order.map((r, n) => `
-            <span class="vm-orgapp-rung${n <= idx ? " is-on" : ""}"
-                  title="${escapeHtml(RANK_LABEL[r] || r)}"></span>`).join("")}
+    </div>`;
+}
+
+function renderCipher(d) {
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Cipher-saldo</div>
+        <div class="og-cipher">
+            <span class="og-cipher-mark">◆</span>
+            <span class="og-cipher-value og-mono">${num(d.cipher || 0)}</span>
+            <span class="og-faint">cipher</span>
         </div>
-        <div class="vm-orgapp-dim">${escapeHtml(RANK_LABEL[v.rank] || v.rank)}${
-            d.item.leader_id === v.user_id ? " — you lead this organization" : ""}</div>
-        <h3 class="vm-orgapp-h">Your bank rate</h3>
-        <div class="vm-orgapp-rate">
-            ${rateRow("Base", i.base)}
-            ${rateRow("Organization", i.org)}
-            ${rateRow("Your rank", i.rank)}
-            ${rateRow("Research", i.upgrades)}
-            <div class="vm-orgapp-rate-row is-total">
-                <span>Total</span><span>${pct(i.total)}%</span></div>
-        </div>
-        <div class="vm-orgapp-dim">Paid every ${num(i.every_days)} days on your bank
-            balance.</div>
-        ${d.item.credits ? `<h3 class="vm-orgapp-h">Organization credits</h3>
-            <div class="vm-orgapp-stats">
-                ${stat("Available", num(d.item.credits.available))}
-                ${stat("Earned", num(d.item.credits.earned))}
-                ${stat("Spent", num(d.item.credits.spent))}
-            </div>` : ""}`;
+        <p class="og-faint">Premiumvaluta uit de kwartaaluitkering. Telt niet mee
+            in je net worth.</p>
+    </section>`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -976,6 +1285,12 @@ export function unmountOrgApp(runtime, windowState) {
 
 function handleClick(runtime, windowState, event) {
     const s = windowState.appState;
+    const cat = event.target.closest("[data-org-cat]");
+    if (cat) {
+        s.upgradeCat = cat.getAttribute("data-org-cat");
+        windowState.view.refresh();
+        return;
+    }
     const tab = event.target.closest("[data-org-tab]");
     if (tab) {
         s.tab = tab.getAttribute("data-org-tab");
