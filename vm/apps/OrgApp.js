@@ -380,7 +380,51 @@ function renderIdentity(org, s) {
             ${fact("Standing", mij >= 0 ? `#${mij + 1} / ${s.standings.length}` : "—")}
             ${fact("Credits", num(org.credits.available))}
         </div>
+        ${renderTermStrip(org.term)}
     </header>`;
+}
+
+/**
+ * De termijnbalk, waar de mockup hem heeft: onder de identiteit.
+ *
+ * Dit is de ECHTE termijn - `org_schedule.last_run_at` van de kwartaalpas als
+ * begin, `due_at` als eind. Precies de klok waar de bot zelf op handelt, dus
+ * hier staat niets dat morgen uit de pas kan lopen met wat er werkelijk
+ * gebeurt.
+ *
+ * TERUGVAL. Zonder dat veld tekent deze functie niets, en dan is het overzicht
+ * exact wat het hiervoor was: de campagne met zijn deadline. Een verse database
+ * waar de kwartaalpas nog nooit heeft gedraaid heeft geen begindatum, en een
+ * balk die dan op 0% staat zou iets beweren wat niemand kan controleren.
+ *
+ * WAAROM ZO DUN. De termijn is context, geen doel. De speler kan er niets aan
+ * doen en er niets mee halen; hij moet alleen weten hoeveel tijd zijn REP nog
+ * heeft. De campagne eronder is wél een doel, en die houdt daarom de volle
+ * balk. Twee even zware balken boven elkaar zouden precies dat verschil
+ * wegpoetsen.
+ */
+function renderTermStrip(t) {
+    if (!t || !t.ends_at) return "";
+    const dagen = Number(t.days_left);
+    return `<div class="og-termstrip" title="${escapeHtml(kalender(t.started_at))}
+ t/m ${escapeHtml(kalender(t.ends_at))}">
+        <span class="og-eyebrow">Term</span>
+        <span class="og-termstrip-bar" role="progressbar"
+              aria-valuenow="${t.percent}" aria-valuemin="0" aria-valuemax="100"
+              aria-label="Term progress"><i style="--fill:${t.percent}%"></i></span>
+        <span class="og-termstrip-left og-mono">${
+            dagen === 0 ? "ends today"
+                : `${num(dagen)} ${dagen === 1 ? "day" : "days"} left`}</span>
+    </div>`;
+}
+
+/** Een datum zonder tijd - de termijn loopt in dagen, niet in minuten. */
+function kalender(iso) {
+    if (!iso) return "";
+    const d = new Date(iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z");
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short",
+                                           year: "numeric" });
 }
 
 function fact(label, value) {
@@ -511,7 +555,8 @@ function renderTreasurySummary(org) {
             ${donut(pctVol)}
         </div>
         <div class="og-treas-goal">
-            <span class="og-faint">Target: next upgrade</span>
+            <span class="og-faint">${c ? "Target: next upgrade"
+                : "No target — no campaign running"}</span>
             <span class="og-mono">${c ? num(c.goal) : "—"}</span>
         </div>
         ${meter(pctVol, c && c.full)}

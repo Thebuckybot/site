@@ -7061,3 +7061,39 @@ body.vm-focus-active .arcade-vm-bay {
 
 .og-join:hover { background: var(--org-a24); box-shadow: 0 0 24px -8px var(--org-a64); }
 .og-join code { background: none; padding: 0; }
+
+/* --- TERMIJNBALK ----------------------------------------------------------
+   Context, geen doel. Eén regel hoog, dezelfde rasterbreedte als de facts
+   erboven, en een vulling die dezelfde `--fill`-truc gebruikt als elke andere
+   balk in deze app - zodat er precies één plek is waar een balk animeert. */
+.og-termstrip {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 16px 9px;
+    border-top: 1px solid var(--org-line-soft);
+}
+
+.og-termstrip .og-eyebrow { margin: 0; }
+
+.og-termstrip-bar {
+    height: 3px;
+    border-radius: 1px;
+    background: var(--org-raise);
+    overflow: hidden;
+}
+
+.og-termstrip-bar > i {
+    display: block;
+    height: 100%;
+    width: var(--fill);
+    background: var(--org-dim);
+    animation: og-fill .9s cubic-bezier(.16,1,.3,1) both;
+}
+
+.og-termstrip-left {
+    font-size: 11px;
+    color: var(--org-ink-faint);
+    white-space: nowrap;
+}
