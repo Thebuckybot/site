@@ -380,7 +380,7 @@ function renderIdentity(org, s) {
             ${fact("Standing", mij >= 0 ? `#${mij + 1} / ${s.standings.length}` : "—")}
             ${fact("Credits", num(org.credits.available))}
         </div>
-        ${renderTermStrip(org.term)}
+        ${renderTermStrip(org)}
     </header>`;
 }
 
@@ -403,15 +403,16 @@ function renderIdentity(org, s) {
  * balk. Twee even zware balken boven elkaar zouden precies dat verschil
  * wegpoetsen.
  */
-function renderTermStrip(t) {
-    if (!t || !t.ends_at) return "";
-    const dagen = Number(t.days_left);
-    return `<div class="og-termstrip" title="${escapeHtml(kalender(t.started_at))}
- t/m ${escapeHtml(kalender(t.ends_at))}">
+function renderTermStrip(org) {
+    if (!org.term_started_at || !org.term_ends_at) return "";
+    const dagen = Number(org.term_days_left);
+    const deel = Number(org.term_percent) || 0;
+    return `<div class="og-termstrip" title="${escapeHtml(kalender(org.term_started_at))}
+ - ${escapeHtml(kalender(org.term_ends_at))}">
         <span class="og-eyebrow">Term</span>
         <span class="og-termstrip-bar" role="progressbar"
-              aria-valuenow="${t.percent}" aria-valuemin="0" aria-valuemax="100"
-              aria-label="Term progress"><i style="--fill:${t.percent}%"></i></span>
+              aria-valuenow="${deel}" aria-valuemin="0" aria-valuemax="100"
+              aria-label="Term progress"><i style="--fill:${deel}%"></i></span>
         <span class="og-termstrip-left og-mono">${
             dagen === 0 ? "ends today"
                 : `${num(dagen)} ${dagen === 1 ? "day" : "days"} left`}</span>
