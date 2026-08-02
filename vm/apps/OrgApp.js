@@ -339,7 +339,10 @@ function renderFeed(s) {
             : empty("Nothing here yet",
                     "Say something — this is where your organization talks.")}
         ${f.can_post ? renderComposer(s) : discordNote(
-            "Only members of this organization can post here.")}`;
+            // DE REDEN KOMT VAN DE SERVER. Hier "alleen leden kunnen posten"
+            // hardcoderen was fout zodra er een tweede reden bijkwam: een lid
+            // met de schrijfvlag uit kreeg te horen dat hij geen lid is.
+            f.post_note || "Only members of this organization can post here.")}`;
 }
 
 function reportButton(p, f) {
@@ -358,7 +361,7 @@ function renderPost(p, f, replies) {
         </div>
         <div class="vm-orgapp-post-body">${escapeHtml(p.body)}</div>
         <div class="vm-orgapp-post-tools">
-            <button data-org-reply="${p.id}">Reply</button>
+            ${f.can_post ? `<button data-org-reply="${p.id}">Reply</button>` : ""}
             ${reportButton(p, f)}
             ${canRemove ? `<button data-org-delete="${p.id}">Remove</button>` : ""}
             ${p.reports ? `<span class="vm-orgapp-reports">${p.reports} report(s)</span>` : ""}
@@ -819,6 +822,9 @@ function submitPost(runtime, windowState) {
             load(runtime, windowState, true);
         } else {
             s.postError = ((res.data || {}).error) || res.error || "could not post";
+            // De vlag kan omgaan terwijl iemand staat te typen. Dan hoort de
+            // composer weg te gaan in plaats van de fout te blijven herhalen.
+            if ((res.data || {}).disabled) load(runtime, windowState, true);
             windowState.view.refresh();
         }
     }).catch(() => {
