@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>OrgApp harnas</title>
+<link rel="stylesheet" href="/vm/styles/vm.css">
+<style>
+  html, body { margin:0; background:#02050d; }
+  #frame { margin: 20px; border:1px solid #234; border-radius:10px;
+           overflow:hidden; background: rgba(4,10,22,.82); }
+</style>
+</head>
+<body>
+<div id="frame"></div>
+<script type="module">
+import { createOrgState, renderOrgApp, mountOrgApp, unmountOrgApp }
+    from "/vm/apps/OrgApp.js";
+
+const q = new URLSearchParams(location.search);
+const frame = document.getElementById("frame");
+frame.style.width = (q.get("w") || 940) + "px";
+frame.style.height = (q.get("h") || 640) + "px";
+
+const runtime = { windows: [], activeWindowId: "w1" };
+const windowState = {
+    id: "w1",
+    appState: createOrgState({
+        username: "tommy",
+        avatarUrl: "https://cdn.discordapp.com/embed/avatars/3.png"
+    }),
+    view: {}
+};
+runtime.windows.push(windowState);
+
+frame.innerHTML = renderOrgApp(runtime, windowState);
+mountOrgApp(runtime, windowState, frame);
+
+window.__ws = windowState;
+window.__unmount = () => unmountOrgApp(runtime, windowState);
+</script>
+</body>
+</html>

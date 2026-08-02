@@ -69,10 +69,42 @@ export function accentOf(hex) {
 }
 
 /**
+ * Het materiaal: de tweede as, naast de kleur.
+ *
+ * Null Division is niet als kleur uit te drukken. Zijn identiteit is
+ * AFWEZIGHEID - kaders die niet af zijn, een raster dat oplost, datacorruptie,
+ * ontzadigde kunst - en dat zijn eigenschappen van het oppervlak en niet van de
+ * tint. Zonder deze as zou hij een grijze Vanta zijn.
+ *
+ * Elk veld is een AMPLITUDE. Alle vier de organisaties dragen alle zeven, en
+ * nul betekent uit. Daardoor draait iedereen exact dezelfde CSS en exact
+ * dezelfde animaties: een factie die niet glitcht is geen aparte tak, hij staat
+ * op nul. Dat is de hele reden dat deze aanpak de regel overeind houdt.
+ */
+const MATERIAL_DEFAULT = {
+    edge_erase: 0, glitch: 0, grid: 0.5,
+    noise: 0.035, scan: 0.6, void: 0.85, img_sat: 1
+};
+
+export function applyOrgMaterial(element, material) {
+    if (!element) return;
+    const m = { ...MATERIAL_DEFAULT, ...(material || {}) };
+    const getal = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+    element.style.setProperty("--org-edge-erase", getal(m.edge_erase, 0));
+    element.style.setProperty("--org-glitch", getal(m.glitch, 0));
+    element.style.setProperty("--org-grid", getal(m.grid, 0.5));
+    element.style.setProperty("--org-noise", getal(m.noise, 0.035));
+    element.style.setProperty("--org-scan", getal(m.scan, 0.6));
+    element.style.setProperty("--org-void", getal(m.void, 0.85));
+    element.style.setProperty("--org-img-sat", getal(m.img_sat, 1));
+}
+
+/**
  * Zet het hele palet op een element als custom properties.
  *
- * ALLES wat per organisatie verschilt staat hier en nergens anders. Wie een
- * vijfde organisatie toevoegt zet één hex in de database en is klaar.
+ * ALLES wat per organisatie aan KLEUR verschilt staat hier en nergens anders;
+ * het materiaal zit in `applyOrgMaterial` hierboven. Wie een vijfde organisatie
+ * toevoegt zet één hex in de database en zeven getallen in de config.
  */
 export function applyOrgTheme(element, hex) {
     if (!element) return null;

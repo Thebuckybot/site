@@ -5770,14 +5770,16 @@ body.vm-focus-active .arcade-vm-bay {
         linear-gradient(var(--org-line-soft) 1px, transparent 1px),
         linear-gradient(90deg, var(--org-line-soft) 1px, transparent 1px);
     background-size: 44px 44px;
-    opacity: .5;
+    opacity: var(--org-grid, .5);
+    /* Hoe zwaarder het raster wegvalt, hoe leger het scherm oogt. Voor Null
+       Division is dat de hele identiteit: niet het object maar de lege ruimte. */
     mask-image: radial-gradient(120% 90% at 50% 0%, #000 30%, transparent 78%);
 }
 
 .og-scan {
     background: repeating-linear-gradient(
         180deg, rgba(255,255,255,.028) 0 1px, transparent 1px 3px);
-    opacity: .8;
+    opacity: var(--org-scan, .8);
 }
 
 /* Ruis als een inline SVG-turbulentie: geen bestand, geen extra request, en
@@ -5787,13 +5789,14 @@ body.vm-focus-active .arcade-vm-bay {
 <svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>\
 <filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/>\
 </filter><rect width='140' height='140' filter='url(%23n)' opacity='.5'/></svg>");
-    opacity: .035;
+    opacity: var(--org-noise, .035);
     mix-blend-mode: overlay;
 }
 
 .og-vignette {
     background: radial-gradient(130% 100% at 50% 38%,
                 transparent 42%, rgba(0,0,0,.62) 100%);
+    opacity: var(--org-void, .85);
 }
 
 /* --- kop ------------------------------------------------------------------ */
@@ -5917,6 +5920,10 @@ body.vm-focus-active .arcade-vm-bay {
     background-image: var(--shot);
     background-size: cover;
     background-position: center 38%;
+    /* Null Division draagt zijn kunst bewust ontzadigd: koel zilvergrijs zonder
+       verzadiging, waar Vanta juist iets extra krijgt. Eén filter, zeven
+       waarden, geen tak. */
+    filter: saturate(var(--org-img-sat, 1));
 }
 
 /* Laadt de banner niet, dan een procedureel vlak in de organisatiekleur -
@@ -5955,6 +5962,7 @@ body.vm-focus-active .arcade-vm-bay {
     background-size: cover;
     background-position: center;
     background-color: var(--org-surface);
+    filter: saturate(var(--org-img-sat, 1));
     box-shadow: 0 0 0 4px var(--org-bg), 0 0 22px var(--org-a24);
     display: grid;
     place-items: center;
@@ -6322,3 +6330,350 @@ body.vm-focus-active .arcade-vm-bay {
     text-transform: uppercase;
     white-space: nowrap;
 }
+
+/* ==========================================================================
+   MATERIAAL — de tweede as, naast de kleur.
+
+   Null Division is niet als kleur uit te drukken. Zijn identiteit is
+   AFWEZIGHEID: kaders die niet af zijn, een raster dat oplost, datacorruptie,
+   ontzadigde kunst, veel negatieve ruimte. Dat zijn eigenschappen van het
+   oppervlak en niet van de tint, en zonder deze as zou hij een grijze Vanta
+   zijn.
+
+   ALLES HIERONDER DRAAIT VOOR ALLE VIER DE ORGANISATIES. Elk verschil is een
+   AMPLITUDE die uit `org_config.json` komt, en nul betekent uit. CyTek loopt
+   door precies dezelfde regels als Null Division; zijn kaders zijn heel omdat
+   `--org-edge-erase` op 0 staat, niet omdat er een tak omheen zit. Dat is wat
+   de regel "geen enkele per-org-tak in de layout" hier praktisch maakt: er is
+   maar één codepad, en het heeft een volumeknop.
+   ========================================================================== */
+
+/* --- incomplete kaders ---------------------------------------------------
+   Het paneel houdt zijn hele rand; hier bovenop komen "gummen" in de
+   achtergrondkleur die er stukjes uit halen. Op amplitude 0 is de laag
+   volledig doorzichtig en is de rand dus gewoon heel - één element, twee
+   uitkomsten. */
+.og-panel::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    opacity: var(--org-edge-erase, 0);
+    background-image:
+        repeating-linear-gradient(90deg,
+            var(--org-bg) 0 18px, transparent 18px 74px),
+        repeating-linear-gradient(90deg,
+            transparent 0 46px, var(--org-bg) 46px 82px),
+        repeating-linear-gradient(180deg,
+            var(--org-bg) 0 14px, transparent 14px 96px),
+        repeating-linear-gradient(180deg,
+            transparent 0 62px, var(--org-bg) 62px 88px);
+    background-size: 100% 1px, 100% 1px, 1px 100%, 1px 100%;
+    background-position: 0 0, 0 100%, 0 0, 100% 0;
+    background-repeat: no-repeat;
+}
+
+/* --- datacorruptie -------------------------------------------------------
+   Twee dunne banden die met onregelmatige tussenpozen over een paneel
+   schuiven en abrupt ophouden. Geen willekeur in JS: de animatie loopt bij
+   iedereen, en de amplitude bepaalt of je hem ziet. */
+.og-panel > .og-corrupt,
+.og-ident > .og-corrupt {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    opacity: var(--org-glitch, 0);
+    mix-blend-mode: screen;
+}
+
+.og-corrupt i {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: var(--org-glow);
+    opacity: .55;
+    /* De band stopt halverwege: dat is het "afgebroken" gevoel dat de
+       beschrijving vraagt, en het kost één mask. */
+    -webkit-mask-image: linear-gradient(90deg, #000 0 38%, transparent 62%);
+    mask-image: linear-gradient(90deg, #000 0 38%, transparent 62%);
+    animation: og-slice 7.5s steps(1, end) infinite;
+}
+
+.og-corrupt i:nth-child(2) {
+    -webkit-mask-image: linear-gradient(270deg, #000 0 26%, transparent 55%);
+    mask-image: linear-gradient(270deg, #000 0 26%, transparent 55%);
+    animation-duration: 11.5s;
+    animation-delay: -3.5s;
+    opacity: .35;
+}
+
+@keyframes og-slice {
+    0%   { top: 12%; opacity: 0; }
+    2%   { top: 12%; opacity: .6; }
+    5%   { top: 12%; opacity: 0; }
+    31%  { top: 64%; opacity: 0; }
+    33%  { top: 64%; opacity: .5; }
+    36%  { top: 64%; opacity: 0; }
+    72%  { top: 39%; opacity: 0; }
+    74%  { top: 39%; opacity: .45; }
+    77%  { top: 39%; opacity: 0; }
+    100% { top: 12%; opacity: 0; }
+}
+
+/* De kop van het scherm krijgt dezelfde behandeling, want daar staat de naam
+   en juist daar hoort de twijfel te zitten of het beeld compleet is. */
+.og-ident { position: relative; }
+
+/* --- ontbrekende informatie ----------------------------------------------
+   Een enkel label krijgt een "weggehaalde" balk in plaats van tekst. Alleen
+   zichtbaar bij een organisatie die glitcht; bij de rest is de balk nul breed
+   en dus afwezig. */
+.og-eyebrow::after {
+    content: "";
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 7px;
+    height: 7px;
+    width: calc(var(--org-glitch, 0) * 26px);
+    background: repeating-linear-gradient(90deg,
+        var(--org-ink-faint) 0 2px, transparent 2px 4px);
+    opacity: .5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .og-corrupt i { animation: none; opacity: .25; }
+}
+
+/* --- FEED ----------------------------------------------------------------- */
+.og-feed, .og-replies {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.og-post {
+    position: relative;
+    padding: 10px 12px;
+    border: 1px solid var(--org-line);
+    border-radius: 3px;
+    background: var(--org-surface);
+    transition: border-color .18s ease;
+}
+
+.og-post::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 12px;
+    height: 2px;
+    background: var(--org-line);
+}
+
+/* Je eigen bericht draagt het accent, zodat je je eigen stem terugvindt in een
+   lange draad zonder de naam te lezen. */
+.og-post.is-mine::before { background: var(--org); }
+.og-post:hover { border-color: var(--org-a40); }
+
+.og-post.is-reply {
+    background: transparent;
+    border-color: var(--org-line-soft);
+}
+
+.og-replies {
+    margin-top: 8px;
+    padding-left: 14px;
+    border-left: 1px solid var(--org-line-soft);
+}
+
+.og-post-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.og-post-time {
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--org-ink-faint);
+}
+
+.og-tag {
+    padding: 1px 7px 0;
+    border: 1px solid var(--org);
+    border-radius: 2px;
+    background: var(--org-a12);
+    color: var(--org);
+    font-size: 9px;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.og-post-body {
+    margin-top: 7px;
+    color: var(--org-ink-dim);
+    font-size: 13px;
+    line-height: 1.5;
+    /* User-generated: een geplakte URL van tweehonderd tekens mag het venster
+       niet oprekken. */
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.og-post-tools {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.og-post-tools button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 10.5px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--org-ink-faint);
+    cursor: pointer;
+    transition: color .14s ease;
+}
+
+.og-post-tools button:hover:not(:disabled) { color: var(--org); }
+.og-post-tools button:disabled { opacity: .45; cursor: default; }
+.og-post-tools button:focus-visible { outline: 1px solid var(--org); outline-offset: 2px; }
+
+/* Reactiechips: een telling met een teken ervoor, geen knop. Ze staan rechts
+   omdat ze een uitkomst zijn en geen actie. */
+.og-chip {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px 0;
+    border: 1px solid var(--org-line);
+    border-radius: 2px;
+    font-size: 10.5px;
+    color: var(--org-ink-faint);
+}
+
+.og-chip + .og-chip { margin-left: 0; }
+.og-chip i { font-style: normal; opacity: .75; }
+.og-chip.is-warn { border-color: var(--org-a40); color: var(--org); }
+.og-reported { font-size: 10.5px; color: var(--org); letter-spacing: .05em; }
+
+/* --- composer ------------------------------------------------------------- */
+.og-composer { gap: 8px; }
+.og-composer-row { display: flex; gap: 9px; align-items: flex-start; }
+
+.og-composer textarea {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 62px;
+    resize: vertical;
+    padding: 8px 9px;
+    border: 1px solid var(--org-line);
+    border-radius: 2px;
+    background: var(--org-bg);
+    color: var(--org-ink);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.og-composer textarea::placeholder { color: var(--org-ink-faint); }
+
+.og-composer textarea:focus {
+    outline: none;
+    border-color: var(--org);
+    box-shadow: 0 0 0 1px var(--org-a24), 0 0 18px -6px var(--org-a40);
+}
+
+.og-composer-foot { display: flex; align-items: center; gap: 10px; }
+
+.og-count {
+    font-size: 11px;
+    color: var(--org-ink-faint);
+    transition: color .2s ease;
+}
+
+.og-count.is-near { color: var(--org-glow); }
+.og-count.is-over { color: #ff5f7a; }
+
+.og-composer button[type="submit"] {
+    margin-left: auto;
+    padding: 6px 18px;
+    border: 1px solid var(--org);
+    border-radius: 2px;
+    background: var(--org-a12);
+    color: var(--org);
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .16s ease, box-shadow .16s ease;
+}
+
+.og-composer button[type="submit"]:hover:not(:disabled) {
+    background: var(--org-a24);
+    box-shadow: 0 0 20px -6px var(--org-a64);
+}
+
+.og-composer button[type="submit"]:disabled { opacity: .45; cursor: default; }
+
+.og-replying {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 11px;
+    color: var(--org-ink-faint);
+}
+
+.og-replying button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: var(--org);
+    cursor: pointer;
+}
+
+.og-error { margin: 0; color: #ff5f7a; font-size: 12px; }
+
+/* Posten staat uit: dezelfde doos, andere inhoud. Het blijft een paneel op
+   dezelfde plek, zodat het scherm niet verspringt als de vlag omgaat. */
+.og-composer.is-off { border-style: dashed; }
+.og-off { margin: 0; display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.og-off-mark { color: var(--org); font-size: 9px; }
+
+.og-thread { margin: 0 0 4px; font-size: 12.5px; color: var(--org-ink-dim); }
+.og-thread-mark { color: var(--org); margin-right: 5px; }
+.og-thread strong { color: var(--org-ink); font-weight: 600; }
+
+.og-rules {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--org-ink-faint);
+}
+
+.og-rules li { padding-left: 12px; position: relative; }
+
+.og-rules li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: .55em;
+    width: 5px;
+    height: 1px;
+    background: var(--org-a40);
+}
+
+.og-rule-mod { color: var(--org-ink-dim); }

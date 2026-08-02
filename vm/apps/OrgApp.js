@@ -43,7 +43,7 @@
 // namespace-import geeft dan een object zonder `request` en de app valt om op
 // de eerste fetch - stil, want het gebeurt in een promise.
 import { gatewayClient } from "../core/gatewayClient.js";
-import { applyOrgTheme, accentColour } from "./orgTheme.js";
+import { applyOrgTheme, applyOrgMaterial, accentColour } from "./orgTheme.js";
 
 const FEED_POLL_MS = 15000;
 const DATA_POLL_MS = 30000;
@@ -93,10 +93,21 @@ function pct(value) {
     return (Math.round((Number(value) || 0) * 100) / 100).toFixed(2);
 }
 
-function avatar(userId) {
-    // The default embed avatar. The real one needs a hash the backend does not
-    // serve, and guessing a CDN path that 404s is worse than a consistent
-    // placeholder - see the note in the notitie.
+/**
+ * De avatar van een speler.
+ *
+ * WAT ER WEL EN NIET KAN. Een echte Discord-avatar vraagt een hash, en die
+ * wordt nergens opgeslagen: `profiles.data` kent geen `avatar`, geen
+ * `avatar_hash` en geen `username`. Voor ANDERE leden is er dus geen bron, en
+ * dat is geen veld dat de backend even kan toevoegen - het vraagt dat de bot de
+ * hash gaat wegschrijven bij elk commando.
+ *
+ * Voor JEZELF is hij er wel: `/api/me` levert hem en de VM geeft hem door aan
+ * elke app. Die wordt hier gebruikt zodra het om de ingelogde speler gaat, en
+ * de rest valt terug op de standaardavatar - geen gegokt CDN-pad dat 404't.
+ */
+function avatar(userId, eigen) {
+    if (eigen) return eigen;
     //
     // BigInt THROWS on anything that is not a number, and this runs inside
     // `refresh()`, which has no catch: one non-numeric id would freeze the whole
@@ -115,10 +126,10 @@ function avatar(userId) {
  * Eén maat, een rand in de organisatiekleur en een lichte demping: spelers
  * kiezen hun eigen pfp en sommige zijn spierwit of knipperen.
  */
-function userChip(userId, rank, extraClass) {
+function userChip(userId, rank, extraClass, eigen) {
     const label = RANK_LABEL[rank] || "";
     return `<span class="og-user ${extraClass || ""}" title="${escapeHtml(userId)}">
-        <img class="og-avatar" alt="" src="${escapeHtml(avatar(userId))}">
+        <img class="og-avatar" alt="" src="${escapeHtml(avatar(userId, eigen))}">
         <span class="og-user-id og-mono">${escapeHtml(shortId(userId))}</span>
         ${label ? `<span class="og-badge">${escapeHtml(label)}</span>` : ""}
     </span>`;
@@ -313,10 +324,14 @@ function renderOverview(s) {
  * mockup voor precies deze regel werk. De gradient eroverheen is functioneel en
  * geen decoratie: zonder verdwijnt de naam in de kunst.
  */
+/** Twee banden die over een paneel schuiven. Op amplitude nul onzichtbaar, dus
+ *  hij mag onvoorwaardelijk in de markup staan - geen tak, geen conditie. */
+const CORRUPT = `<span class="og-corrupt" aria-hidden="true"><i></i><i></i></span>`;
+
 function renderIdentity(org, s) {
     const t = org.theme || {};
     const mij = s.standings.findIndex((o) => o.org_id === org.org_id);
-    return `<header class="og-ident">
+    return `<header class="og-ident">${CORRUPT}
         <div class="og-banner${t.banner_url ? "" : " is-blank"}"
              ${t.banner_url ? `style="--shot:url('${escapeHtml(t.banner_url)}')"` : ""}>
             <span class="og-banner-fade"></span>
@@ -370,7 +385,7 @@ function renderTerm(org) {
         </section>`;
     }
     const dagen = dagenTot(c.deadline);
-    return `<section class="og-panel og-term">
+    return `<section class="og-panel og-term">${CORRUPT}
         <div class="og-term-head">
             <span class="og-eyebrow">Campagne</span>
             <span class="og-term-name">${escapeHtml(c.title || "")}</span>
@@ -428,10 +443,15 @@ function renderStandings(s, org) {
             <span class="og-rank-score og-mono">${num(o.score)}</span>
         </li>`;
     }).join("");
-    return `<section class="og-panel og-rank">
+    return `<section class="og-panel og-rank">${CORRUPT}
         <div class="og-eyebrow">Ranglijst — REP per actief lid</div>
         <ol class="og-rank-list">${rijen}</ol>
     </section>`;
+}
+
+/** De avatar-URL van de ingelogde speler, als de VM hem kent. */
+function mijnAvatar(s) {
+    return (s.user && s.user.avatarUrl) || "";
 }
 
 function renderAnnouncementCard(a) {
@@ -442,7 +462,7 @@ function renderAnnouncementCard(a) {
                 met <code>+organnounce</code>.</p>
         </section>`;
     }
-    return `<section class="og-panel og-ann">
+    return `<section class="og-panel og-ann">${CORRUPT}
         <div class="og-eyebrow">Recente aankondiging</div>
         <div class="og-ann-head">
             ${userChip(a.author_id, "leader")}
@@ -455,7 +475,7 @@ function renderAnnouncementCard(a) {
 function renderTreasurySummary(org) {
     const c = org.campaign;
     const pctVol = c ? c.percent : 0;
-    return `<section class="og-panel og-treas">
+    return `<section class="og-panel og-treas">${CORRUPT}
         <div class="og-eyebrow">Treasury</div>
         <div class="og-treas-row">
             <div class="og-treas-figure">
@@ -511,84 +531,175 @@ function renderCampaignBlock(c) {
 }
 
 /* ---- feed -------------------------------------------------------- */
+/**
+ * De feed, in twee kolommen zoals de rest.
+ *
+ * Links het gesprek, rechts wat je nodig hebt om eraan mee te doen: waar je
+ * praat en wat de regels zijn. Dat tweede is geen decoratie - het is de plek
+ * waar staat dat posten uitstaat, en die zin komt van de SERVER en niet uit dit
+ * bestand.
+ */
 function renderFeed(s) {
-    const f = { ...s.feed, reported: s.reported };
-    const byParent = new Map();
+    const f = { ...s.feed, reported: s.reported,
+                mijnAvatar: mijnAvatar(s) };
+    const perOuder = new Map();
     (f.posts || []).forEach((p) => {
-        const key = p.reply_to || 0;
-        if (!byParent.has(key)) byParent.set(key, []);
-        byParent.get(key).push(p);
+        const sleutel = p.reply_to || 0;
+        if (!perOuder.has(sleutel)) perOuder.set(sleutel, []);
+        perOuder.get(sleutel).push(p);
     });
-    const roots = byParent.get(0) || [];
+    const wortels = perOuder.get(0) || [];
 
-    const list = roots.map((p) => renderPost(p, f, byParent.get(p.id) || [])).join("");
+    const lijst = wortels
+        .map((p) => renderPost(p, f, perOuder.get(p.id) || [])).join("");
 
-    const waar = s.campaignId
-        ? "the thread of the campaign that is running"
-        : "your organization's general thread";
-    return `
-        <div class="vm-orgapp-note">You are posting in ${escapeHtml(waar)}.</div>
-        ${roots.length ? `<ul class="vm-orgapp-feed">${list}</ul>`
-            : empty("Nothing here yet",
-                    "Say something — this is where your organization talks.")}
-        ${f.can_post ? renderComposer(s) : discordNote(
-            // DE REDEN KOMT VAN DE SERVER. Hier "alleen leden kunnen posten"
-            // hardcoderen was fout zodra er een tweede reden bijkwam: een lid
-            // met de schrijfvlag uit kreeg te horen dat hij geen lid is.
-            f.post_note || "Only members of this organization can post here.")}`;
+    return `<div class="og-split">
+        <div class="og-col og-col-main">
+            ${f.can_post ? renderComposer(s) : renderPostingOff(f)}
+            ${wortels.length ? `<ul class="og-feed">${lijst}</ul>` : empty(
+                "Nog geen gesprek",
+                f.can_post
+                    ? "Jij mag als eerste iets zeggen. Alles wat hier staat is "
+                      + "zichtbaar voor je hele organisatie."
+                    : "Er is hier nog niets gezegd.")}
+        </div>
+        <div class="og-col og-col-side">
+            ${renderFeedContext(s, f)}
+        </div>
+    </div>`;
+}
+
+/**
+ * Waar de composer hoort te staan als er niet gepost mag worden.
+ *
+ * De tekst komt uit `post_note`, dus de app verzint geen reden. Er waren er al
+ * twee - "je bent geen lid" en "posten staat uit" - en een derde komt er zonder
+ * dat dit bestand verandert.
+ */
+function renderPostingOff(f) {
+    return `<section class="og-panel og-composer is-off">${CORRUPT}
+        <div class="og-eyebrow">Praten</div>
+        <p class="og-off">
+            <span class="og-off-mark">\u25A0</span>
+            ${escapeHtml(f.post_note || "Alleen leden van deze organisatie "
+                + "kunnen hier posten.")}
+        </p>
+        <p class="og-faint">Lezen, melden en verwijderen blijven werken.</p>
+    </section>`;
+}
+
+function renderFeedContext(s, f) {
+    const org = s.data.overview || {};
+    const c = org.campaign;
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Waar je praat</div>
+        <p class="og-thread">
+            <span class="og-thread-mark">\u25B8</span>
+            ${s.campaignId && c
+                ? `de draad van <strong>${escapeHtml(c.title || "de campagne")}</strong>`
+                : "de algemene draad van je organisatie"}
+        </p>
+        <div class="og-eyebrow">Huisregels</div>
+        <ul class="og-rules">
+            <li>Maximaal ${num(BODY_LIMIT)} tekens per bericht.</li>
+            <li>Een paar seconden tussen twee berichten.</li>
+            <li>Meld wat niet hoort — dat telt, en de leiding ziet het.</li>
+            ${f.can_moderate ? `<li class="og-rule-mod">Jij mag berichten van
+                anderen verwijderen.</li>` : ""}
+        </ul>
+    </section>`;
 }
 
 function reportButton(p, f) {
     return f.reported && f.reported[p.id]
-        ? `<span class="vm-orgapp-reported">Reported</span>`
-        : `<button data-org-report="${p.id}">Report</button>`;
+        ? `<span class="og-reported og-mono">Gemeld</span>`
+        : `<button data-org-report="${p.id}">Melden</button>`;
 }
 
-
-function renderPost(p, f, replies) {
-    const canRemove = p.mine || f.can_moderate;
-    return `<li class="vm-orgapp-post" data-post="${p.id}">
-        <div class="vm-orgapp-post-head">
-            ${userChip(p.author_id, p.author_rank)}
-            <time class="vm-orgapp-post-time">${escapeHtml(shortTime(p.created_at))}</time>
+/**
+ * Een bericht, met zijn antwoorden EEN niveau diep.
+ *
+ * De "open vraag"-tag komt niet uit een veld dat de backend stuurt - dat veld
+ * bestaat niet. Hij wordt afgeleid uit de tekst: een bericht van de leiding dat
+ * eindigt op een vraagteken IS een open vraag, en dat is precies waar de tag in
+ * de mockup staat. Afleiden is hier eerlijker dan een leeg veld tonen, en het
+ * kost geen route.
+ */
+function renderPost(p, f, antwoorden) {
+    const magWeg = p.mine || f.can_moderate;
+    const vraag = isOpenVraag(p);
+    return `<li class="og-post${p.mine ? " is-mine" : ""}" data-post="${p.id}">
+        <div class="og-post-head">
+            ${userChip(p.author_id, p.author_rank, "", p.mine ? f.mijnAvatar : "")}
+            ${vraag ? `<span class="og-tag">Open vraag</span>` : ""}
+            <time class="og-post-time og-mono">${escapeHtml(shortTime(p.created_at))}</time>
         </div>
-        <div class="vm-orgapp-post-body">${escapeHtml(p.body)}</div>
-        <div class="vm-orgapp-post-tools">
-            ${f.can_post ? `<button data-org-reply="${p.id}">Reply</button>` : ""}
+        <div class="og-post-body">${escapeHtml(p.body)}</div>
+        <div class="og-post-tools">
+            ${f.can_post ? `<button data-org-reply="${p.id}">Antwoord</button>` : ""}
             ${reportButton(p, f)}
-            ${canRemove ? `<button data-org-delete="${p.id}">Remove</button>` : ""}
-            ${p.reports ? `<span class="vm-orgapp-reports">${p.reports} report(s)</span>` : ""}
+            ${magWeg ? `<button data-org-delete="${p.id}">Verwijder</button>` : ""}
+            ${antwoorden.length ? `<span class="og-chip og-mono">
+                <i>\u25AD</i>${antwoorden.length}</span>` : ""}
+            ${p.reports ? `<span class="og-chip is-warn og-mono">
+                <i>\u25B3</i>${p.reports}</span>` : ""}
         </div>
-        ${replies.length ? `<ul class="vm-orgapp-replies">${
-            replies.map((r) => `<li class="vm-orgapp-post is-reply" data-post="${r.id}">
-                <div class="vm-orgapp-post-head">
-                    ${userChip(r.author_id, r.author_rank)}
-                    <time class="vm-orgapp-post-time">${escapeHtml(shortTime(r.created_at))}</time>
-                </div>
-                <div class="vm-orgapp-post-body">${escapeHtml(r.body)}</div>
-                <div class="vm-orgapp-post-tools">
-                    ${reportButton(r, f)}
-                    ${(r.mine || f.can_moderate)
-                        ? `<button data-org-delete="${r.id}">Remove</button>` : ""}
-                </div>
-            </li>`).join("")}</ul>` : ""}
+        ${antwoorden.length ? `<ul class="og-replies">${
+            antwoorden.map((r) => renderReply(r, f)).join("")}</ul>` : ""}
     </li>`;
 }
 
-function renderComposer(s) {
-    const left = BODY_LIMIT - (s.draft || "").length;
-    return `<form class="vm-orgapp-composer" data-org-composer>
-        ${s.replyTo ? `<div class="vm-orgapp-replying">
-            Replying to #${s.replyTo}
-            <button type="button" data-org-cancel-reply>cancel</button></div>` : ""}
-        <textarea data-org-draft maxlength="${BODY_LIMIT}"
-            placeholder="Say something to your organization"
-            ${s.posting ? "disabled" : ""}>${escapeHtml(s.draft || "")}</textarea>
-        <div class="vm-orgapp-composer-foot">
-            <span class="vm-orgapp-count${left < 0 ? " is-over" : ""}">${left}</span>
-            <button type="submit" ${s.posting ? "disabled" : ""}>Post</button>
+function renderReply(r, f) {
+    return `<li class="og-post is-reply" data-post="${r.id}">
+        <div class="og-post-head">
+            ${userChip(r.author_id, r.author_rank, "", r.mine ? f.mijnAvatar : "")}
+            <time class="og-post-time og-mono">${escapeHtml(shortTime(r.created_at))}</time>
         </div>
-        ${s.postError ? `<div class="vm-orgapp-error">${escapeHtml(s.postError)}</div>` : ""}
+        <div class="og-post-body">${escapeHtml(r.body)}</div>
+        <div class="og-post-tools">
+            ${reportButton(r, f)}
+            ${(r.mine || f.can_moderate)
+                ? `<button data-org-delete="${r.id}">Verwijder</button>` : ""}
+            ${r.reports ? `<span class="og-chip is-warn og-mono">
+                <i>\u25B3</i>${r.reports}</span>` : ""}
+        </div>
+    </li>`;
+}
+
+/**
+ * Leiding + een vraagteken = een vraag die openstaat.
+ *
+ * Op de laatste REGEL kijken was de eerste vorm, en die miste precies het
+ * bericht uit de mockup: daar staat de vraag in het midden en is de laatste zin
+ * "laat je stem horen in Discord". Een vraag is waar hij staat, niet waar hij
+ * eindigt.
+ */
+function isOpenVraag(p) {
+    const leiding = p.author_rank === "leader" || p.author_rank === "council";
+    return Boolean(leiding && !p.reply_to && (p.body || "").includes("?"));
+}
+
+function renderComposer(s) {
+    const over = BODY_LIMIT - (s.draft || "").length;
+    const bijna = over <= 60;
+    return `<form class="og-panel og-composer" data-org-composer>${CORRUPT}
+        ${s.replyTo ? `<div class="og-replying og-mono">
+            <span>Antwoord op #${s.replyTo}</span>
+            <button type="button" data-org-cancel-reply>annuleer</button></div>` : ""}
+        <div class="og-composer-row">
+            <img class="og-avatar" alt=""
+                 src="${escapeHtml(avatar(s.viewer ? s.viewer.user_id : "0",
+                                          mijnAvatar(s)))}">
+            <textarea data-org-draft maxlength="${BODY_LIMIT}"
+                placeholder="Wat wil je delen met je organisatie?"
+                ${s.posting ? "disabled" : ""}>${escapeHtml(s.draft || "")}</textarea>
+        </div>
+        <div class="og-composer-foot">
+            <span class="og-count og-mono${over < 0 ? " is-over" : bijna ? " is-near" : ""}"
+                  >${over}</span>
+            <button type="submit" ${s.posting ? "disabled" : ""}>Plaatsen</button>
+        </div>
+        ${s.postError ? `<p class="og-error">${escapeHtml(s.postError)}</p>` : ""}
     </form>`;
 }
 
@@ -1010,9 +1121,13 @@ function load(runtime, windowState, force) {
  * byte-voor-byte hetzelfde - die zetten de variabele nooit.
  */
 function paintTheme(runtime, windowState) {
-    const kleur = ((s0(windowState).data.overview || {}).theme || {}).color;
+    const thema = (s0(windowState).data.overview || {}).theme || {};
+    const kleur = thema.color;
     const view = windowState.view || {};
-    if (view.appElement) applyOrgTheme(view.appElement, kleur);
+    if (view.appElement) {
+        applyOrgTheme(view.appElement, kleur);
+        applyOrgMaterial(view.appElement, thema.material);
+    }
     if (view.windowElement) {
         const a = applyOrgTheme(view.windowElement, kleur);
         if (a) {
