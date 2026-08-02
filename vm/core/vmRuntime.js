@@ -46,6 +46,12 @@ import {
     applyFilesIntent
 } from "../apps/FilesApp.js";
 import {
+    createOrgState,
+    renderOrgApp,
+    mountOrgApp,
+    unmountOrgApp
+} from "../apps/OrgApp.js";
+import {
     createBuckyCodeState,
     renderBuckyCodeApp,
     mountBuckyCodeApp,
@@ -864,6 +870,21 @@ function createAppRegistry() {
             mount: mountFilesApp,
             unmount: unmountFilesApp,
             applyIntent: applyFilesIntent
+        },
+        org: {
+            id: "org",
+            title: "Organization",
+            label: "Org",
+            // Drieletterglyph, want dat is wat de titelbalk en de taakbalk
+            // renderen - zie de notitie voor waarom het icoon geen avatar is.
+            icon: "ORG",
+            width: 680,
+            height: 520,
+            singleInstance: true,
+            createState: createOrgState,
+            render: renderOrgApp,
+            mount: mountOrgApp,
+            unmount: unmountOrgApp
         },
         buckycode: {
             id: "buckycode",

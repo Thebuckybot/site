@@ -5132,3 +5132,539 @@ body.vm-focus-active .arcade-vm-bay {
 @media (max-width: 560px) {
     .vm-mail-sidebar { display: none; }
 }
+
+/* ==========================================================================
+   ORG APP — block 4.
+   Namespaced `.vm-orgapp-*`, next to the existing `.vm-org-*` block that the
+   bucky://organizations browser site uses. Two prefixes on purpose: that one
+   renders four public cards, this one is a member dashboard, and sharing a
+   class would mean every change to one silently reshapes the other.
+
+   THIS IS A FIGURES APP AND IT IS STYLED LIKE ONE.
+   `--vm-orgapp-dim` sits at 0.78 alpha where the rest of the VM uses 0.45-0.55
+   for secondary text. That is deliberate: everything secondary here is a unit,
+   a denominator or a timestamp attached to a number, and a reader who has to
+   lean in to check whether it says 4,05 or 4,85 has stopped trusting the app.
+
+   Every figure runs on `font-variant-numeric: tabular-nums`, so a digit that
+   ticks over does not shift the ones next to it. Nothing animates a value and
+   no bar has a gradient across its fill - a gradient across a percentage makes
+   the end of the bar ambiguous, which is the one thing a progress bar owes you.
+   ========================================================================== */
+.vm-orgapp {
+    --vm-org-accent: var(--vm-cyan);
+    --vm-orgapp-dim: rgba(214, 233, 240, .78);
+    --vm-orgapp-line: rgba(255, 255, 255, .10);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    color: #eaf6fb;
+    font-size: 13px;
+}
+
+.vm-orgapp-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.vm-orgapp-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--vm-orgapp-line);
+    background: linear-gradient(180deg, rgba(255, 255, 255, .05), transparent);
+}
+
+.vm-orgapp-emblem {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: 1px solid var(--vm-org-accent);
+    color: var(--vm-org-accent);
+    font-size: 14px;
+    flex: 0 0 auto;
+}
+
+.vm-orgapp-title { font-weight: 600; letter-spacing: .02em; }
+
+.vm-orgapp-head-rep {
+    margin-left: auto;
+    color: var(--vm-org-accent);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+}
+
+.vm-orgapp-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* --- de ENE navigatie: een tabbalk onderaan ----------------------------- */
+.vm-orgapp-tabs {
+    display: flex;
+    flex: 0 0 auto;
+    border-top: 1px solid var(--vm-orgapp-line);
+    background: rgba(2, 6, 14, .72);
+}
+
+.vm-orgapp-tab {
+    flex: 1 1 0;
+    padding: 9px 4px;
+    background: none;
+    border: 0;
+    border-top: 2px solid transparent;
+    color: var(--vm-orgapp-dim);
+    font: inherit;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: color .12s var(--vm-ease), border-color .12s var(--vm-ease);
+}
+
+.vm-orgapp-tab:hover { color: #fff; }
+
+.vm-orgapp-tab.is-active {
+    color: var(--vm-org-accent);
+    border-top-color: var(--vm-org-accent);
+}
+
+/* --- getallen ----------------------------------------------------------- */
+.vm-orgapp-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+.vm-orgapp-stat {
+    padding: 10px 12px;
+    border: 1px solid var(--vm-orgapp-line);
+    border-left: 2px solid var(--vm-org-accent);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .03);
+    min-width: 0;
+}
+
+.vm-orgapp-stat-value {
+    font-size: 19px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+    /* Een lang getal breekt NIET af: een bedrag over twee regels is precies de
+       gebroken lijn die deze app niet mag hebben. Hij kapt liever af. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vm-orgapp-stat-label {
+    margin-top: 3px;
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--vm-orgapp-dim);
+}
+
+.vm-orgapp-stat-sub { font-size: 11px; color: var(--vm-orgapp-dim); }
+
+.vm-orgapp-h {
+    margin: 4px 0 -4px;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--vm-orgapp-dim);
+    font-weight: 600;
+}
+
+.vm-orgapp-dim { color: var(--vm-orgapp-dim); font-size: 12px; }
+
+/* --- campagnekaart en balk ---------------------------------------------- */
+.vm-orgapp-card {
+    padding: 12px;
+    border: 1px solid var(--vm-orgapp-line);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .03);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.vm-orgapp-card-head { display: flex; align-items: baseline; gap: 8px; }
+.vm-orgapp-card-title { font-weight: 600; }
+
+.vm-orgapp-card-pct {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    color: var(--vm-org-accent);
+}
+
+.vm-orgapp-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, .09);
+    overflow: hidden;
+}
+
+.vm-orgapp-bar-fill {
+    height: 100%;
+    /* Vlakke vulling, geen verloop: bij een verloop is het einde van de balk
+       niet meer af te lezen, en dat is het enige dat een balk hoort te doen. */
+    background: var(--vm-org-accent);
+}
+
+.vm-orgapp-bar.is-full .vm-orgapp-bar-fill { background: var(--vm-green); }
+
+.vm-orgapp-card-line {
+    display: flex;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* HET ZICHTBARE SIGNAAL: de pot is vol. */
+.vm-orgapp-full {
+    padding: 7px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--vm-green);
+    background: rgba(132, 255, 155, .12);
+    color: var(--vm-green);
+    font-weight: 600;
+}
+
+.vm-orgapp-note {
+    padding: 7px 10px;
+    border-radius: 7px;
+    border: 1px dashed var(--vm-orgapp-line);
+    color: var(--vm-orgapp-dim);
+    font-size: 12px;
+}
+
+.vm-orgapp-donors { list-style: none; margin: 0; padding: 0; }
+
+.vm-orgapp-donors li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+}
+
+.vm-orgapp-donor-amount {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- avatars: EEN maat, EEN rand, licht gedempt -------------------------- */
+.vm-orgapp-user { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+
+.vm-orgapp-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+    border: 1px solid var(--vm-org-accent);
+    /* Spelers kiezen hun eigen pfp en sommige zijn wit of knipperen. Een lichte
+       demping houdt het donkere thema heel zonder het gezicht onherkenbaar te
+       maken; volledig grijs maken zou het punt van een avatar weghalen. */
+    filter: saturate(.85) brightness(.9);
+    background: rgba(255, 255, 255, .06);
+}
+
+.vm-orgapp-user.is-big .vm-orgapp-avatar { width: 44px; height: 44px; }
+
+.vm-orgapp-user-id {
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: #eaf6fb;
+}
+
+.vm-orgapp-badge {
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--vm-org-accent);
+    color: var(--vm-org-accent);
+    font-size: 10px;
+    letter-spacing: .04em;
+    white-space: nowrap;
+}
+
+/* --- ranglijst ----------------------------------------------------------- */
+.vm-orgapp-rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+
+.vm-orgapp-rank-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--vm-orgapp-line);
+    border-left: 3px solid var(--vm-org-accent);
+    background: rgba(255, 255, 255, .03);
+}
+
+.vm-orgapp-rank-row.is-you { background: rgba(255, 255, 255, .07); }
+
+.vm-orgapp-rank-pos {
+    width: 16px;
+    color: var(--vm-orgapp-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+.vm-orgapp-rank-emblem { color: var(--vm-org-accent); }
+
+.vm-orgapp-rank-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vm-orgapp-rank-score { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* --- feed ---------------------------------------------------------------- */
+.vm-orgapp-feed, .vm-orgapp-replies, .vm-orgapp-announce,
+.vm-orgapp-members, .vm-orgapp-upgrades, .vm-orgapp-cands {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.vm-orgapp-post {
+    padding: 9px 11px;
+    border: 1px solid var(--vm-orgapp-line);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .03);
+}
+
+.vm-orgapp-post.is-reply {
+    border-left: 2px solid var(--vm-org-accent);
+    background: rgba(255, 255, 255, .02);
+}
+
+.vm-orgapp-replies { margin-top: 8px; padding-left: 12px; }
+.vm-orgapp-post-head { display: flex; align-items: center; gap: 8px; }
+
+.vm-orgapp-post-time {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--vm-orgapp-dim);
+}
+
+.vm-orgapp-post-body {
+    margin-top: 6px;
+    /* User-generated: een geplakte URL van tweehonderd tekens mag het venster
+       niet oprekken. */
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    line-height: 1.45;
+}
+
+.vm-orgapp-post-tools { display: flex; gap: 10px; margin-top: 7px; }
+
+.vm-orgapp-post-tools button {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-size: 11px;
+    color: var(--vm-orgapp-dim);
+    cursor: pointer;
+}
+
+.vm-orgapp-post-tools button:hover:not(:disabled) { color: var(--vm-org-accent); }
+.vm-orgapp-post-tools button:disabled { opacity: .5; cursor: default; }
+.vm-orgapp-reports { margin-left: auto; font-size: 11px; color: var(--vm-amber); }
+
+/* De meldknop nadat je hem hebt gebruikt. Een uitgeschakelde knop leest als
+   "kapot"; dit leest als "gedaan". */
+.vm-orgapp-reported {
+    font-size: 11px;
+    color: var(--vm-amber);
+}
+
+.vm-orgapp-composer {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px;
+    border: 1px solid var(--vm-orgapp-line);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .03);
+}
+
+.vm-orgapp-composer textarea {
+    resize: vertical;
+    min-height: 58px;
+    padding: 8px;
+    border-radius: 7px;
+    border: 1px solid var(--vm-orgapp-line);
+    background: rgba(0, 0, 0, .35);
+    color: #eaf6fb;
+    font: inherit;
+    line-height: 1.45;
+}
+
+.vm-orgapp-composer textarea:focus {
+    outline: none;
+    border-color: var(--vm-org-accent);
+}
+
+.vm-orgapp-composer-foot { display: flex; align-items: center; gap: 10px; }
+
+.vm-orgapp-count {
+    font-variant-numeric: tabular-nums;
+    color: var(--vm-orgapp-dim);
+    font-size: 11px;
+}
+
+.vm-orgapp-count.is-over { color: var(--vm-red); }
+
+.vm-orgapp-composer button[type="submit"] {
+    margin-left: auto;
+    padding: 6px 16px;
+    border-radius: 7px;
+    border: 1px solid var(--vm-org-accent);
+    background: rgba(255, 255, 255, .05);
+    color: var(--vm-org-accent);
+    font: inherit;
+    cursor: pointer;
+}
+
+.vm-orgapp-composer button[type="submit"]:disabled { opacity: .5; cursor: default; }
+
+.vm-orgapp-replying {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 11px;
+    color: var(--vm-orgapp-dim);
+}
+
+.vm-orgapp-replying button {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: var(--vm-org-accent);
+    cursor: pointer;
+}
+
+.vm-orgapp-error { color: var(--vm-red); font-size: 12px; }
+
+/* --- rentesplitsing ------------------------------------------------------ */
+.vm-orgapp-rate {
+    border: 1px solid var(--vm-orgapp-line);
+    border-radius: 9px;
+    overflow: hidden;
+}
+
+.vm-orgapp-rate-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 11px;
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px solid var(--vm-orgapp-line);
+}
+
+.vm-orgapp-rate-row:last-child { border-bottom: 0; }
+.vm-orgapp-rate-row span:first-child { color: var(--vm-orgapp-dim); }
+
+.vm-orgapp-rate-row.is-total {
+    background: rgba(255, 255, 255, .05);
+    font-weight: 600;
+}
+
+.vm-orgapp-rate-row.is-total span:first-child { color: inherit; }
+
+/* --- upgrades ------------------------------------------------------------ */
+.vm-orgapp-upgrade {
+    padding: 10px 12px;
+    border: 1px solid var(--vm-orgapp-line);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .03);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.vm-orgapp-upgrade-head { display: flex; align-items: center; gap: 10px; }
+.vm-orgapp-upgrade-name { font-weight: 600; }
+.vm-orgapp-pips { margin-left: auto; display: flex; gap: 4px; }
+
+.vm-orgapp-pip {
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+    border: 1px solid var(--vm-org-accent);
+    opacity: .35;
+}
+
+.vm-orgapp-pip.is-on { background: var(--vm-org-accent); opacity: 1; }
+
+.vm-orgapp-upgrade-foot {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--vm-orgapp-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- leden en verkiezing -------------------------------------------------- */
+.vm-orgapp-member, .vm-orgapp-cand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 10px;
+    border: 1px solid var(--vm-orgapp-line);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .03);
+}
+
+.vm-orgapp-member.is-idle { opacity: .62; }
+
+.vm-orgapp-member-contrib, .vm-orgapp-cand-votes {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+.vm-orgapp-cand.is-winner { border-color: var(--vm-green); }
+
+/* --- rangladder ----------------------------------------------------------- */
+.vm-orgapp-ladder { display: flex; gap: 5px; }
+
+.vm-orgapp-rung {
+    flex: 1 1 0;
+    height: 7px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, .10);
+}
+
+.vm-orgapp-rung.is-on { background: var(--vm-org-accent); }
+.vm-orgapp-you { display: flex; align-items: center; gap: 12px; }
+
+/* --- lege staten ---------------------------------------------------------- */
+.vm-orgapp-empty {
+    padding: 18px 14px;
+    border: 1px dashed var(--vm-orgapp-line);
+    border-radius: 10px;
+    text-align: center;
+}
+
+.vm-orgapp-empty-title { font-weight: 600; margin-bottom: 5px; }
+
+.vm-orgapp-empty-body {
+    color: var(--vm-orgapp-dim);
+    font-size: 12px;
+    line-height: 1.5;
+}
