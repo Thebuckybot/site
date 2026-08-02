@@ -43,19 +43,23 @@
 // namespace-import geeft dan een object zonder `request` en de app valt om op
 // de eerste fetch - stil, want het gebeurt in een promise.
 import { gatewayClient } from "../core/gatewayClient.js";
+import { applyOrgTheme, accentColour } from "./orgTheme.js";
 
 const FEED_POLL_MS = 15000;
 const DATA_POLL_MS = 30000;
 const BODY_LIMIT = 500;
 
+// De tabbalk, in de volgorde van de mockup. De glyph is een TEKEN en geen
+// afbeelding: de hele VM rendert iconen als tekst, en een <img> hier zou het
+// enige in zijn soort zijn.
 const TABS = [
-    { key: "overview", label: "Overview" },
-    { key: "feed", label: "Feed" },
-    { key: "treasury", label: "Treasury" },
-    { key: "upgrades", label: "Research" },
-    { key: "members", label: "Members" },
-    { key: "election", label: "Election" },
-    { key: "card", label: "You" }
+    { key: "overview", label: "Overzicht", glyph: "▣" },
+    { key: "feed", label: "Feed", glyph: "▤" },
+    { key: "upgrades", label: "Upgrades", glyph: "▦" },
+    { key: "treasury", label: "Treasury", glyph: "▥" },
+    { key: "election", label: "Verkiezing", glyph: "▧" },
+    { key: "members", label: "Leden", glyph: "▢" },
+    { key: "card", label: "Jij", glyph: "□" }
 ];
 
 const RANK_LABEL = {
@@ -103,13 +107,20 @@ function avatar(userId) {
     return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
 }
 
+/**
+ * Een persoon: avatar, korte id, rangbadge.
+ *
+ * De avatar is VIERKANT met afgeronde hoeken en niet rond, zodat hij bij de
+ * avatartegel van de organisatie hoort in plaats van bij de taakbalk van de VM.
+ * Eén maat, een rand in de organisatiekleur en een lichte demping: spelers
+ * kiezen hun eigen pfp en sommige zijn spierwit of knipperen.
+ */
 function userChip(userId, rank, extraClass) {
     const label = RANK_LABEL[rank] || "";
-    return `<span class="vm-orgapp-user ${extraClass || ""}"
-                  title="${escapeHtml(userId)}">
-        <img class="vm-orgapp-avatar" alt="" src="${escapeHtml(avatar(userId))}">
-        <span class="vm-orgapp-user-id">${escapeHtml(shortId(userId))}</span>
-        ${label ? `<span class="vm-orgapp-badge">${escapeHtml(label)}</span>` : ""}
+    return `<span class="og-user ${extraClass || ""}" title="${escapeHtml(userId)}">
+        <img class="og-avatar" alt="" src="${escapeHtml(avatar(userId))}">
+        <span class="og-user-id og-mono">${escapeHtml(shortId(userId))}</span>
+        ${label ? `<span class="og-badge">${escapeHtml(label)}</span>` : ""}
     </span>`;
 }
 
@@ -175,51 +186,53 @@ export function renderOrgApp(runtime, windowState) {
 
 function renderOrgInner(runtime, windowState) {
     const s = windowState.appState;
-    const accent = (s.data.overview && s.data.overview.theme
-        && s.data.overview.theme.color) || "#52fff3";
 
     if (s.loading && !s.viewer && !s.standings.length) {
-        return `<div class="vm-orgapp-shell"><div class="vm-orgapp-body">
-            ${empty("Loading", "Reading your organization…")}
-        </div></div>`;
+        return shell(s, `<p class="og-boot"><span class="og-boot-dot"></span>
+            verbinden met de organisatie…</p>`, false);
     }
     if (s.error) {
-        return `<div class="vm-orgapp-shell"><div class="vm-orgapp-body">
-            ${empty("Offline", s.error)}
-        </div></div>`;
+        return shell(s, empty("Geen verbinding", s.error), false);
     }
     if (!s.viewer) {
-        return `<div class="vm-orgapp-shell" style="--vm-org-accent:#52fff3">
-            ${renderHeader(s, null)}
-            <div class="vm-orgapp-body">${renderOutsider(s)}</div>
-        </div>`;
+        return shell(s, renderOutsider(s), false);
     }
+    return shell(s, renderTab(s), true);
+}
 
-    return `<div class="vm-orgapp-shell" style="--vm-org-accent:${escapeHtml(accent)}">
-        ${renderHeader(s, s.data.overview)}
-        <div class="vm-orgapp-body" data-org-body>${renderTab(s)}</div>
-        ${renderTabs(s)}
+/**
+ * De schil: textuur, kop, inhoud, tabbalk.
+ *
+ * De vier textuurlagen staan in de markup en niet als pseudo-elementen op de
+ * body, omdat ze alle vier tegelijk moeten kunnen en er maar twee pseudo's per
+ * element zijn. Ze liggen onder de inhoud en boven de achtergrond, met
+ * `pointer-events: none`, dus ze vangen niets af.
+ */
+function shell(s, inhoud, chroom) {
+    const org = s.data.overview;
+    const slug = (org && org.slug) || (s.viewer ? "" : "publiek");
+    return `<div class="og-shell">
+        <div class="og-texture" aria-hidden="true">
+            <i class="og-grid"></i><i class="og-scan"></i>
+            <i class="og-noise"></i><i class="og-vignette"></i>
+        </div>
+        <header class="og-head">
+            <span class="og-head-mark">▚</span>
+            <span class="og-head-path">ORG://${escapeHtml(slug)}</span>
+            <span class="og-head-live"><i></i>LIVE</span>
+        </header>
+        <div class="og-body" data-org-body>${inhoud}</div>
+        ${chroom ? renderTabs(s) : ""}
     </div>`;
 }
 
-function renderHeader(s, org) {
-    if (!org) {
-        return `<header class="vm-orgapp-head">
-            <span class="vm-orgapp-emblem">◇</span>
-            <span class="vm-orgapp-title">Organizations</span>
-        </header>`;
-    }
-    return `<header class="vm-orgapp-head">
-        <span class="vm-orgapp-emblem">${escapeHtml(org.emblem || "◇")}</span>
-        <span class="vm-orgapp-title">${escapeHtml(org.name || org.slug || "")}</span>
-        <span class="vm-orgapp-head-rep">${num(org.rep)} REP</span>
-    </header>`;
-}
-
 function renderTabs(s) {
-    return `<nav class="vm-orgapp-tabs">${TABS.map((t) => `
-        <button class="vm-orgapp-tab${s.tab === t.key ? " is-active" : ""}"
-                data-org-tab="${t.key}">${escapeHtml(t.label)}</button>`).join("")}
+    return `<nav class="og-tabs">${TABS.map((t) => `
+        <button class="og-tab${s.tab === t.key ? " is-active" : ""}"
+                data-org-tab="${t.key}">
+            <span class="og-tab-glyph">${t.glyph}</span>
+            <span class="og-tab-label">${escapeHtml(t.label)}</span>
+        </button>`).join("")}
     </nav>`;
 }
 
@@ -254,6 +267,19 @@ function renderOutsider(s) {
 }
 
 /* ---- overzicht --------------------------------------------------- */
+/**
+ * Het overzicht, in twee kolommen op breed en onder elkaar op smal.
+ *
+ * WAAROM TWEE KOLOMMEN. De mockups zijn staand ontworpen; dit venster is
+ * liggend. Die kolom uitrekken geeft een strook tekst in een leeg landschap, en
+ * dat is erger dan wat er stond. De splitsing zit niet willekeurig in het
+ * midden maar op een naad die er al was: identiteit, termijn en aankondiging
+ * lees je van boven naar beneden (verhaal), terwijl de ranglijst en de treasury
+ * dingen zijn waar je even naar kijkt en die je vergelijkt (referentie). Het
+ * verhaal houdt links een leesbare regellengte, de referentie staat rechts waar
+ * je hem in een oogopslag pakt. Onder 620 px vallen ze in precies de volgorde
+ * van de mockup onder elkaar - dezelfde componenten, andere plaatsing.
+ */
 function renderOverview(s) {
     // `s.data.overview` is de UITGEPAKTE org. `load()` zette hier eerst de hele
     // envelope neer en overschreef die alleen als `item` waar was, dus bij een
@@ -261,29 +287,196 @@ function renderOverview(s) {
     // klapte de volgende regel op `org.credits`.
     const org = s.data.overview;
     if (!org || !org.credits) {
-        return empty("Nothing yet", "This organization has no data yet.");
+        return empty("Nog niets", "Deze organisatie heeft nog geen gegevens.");
     }
-    const c = org.campaign;
-    const rows = s.standings.map((o, i) => `
-        <li class="vm-orgapp-rank-row${o.org_id === org.org_id ? " is-you" : ""}"
-            style="--vm-org-accent:${escapeHtml(o.theme.color)}">
-            <span class="vm-orgapp-rank-pos">${i + 1}</span>
-            <span class="vm-orgapp-rank-emblem">${escapeHtml(o.emblem || "◇")}</span>
-            <span class="vm-orgapp-rank-name">${escapeHtml(o.name)}</span>
-            <span class="vm-orgapp-rank-score">${num(o.score)}</span>
-        </li>`).join("");
+    const aankondiging = ((s.data.overview_env || {}).announcements || [])[0];
 
     return `
-        <div class="vm-orgapp-stats">
-            ${stat("Reputation", num(org.rep))}
-            ${stat("Members", `${num(org.active)} / ${num(org.members)}`, "active this term")}
-            ${stat("Credits", num(org.credits.available), "unspent")}
+        ${renderIdentity(org, s)}
+        <div class="og-split">
+            <div class="og-col og-col-main">
+                ${renderTerm(org)}
+                ${renderAnnouncementCard(aankondiging)}
+            </div>
+            <div class="og-col og-col-side">
+                ${renderStandings(s, org)}
+                ${renderTreasurySummary(org)}
+            </div>
+        </div>`;
+}
+
+/**
+ * De kop van het scherm: banner, avatar, naam, en de cijfers die je meteen wilt.
+ *
+ * DE BANNER IS DE HELD. Hij stond al in de database, de backend serveerde hem
+ * al, en de app las hem niet - dat was het grootste zichtbare verschil met de
+ * mockup voor precies deze regel werk. De gradient eroverheen is functioneel en
+ * geen decoratie: zonder verdwijnt de naam in de kunst.
+ */
+function renderIdentity(org, s) {
+    const t = org.theme || {};
+    const mij = s.standings.findIndex((o) => o.org_id === org.org_id);
+    return `<header class="og-ident">
+        <div class="og-banner${t.banner_url ? "" : " is-blank"}"
+             ${t.banner_url ? `style="--shot:url('${escapeHtml(t.banner_url)}')"` : ""}>
+            <span class="og-banner-fade"></span>
         </div>
-        ${c ? renderCampaignBlock(c) : empty("No campaign running",
-            "A leader opens one with +campaign in #treasury. Until then the "
-            + "treasury just sits there.")}
-        <h3 class="vm-orgapp-h">Reputation per active member</h3>
-        <ol class="vm-orgapp-rank">${rows}</ol>`;
+        <div class="og-ident-row">
+            <div class="og-avatar-tile${t.avatar_url ? "" : " is-blank"}"
+                 ${t.avatar_url ? `style="--shot:url('${escapeHtml(t.avatar_url)}')"` : ""}
+                 aria-hidden="true">${t.avatar_url ? "" : escapeHtml(org.emblem || "◇")}</div>
+            <div class="og-ident-name">
+                <h1>${escapeHtml(org.name || org.slug || "")}</h1>
+                <p class="og-slug">${escapeHtml(org.slug || "")}</p>
+                ${t.tagline ? `<p class="og-motto">// ${escapeHtml(t.tagline)}</p>` : ""}
+            </div>
+            <dl class="og-ident-rep">
+                <dt>REP deze termijn</dt>
+                <dd data-count="${Number(org.rep) || 0}">${num(org.rep)}</dd>
+            </dl>
+        </div>
+        <div class="og-ident-facts">
+            ${fact("Leden", `${num(org.active)} / ${num(org.members)}`)}
+            ${fact("Ranglijst", mij >= 0 ? `#${mij + 1} / ${s.standings.length}` : "—")}
+            ${fact("Credits", num(org.credits.available))}
+        </div>
+    </header>`;
+}
+
+function fact(label, value) {
+    return `<div class="og-fact">
+        <span class="og-fact-label">${escapeHtml(label)}</span>
+        <span class="og-fact-value">${escapeHtml(value)}</span>
+    </div>`;
+}
+
+/**
+ * De termijnbalk.
+ *
+ * De mockup telt de dagen van de TERMIJN af. Die datum wordt nergens geserveerd
+ * - `org_elections` kent een termijnnummer maar geen begin, en de kwartaalpas
+ * heeft alleen een interval. Een aftelling verzinnen op een cyclus die ik niet
+ * ken is precies het soort getal waar deze app niet omheen mag liegen, dus
+ * staat hier de DEADLINE VAN DE CAMPAGNE: dezelfde vorm, een klok die echt
+ * loopt, en zonder campagne een blok dat zegt dat er niets loopt.
+ */
+function renderTerm(org) {
+    const c = org.campaign;
+    if (!c) {
+        return `<section class="og-panel og-term is-idle">
+            <div class="og-eyebrow">Campagne</div>
+            <p class="og-term-idle">Er loopt geen campagne. De leider opent er een
+                met <code>+campaign</code> in #treasury.</p>
+        </section>`;
+    }
+    const dagen = dagenTot(c.deadline);
+    return `<section class="og-panel og-term">
+        <div class="og-term-head">
+            <span class="og-eyebrow">Campagne</span>
+            <span class="og-term-name">${escapeHtml(c.title || "")}</span>
+            <span class="og-term-left">${dagen === null ? "—"
+                : `nog ${num(dagen)} ${dagen === 1 ? "dag" : "dagen"}`}</span>
+        </div>
+        ${meter(c.percent, c.full)}
+        <div class="og-term-foot">
+            <span class="og-mono">${num(c.raised)}</span>
+            <span class="og-faint">van ${num(c.goal)}</span>
+            <span class="og-term-pct og-mono">${c.percent}%</span>
+        </div>
+        ${c.full ? `<p class="og-flag">Pot is vol — de Leader kan nu kopen.</p>` : ""}
+    </section>`;
+}
+
+function dagenTot(iso) {
+    if (!iso) return null;
+    const d = new Date(iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z");
+    if (isNaN(d.getTime())) return null;
+    return Math.max(0, Math.ceil((d.getTime() - Date.now()) / 86400000));
+}
+
+/**
+ * De meter. `--fill` in plaats van `width`, zodat de CSS hem kan animeren
+ * zonder dat de renderlaag iets van tijd hoeft te weten.
+ */
+function meter(percent, vol) {
+    const p = Math.max(0, Math.min(100, Number(percent) || 0));
+    return `<div class="og-meter${vol ? " is-full" : ""}" role="progressbar"
+         aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100">
+        <i style="--fill:${p}%"></i>
+    </div>`;
+}
+
+/**
+ * De ranglijst, en het enige moment waarop alle vier de identiteiten tegelijk
+ * op het scherm staan.
+ *
+ * Elke balk draagt de kleur van ZIJN EIGEN organisatie, door dezelfde
+ * helderheidsbodem gehaald als het eigen thema - anders zou Aether op elke
+ * ranglijst de zwakste lijken omdat zijn marineblauw het donkerst is, en dat is
+ * een oordeel dat een balk niet mag vellen.
+ */
+function renderStandings(s, org) {
+    const top = Math.max(1, ...s.standings.map((o) => Number(o.score) || 0));
+    const rijen = s.standings.map((o, i) => {
+        const breedte = Math.max(4, Math.round((Number(o.score) || 0) / top * 100));
+        return `<li class="og-rank-row${o.org_id === org.org_id ? " is-you" : ""}"
+            style="--row:${accentColour((o.theme || {}).color)}">
+            <span class="og-rank-pos og-mono">${i + 1}</span>
+            <span class="og-rank-mark">${escapeHtml(o.emblem || "◇")}</span>
+            <span class="og-rank-name">${escapeHtml(o.name)}</span>
+            <span class="og-rank-bar"><i style="--fill:${breedte}%"></i></span>
+            <span class="og-rank-score og-mono">${num(o.score)}</span>
+        </li>`;
+    }).join("");
+    return `<section class="og-panel og-rank">
+        <div class="og-eyebrow">Ranglijst — REP per actief lid</div>
+        <ol class="og-rank-list">${rijen}</ol>
+    </section>`;
+}
+
+function renderAnnouncementCard(a) {
+    if (!a) {
+        return `<section class="og-panel og-ann is-empty">
+            <div class="og-eyebrow">Recente aankondiging</div>
+            <p class="og-faint">Nog niets aangekondigd. De leider plaatst er een
+                met <code>+organnounce</code>.</p>
+        </section>`;
+    }
+    return `<section class="og-panel og-ann">
+        <div class="og-eyebrow">Recente aankondiging</div>
+        <div class="og-ann-head">
+            ${userChip(a.author_id, "leader")}
+            <time class="og-faint og-mono">${escapeHtml(shortTime(a.created_at))}</time>
+        </div>
+        <p class="og-ann-body">${escapeHtml(a.body)}</p>
+    </section>`;
+}
+
+function renderTreasurySummary(org) {
+    const c = org.campaign;
+    const pctVol = c ? c.percent : 0;
+    return `<section class="og-panel og-treas">
+        <div class="og-eyebrow">Treasury</div>
+        <div class="og-treas-row">
+            <div class="og-treas-figure">
+                <span class="og-treas-amount og-mono"
+                      data-count="${Number(org.treasury.balance) || 0}">${num(org.treasury.balance)}</span>
+                <span class="og-faint">shards</span>
+            </div>
+            ${donut(pctVol)}
+        </div>
+        <div class="og-treas-goal">
+            <span class="og-faint">Doel: volgende upgrade</span>
+            <span class="og-mono">${c ? num(c.goal) : "—"}</span>
+        </div>
+        ${meter(pctVol, c && c.full)}
+    </section>`;
+}
+
+/** De donut. Eén conic-gradient, geen SVG en geen library. */
+function donut(percent) {
+    const p = Math.max(0, Math.min(100, Number(percent) || 0));
+    return `<div class="og-donut" style="--fill:${p}"><span class="og-mono">${p}%</span></div>`;
 }
 
 function stat(label, value, sub) {
@@ -593,6 +786,11 @@ export function mountOrgApp(runtime, windowState, element) {
     const app = element.querySelector(".vm-orgapp");
     if (!app) return;
     view.appElement = app;
+    // `element` IS het vensterelement (`mountWindow` geeft de hele section
+    // door), dus hier kan de app zijn eigen lijst inkleuren.
+    view.windowElement = element.classList
+        && element.classList.contains("vm-window") ? element : null;
+    paintTheme(runtime, windowState);
 
     view.refresh = () => {
         // The draft survives a redraw. A poll that lands while somebody is
@@ -655,6 +853,12 @@ export function mountOrgApp(runtime, windowState, element) {
 
 export function unmountOrgApp(runtime, windowState) {
     const view = windowState.view || {};
+    // De vensterkleur weer weghalen: het element kan hergebruikt worden en een
+    // achtergebleven accent zou een andere app inkleuren.
+    if (view.windowElement) {
+        view.windowElement.style.removeProperty("--vm-window-accent");
+        view.windowElement.style.removeProperty("--vm-window-glow");
+    }
     (view.cleanups || []).forEach((fn) => { try { fn(); } catch (e) { /* leeg */ } });
     view.cleanups = [];
 }
@@ -707,7 +911,12 @@ function handleClick(runtime, windowState, event) {
 /* data                                                                */
 /* ------------------------------------------------------------------ */
 const ENDPOINT = {
-    overview: "/api/org/overview",
+    // HET OVERZICHT LEEST DE TREASURY-ROUTE, en dat is geen slordigheid: die
+    // geeft de overview-payload PLUS de aankondigingen en de rentesplitsing in
+    // een antwoord, en het overzichtsscherm toont de laatste aankondiging. Een
+    // eigen route ervoor zou een backendwijziging zijn voor data die al over de
+    // draad komt.
+    overview: "/api/org/treasury",
     feed: "/api/org/feed",
     treasury: "/api/org/treasury",
     upgrades: "/api/org/upgrades",
@@ -760,7 +969,14 @@ function load(runtime, windowState, force) {
                 s.feed = d.item || { posts: [], can_post: false, can_moderate: false };
             }
             s.data[tab] = d;
-            if (tab === "overview" && d.item) s.data.overview = d.item;
+            if (tab === "overview" && d.item) {
+                // TWEE DINGEN ONDER EEN SLEUTEL. `s.data.overview` is de
+                // uitgepakte organisatie omdat elke render die verwacht; de
+                // envelope eromheen draagt de aankondigingen en de rente, en
+                // die zou hier anders verdwijnen.
+                s.data.overview = d.item;
+                s.data.overview_env = d;
+            }
             // DE FEED VOLGT DE LOPENDE CAMPAGNE. Zonder dit blijft `campaignId`
             // altijd null, hangt elke post aan de algemene draad, en is de
             // campagnefeed - inclusief het archiveren dat erbij hoort - een
@@ -773,6 +989,7 @@ function load(runtime, windowState, force) {
             s.fetchedAt[tab] = Date.now();
         }
         if (board && board.ok) s.standings = (board.data || {}).items || [];
+        paintTheme(runtime, windowState);
         if (windowState.view && windowState.view.refresh) windowState.view.refresh();
     }).catch(() => {
         s.inflight = false;
@@ -780,6 +997,35 @@ function load(runtime, windowState, force) {
         if (windowState.view && windowState.view.refresh) windowState.view.refresh();
     });
 }
+
+/**
+ * Zet het palet op de app EN op het venster eromheen.
+ *
+ * DE VENSTERRAND. Een actief VM-venster heeft een magenta rand; dat is een
+ * eigenschap van de vensterlaag en niet van deze app. Hij is toch te sturen
+ * zonder de WindowManager aan te raken: `mount` krijgt het venster-element
+ * zelf mee, en `patchWindowElement` schrijft losse style-properties
+ * (`element.style.left`, niet `cssText`), dus een custom property overleeft elke
+ * herteken. De CSS heeft er een terugval voor, dus elke andere app rendert
+ * byte-voor-byte hetzelfde - die zetten de variabele nooit.
+ */
+function paintTheme(runtime, windowState) {
+    const kleur = ((s0(windowState).data.overview || {}).theme || {}).color;
+    const view = windowState.view || {};
+    if (view.appElement) applyOrgTheme(view.appElement, kleur);
+    if (view.windowElement) {
+        const a = applyOrgTheme(view.windowElement, kleur);
+        if (a) {
+            view.windowElement.style.setProperty("--vm-window-accent",
+                `hsl(${a.h.toFixed(1)} ${a.s.toFixed(1)}% ${a.l.toFixed(1)}% / .62)`);
+            view.windowElement.style.setProperty("--vm-window-glow",
+                `hsl(${a.h.toFixed(1)} ${a.s.toFixed(1)}% ${a.l.toFixed(1)}% / .24)`);
+        }
+    }
+}
+
+const s0 = (windowState) => windowState.appState;
+
 
 function submitPost(runtime, windowState) {
     const s = windowState.appState;
