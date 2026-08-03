@@ -204,9 +204,30 @@ function renderOrgBlock(org) {
             <div class="vm-profile-grid">
                 ${statTile("Affiliation", `${escapeHtml(org.emblem || "")} ${escapeHtml(org.name || "")}`, true)}
                 ${statTile("Rank", String(org.rank || "recruit"))}
-                ${statTile("Reputation", String(org.reputation || 0))}
+                ${statTile("Reputation", formatNumber(org.reputation || 0))}
                 ${statTile("Warnings", String(org.warnings != null ? org.warnings : 0))}
             </div>
+            <!--
+                DE TWEE BIJDRAGETELLERS. `contribution` is levenslang en bepaalt
+                welke rang je verdient; `season_contribution` wordt elk kwartaal
+                genuld en bepaalt of je als ACTIEF lid meetelt en of je op het
+                stembiljet komt. Ze zijn allebei door v2 opgeleverd en stonden op
+                geen enkel scherm - terwijl "actief" het woord is waar de
+                kwartaaluitkering, de rentebanden en de verkiezing alle drie op
+                draaien.
+            -->
+            <div class="vm-profile-substats">
+                <span>Contribution (lifetime): <strong>${escapeHtml(formatNumber(org.contribution || 0))}</strong></span>
+                <span>This term: <strong>${escapeHtml(formatNumber(org.season_contribution || 0))}</strong></span>
+                ${org.specialisation
+                    ? `<span>Specialisation: <strong>${escapeHtml(String(org.specialisation))}</strong></span>`
+                    : ""}
+            </div>
+            <p class="vm-profile-note">
+                ${(org.season_contribution || 0) > 0
+                    ? "You count as an active member this term."
+                    : "You have not contributed this term yet, so you do not count as active — and active members are what the quarterly payout, the interest bands and the ballot are all measured on."}
+            </p>
             <div class="vm-leak-more">${link("bucky://organizations/" + (org.id || ""), "Open organisation page")}</div>
         </section>
     `;
@@ -680,7 +701,18 @@ function formatDate(value) {
 /** Date + time, for breach provenance (the COMPROMISED banner). */
 function formatDateTime(value) {
     if (!value) return "-";
-    const d = new Date(value);
+    // EEN GETAL IS SECONDEN, GEEN MILLISECONDEN.
+    //
+    // `new Date(1785183093)` is 21 januari 1970, en dat stond na elke
+    // spelershack op het profielscherm: `last_breached_at` werd door de bot als
+    // unix-SECONDEN weggeschreven en door de leak-engine als ISO-string. De
+    // backend levert het veld inmiddels genormaliseerd aan en de bot schrijft
+    // ISO, maar deze functie krijgt ook andere velden en van andere versies -
+    // dus hij hoort een getal niet stilzwijgend duizend keer te klein te lezen.
+    // 10^11 seconden is het jaar 5138; alles daarboven was al in ms bedoeld.
+    const d = (typeof value === "number" && isFinite(value))
+        ? new Date(value > 1e11 ? value : value * 1000)
+        : new Date(value);
     if (isNaN(d.getTime())) return String(value);
     return d.toLocaleString("en-GB", {
         day: "numeric", month: "short", year: "numeric",
