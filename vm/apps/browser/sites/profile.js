@@ -198,6 +198,19 @@ function renderOrgBlock(org) {
             </section>
         `;
     }
+
+    // DE TWEE BIJDRAGETELLERS. "contribution" is levenslang en bepaalt welke
+    // rang je verdient; "season_contribution" wordt elk kwartaal genuld en
+    // bepaalt of je als ACTIEF lid meetelt en of je op het stembiljet komt. Ze
+    // zijn allebei door v2 opgeleverd en stonden op geen enkel scherm -
+    // terwijl "actief" het woord is waar de kwartaaluitkering, de rentebanden
+    // en de verkiezing alle drie op meten.
+    //
+    // DEZE UITLEG STAAT HIER EN NIET IN DE TEMPLATE. Hij stond als
+    // HTML-commentaar BINNEN de template literal hieronder, met backticks om de
+    // twee veldnamen - en een backtick binnen een template literal sluit hem.
+    // De literal eindigde daar, "contribution" werd een kale identifier, en de
+    // hele module viel om met een SyntaxError. Zie tests/test_vm_module_syntax.py.
     return `
         <section class="vm-wiki-section vm-profile-block">
             <h2>Organisation</h2>
@@ -207,15 +220,6 @@ function renderOrgBlock(org) {
                 ${statTile("Reputation", formatNumber(org.reputation || 0))}
                 ${statTile("Warnings", String(org.warnings != null ? org.warnings : 0))}
             </div>
-            <!--
-                DE TWEE BIJDRAGETELLERS. `contribution` is levenslang en bepaalt
-                welke rang je verdient; `season_contribution` wordt elk kwartaal
-                genuld en bepaalt of je als ACTIEF lid meetelt en of je op het
-                stembiljet komt. Ze zijn allebei door v2 opgeleverd en stonden op
-                geen enkel scherm - terwijl "actief" het woord is waar de
-                kwartaaluitkering, de rentebanden en de verkiezing alle drie op
-                draaien.
-            -->
             <div class="vm-profile-substats">
                 <span>Contribution (lifetime): <strong>${escapeHtml(formatNumber(org.contribution || 0))}</strong></span>
                 <span>This term: <strong>${escapeHtml(formatNumber(org.season_contribution || 0))}</strong></span>

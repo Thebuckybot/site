@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>Profielpagina harnas</title>
+<link rel="stylesheet" href="/vm/styles/vm.css">
+<style>
+  html, body { margin:0; background:#02050d; color:#e8ffff; font-family: system-ui, sans-serif; }
+  #frame { margin: 20px; padding: 12px; border:1px solid #234; border-radius:10px;
+           background: rgba(4,10,22,.82); }
+  #status { margin: 20px; font: 13px/1.5 monospace; white-space: pre; }
+</style>
+</head>
+<body>
+<div id="status">bezig…</div>
+<div id="frame"></div>
+
+<!--
+    HARNAS VOOR bucky://profile.
+
+    Dit bestand hoort NIET bij de productiepagina; het staat naast
+    __harness.html, dat hetzelfde doet voor de OrgApp. Het laadt de echte
+    profile.js als module - dus een syntaxfout laat dit harnas meteen omvallen,
+    wat precies de bug is waarvoor het bestaat - en rendert de zelfweergave met
+    een gestubde gateway, zodat er geen backend en geen Discord-sessie nodig is.
+-->
+<script type="module">
+import { gatewayClient } from "/vm/core/gatewayClient.js";
+import { registerProfileSite, refreshProfile } from "/vm/apps/browser/sites/profile.js";
+
+const status = document.getElementById("status");
+const frame = document.getElementById("frame");
+
+// Een profiel met precies de velden waar het om gaat. De getallen zijn
+// herkenbaar gekozen zodat een verwisseling in de opmaak opvalt.
+const PROFIEL = {
+    user_id: "424242", level: 79, xp: 123456, xp_to_next_level: 200000,
+    xp_into_level: 123456, equipped_title: null, titles: [], achievements: [],
+    joined: "2025-01-01T00:00:00+00:00", last_login: null, total_logins: 0,
+    streak: 3, hours_worked: 12,
+    organization: {
+        id: 1, name: "CyTek Industries", emblem: "◈", slug: "cytek",
+        rank: "commander",
+        reputation: 4200,
+        contribution: 987654,
+        season_contribution: 54321,
+        specialisation: "analyst",
+        warnings: 0,
+    },
+    coins: 1000, bank: 2000, bank_limit: 793000, bank_limit_base: 500,
+    bank_limit_bonus: 1000, networth: 3000, total_given: 0, total_received: 0,
+    inventory_count: 0, active_items_count: 0, items: [], active_items: [],
+    current_arc: null, unlocked_arcs: [], completed_arcs: [],
+    active_quests_count: 0,
+    security: {
+        firewall_level: 2, active_security: "firewall_2", breached: true,
+        last_breached_at: 1785183093,          // unix-SECONDEN: de 1970-val
+        last_breached_by: "99", attack_scripts_count: 0, active_attack: null,
+        security_scripts_count: 1, exposures: [],
+    },
+    work: null, windpark: null,
+};
+
+gatewayClient.hasAuthToken = () => true;
+gatewayClient.fetchSelfPlayer = async () => ({ ok: true, status: 200, data: { item: PROFIEL } });
+
+const sites = [];
+registerProfileSite({ register: (s) => sites.push(s), registerMatcher: () => {} });
+
+await refreshProfile();
+
+const home = sites.find((s) => s.id === "profile-home");
+frame.innerHTML = home.render();
+
+// Wat de test uitleest.
+const tekst = frame.innerText || frame.textContent || "";
+window.__resultaat = {
+    sites: sites.length,
+    bevat_contribution: tekst.includes("Contribution (lifetime)"),
+    bevat_seizoen: tekst.includes("This term:"),
+    contributiewaarde: /Contribution \(lifetime\):\s*([\d.,]+)/.exec(tekst)?.[1] || null,
+    seizoenwaarde: /This term:\s*([\d.,]+)/.exec(tekst)?.[1] || null,
+    specialisatie: tekst.includes("analyst"),
+    actiefzin: tekst.includes("You count as an active member this term."),
+    breached_tekst: /Breached at\s*([^\n]*)/.exec(tekst)?.[1]?.trim() || null,
+    toont_1970: tekst.includes("1970"),
+};
+status.textContent = JSON.stringify(window.__resultaat, null, 2);
+document.body.dataset.klaar = "1";
+</script>
+</body>
+</html>
