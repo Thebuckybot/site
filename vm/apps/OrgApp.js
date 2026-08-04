@@ -1174,7 +1174,7 @@ function rewardText(reward) {
     const r = reward || {};
     const delen = [];
     if (r.shards) delen.push(num(r.shards) + " shards");
-    if (r.rep) delen.push(num(r.rep) + " REP");
+    if (r.rep) delen.push(num(r.rep) + " REP + standing");
     if (r.chests) delen.push(num(r.chests) + (r.chests === 1 ? " chest" : " chests"));
     if (r.org_shards) delen.push(num(r.org_shards) + " to the treasury");
     return delen.length ? delen.join(" · ") : "";
