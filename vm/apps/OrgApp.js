@@ -55,6 +55,10 @@ const BODY_LIMIT = 500;
 const TABS = [
     { key: "overview", label: "Overview", glyph: "▣" },
     { key: "feed", label: "Feed", glyph: "▤" },
+    // DERDE PLEK, en dat is met opzet. Dit is het scherm waar iemand komt
+    // kijken wat er nog te doen is; achter Treasury en Members zetten maakt
+    // het een archief.
+    { key: "challenges", label: "Challenges", glyph: "◈" },
     { key: "upgrades", label: "Upgrades", glyph: "▦" },
     { key: "treasury", label: "Treasury", glyph: "▥" },
     { key: "election", label: "Election", glyph: "▧" },
@@ -245,6 +249,7 @@ function renderTabs(s) {
 function renderTab(s) {
     switch (s.tab) {
         case "feed": return renderFeed(s);
+        case "challenges": return renderChallenges(s);
         case "treasury": return renderTreasury(s);
         case "upgrades": return renderUpgrades(s);
         case "members": return renderMembers(s);
@@ -1031,6 +1036,191 @@ function renderUpgrade(it, u) {
  * kandidaten met hun stemmen. Het stemmen zelf gebeurt in Discord, en dat staat
  * op het scherm waar iemand anders naar een knop zou zoeken.
  */
+/* ------------------------------------------------------------------ */
+/* challenges — het to-do-paneel (v3 blok 2)                           */
+/* ------------------------------------------------------------------ */
+/*
+ * WAT HIER STAAT EN WAAROM HET HIER STAAT
+ * Doc 08 vroeg hier al om ("actieve org-uitdagingen, voortgang en beloningen")
+ * en er stond tot v3 blok 2 geen enkele regel over challenges in de hele
+ * site/-boom. De Discord-kaart is er wel, maar die moet je opvragen; dit is een
+ * scherm waar je naar kijkt.
+ *
+ * OP TIJDSCHAAL GEGROEPEERD, klein naar groot. Dat is de vraag die iemand
+ * stelt: "wat kan ik vandaag nog halen" is iets anders dan "waar werkt de org
+ * deze maand aan". Een tijdschaal waarin niets loopt krijgt geen kop, want een
+ * lege kop leest als een belofte.
+ *
+ * WAT ER NIET IS: een knop. Scoren gebeurt in de bot, op het emitpunt, want
+ * daar zitten de guardrails en daar zijn de locks. Dit scherm leest.
+ */
+const CADENCE_LABEL = {
+    daily: "Today",
+    weekly: "This week",
+    monthly: "This month"
+};
+
+const CADENCE_ORDER = ["daily", "weekly", "monthly"];
+
+const CATEGORY_LABEL = {
+    economic: "Economy",
+    social: "Social",
+    org: "Organization",
+    skill: "Skill",
+    defence: "Defence",
+    cooperation: "Together",
+    general: "General"
+};
+
+function renderChallenges(s) {
+    const blok = s.data.challenges || {};
+    const items = blok.items || [];
+    if (!items.length) {
+        return `<div class="og-split">
+            <div class="og-col og-col-main">
+                ${empty("Nothing is running",
+                    "No challenge is open right now. They rotate, so there "
+                    + "will be one - and the short ones come back daily.")}
+            </div>
+            <div class="og-col og-col-side">
+                ${renderChallengeHistory(blok.history || [])}
+            </div>
+        </div>`;
+    }
+
+    const groepen = CADENCE_ORDER
+        .map((cadence) => ({
+            cadence,
+            rijen: items.filter((c) => c.cadence === cadence)
+        }))
+        .filter((g) => g.rijen.length);
+    // Een cadens die de backend kent en dit bestand niet, hoort niet stil te
+    // verdwijnen - dan staat er een challenge te lopen die nergens te zien is.
+    const bekend = new Set(CADENCE_ORDER);
+    const rest = items.filter((c) => !bekend.has(c.cadence));
+    if (rest.length) groepen.push({ cadence: "other", rijen: rest });
+
+    const af = Number(blok.done_count) || 0;
+    return `<div class="og-split">
+        <div class="og-col og-col-main">
+            <section class="og-panel">${CORRUPT}
+                <div class="og-eyebrow">Your board</div>
+                <p class="og-faint">${num(af)} of ${num(items.length)} finished.
+                    Nothing pays out per objective - a challenge pays when every
+                    line on it is full.</p>
+            </section>
+            ${groepen.map(renderChallengeGroup).join("")}
+        </div>
+        <div class="og-col og-col-side">
+            ${renderChallengeHistory(blok.history || [])}
+            ${discordNote("Progress is scored in Discord as you play. "
+                + "This screen is the window on it.")}
+        </div>
+    </div>`;
+}
+
+function renderChallengeGroup(groep) {
+    const kop = CADENCE_LABEL[groep.cadence] || "Also running";
+    return `<section class="og-panel og-challenge-group">
+        <div class="og-eyebrow">${escapeHtml(kop)}</div>
+        ${groep.rijen.map(renderChallengeCard).join("")}
+    </section>`;
+}
+
+function renderChallengeCard(c) {
+    const objectives = c.objectives || [];
+    const totaal = objectives.length || 1;
+    const af = objectives.filter((o) => o.done).length;
+    const percent = Math.round(af / totaal * 100);
+    return `<article class="og-challenge${c.done ? " is-done" : ""}">
+        <header class="og-challenge-head">
+            <strong>${escapeHtml(c.title || c.definition_key || "?")}</strong>
+            <span class="og-badge">${escapeHtml(
+                CATEGORY_LABEL[c.category] || c.category || "General")}</span>
+            ${c.scope === "global"
+                ? `<span class="og-badge og-badge-global">All factions</span>` : ""}
+        </header>
+        ${c.blurb ? `<p class="og-faint">${escapeHtml(c.blurb)}</p>` : ""}
+        <ul class="og-objectives">
+            ${objectives.map(renderObjective).join("")}
+        </ul>
+        ${meter(percent, c.done)}
+        <footer class="og-challenge-foot">
+            <span class="og-mono">${escapeHtml(rewardText(c.reward))}</span>
+            <span class="og-faint">${escapeHtml(closesText(c.ends_at))}</span>
+        </footer>
+    </article>`;
+}
+
+function renderObjective(o) {
+    const doel = Number(o.target) || 0;
+    const waarde = Math.min(Number(o.value) || 0, doel || Infinity);
+    const percent = doel ? Math.round(waarde / doel * 100) : 0;
+    // De eenheid erbij zodra `per` groter dan een is. Zonder dat leest
+    // "haul 3/8" als drie robs terwijl het drie miljoen shards zijn.
+    const eenheid = (o.measure === "amount" && Number(o.per) > 1)
+        ? ` per ${num(o.per)}` : "";
+    return `<li class="og-objective${o.done ? " is-done" : ""}">
+        <span class="og-objective-name">${escapeHtml(o.key)}${escapeHtml(eenheid)}</span>
+        <span class="og-mono og-objective-count">${num(waarde)}${
+            doel ? " / " + num(doel) : ""}</span>
+        ${meter(percent, o.done)}
+    </li>`;
+}
+
+/** Wat het oplevert, in één regel. Leeg blijft leeg - "Reward: " zonder iets
+ *  erachter is erger dan niets. */
+function rewardText(reward) {
+    const r = reward || {};
+    const delen = [];
+    if (r.shards) delen.push(num(r.shards) + " shards");
+    if (r.rep) delen.push(num(r.rep) + " REP");
+    if (r.chests) delen.push(num(r.chests) + (r.chests === 1 ? " chest" : " chests"));
+    if (r.org_shards) delen.push(num(r.org_shards) + " to the treasury");
+    return delen.length ? delen.join(" · ") : "";
+}
+
+/**
+ * Hoe lang het nog duurt.
+ *
+ * Als DUUR en niet als datum, want dat is de vraag die iemand hier stelt. En
+ * berekend bij het renderen: het paneel ververst elke dertig seconden, dus een
+ * ingebakken string zou hoogstens een halve minuut kloppen.
+ */
+function closesText(iso) {
+    if (!iso) return "";
+    const eind = Date.parse(iso);
+    if (Number.isNaN(eind)) return "";
+    const over = eind - Date.now();
+    if (over <= 0) return "closing";
+    const uren = Math.floor(over / 3600000);
+    if (uren >= 48) return `${Math.floor(uren / 24)} days left`;
+    if (uren >= 1) return `${uren}h left`;
+    return `${Math.max(1, Math.floor(over / 60000))}m left`;
+}
+
+function renderChallengeHistory(rijen) {
+    if (!rijen.length) {
+        return `<section class="og-panel">${CORRUPT}
+            <div class="og-eyebrow">Finished</div>
+            <p class="og-faint">Nothing has closed yet.</p>
+        </section>`;
+    }
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Finished</div>
+        <ul class="og-history">
+            ${rijen.map((r) => `<li>
+                <span class="og-history-title">${escapeHtml(r.title || r.definition_key)}</span>
+                <span class="og-faint">${escapeHtml(
+                    CADENCE_LABEL[r.cadence] || r.cadence || "")}</span>
+                <span class="og-mono">${r.winner_user_id
+                    ? escapeHtml(shortId(r.winner_user_id)) : "nobody"}</span>
+                <span class="og-faint">${num(r.participants)} took part</span>
+            </li>`).join("")}
+        </ul>
+    </section>`;
+}
+
 function renderElection(s) {
     const e = (s.data.election || {}).item;
     if (!e) {
@@ -1388,6 +1578,7 @@ const ENDPOINT = {
     // draad komt.
     overview: "/api/org/treasury",
     feed: "/api/org/feed",
+    challenges: "/api/org/challenges",
     treasury: "/api/org/treasury",
     upgrades: "/api/org/upgrades",
     members: "/api/org/members",
