@@ -1179,10 +1179,15 @@ function renderObjective(o) {
     // WAT JE MOET DOEN, en niet de sleutel. Hier stond `o.key`, dus er stond
     // "activity 2 / 85" - de naam waarmee de motor een voortgangsrij opzoekt.
     // Een speler kan daar niet uit afleiden welke handeling die twee heeft
-    // opgeleverd, en dat is het enige dat dit paneel moet beantwoorden. De
-    // terugval op de sleutel is voor challenges die al liepen voordat het veld
-    // bestond: die dragen bevroren regels zonder `how`.
-    const naam = (o.how || "").trim() || o.key;
+    // opgeleverd, en dat is het enige dat dit paneel moet beantwoorden.
+    //
+    // GEEN TERUGVAL OP `o.key` MEER. Die stond hier voor challenges die al
+    // liepen voordat het veld bestond - en dat was precies wat er live op het
+    // scherm stond. De terugval hoort waar de catalogus is: `_challenge_how` in
+    // backend/services/org_service.py zoekt de tekst op bij de definitie en
+    // stuurt anders een leesbare melding. Hier alleen nog een vangnet voor een
+    // API die om een andere reden niets stuurt.
+    const naam = (o.how || "").trim() || "no description for this one";
     // De eenheid erbij, en bij een AANTAL net zo goed: "1 / 2" naast
     // "1 / 5 x 1.000.000 shards" is anders niet uit elkaar te houden wanneer
     // een challenge allebei op dezelfde gebeurtenis telt.
