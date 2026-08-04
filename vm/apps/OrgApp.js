@@ -1108,6 +1108,12 @@ function renderChallenges(s) {
                 <p class="og-faint">${num(af)} of ${num(items.length)} finished.
                     Nothing pays out per objective - a challenge pays when every
                     line on it is full.</p>
+                <!-- Wat REP doet, EEN keer en niet achter elk bedrag. Zelfde
+                     zin als onderaan de Discord-kaart: dezelfde challenge hoort
+                     op beide schermen hetzelfde te lezen. -->
+                <p class="og-faint">REP counts three times over: it raises your
+                    faction's score, your own rank inside it, and your standing
+                    on the Grid.</p>
             </section>
             ${groepen.map(renderChallengeGroup).join("")}
         </div>
@@ -1155,15 +1161,38 @@ function renderChallengeCard(c) {
 function renderObjective(o) {
     const doel = Number(o.target) || 0;
     const waarde = Math.min(Number(o.value) || 0, doel || Infinity);
-    const percent = doel ? Math.round(waarde / doel * 100) : 0;
-    // De eenheid erbij zodra `per` groter dan een is. Zonder dat leest
-    // "haul 3/8" als drie robs terwijl het drie miljoen shards zijn.
-    const eenheid = (o.measure === "amount" && Number(o.per) > 1)
-        ? ` per ${num(o.per)}` : "";
+    // DEZELFDE TWEE REGELS ALS DE DISCORD-KAART, en ze stonden hier niet.
+    //
+    // `Math.round` maakte van 199/200 een volle balk met `aria-valuenow="100"`
+    // terwijl het doel niet af is - een screenreader hoorde "honderd procent"
+    // bij iets dat nog loopt. En 1/500 werd `0%`, dus een onzichtbare balk voor
+    // iemand die wel degelijk begonnen was; dat is precies de klacht waar deze
+    // hele wijziging uit voortkomt.
+    //
+    // Afronden naar BENEDEN, plafond op 99 zolang het doel niet af is, en een
+    // ondergrens zodra er iets staat. Zie `bar()` in org_challenges_ui.py: daar
+    // heet die ondergrens `filled = max(1, filled)` en betekent hij "begonnen",
+    // niet "een achtste".
+    const rauw = doel ? Math.floor(waarde / doel * 100) : 0;
+    const percent = o.done ? 100
+        : (waarde > 0 ? Math.min(99, Math.max(2, rauw)) : 0);
+    // WAT JE MOET DOEN, en niet de sleutel. Hier stond `o.key`, dus er stond
+    // "activity 2 / 85" - de naam waarmee de motor een voortgangsrij opzoekt.
+    // Een speler kan daar niet uit afleiden welke handeling die twee heeft
+    // opgeleverd, en dat is het enige dat dit paneel moet beantwoorden. De
+    // terugval op de sleutel is voor challenges die al liepen voordat het veld
+    // bestond: die dragen bevroren regels zonder `how`.
+    const naam = (o.how || "").trim() || o.key;
+    // De eenheid erbij, en bij een AANTAL net zo goed: "1 / 2" naast
+    // "1 / 5 x 1.000.000 shards" is anders niet uit elkaar te houden wanneer
+    // een challenge allebei op dezelfde gebeurtenis telt.
+    const eenheid = o.measure === "amount"
+        ? (Number(o.per) > 1 ? ` × ${num(o.per)} shards` : " shards")
+        : (doel === 1 ? " time" : " times");
     return `<li class="og-objective${o.done ? " is-done" : ""}">
-        <span class="og-objective-name">${escapeHtml(o.key)}${escapeHtml(eenheid)}</span>
+        <span class="og-objective-name">${escapeHtml(naam)}</span>
         <span class="og-mono og-objective-count">${num(waarde)}${
-            doel ? " / " + num(doel) : ""}</span>
+            doel ? " / " + num(doel) : ""}${escapeHtml(eenheid)}</span>
         ${meter(percent, o.done)}
     </li>`;
 }
@@ -1173,10 +1202,14 @@ function renderObjective(o) {
 function rewardText(reward) {
     const r = reward || {};
     const delen = [];
+    // DEZELFDE WOORDEN ALS DE DISCORD-KAART. Hier stond "REP + standing" en "to
+    // the treasury" terwijl `reward_line` in org_challenges_ui.py net van dat
+    // jargon af was - dezelfde challenge las in de app dus anders dan in
+    // Discord. Wat REP doet staat in de app onder de lijst, net als daar.
     if (r.shards) delen.push(num(r.shards) + " shards");
-    if (r.rep) delen.push(num(r.rep) + " REP + standing");
+    if (r.rep) delen.push(num(r.rep) + " REP");
     if (r.chests) delen.push(num(r.chests) + (r.chests === 1 ? " chest" : " chests"));
-    if (r.org_shards) delen.push(num(r.org_shards) + " to the treasury");
+    if (r.org_shards) delen.push(num(r.org_shards) + " shards for the winning faction");
     return delen.length ? delen.join(" · ") : "";
 }
 
