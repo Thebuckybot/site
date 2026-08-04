@@ -371,16 +371,31 @@ function renderCosmeticsBlock(view) {
             return `<span class="vm-site-chip${isEq ? " is-equipped" : ""}">${escapeHtml(String(t))}${isEq ? " " + middot() + " equipped" : ""}</span>`;
         }).join("")
         : `<span class="vm-dev-note">No titles unlocked yet.</span>`;
+    // DE UITGEKOZEN DRIE APART, en boven de rest. Dat is de hele reden dat je
+    // ze kiest: een rij van dertig chips zegt wat je hebt gedaan, drie zeggen
+    // wat je daarvan belangrijk vindt. De keuze wordt in Discord gemaakt en daar
+    // server-side gecontroleerd; dit scherm leest.
+    const showcase = view.showcased_achievements || [];
+    const showcaseRow = showcase.length
+        ? `<h3 class="vm-profile-subh">On show</h3>
+           <div class="vm-site-chiprow">${showcase.map(
+               (a) => `<span class="vm-site-chip is-equipped">${escapeHtml(String(a))}</span>`
+           ).join("")}</div>`
+        : "";
     const achChips = achievements.length
         ? achievements.slice(0, 24).map((a) => chip(String(a))).join("")
         : `<span class="vm-dev-note">No achievements yet.</span>`;
     return `
         <section class="vm-wiki-section vm-profile-block">
             <h2>Cosmetics &amp; recognition</h2>
+            ${showcaseRow}
             <h3 class="vm-profile-subh">Titles (${titles.length})</h3>
             <div class="vm-site-chiprow">${titleChips}</div>
             <h3 class="vm-profile-subh">Achievements (${achievements.length})</h3>
             <div class="vm-site-chiprow">${achChips}</div>
+            <p class="vm-dev-note">Which title you wear and which three show up
+               here is set in Discord with <code>profile</code>. This screen
+               reads.</p>
         </section>
     `;
 }
