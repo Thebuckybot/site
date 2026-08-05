@@ -78,6 +78,45 @@ export const DEFAULT_CAPABILITIES = [
     CAPABILITIES.MISSIONS
 ];
 
+/**
+ * What a MAIL ATTACHMENT is allowed to touch when you run it (Phase 5, blok 4).
+ *
+ * THIS IS THE ONE PLACE IN THE VM WHERE ANOTHER PLAYER SUPPLIES THE CODE, and
+ * the capability model has been sitting here unused since Phase 4.4 waiting for
+ * exactly that — the module docstring above says so in as many words.
+ *
+ * The interpreter already guarantees termination and no host access: no eval,
+ * no real filesystem, no network, and hard budgets on steps, loops, recursion
+ * and output. None of that stops the damage a stranger's script can do with
+ * the standard library, and that damage is not hypothetical:
+ *
+ *   `files.write` / `files.delete`   overwrite or wipe every file you own
+ *   `profile` / `economy` / `security`  read your balance, org and exposures
+ *   `mail.send`                       post that somewhere, or forward itself
+ *
+ * The last combination is the one that does not undo: open an attachment from
+ * a stranger and your balance, your organisation and your exposure list are in
+ * his inbox, with nothing on your screen to show for it. `mail.send` alone
+ * makes a worm possible.
+ *
+ * SO A RUNNING ATTACHMENT GETS FOUR CAPABILITIES: terminal, ui, process and
+ * filesystem-for-json-parsing-only... no — `json` shares the FILESYSTEM
+ * capability, so it is left out too. Four is enough to be a puzzle, a
+ * generator, an animation or a table; it is not enough to learn anything about
+ * you or to send anything anywhere.
+ *
+ * SAVING IS NOT RUNNING. The save button is unchanged: the file lands in
+ * /mail/attachments/ and you can read it before you do anything with it. Open
+ * it from the Files app afterwards and it is YOUR file, running under YOUR
+ * grant — which is the escape hatch for somebody who does want to give a
+ * stranger's script the full surface, made deliberate instead of automatic.
+ */
+export const ATTACHMENT_CAPABILITIES = [
+    CAPABILITIES.TERMINAL,
+    CAPABILITIES.UI,
+    CAPABILITIES.PROCESS
+];
+
 /** Which capability a fully-qualified module name belongs to. */
 export const MODULE_CAPABILITY = {
     "bucky.files": CAPABILITIES.FILESYSTEM,

@@ -119,6 +119,11 @@ function buildSeedTree(username) {
                         "Objective: keep the arcade node warm.\n" +
                         "Inspect /logs, organise /downloads, and document findings.",
                     Desktop: {
+                        // De launcher staat VOORAAN, want hij is de manier om de
+                        // rest te vinden. Zonder hem ontdek je een app door een
+                        // icoon te herkennen, en Mail (Phase 5.0) en
+                        // bucky://docs (blok 4) staan daar niet tussen.
+                        "apps.link": "apps",
                         "terminal.link": "terminal",
                         "files.link": "files",
                         "buckycode.link": "buckycode",
@@ -160,7 +165,7 @@ function buildSeedTree(username) {
         },
         system: {
             "version.sys": "Bucky OS 0.2 filesystem runtime",
-            "apps.sys": "terminal files buckycode browser mail missionhub org"
+            "apps.sys": "apps terminal files buckycode browser mail missionhub org"
         },
         // Phase 4.4 — the BuckyCode operating environment workspace. `scripts`
         // is seeded with the bundled example tools; `data` and `reports` are

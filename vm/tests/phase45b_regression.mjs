@@ -302,6 +302,92 @@ const J=(r)=>r.output.join(" ");
   r = await run("l = [1, 2]\nl.clear()\nd = {'a': 1}\nd.clear()\nprint(l, d)");
   assert(r.ok && /\[\] \{\}/.test(J(r)), "LANG list.clear / dict.clear");
 
+  // BLOK 4, TAAK C3 - een mailbijlage draait met MINDER dan jij.
+  //
+  // Dit is de enige plek in de VM waar een ANDERE SPELER de code levert. De
+  // interpreter garandeert al dat hij termineert en het host-systeem niet
+  // raakt; wat hij niet tegenhoudt is wat de stdlib toestaat, en daar zit de
+  // schade: `files` kan alles van je wissen, `profile`/`economy`/`security`
+  // lezen wie je bent, en `mail.send` stuurt dat door - of zichzelf.
+  {
+    const { ATTACHMENT_CAPABILITIES } = await import("../core/runtime/capabilities.js");
+    const bijlage = createRuntime({
+      filesystem: null,
+      granted: ATTACHMENT_CAPABILITIES,
+      snapshot: { online: false }
+    });
+    const proef = (bron) => bijlage.run(bron, { argv: [] });
+
+    let res = proef("print(1 + 1)\nprint('hello')");
+    assert(res.ok && /2/.test(res.output.join(" ")), "ATTACH a plain script still runs");
+
+    const verboden = [
+      ["files.write('/x', 'stuk')", "filesystem"],
+      ["files.delete('/x')", "filesystem"],
+      ["print(profile.coins())", "profile"],
+      ["print(economy.balance())", "economy"],
+      ["print(security.status())", "security"],
+      ["print(leaks.latest())", "leaks"],
+      ["print(orgs.list())", "organizations"],
+      ["mail.send('x@bucky.net', 's', 'b')", "mail"],
+      ["print(inventory.items())", "inventory"],
+      ["print(leaderboards.richest())", "leaderboards"],
+      ["watchlist.clear()", "watchlist"]
+    ];
+    let gemist = [];
+    for (const [bron, cap] of verboden) {
+      const r = proef(bron);
+      const ok = !r.ok && /CapabilityError/.test(r.error || "")
+        && (r.error || "").includes(cap);
+      if (!ok) gemist.push(bron + " -> " + (r.ok ? "RAN" : r.error));
+    }
+    assert(gemist.length === 0,
+      "ATTACH every dangerous module is refused (" + gemist.join(" | ") + ")");
+
+    // En de tegentest: de vier die WEL zijn toegekend moeten werken, anders is
+    // een bijlage die niets kan geen bijlage maar een dood knopje.
+    res = proef("terminal.line('x')");
+    assert(res.ok, "ATTACH terminal is granted");
+    res = proef("print(process.pid())");
+    assert(res.ok, "ATTACH process is granted");
+    res = proef("table.render([{'a': 1}])");
+    assert(res.ok, "ATTACH the ui toolkit is granted");
+
+    // De volle grant moet ONVERANDERD zijn: dit mag alleen de bijlage raken.
+    const normaal = createRuntime({ filesystem: FS(), snapshot: { online: false } });
+    res = normaal.run("files.write('/p.txt', 'ok')\nprint(files.read('/p.txt'))", { argv: [] });
+    assert(res.ok && /ok/.test(res.output.join(" ")),
+      "ATTACH a normal script keeps the full grant");
+  }
+
+  // BLOK 4, TAAK C4 - de launcher. Tot nu toe ontdekte je een app door een
+  // icoon te herkennen; Mail (5.0) en bucky://docs (blok 4) stonden daar niet
+  // tussen.
+  {
+    const { appLijst, filterApps } = await import("../apps/AppsApp.js");
+    const nepRuntime = {
+      apps: {
+        apps: { id: "apps", title: "Apps" },
+        terminal: { id: "terminal", title: "Terminal", icon: "TER", createState: () => ({}) },
+        mail: { id: "mail", title: "Mail", icon: "MAI", createState: () => ({}) },
+        missionhub: { id: "missionhub", title: "Mission Hub", icon: "HUB", locked: true },
+        osint: { id: "osint", title: "OSINT", icon: "OSI" }
+      }
+    };
+    const lijst = appLijst(nepRuntime);
+    assert(!lijst.some((a) => a.id === "apps"), "APPS the launcher does not list itself");
+    assert(lijst.some((a) => a.id === "mail"), "APPS every registered app is listed");
+    // Werkend eerst, dan offline, dan nog-niet-gebouwd.
+    assert(lijst[0].state === "ok" && lijst[lijst.length - 1].state === "soon",
+      "APPS working apps come first and unbuilt ones last");
+    assert(lijst.find((a) => a.id === "missionhub").state === "locked",
+      "APPS a locked app is shown as locked, not hidden");
+    assert(filterApps(lijst, "mai").length === 1
+      && filterApps(lijst, "mai")[0].id === "mail", "APPS search filters on title");
+    assert(filterApps(lijst, "").length === lijst.length, "APPS an empty query shows everything");
+    assert(filterApps(lijst, "zzzz").length === 0, "APPS a query with no match shows nothing");
+  }
+
   // Hydration — cold 200-empty must NOT poison the section; it re-hydrates.
   let mode="empty";
   const eLB={available:true,kinds:[],boards:[{kind:"richest",items:[]}]};

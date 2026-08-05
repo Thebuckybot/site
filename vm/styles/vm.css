@@ -5044,7 +5044,59 @@ body.vm-focus-active .arcade-vm-bay {
 .vm-mail-att-size { font-size: 11px; color: var(--mail-muted); }
 .vm-mail-att-caret { color: var(--mail-muted); }
 .vm-mail-att-preview { border-top: 1px solid var(--mail-border); }
-.vm-mail-att-actions { display: flex; justify-content: flex-end; padding: 8px 10px 0; }
+.vm-mail-att-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px 0;
+}
+
+/* De Run-knop en de regel ernaast (v3 blok 4, taak C3).
+ *
+ * De waarschuwing staat NAAST de knop en niet eronder, want dit is de enige
+ * plek in de VM waar een andere speler de code levert - de afweging hoort op
+ * dezelfde regel als de beslissing te staan. Hij staat er ook altijd, ook bij
+ * een afzender uit je eigen organisatie: een regel die soms verdwijnt leert
+ * mensen hem niet te lezen. */
+.vm-mail-att-run {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 170, 90, .45);
+    background: rgba(255, 170, 90, .1);
+    color: #ffc27a;
+    font-family: inherit;
+    font-size: 11.5px;
+    cursor: pointer;
+}
+.vm-mail-att-run:hover { background: rgba(255, 170, 90, .2); }
+
+.vm-mail-att-warn {
+    margin-right: auto;
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: rgba(214, 230, 245, .55);
+}
+
+.vm-mail-att-out {
+    margin: 8px 10px 0;
+    padding: 9px 11px;
+    max-height: 220px;
+    overflow: auto;
+    border-radius: 6px;
+    border: 1px solid rgba(120, 150, 175, .2);
+    background: rgba(8, 16, 24, .6);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: #cfe9ef;
+    white-space: pre-wrap;
+}
+.vm-mail-att-out.is-error {
+    border-color: rgba(255, 120, 120, .35);
+    color: #ffb4b4;
+}
 .vm-mail-att-save {
     font-size: 11.5px; font-weight: 600; color: var(--mail-accent);
     border: 1px solid var(--mail-accent); background: #fff; padding: 4px 10px; border-radius: 5px; cursor: pointer;
@@ -7346,3 +7398,97 @@ body.vm-focus-active .arcade-vm-bay {
     vertical-align: top;
 }
 .vm-docs-table td:first-child { white-space: nowrap; }
+
+/* ===================================================================
+ * De Apps-launcher (v3 blok 4, taak C4)
+ *
+ * Een raster dat meeschaalt met de vensterbreedte, met het zoekveld
+ * vastgezet bovenaan zodat filteren niet wegscrolt. Leunt op dezelfde
+ * kleuren als de rest van de VM; geen tweede visuele taal.
+ * =================================================================== */
+.vm-apps {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 12px 14px 10px;
+    gap: 10px;
+}
+
+.vm-apps-search {
+    flex: 0 0 auto;
+    padding: 8px 11px;
+    border-radius: 7px;
+    border: 1px solid rgba(120, 150, 175, .25);
+    background: rgba(8, 16, 24, .55);
+    color: #dff3f7;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+}
+.vm-apps-search:focus { border-color: rgba(82, 255, 243, .5); }
+.vm-apps-search::placeholder { color: rgba(214, 230, 245, .4); }
+
+.vm-apps-grid {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 9px;
+    align-content: start;
+}
+
+.vm-apps-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 13px 8px 11px;
+    border-radius: 9px;
+    border: 1px solid rgba(120, 150, 175, .18);
+    background: rgba(16, 26, 36, .45);
+    color: rgba(214, 230, 245, .85);
+    font-family: inherit;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: border-color 140ms var(--vm-ease), background 140ms var(--vm-ease);
+}
+.vm-apps-tile:hover {
+    border-color: rgba(82, 255, 243, .45);
+    background: rgba(82, 255, 243, .07);
+}
+.vm-apps-tile.is-locked,
+.vm-apps-tile.is-soon { opacity: .58; }
+
+.vm-apps-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+    border: 1px solid rgba(82, 255, 243, .25);
+    background: rgba(82, 255, 243, .08);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    letter-spacing: .6px;
+    color: var(--vm-cyan);
+}
+
+.vm-apps-name { text-align: center; line-height: 1.35; }
+
+.vm-apps-badge {
+    display: block;
+    margin-top: 3px;
+    font-size: 9px;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+}
+.vm-apps-badge.is-locked { color: #ffc27a; }
+.vm-apps-badge.is-soon { color: rgba(214, 230, 245, .5); }
+
+.vm-apps-empty,
+.vm-apps-foot {
+    margin: 0;
+    font-size: 11.5px;
+    color: rgba(214, 230, 245, .5);
+}
+.vm-apps-foot { flex: 0 0 auto; }

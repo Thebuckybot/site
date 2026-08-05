@@ -21,6 +21,10 @@
  */
 import { escapeHtml } from "../core/util.js";
 import { logError } from "../core/diagnostics.js";
+// v3 blok 4, taak C3 - een bijlage draaien. De grant is het hele punt: dit is
+// de enige plek in de VM waar een ANDERE SPELER de code levert.
+import { createRuntime } from "../core/runtime/index.js";
+import { ATTACHMENT_CAPABILITIES } from "../core/runtime/capabilities.js";
 
 const MAIL_EVENTS = ["mail:received", "mail:read", "mail:sent", "mail:updated"];
 const LIST_LIMIT = 10;
@@ -266,14 +270,32 @@ function renderAttachments(msg, state) {
     `;
 }
 
+/** Kan deze bijlage gedraaid worden? Alleen op de extensie, net als de VFS. */
+function isRunnableAttachment(a) {
+    return String(a && a.filename || "").toLowerCase().endsWith(".py");
+}
+
 function renderAttachmentPreview(a) {
     const content = a.__content != null ? a.__content : "";
+    const uitvoer = a.__ran
+        ? `<pre class="vm-mail-att-out${a.__ranOk ? "" : " is-error"}">${
+            escapeHtml(a.__ran)}</pre>`
+        : "";
+    // DE RUN-KNOP ZEGT WAT HIJ NIET KAN, en dat is de hele beslissing. Dit is
+    // de enige plek in de VM waar een ANDERE SPELER de code levert; een knop
+    // zonder die regel vraagt om vertrouwen dat niemand kan afwegen.
+    const draaien = isRunnableAttachment(a) ? `
+                <button class="vm-mail-att-run" type="button" data-mail-att-run="${a.id}">Run</button>
+                <span class="vm-mail-att-warn">runs without access to your files,
+                your profile or your mail</span>` : "";
     return `
         <div class="vm-mail-att-preview">
             <div class="vm-mail-att-actions">
                 <button class="vm-mail-att-save" type="button" data-mail-att-save="${a.id}">Save to Files</button>
+                ${draaien}
             </div>
             <pre class="vm-mail-att-body">${escapeHtml(content) || "(empty file)"}</pre>
+            ${uitvoer}
         </div>
     `;
 }
@@ -461,6 +483,69 @@ function handleClick(runtime, windowState, event) {
         });
         return;
     }
+
+    // Run an attachment, UNDER A NARROWED GRANT.
+    const run = event.target.closest("[data-mail-att-run]");
+    if (run) {
+        const id = Number(run.dataset.mailAttRun);
+        runAttachment(runtime, windowState, svc, id);
+        return;
+    }
+}
+
+/**
+ * Draai een bijlage met `ATTACHMENT_CAPABILITIES` in plaats van de volle set.
+ *
+ * GEEN FILESYSTEM. Dat is de scherpste van de vier beperkingen en ook de
+ * goedkoopste: `files` is de enige module waarmee een script iets van jou kan
+ * VERNIETIGEN. Geen profile/economy/security/organizations/leaks, want een
+ * script uit andermans hand hoort niets over jou te weten. En geen mail, want
+ * anders kan een bijlage zichzelf doorsturen - dat is een worm.
+ *
+ * De uitvoer landt in de kaart en niet in een toast: je wilt hem kunnen lezen,
+ * en een toast is drie seconden.
+ */
+function runAttachment(runtime, windowState, svc, id) {
+    const state = windowState.appState;
+    const toon = (tekst, ok) => {
+        const cache = windowState.view && windowState.view._attCache;
+        if (cache && Number(cache.id) === Number(id)) {
+            cache.__ran = tekst;
+            cache.__ranOk = ok;
+        }
+        if (windowState.view && windowState.view.refresh) windowState.view.refresh();
+    };
+    Promise.resolve(svc.getAttachmentRemote(id)).then((att) => {
+        if (!att) return toon("Could not read the attachment.", false);
+        let resultaat;
+        try {
+            const rt = createRuntime({
+                // GEEN FILESYSTEM MEEGEGEVEN, bovenop de ontbrekende
+                // capability. Twee sloten op dezelfde deur, want dit is de
+                // enige plek waar de code van iemand anders komt.
+                filesystem: null,
+                granted: ATTACHMENT_CAPABILITIES,
+                user: {},
+                snapshot: { online: false },
+                owner: "mail-attachment",
+                processes: null
+            });
+            resultaat = rt.run(String(att.content || ""), { argv: [] });
+        } catch (error) {
+            logError("attachment run", error);
+            return toon(`runtime fault: ${error && error.message}`, false);
+        }
+        const uitvoer = (resultaat.output || []).join("\n");
+        if (resultaat.ok) {
+            toon(uitvoer || "(the script printed nothing)", true);
+        } else {
+            toon(`${uitvoer ? uitvoer + "\n" : ""}${resultaat.error || "failed"}`, false);
+        }
+    }).catch((error) => {
+        logError("attachment run", error);
+        toon("Could not run the attachment.", false);
+    });
+    void state;
 }
 
 function doAttach(runtime, windowState) {

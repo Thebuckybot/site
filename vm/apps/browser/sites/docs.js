@@ -135,6 +135,12 @@ for r in richest(5):
                 <h2 class="vm-docs-h2">Modules (${model.modules.length})</h2>
                 <ul class="vm-docs-cards">${
                     model.modules.map(moduleKaart).join("")}</ul>
+                <p class="vm-docs-note"><strong>A script you received by mail
+                gets fewer of these.</strong> Pressing Run on a mail attachment
+                grants only <code>terminal</code>, <code>ui</code> and
+                <code>process</code> — no filesystem, no profile, no economy,
+                no mail. Save it and open it from Files to run it under your own
+                grant.</p>
             </div>
             ${taalBlok(model.language)}
             ${crossRefs("Across BuckyNet", [

@@ -78,6 +78,15 @@ import {
 // by loadMissionHubModule() below, which is what the preload and dispose paths
 // use once the app is unlocked again.
 import { renderPlaceholderApp, renderLockedApp } from "../apps/PlaceholderApp.js";
+// v3 blok 4 - de launcher. De registry-entry heette al "Apps" en toonde een
+// placeholder die zei dat er een launcher in aanbouw was; dit is die launcher.
+import {
+    createAppsState,
+    renderAppsApp,
+    mountAppsApp,
+    unmountAppsApp,
+    focusAppsApp
+} from "../apps/AppsApp.js";
 import { gatewayClient } from "./gatewayClient.js";
 import { assetCache } from "./assetCache.js";
 import { createMailService, setMailService } from "./mail/mailService.js";
@@ -248,6 +257,22 @@ export class BuckyVMRuntime {
         // Guarded against bfcache (event.persisted) so a restored page keeps working.
         this._onPageHide = (event) => { if (!event || !event.persisted) this.dispose(); };
         window.addEventListener("pagehide", this._onPageHide);
+        // Win+Pijl schikt het actieve venster. Alleen op het bureaublad, en
+        // alleen als de toetsaanslag niet in een invoerveld gebeurt - anders
+        // zou een speler die in BuckyCode typt zijn venster verspringen.
+        this._onKeyDown = (event) => {
+            if (this.phase !== "desktop" || !event.metaKey || event.ctrlKey) return;
+            const doel = event.target;
+            const naam = doel && doel.tagName ? doel.tagName.toLowerCase() : "";
+            if (naam === "input" || naam === "textarea"
+                || (doel && doel.isContentEditable)) return;
+            const kant = { ArrowLeft: "left", ArrowRight: "right",
+                           ArrowUp: "max", ArrowDown: "restore" }[event.key];
+            if (!kant) return;
+            event.preventDefault();
+            this.snapWindow(kant);
+        };
+        window.addEventListener("keydown", this._onKeyDown);
         this.runBootSequence();
     }
 
@@ -618,6 +643,53 @@ export class BuckyVMRuntime {
         };
     }
 
+    /**
+     * Half the desktop, left or right — the geometry behind Win+Arrow.
+     *
+     * Dragging worked; putting two windows side by side did not, and that is
+     * exactly what you do the moment you write a script and want to watch its
+     * output: BuckyCode next to Terminal. Derived from the maximised bounds so
+     * the insets stay in one place.
+     */
+    getSnapBounds(side) {
+        const vol = this.getMaximizedBounds();
+        const half = Math.max(330, Math.floor(vol.width / 2) - 4);
+        return {
+            x: side === "right" ? vol.x + vol.width - half : vol.x,
+            y: vol.y,
+            width: half,
+            height: vol.height
+        };
+    }
+
+    /**
+     * Snap the active window. `side` is "left" | "right" | "max" | "restore".
+     *
+     * Deliberately a no-op without an active window rather than an error: a
+     * stray keypress on an empty desktop is not a fault.
+     */
+    snapWindow(side) {
+        const windowState = this.getWindow(this.activeWindowId);
+        if (!windowState || windowState.closing) return;
+        if (side === "max") {
+            if (!windowState.maximized) this.toggleMaximizeWindow(windowState.id);
+            return;
+        }
+        if (side === "restore") {
+            if (windowState.maximized) this.toggleMaximizeWindow(windowState.id);
+            else this.minimizeWindow(windowState.id);
+            return;
+        }
+        // Een gesnapt venster is NIET gemaximaliseerd: anders zou de
+        // herstelknop hem naar volle breedte brengen in plaats van terug.
+        windowState.maximized = false;
+        if (windowState.minimized) windowState.minimized = false;
+        Object.assign(windowState, this.getSnapBounds(side));
+        windowState.restoreBounds = { ...this.getSnapBounds(side) };
+        this.focusWindow(windowState.id);
+        this.syncWindows();
+    }
+
     constrainWindows() {
         if (!this.windows.length) return;
         const bounds = this.getDesktopBounds();
@@ -825,6 +897,7 @@ export class BuckyVMRuntime {
         this.clockTimer = null;
         try { window.removeEventListener("resize", this.resizeHandler); } catch (_e) { /* ignore */ }
         try { if (this._onPageHide) window.removeEventListener("pagehide", this._onPageHide); } catch (_e) { /* ignore */ }
+        try { if (this._onKeyDown) window.removeEventListener("keydown", this._onKeyDown); } catch (_e) { /* ignore */ }
         try { this.teardownWindows(); } catch (_e) { /* ignore */ }
         try { this.teardownDesktopView(); } catch (_e) { /* ignore */ }
         // Only if Mission Hub was actually loaded this session — otherwise there
@@ -921,7 +994,21 @@ function createAppRegistry() {
             mount: mountBrowserApp,
             unmount: unmountBrowserApp
         },
-        notes: placeholder("notes", "Apps", "Future app launcher and runtime registry under construction."),
+        apps: {
+            id: "apps",
+            title: "Apps",
+            label: "Apps",
+            icon: "APP",
+            width: 520,
+            height: 430,
+            singleInstance: true,
+            description: "Every application in the VM, with a search box.",
+            createState: createAppsState,
+            render: renderAppsApp,
+            mount: mountAppsApp,
+            unmount: unmountAppsApp,
+            onFocus: focusAppsApp
+        },
         mail: {
             id: "mail",
             title: "Mail",

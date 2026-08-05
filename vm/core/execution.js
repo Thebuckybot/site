@@ -140,9 +140,16 @@ function loadScript(filesystem, path) {
 }
 
 async function buildRuntimeFor(filesystem, source, cwd, opts) {
-    const snapshot = await store().ensure(snapshotNeeds(source));
+    // EEN BEPERKTE GRANT SLAAT DE SNAPSHOT OVER. `snapshotNeeds` leest de
+    // imports en haalt de secties op die daarbij horen; heeft het script die
+    // capability niet, dan zou dat een backend-rondreis zijn voor data die het
+    // toch nooit te zien krijgt. Een mailbijlage doet dus geen enkele fetch.
+    const granted = opts.granted || null;
+    const nodig = granted ? new Set() : snapshotNeeds(source);
+    const snapshot = await store().ensure(nodig);
     return createRuntime({
         filesystem,
+        granted,
         user: opts.user || {},
         snapshot,
         cwd,
