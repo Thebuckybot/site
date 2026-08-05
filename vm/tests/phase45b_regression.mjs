@@ -154,6 +154,109 @@ const J=(r)=>r.output.join(" ");
   r = await run('raise ValueError("boom")');
   assert(r.ok===false && /SyntaxError/.test(r.error||""), "LANG (gap) raise still unsupported — revisit docs if this flips");
 
+  // BLOK 4 — a[::-1] used to HANG the VM. The old slice loop ran
+  // `for (k = start; k < stop; k += step)`; with step -1 that starts at 0,
+  // decrements, and never reaches its stop — an infinite loop with no tick()
+  // in it, so no budget could stop it. Reversing a list is an everyday idiom
+  // and the cost was a frozen browser tab, not an error.
+  r = await run('print([1,2,3][::-1])');
+  assert(r.ok && /3, 2, 1/.test(J(r)), "SLICE a[::-1] reverses a list");
+  r = await run("print('abcdef'[::-1])");
+  assert(r.ok && /fedcba/.test(J(r)), "SLICE a[::-1] reverses a string");
+  r = await run('print([1,2,3,4,5][::-2])');
+  assert(r.ok && /5, 3, 1/.test(J(r)), "SLICE a[::-2] steps backwards by two");
+  r = await run('print([0,1,2,3,4,5][4:1:-1])');
+  assert(r.ok && /4, 3, 2/.test(J(r)), "SLICE explicit bounds with a negative step");
+  r = await run('print([1,2,3][::0])');
+  assert(r.ok===false && /step cannot be zero/.test(r.error||""), "SLICE step 0 is a ValueError, not a hang");
+  // And the forward cases still behave, so the negative branch did not eat them.
+  r = await run('print([1,2,3,4,5][::2], [1,2,3,4,5][1:4], [1,2,3,4,5][-2:], [1,2,3,4,5][:-2])');
+  assert(r.ok && /1, 3, 5/.test(J(r)) && /2, 3, 4/.test(J(r)) && /4, 5/.test(J(r)) && /1, 2, 3/.test(J(r)),
+         "SLICE forward slicing is unchanged");
+
+  // BLOK 4 — zip() referenced an undeclared `out` and had therefore NEVER
+  // worked: every call raised "out is not defined" on a name the script never
+  // typed. It is bound as a builtin and documented as available.
+  r = await run("print(zip([1,2,3],['a','b']))");
+  assert(r.ok && /1, 'a'/.test(J(r)) && /2, 'b'/.test(J(r)), "ZIP pairs two lists and stops at the shortest");
+  r = await run("print(zip())");
+  assert(r.ok, "ZIP with no arguments returns empty instead of raising");
+  r = await run("for p in zip([1,2],['x','y']):\n    print(p[0], p[1])");
+  assert(r.ok && /1 x/.test(J(r)) && /2 y/.test(J(r)), "ZIP is iterable in a for loop");
+
+  // BLOK 4 — de docs-pagina wordt GEGENEREERD uit de moduletabel, en dit is de
+  // guard waar die belofte op rust. helptext.js is prose, nooit de inventaris;
+  // gemeten voor deze ronde was hij weggedreven met 1 verzonnen lid, 4 modules
+  // zonder entry, 20 ongedocumenteerde leden en vier examples die niet parsen.
+  {
+    const { helpDrift, buildDocs } = await import("../core/runtime/docs.js");
+    const drift = helpDrift();
+    assert(drift.invented.length === 0,
+      "DOCS help documents nothing that does not exist (" + drift.invented.join(", ") + ")");
+    assert(drift.missingEntry.length === 0,
+      "DOCS every module has a description (" + drift.missingEntry.join(", ") + ")");
+    assert(drift.undocumented.length === 0,
+      "DOCS every member is documented (" + drift.undocumented.join(", ") + ")");
+
+    const model = buildDocs();
+    assert(model.modules.length >= 25, "DOCS the model finds the module table");
+    assert(model.language.builtins.includes("zip") && model.language.methods.str.includes("upper"),
+      "DOCS the language surface comes from the interpreter itself");
+    // Een stub mag nooit als werkende aanroep gepresenteerd worden.
+    const db = model.modules.find((m) => m.name === "database");
+    assert(db && db.raising === db.members.length && db.working === 0,
+      "DOCS an interface-only module is marked as raising, not as working");
+    const eco = model.modules.find((m) => m.name === "economy");
+    assert(eco && eco.members.find((x) => x.name === "transfer").status === "raises",
+      "DOCS economy.transfer is marked as raising");
+    assert(eco.members.find((x) => x.name === "balance").status === "ok",
+      "DOCS a working member is not marked as raising");
+  }
+
+  // EN ELKE `example` IN DE HELP MOET DRAAIEN. Vier deden dat niet: ze gebruikten
+  // een puntkomma die deze interpreter weigert, dus wie ze kopieerde kreeg een
+  // SyntaxError uit het helpsysteem zelf.
+  {
+    const { HELP } = await import("../core/runtime/stdlib/helptext.js");
+    const interactief = new Set(["form", "menu"]);   // die vragen de Terminal
+    let stuk = [];
+    for (const sleutel of Object.keys(HELP)) {
+      const voorbeeld = HELP[sleutel].example;
+      if (!voorbeeld || interactief.has(sleutel)) continue;
+      if (voorbeeld.trim().startsWith("#")) continue;   // alleen commentaar
+      const res = await run(voorbeeld);
+      if (!res.ok && /SyntaxError/.test(res.error || "")) stuk.push(sleutel + ": " + res.error);
+    }
+    assert(stuk.length === 0, "DOCS every help example parses (" + stuk.join(" | ") + ")");
+  }
+
+  // En de pagina zelf, want een model dat klopt is nog geen pagina die rendert.
+  {
+    const { createSiteRegistry } = await import("../core/siteRegistry.js");
+    const { registerDocsSite } = await import("../apps/browser/sites/docs.js");
+    const reg = createSiteRegistry();
+    registerDocsSite(reg);
+
+    const index = reg.resolve("bucky://docs").render({ url: "bucky://docs" });
+    assert(/vm-docs-cards/.test(index) && /The language/.test(index) && /Budgets/.test(index),
+      "DOCS the index page renders modules, the language and the budgets");
+    assert(!/do not match the runtime/.test(index),
+      "DOCS the index reports no drift");
+    // De val uit blok 4, taak D4: sitePage() escapet `domain` en `lead`, dus een
+    // HTML-entiteit daarin komt letterlijk op het scherm.
+    assert(!/&amp;(middot|nbsp|amp);/.test(index),
+      "DOCS no HTML entity ends up on screen as literal text");
+
+    const eco = reg.resolve("bucky://docs/economy").render({ url: "bucky://docs/economy" });
+    assert(/is-stub/.test(eco), "DOCS a raising member gets a visible badge");
+
+    // Zoeken op een METHODENAAM moet de modulepagina vinden - dat is wat een
+    // speler intypt, niet de modulenaam.
+    const treffers = reg.search("richest").map((h) => (h.entry || h).url);
+    assert(treffers.includes("bucky://docs/leaderboards"),
+      "DOCS searching for a method name finds its module page");
+  }
+
   // Hydration — cold 200-empty must NOT poison the section; it re-hydrates.
   let mode="empty";
   const eLB={available:true,kinds:[],boards:[{kind:"richest",items:[]}]};

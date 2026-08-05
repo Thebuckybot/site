@@ -1296,22 +1296,58 @@ class Interpreter {
         throw new BuckyError("TypeError", `'${typeName(obj)}' object is not subscriptable`, line);
     }
 
+    /**
+     * a[i:j:k] — including a NEGATIVE step.
+     *
+     * `a[::-1]` used to hang the VM. The old loop was
+     * `for (k = start; k < stop; k += step)`, which with step -1 starts at 0,
+     * decrements, and never reaches its stop — an infinite loop with no
+     * `tick()` inside it, so no budget could ever stop it. Reversing a list or
+     * a string is an everyday idiom, and the cost of getting it wrong was a
+     * frozen browser tab rather than an error message.
+     *
+     * Negative steps also need their OWN clamping: Python's defaults flip
+     * (start defaults to len-1, stop to "before the beginning"), and the
+     * ordinary `max(0, ...)` / `min(len, ...)` would collapse the range to
+     * nothing. `tick()` runs per element so a slice of a huge list still
+     * answers to the step budget instead of blocking.
+     */
     * slice(node, scope) {
         const obj = yield* this.eval(node.object, scope);
         if (!Array.isArray(obj) && typeof obj !== "string") {
             throw new BuckyError("TypeError", "object is not sliceable", node.line);
         }
         const len = obj.length;
-        let startRaw = 0;
-        if (node.start != null) { startRaw = yield* this.eval(node.start, scope); if (startRaw < 0) startRaw += len; }
-        let stopRaw = len;
-        if (node.stop != null) { stopRaw = yield* this.eval(node.stop, scope); if (stopRaw < 0) stopRaw += len; }
-        const start = Math.max(0, startRaw);
-        const stop = Math.min(len, stopRaw);
-        const step = node.step ? (yield* this.eval(node.step, scope)) : 1;
-        if (step === 1) return obj.slice(start, stop);
+        const step = node.step != null ? (yield* this.eval(node.step, scope)) : 1;
+        if (step === 0) {
+            throw new BuckyError("ValueError", "slice step cannot be zero", node.line);
+        }
+        const omlaag = step < 0;
+
+        let startRaw = omlaag ? len - 1 : 0;
+        if (node.start != null) {
+            startRaw = yield* this.eval(node.start, scope);
+            if (startRaw < 0) startRaw += len;
+        }
+        let stopRaw = omlaag ? -1 : len;
+        if (node.stop != null) {
+            stopRaw = yield* this.eval(node.stop, scope);
+            if (stopRaw < 0) stopRaw += len;
+        }
+
+        if (!omlaag) {
+            const start = Math.max(0, startRaw);
+            const stop = Math.min(len, stopRaw);
+            if (step === 1) return obj.slice(start, stop);
+            const out = [];
+            for (let k = start; k < stop; k += step) { this.tick(node.line); out.push(obj[k]); }
+            return typeof obj === "string" ? out.join("") : out;
+        }
+
+        const start = Math.min(len - 1, startRaw);
+        const stop = Math.max(-1, stopRaw);
         const out = [];
-        for (let k = start; k < stop; k += step) out.push(obj[k]);
+        for (let k = start; k > stop; k += step) { this.tick(node.line); out.push(obj[k]); }
         return typeof obj === "string" ? out.join("") : out;
     }
 
@@ -1587,9 +1623,15 @@ function makeBuiltins(interp) {
             const start = a.length > 1 ? a[1] : 0;
             return l.map((x, i) => [i + start, x]);
         }),
+        // `out` was never declared here, so EVERY call raised "out is not
+        // defined" - zip() has never worked once. It is bound as a builtin and
+        // documented as available, which is the worst combination: the script
+        // that reaches for it fails on a name it never typed.
         zip: native("zip", (a) => {
             const lists = a.map((x) => Array.from(interp.toIterable(x, 0)));
+            if (!lists.length) return [];
             const n = Math.min(...lists.map((l) => l.length));
+            const out = [];
             for (let i = 0; i < n; i++) out.push(lists.map((l) => l[i]));
             return out;
         }),
@@ -1719,3 +1761,55 @@ function toErrorInfo(error) {
 
 // Exposed for headless testing / future tooling. Not used by the VM UI.
 export const __internals = { tokenize, Parser, Interpreter };
+
+/**
+ * What this interpreter ACTUALLY accepts, as data — the source the docs page
+ * reads from (Phase 5 / blok 4).
+ *
+ * Every field below is derived from the live tables, never re-typed. That is
+ * the whole point: a docs page that lists a method the runtime dropped is
+ * worse than no docs page, and a hand-written list of builtins is the same
+ * shape as `_COG_HELPERS` on the bot side — eleven names for twenty-eight
+ * modules, wrong for months, invisible.
+ *
+ * `deferred` is the one hand-kept list here, and it cannot rot silently:
+ * `tests/phase45b_regression.mjs` runs every entry through the real parser and
+ * fails if one of them starts working.
+ */
+export function languageSurface() {
+    const namen = (tabel) => Object.keys(tabel).sort();
+    // The builtins are built against a throwaway interpreter; only their names
+    // are read, so nothing here can execute.
+    const builtins = Object.keys(makeBuiltins(new Interpreter({}))).sort();
+    return {
+        limits: { ...DEFAULT_LIMITS },
+        keywords: [...KEYWORDS].sort(),
+        operators: OPERATORS.filter((o) => /[-+*/%<>=!]/.test(o)),
+        builtins,
+        methods: {
+            str: namen(STRING_METHODS),
+            list: namen(LIST_METHODS),
+            dict: namen(DICT_METHODS)
+        },
+        statements: [
+            "if / elif / else", "for ... in ...", "while", "def (with defaults)",
+            "return", "break", "continue", "pass", "import a.b [as c]",
+            "from a.b import x, y", "from a.b import *",
+            "assignment, chained and augmented (+= -= *= /= //= %= **=)",
+            "a if cond else b", "f-strings", "slicing a[i:j:k] (negative steps too)",
+            "list, dict and tuple displays", "keyword arguments"
+        ],
+        deferred: [
+            ["class", "class definitions"],
+            ["try / except / raise", "exception handling"],
+            ["lambda", "anonymous functions"],
+            ["[x for x in y]", "comprehensions"],
+            ["@decorator", "decorators"],
+            ["*args / **kwargs", "variadic parameters"],
+            ["a, b = b, a", "tuple assignment without brackets"],
+            ["with", "context managers"],
+            ["&  |  ^  ~  <<  >>", "bitwise operators"],
+            ["global / nonlocal", "parsed, but they do NOT rebind an outer name"]
+        ]
+    };
+}

@@ -7204,3 +7204,145 @@ body.vm-focus-active .arcade-vm-bay {
 }
 
 .og-history-title { font-weight: 600; }
+
+/* ===================================================================
+ * bucky://docs — de codingreferentie (v3 blok 4)
+ *
+ * Leunt op de bestaande site-primitieven en voegt alleen toe wat een
+ * referentiepagina echt nodig heeft: een signatuur die afwijkt van gewone
+ * code, een badge voor een functie die alleen maar gooit, en een tabel die
+ * op een smal scherm in zichzelf scrollt in plaats van de pagina te
+ * verbreden.
+ * =================================================================== */
+.vm-docs { padding-bottom: 8px; }
+
+.vm-docs-block {
+    margin: 0 0 22px;
+    padding: 0 0 18px;
+    border-bottom: 1px solid rgba(120, 150, 175, .14);
+}
+.vm-docs-block:last-child { border-bottom: 0; }
+
+.vm-docs-h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    letter-spacing: .3px;
+    color: #eaf6ff;
+}
+
+.vm-docs-h3 {
+    margin: 16px 0 7px;
+    font-size: 11px;
+    letter-spacing: .9px;
+    text-transform: uppercase;
+    color: rgba(214, 230, 245, .55);
+}
+
+.vm-docs-note {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: rgba(214, 230, 245, .72);
+}
+.vm-docs-note.is-missing { color: rgba(255, 196, 120, .72); font-style: italic; }
+
+.vm-docs-inline { margin: 0; line-height: 2.1; }
+.vm-docs-inline code,
+.vm-docs-sig,
+.vm-docs-note code {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(82, 255, 243, .07);
+    border: 1px solid rgba(82, 255, 243, .16);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 11.5px;
+    color: #b9fff8;
+}
+
+.vm-docs-code {
+    margin: 10px 0 0;
+    padding: 12px 14px;
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(120, 150, 175, .2);
+    background: rgba(8, 16, 24, .55);
+}
+.vm-docs-code code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #cfe9ef;
+    white-space: pre;
+}
+
+.vm-docs-cards,
+.vm-docs-members,
+.vm-docs-bullets { margin: 0; padding: 0; list-style: none; }
+
+.vm-docs-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 10px;
+}
+
+.vm-docs-card {
+    padding: 11px 13px;
+    border-radius: 8px;
+    border: 1px solid rgba(120, 150, 175, .18);
+    background: rgba(16, 26, 36, .4);
+}
+.vm-docs-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.vm-docs-modname { font-weight: 600; font-size: 13px; }
+
+.vm-docs-member { padding: 9px 0; border-top: 1px solid rgba(120, 150, 175, .1); }
+.vm-docs-member:first-child { border-top: 0; }
+
+.vm-docs-bullets li {
+    padding: 3px 0;
+    font-size: 12.5px;
+    color: rgba(214, 230, 245, .72);
+}
+
+.vm-docs-badge {
+    display: inline-block;
+    margin-left: 7px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    letter-spacing: .7px;
+    text-transform: uppercase;
+}
+.vm-docs-badge.is-stub {
+    border: 1px solid rgba(255, 170, 90, .38);
+    background: rgba(255, 170, 90, .1);
+    color: #ffc27a;
+}
+
+.vm-docs-warn {
+    margin: 0 0 18px;
+    padding: 11px 13px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 170, 90, .3);
+    background: rgba(255, 170, 90, .07);
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: #ffd6a8;
+}
+
+/* Een brede tabel scrollt IN ZICHZELF. Zonder deze wrapper duwt hij het
+ * hele vensterlichaam breder en krijgt de pagina een horizontale balk. */
+.vm-docs-tablewrap { overflow-x: auto; margin-top: 8px; }
+.vm-docs-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.vm-docs-table td {
+    padding: 5px 10px 5px 0;
+    border-bottom: 1px solid rgba(120, 150, 175, .1);
+    color: rgba(214, 230, 245, .72);
+    vertical-align: top;
+}
+.vm-docs-table td:first-child { white-space: nowrap; }

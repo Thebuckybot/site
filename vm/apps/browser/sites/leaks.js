@@ -402,7 +402,7 @@ function renderHome(ctx) {
     `;
     return sitePage({
         site: SITE,
-        domain: `${DOMAIN} &middot; bucky://leaks`,
+        domain: `${DOMAIN} · bucky://leaks`,
         title: "Leak Database",
         lead: "Live OSINT breach archive — real incidents, real exposed operators.",
         bodyHtml: body,
@@ -512,9 +512,9 @@ function renderIncidentDetail(ctx) {
     }
     return sitePage({
         site: SITE,
-        domain: `${DOMAIN} &middot; bucky://leaks/incident/${escapeHtml(String(id).toLowerCase())}`,
+        domain: `${DOMAIN} · bucky://leaks/incident/${escapeHtml(String(id).toLowerCase())}`,
         title: (c.data && c.data.title) || String(id).toUpperCase(),
-        lead: c.data ? `${c.data.incident_id} &middot; ${sevMeta(c.data.severity).label} severity` : "Incident report",
+        lead: c.data ? `${c.data.incident_id} · ${sevMeta(c.data.severity).label} severity` : "Incident report",
         bodyHtml: body,
     });
 }

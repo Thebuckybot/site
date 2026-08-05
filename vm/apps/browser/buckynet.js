@@ -36,6 +36,8 @@ import { registerLeaderboardsSite, preloadLeaderboards } from "./sites/leaderboa
 import { registerPulseSite, preloadPulse } from "./sites/pulse.js";
 // v3 blok 3 - het eigen leakarchief van een organisatie (members-only).
 import { registerWarRoomSite, preloadWarRoom } from "./sites/orgleaks.js";
+// v3 blok 4 - de codingreferentie, GEGENEREERD uit de runtime.
+import { registerDocsSite } from "./sites/docs.js";
 
 /** @type {ReturnType<typeof createSiteRegistry>|null} */
 let registry = null;
@@ -68,6 +70,10 @@ export function getBuckyNet() {
     registerLeaderboardsSite(registry);
     registerPulseSite(registry);
     registerWarRoomSite(registry);
+    // De codingreferentie. Hij registreert zichzelf PLUS een pagina per module,
+    // afgeleid uit de live moduletabel - een module die er morgen bijkomt heeft
+    // morgen zijn eigen doorzoekbare pagina, zonder een regel hier.
+    registerDocsSite(registry);
     // Hidden pages are searchable:false — present for direct routing, absent
     // from PulseSearch. Registered last; order does not affect resolution.
     registerHiddenSites(registry);

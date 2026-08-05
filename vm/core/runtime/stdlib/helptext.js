@@ -5,8 +5,23 @@
  * Pure data: one entry per bucky.* module. `description` is a one-line summary;
  * `methods` maps a method SIGNATURE to a one-line doc; `example` is a runnable
  * snippet. Kept here (not on the modules) so the runtime stays lean and the help
- * text is editable in one place. `help()` and `dir()` read from this map; a
- * module absent here still lists its members (just without prose).
+ * text is editable in one place. `help()` and `dir()` read from this map, and so
+ * does bucky://docs.
+ *
+ * THIS MAP IS PROSE, NEVER THE INVENTORY. The list of modules and members comes
+ * from the live module table (core/runtime/docs.js); this file only says what
+ * each one is FOR. That split matters, because by the time anything checked,
+ * this map had drifted badly: it documented a `notify.notify` that does not
+ * exist, had no entry at all for terminal / ui / database / missions, left
+ * twenty members undescribed, claimed mail could not send when it had been
+ * sending since Phase 5.0, and four of its runnable examples used a semicolon
+ * this interpreter rejects — so copying them produced a SyntaxError out of the
+ * help system itself.
+ *
+ * `helpDrift()` measures all of that and a guard in
+ * tests/phase45b_regression.mjs holds it at zero. A module without an entry
+ * still lists its members; it just says out loud that the prose is missing
+ * instead of leaving a gap that reads like completeness.
  */
 export const HELP = {
     profile: {
@@ -24,7 +39,8 @@ export const HELP = {
             "reputation()": "Your org reputation (int).",
             "exposures()": "Your recorded exposure list.",
             "titles()": "Cosmetic titles you own (list).",
-            "summary()": "Compact dict of the headline fields."
+            "summary()": "Compact dict of the headline fields.",
+            "refresh()": "Re-fetch your self-view for this run."
         },
         example: "print('Level', profile.level(), 'Coins', profile.coins())"
     },
@@ -38,9 +54,11 @@ export const HELP = {
             "incident(id)": "One incident record by LEAK-id, or None.",
             "search(query)": "Operators matching handle / incident / severity.",
             "bySeverity(sev)": "Operators at a severity (low|medium|high|severe).",
-            "statistics()": "Headline counts (alias: stats())."
+            "statistics()": "Headline counts.",
+            "stats()": "Alias of statistics().",
+            "refresh()": "Re-fetch the leak snapshot for this run."
         },
-        example: "for o in leaks.latest(5): print(o['handle'], o['severity'])"
+        example: "for o in leaks.latest(5):\n    print(o['handle'], o['severity'])"
     },
     organizations: {
         description: "The organisation registry (read-only; alias: orgs).",
@@ -51,9 +69,10 @@ export const HELP = {
             "get(id)": "One organisation by id or name, or None.",
             "search(query)": "Organisations matching id/name/tagline/description.",
             "members(id)": "Member count for an org (or yours).",
-            "leaderboard()": "Orgs ranked by reputation then members."
+            "leaderboard()": "Orgs ranked by reputation then members.",
+            "refresh()": "Re-fetch the organisation snapshot for this run."
         },
-        example: "for o in orgs.list(): print(o['name'], o['members'])"
+        example: "for o in orgs.list():\n    print(o['name'], o['members'])"
     },
     leaderboards: {
         description: "Grid rankings (read-only). Kinds: richest, level, org-reputation, most-leaked.",
@@ -65,9 +84,15 @@ export const HELP = {
             "richest([limit])": "Top operators by net worth.",
             "levels([limit])": "Top operators by level.",
             "reputation([limit])": "Top organisations by reputation.",
-            "mostLeaked([limit])": "Most-exposed operators."
+            "mostLeaked([limit])": "Most-exposed operators.",
+            "most_leaked([limit])": "Alias of mostLeaked().",
+            "level([limit])": "Alias of levels().",
+            "format([kind[, limit]])": "A board as aligned text (string), without printing.",
+            "table([kind[, limit]])": "Alias of format().",
+            "render([kind[, limit]])": "Print a board as an aligned table.",
+            "pretty([kind[, limit]])": "Alias of render()."
         },
-        example: "for r in leaderboards.richest(5): print(r['rank'], r['user_id'])"
+        example: "for r in leaderboards.richest(5):\n    print(r['rank'], r['user_id'])"
     },
     economy: {
         description: "Operator economy. Reads are free; transfers route through Discord.",
@@ -94,11 +119,11 @@ export const HELP = {
         description: "Security posture (read-only): firewall, exposures, breach state.",
         methods: {
             "status()": "{ breached, exposures, firewall, score, posture }.",
-            "firewall()": "{ enabled, tier, level } from your firewall_level.",
+            "firewall()": "{ enabled, active, tier, level } from your firewall_level.",
             "exposures()": "Your recorded exposures.",
             "breached()": "True when you appear in the live leak archive."
         },
-        example: "s = security.status(); print(s['posture'], s['score'])"
+        example: "s = security.status()\nprint(s['posture'], s['score'])"
     },
     process: {
         description: "The session process table (ps/jobs/top read the same data).",
@@ -110,7 +135,9 @@ export const HELP = {
             "pid()": "The calling script's PID.",
             "kill(pid)": "Terminate a process (True/False).",
             "killall(name)": "Terminate every active process with that name (count).",
-            "stats()": "Counts by state."
+            "stats()": "Counts by state.",
+            "ps()": "Alias of list().",
+            "jobs()": "Alias of active()."
         },
         example: "print('Active:', len(process.active()))"
     },
@@ -137,7 +164,7 @@ export const HELP = {
         methods: {
             "show(items[, title])": "Returns { index, label, value } for the choice, or None."
         },
-        example: "sel = menu.show(['Scan','Reports','Exit'], 'Main'); print(sel['label'])"
+        example: "sel = menu.show(['Scan','Reports','Exit'], 'Main')\nprint(sel['label'])"
     },
     status: {
         description: "Bordered status blocks. Both methods print and return their text.",
@@ -155,12 +182,12 @@ export const HELP = {
             "finish([label])": "Complete the bar at 100%.",
             "bar(percent)": "Return the bar string without printing."
         },
-        example: "progress.start('Scan'); progress.update(50); progress.finish()"
+        example: "progress.start('Scan')\nprogress.update(50)\nprogress.finish()"
     },
     notify: {
         description: "Post a VM notification (desktop toast when available) + an inline line.",
         methods: {
-            "notify(text[, level])": "level: info | warn | alert.",
+            "send(text[, level])": "level: info | warn | alert. The bare name `notify(...)` IS this one.",
             "info/warn/alert(text)": "Level-specific shortcuts (bucky.notify)."
         },
         example: "notify('Leak detected', 'alert')"
@@ -191,7 +218,7 @@ export const HELP = {
             "clear([category])": "Clear all (or one category).",
             "check()": "Cross-reference the watchlist against the live leak archive."
         },
-        example: "watchlist.add_operator('Tommy'); print(watchlist.check())"
+        example: "watchlist.add_operator('Tommy')\nprint(watchlist.check())"
     },
     search: {
         description: "Global query across leaks / organisations / players.",
@@ -209,21 +236,27 @@ export const HELP = {
             "owned()": "True when you can run HackBank (own >=1 attack script via Discord).",
             "available()": "owned() AND off cooldown.",
             "cooldown()": "Seconds remaining (0 = ready).",
-            "status()": "{ owned, available, cooldown }.",
+            "status()": "{ owned, available, cooldown, note }.",
             "run(target)": "NOT available in the VM — routes to Discord (raises)."
         },
         example: "if hackbank.available(): print('ready')"
     },
     mail: {
-        description: "Mail FOUNDATION (Phase 4.5). Identity works; sending arrives in Phase 5.2.",
+        description: "Your Bucky Mail mailbox — read and send, the same one the Mail app shows.",
         methods: {
             "identity()": "Your <username>@bucky.net address.",
-            "available()": "False until the Mail Relay lands.",
-            "inbox_count()": "0 (no transport yet).",
-            "unread_count()": "0 (no transport yet).",
-            "send/inbox/read/search": "NOT available yet — raise NotImplemented (Phase 5.2)."
+            "available()": "True when the mailbox is reachable from this run.",
+            "inbox_count()": "Messages in the inbox.",
+            "unread_count()": "Unread messages in the inbox.",
+            "inbox([limit])": "Recent inbox messages, newest first.",
+            "sent([limit])": "Recent sent messages, newest first.",
+            "unread()": "Only the unread inbox messages.",
+            "read(id)": "Open one message (marks it read) and return it.",
+            "attachments(id)": "Attachment metadata for a message — no payload.",
+            "send(to, subject, body, cc=, bcc=)": "Send a message. Attachments via attachments=[...].",
+            "search(query)": "NOT available — search arrives in a later phase (raises)."
         },
-        example: "print('My address:', mail.identity())"
+        example: "print('My address:', mail.identity())\nprint(mail.unread_count(), 'unread')"
     },
     events: {
         description: "Runtime-event registration (architecture only; dispatch is deferred).",
@@ -232,7 +265,7 @@ export const HELP = {
             "on(event, handler)": "Register a handler (stored, not yet dispatched).",
             "registered()": "Handler counts per event."
         },
-        example: "events.on('on_leak', my_handler)"
+        example: "def my_handler(e):\n    print('leak', e)\nevents.on('on_leak', my_handler)"
     },
     schedule: {
         description: "Automation scheduling foundation (architecture only; no execution yet).",
@@ -255,9 +288,50 @@ export const HELP = {
             "isdir(path)": "Directory test.",
             "mkdir(path)": "Create a directory.",
             "copy(src, dst)": "Copy a file.",
-            "move(src, dst)": "Move a file."
+            "move(src, dst)": "Move a file.",
+            "remove(path)": "Alias of delete().",
+            "listdir([path])": "Alias of list()."
         },
         example: "files.write('/projects/data/note.txt', 'hello')"
+    },
+    terminal: {
+        description: "Write straight to the terminal, and read a line back from it.",
+        methods: {
+            "print(*args)": "Like print(), but always to the terminal.",
+            "line(text)": "One line, no extra spacing.",
+            "rule()": "A horizontal rule.",
+            "banner(title)": "A boxed title block.",
+            "header(title)": "A title with a rule under it.",
+            "input": "Read one typed line. NEEDS the interactive Terminal — see form.ask()."
+        },
+        example: "terminal.banner('SCAN')\nterminal.line('starting...')"
+    },
+    ui: {
+        description: "The UI toolkit gathered under one name. Each member is itself a module.",
+        methods: {
+            "progress / table / status / form / menu": "The same modules as their bare names.",
+            "notify(text[, level])": "The notify send helper."
+        },
+        example: "ui.table.render([{'a': 1}])"
+    },
+    database: {
+        description: "Database Viewer — INTERFACE ONLY. Every member raises NotImplemented.",
+        methods: {
+            "query(sql)": "Not built yet (raises).",
+            "tables()": "Not built yet (raises).",
+            "get(table, id)": "Not built yet (raises)."
+        },
+        example: "# nothing here runs yet - the seam exists so the import resolves"
+    },
+    missions: {
+        description: "Mission Board — INTERFACE ONLY. Every member raises NotImplemented.",
+        methods: {
+            "list()": "Not built yet (raises).",
+            "current()": "Not built yet (raises).",
+            "accept(id)": "Not built yet (raises).",
+            "complete(id)": "Not built yet (raises)."
+        },
+        example: "# nothing here runs yet - the seam exists so the import resolves"
     },
     json: {
         description: "JSON helpers for persisting structured state.",
@@ -265,7 +339,9 @@ export const HELP = {
             "parse(text)": "Parse JSON text to a value (alias: loads).",
             "stringify(value[, indent])": "Serialise a value (alias: dumps).",
             "load(path)": "Read + parse a JSON file.",
-            "save(path, value)": "Serialise + write a JSON file."
+            "save(path, value)": "Serialise + write a JSON file.",
+            "loads(text)": "Alias of parse().",
+            "dumps(value[, indent])": "Alias of stringify()."
         },
         example: "json.save('/projects/data/state.json', {'runs': 1})"
     }

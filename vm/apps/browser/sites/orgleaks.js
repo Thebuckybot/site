@@ -253,7 +253,7 @@ function renderHome() {
     `;
     return sitePage({
         site: SITE,
-        domain: `${DOMAIN} &middot; bucky://warroom`,
+        domain: `${DOMAIN} · bucky://warroom`,
         title: "War Room",
         lead: "What your organisation has taken. Fresh rows are worth more than old ones.",
         bodyHtml: body,
