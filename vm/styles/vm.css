@@ -6768,6 +6768,36 @@ body.vm-focus-active .arcade-vm-bay {
     color: var(--org-ink-faint);
 }
 
+/* --- WAR (v3 blok 3) -----------------------------------------------------
+   De balk is de teller uit #announcements, in de VM. Hij is BREED en laag: het
+   getal eronder zegt hoeveel leden er geraakt zijn, en de balk hoeft alleen te
+   laten zien of dat bijna klaar is. Een dunne lijn leest daarvoor sneller dan
+   een blok met een percentage erin.
+
+   Binnenkomend krijgt de rode rand en uitgaand niet. Dat is de enige kleur op
+   dit scherm die iets betekent: wat jou overkomt heeft een klok, wat jij hebt
+   besteld loopt vanzelf af. */
+.og-war { border-left: 2px solid var(--org-line-soft); }
+.og-war.is-incoming { border-left-color: #ff5f7a; }
+.og-war-title { margin: 2px 0 8px; font-size: 15px; color: var(--org-ink); }
+
+.og-war-bar {
+    height: 6px;
+    border: 1px solid var(--org-line-soft);
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--org-a12);
+}
+
+.og-war-fill { display: block; height: 100%; background: var(--org); }
+.og-war.is-incoming .og-war-fill { background: #ff5f7a; }
+.og-war-count { margin: 6px 0 2px; font-size: 12px; color: var(--org-ink); }
+
+.og-war-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.og-war-log li { font-size: 12px; display: flex; gap: 6px; align-items: baseline; }
+
+.og-peace { border-left: 2px solid #7ee08a; }
+
 /* --- UPGRADES ------------------------------------------------------------- */
 .og-cats { display: flex; gap: 6px; flex-wrap: wrap; }
 

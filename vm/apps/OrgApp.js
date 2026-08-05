@@ -60,6 +60,11 @@ const TABS = [
     // het een archief.
     { key: "challenges", label: "Challenges", glyph: "◈" },
     { key: "upgrades", label: "Upgrades", glyph: "▦" },
+    // NAAST UPGRADES, want het is dezelfde portemonnee: aanvallen, vrede en
+    // upgrades komen alle drie uit de credits van afgeronde campagnes. Wie hier
+    // kijkt wat een aanval kost, wil een tabblad verder zien wat hij daarvoor
+    // niet koopt.
+    { key: "war", label: "War", glyph: "◆" },
     { key: "treasury", label: "Treasury", glyph: "▥" },
     { key: "election", label: "Election", glyph: "▧" },
     { key: "members", label: "Members", glyph: "▢" },
@@ -252,6 +257,7 @@ function renderTab(s) {
         case "challenges": return renderChallenges(s);
         case "treasury": return renderTreasury(s);
         case "upgrades": return renderUpgrades(s);
+        case "war": return renderWar(s);
         case "members": return renderMembers(s);
         case "election": return renderElection(s);
         case "card": return renderCard(s);
@@ -981,6 +987,154 @@ function renderUpgrades(s) {
     </div>`;
 }
 
+/* ---- war --------------------------------------------------------- */
+/**
+ * Wat er op deze organisatie afkomt en wat zij zelf heeft lopen.
+ *
+ * WAAROM DIT SCHERM BESTAAT terwijl de teller al in Discord staat: die teller
+ * hangt in #announcements van de organisatie die AANGEVALLEN wordt, en dat
+ * kanaal leest niet iedereen elke dag. Dit is dezelfde informatie op de plek
+ * waar een lid toch al kijkt - en voor het lid dat straks zelf geraakt wordt is
+ * het het verschil tussen "ik heb het gehoord" en "ik was op tijd".
+ *
+ * BINNENKOMEND STAAT BOVEN UITGAAND. Wat jou overkomt is dringender dan wat jij
+ * hebt besteld: het eerste heeft een klok waar je iets mee moet, het tweede
+ * loopt vanzelf af.
+ *
+ * WAT ER NIET STAAT: wat een aanval de aanvaller gekost heeft. Dezelfde rij
+ * wordt door beide partijen gelezen, en de portemonnee van de een is geen
+ * informatie voor de ander. De backend stuurt dat veld niet mee.
+ */
+function renderWar(s) {
+    const d = s.data.war || {};
+    const w = d.item;
+    if (!w) {
+        return empty("No war yet",
+            "Attacks between organisations appear here as soon as there are any.");
+    }
+
+    const binnen = w.incoming || [];
+    const uit = w.outgoing || [];
+    const stil = !binnen.length && !uit.length;
+
+    return `<div class="og-split">
+        <div class="og-col og-col-main">
+            ${binnen.map((a) => warCard(a, true)).join("")}
+            ${uit.map((a) => warCard(a, false)).join("")}
+            ${stil ? empty(
+                w.enabled ? "Nothing is running" : "Warfare is switched off",
+                w.enabled
+                    ? "No attack is rolling out in either direction right now."
+                    : "It exists in the interface but is not switched on yet.")
+              : ""}
+            ${renderWarHistory(w.history || [])}
+        </div>
+        <div class="og-col og-col-side">
+            ${renderPeacePanel(w.peace, w.enabled)}
+        </div>
+    </div>`;
+}
+
+/**
+ * Eén lopende aanval, met zijn teller.
+ *
+ * De VOORTGANG is een verhouding uit de backend en wordt hier pas een
+ * percentage. Dat is geen detail: "5 of 20" en "25%" zeggen niet hetzelfde, en
+ * het eerste is wat een lid wil weten - hoeveel mensen er nog aan de beurt
+ * komen, en of hij daar zelf bij zit.
+ */
+function warCard(a, binnenkomend) {
+    const ander = binnenkomend ? (a.attacker || {}) : (a.target || {});
+    const pct = Math.round((a.progress || 0) * 100);
+    return `<section class="og-panel og-war${binnenkomend ? " is-incoming" : ""}">${CORRUPT}
+        <div class="og-eyebrow">${binnenkomend ? "Incoming" : "Outgoing"}</div>
+        <h3 class="og-war-title">
+            ${escapeHtml(`${ander.emblem || ""} ${ander.name || "Unknown"}`.trim())}
+        </h3>
+        <div class="og-war-bar" role="img"
+             aria-label="${escapeHtml(`${a.members_hit} of ${a.members_total} members reached`)}">
+            <span class="og-war-fill" style="width:${pct}%"></span>
+        </div>
+        <p class="og-war-count og-mono">${escapeHtml(String(a.members_hit || 0))}
+            of ${escapeHtml(String(a.members_total || 0))} members reached</p>
+        <p class="og-faint">${escapeHtml(warLine(a, binnenkomend))}</p>
+        ${a.ends_at ? `<p class="og-faint">Ends ${escapeHtml(shortStamp(a.ends_at))}.</p>` : ""}
+    </section>`;
+}
+
+/**
+ * De zin die uitlegt wat deze aanval doet - en, als je het doelwit bent, wat je
+ * eraan kunt doen.
+ *
+ * `+setbankcode` staat er alleen bij een BINNENKOMENDE aanval. Bij een uitgaande
+ * zou het lezen als een instructie aan de verkeerde kant, en dan typt de helft
+ * van de aanvallers hem zelf.
+ */
+function warLine(a, binnenkomend) {
+    const over = Math.pow(10, Math.max(0, 4 - (a.revealed || 0)));
+    if (binnenkomend) {
+        return `${a.revealed} character(s) of every member's bank code leak, `
+            + `leaving ${over} combination(s). Change yours with +setbankcode `
+            + `the moment you are hit.`;
+    }
+    return `${a.revealed} character(s) per member, leaving ${over} combination(s). `
+        + `The leaks land in the War Room as they happen.`;
+}
+
+function renderWarHistory(rijen) {
+    if (!rijen.length) return "";
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Earlier</div>
+        <ul class="og-war-log">${rijen.map((a) => {
+            const ander = a.incoming ? (a.attacker || {}) : (a.target || {});
+            return `<li>
+                <span class="og-mono">${escapeHtml(a.incoming ? "IN " : "OUT")}</span>
+                ${escapeHtml(ander.name || "Unknown")}
+                <span class="og-faint">${escapeHtml(String(a.members_hit || 0))} hit
+                    · ${escapeHtml(a.status || "")}</span>
+            </li>`;
+        }).join("")}</ul>
+    </section>`;
+}
+
+function renderPeacePanel(vrede, aan) {
+    if (vrede) {
+        return `<section class="og-panel og-peace">${CORRUPT}
+            <div class="og-eyebrow">At peace</div>
+            <p>Until <span class="og-mono">${escapeHtml(shortStamp(vrede.ends_at))}</span>.</p>
+            <p class="og-faint">Both directions: this organisation cannot be
+                attacked, and cannot attack. Leaks that already exist stay valid.</p>
+        </section>`;
+    }
+    return `<section class="og-panel">${CORRUPT}
+        <div class="og-eyebrow">Peace</div>
+        <p class="og-faint">Not bought. The Leader can buy a month of it in
+            #command, out of the same credits as the upgrades - and it works both
+            ways, so it costs you your own attacks too.</p>
+        ${aan ? "" : `<p class="og-off"><span class="og-off-mark">■</span>
+            Warfare is still switched off.</p>`}
+    </section>`;
+}
+
+/**
+ * Een ISO-stempel uit de backend als korte lokale tijd.
+ *
+ * De backend levert naïeve UTC met een `T` ertussen; zonder de `Z` leest
+ * JavaScript dat als LOKALE tijd, en deze server loopt twee uur voor. Dan staat
+ * er twee uur naast wat er gebeurt - precies de fout die aan de Discord-kant al
+ * een keer gemaakt is.
+ */
+function shortStamp(iso) {
+    if (!iso) return "";
+    const tekst = String(iso);
+    const genormaliseerd = /[Zz]|[+-]\d\d:?\d\d$/.test(tekst)
+        ? tekst : tekst.replace(" ", "T") + "Z";
+    const d = new Date(genormaliseerd);
+    if (isNaN(d.getTime())) return tekst;
+    return d.toLocaleString([], { month: "short", day: "numeric",
+                                  hour: "2-digit", minute: "2-digit" });
+}
+
 function renderCreditPanel(cr, aan) {
     const c = cr || { earned: 0, spent: 0, available: 0 };
     return `<section class="og-panel">${CORRUPT}
@@ -1619,6 +1773,7 @@ const ENDPOINT = {
     challenges: "/api/org/challenges",
     treasury: "/api/org/treasury",
     upgrades: "/api/org/upgrades",
+    war: "/api/org/warfare",
     members: "/api/org/members",
     election: "/api/org/election",
     card: "/api/org/card"

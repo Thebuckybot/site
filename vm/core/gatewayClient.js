@@ -281,6 +281,34 @@ function fetchMyOrganization() {
     return request("/api/player/organization/me", { credentials: "include" });
 }
 
+/**
+ * One page of YOUR organisation's leak archive (login required).
+ *
+ * The org is never a parameter — the backend reads it from the session, and
+ * that is the whole access rule for this table. `cursor` is the `next_cursor`
+ * of the previous page, straight back as query parameters; there is no offset,
+ * because ten thousand rows with an offset is ten thousand rows read.
+ */
+function fetchOrgLeaks(opts) {
+    const o = opts || {};
+    const q = new URLSearchParams();
+    if (o.sort) q.set("sort", String(o.sort));
+    if (o.victim_org) q.set("victim_org", String(o.victim_org));
+    if (o.victim_id) q.set("victim_id", String(o.victim_id));
+    if (o.code) q.set("code", String(o.code));
+    if (o.limit) q.set("limit", String(o.limit));
+    const c = o.cursor || null;
+    if (c) {
+        if (c.leaked_at) q.set("after_leaked_at", String(c.leaked_at));
+        if (c.id) q.set("after_id", String(c.id));
+        if (c.revealed_count !== undefined && c.revealed_count !== null) {
+            q.set("after_revealed", String(c.revealed_count));
+        }
+    }
+    const qs = q.toString();
+    return request("/api/org/leaks" + (qs ? "?" + qs : ""), { credentials: "include" });
+}
+
 // ---------------------------------------------------------------------------
 // Phase 4.3 — leaderboards (read-only public projections)
 // ---------------------------------------------------------------------------
@@ -419,6 +447,8 @@ export const gatewayClient = {
     fetchOrganizations,
     fetchOrganization,
     fetchMyOrganization,
+    // v3 blok 3 - de eigen leakarchief van je organisatie
+    fetchOrgLeaks,
     // Phase 4.3 - leaderboards
     fetchLeaderboards,
     fetchLeaderboard,

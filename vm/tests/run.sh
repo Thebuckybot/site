@@ -9,5 +9,8 @@ cp -r "$here" "$tmp/vm"
 echo '{"type":"module"}' > "$tmp/package.json"
 node "$tmp/vm/tests/phase45b_regression.mjs"
 code=$?
+# v3 blok 3 - de War Room. Aparte suite: hij stubt de gatewayClient, en dat mag
+# de runtime-suite hierboven niet zien.
+node "$tmp/vm/tests/warroom_leaks.mjs" || code=$?
 rm -rf "$tmp"
 exit $code

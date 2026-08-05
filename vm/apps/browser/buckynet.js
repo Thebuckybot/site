@@ -34,6 +34,8 @@ import { registerProfileSite, preloadProfile } from "./sites/profile.js";
 import { registerOrganizationsSite, preloadOrganizations } from "./sites/organizations.js";
 import { registerLeaderboardsSite, preloadLeaderboards } from "./sites/leaderboards.js";
 import { registerPulseSite, preloadPulse } from "./sites/pulse.js";
+// v3 blok 3 - het eigen leakarchief van een organisatie (members-only).
+import { registerWarRoomSite, preloadWarRoom } from "./sites/orgleaks.js";
 
 /** @type {ReturnType<typeof createSiteRegistry>|null} */
 let registry = null;
@@ -65,6 +67,7 @@ export function getBuckyNet() {
     registerOrganizationsSite(registry);
     registerLeaderboardsSite(registry);
     registerPulseSite(registry);
+    registerWarRoomSite(registry);
     // Hidden pages are searchable:false — present for direct routing, absent
     // from PulseSearch. Registered last; order does not affect resolution.
     registerHiddenSites(registry);
@@ -80,6 +83,9 @@ export function getBuckyNet() {
     try { preloadOrganizations(); } catch (_e) { /* ditto */ }
     try { preloadLeaderboards(); }  catch (_e) { /* ditto */ }
     try { preloadPulse(); }         catch (_e) { /* ditto */ }
+    // Members-only: preloadWarRoom slaat zichzelf over zonder sessie, dus een
+    // publiek bezoek doet hier geen enkele aanroep.
+    try { preloadWarRoom(); }       catch (_e) { /* ditto */ }
     try { preloadLeaks(); }         catch (_e) { /* ditto — live OSINT leak DB */ }
 
     return registry;

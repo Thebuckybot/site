@@ -47,7 +47,10 @@ const PROFIEL = {
         specialisation: "analyst",
         warnings: 0,
     },
-    coins: 1000, bank: 2000, bank_limit: 793000, bank_limit_base: 500,
+    // 500 + 1000 + level 79 x bank.limit_per_level (90.000). Stond op 793.000
+    // toen dat tarief nog 10.000 was; de backend rekent het echte getal uit de
+    // config en dit harnas heeft geen backend, dus het staat hier met de hand.
+    coins: 1000, bank: 2000, bank_limit: 7111500, bank_limit_base: 500,
     bank_limit_bonus: 1000, networth: 3000, total_given: 0, total_received: 0,
     inventory_count: 0, active_items_count: 0, items: [], active_items: [],
     current_arc: null, unlocked_arcs: [], completed_arcs: [],
