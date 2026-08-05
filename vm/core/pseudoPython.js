@@ -461,6 +461,28 @@ class Parser {
         return this.parseExprOrAssign();
     }
 
+    /**
+     * The RIGHT-hand side of an assignment, which may be a bare tuple.
+     *
+     * `a, b = b, a` used to be a SyntaxError on the swap - the most common
+     * two-variable idiom there is. `parseExpr` stops at the comma, so the RHS
+     * was only ever one value while the LEFT side already understood tuples.
+     * `x = 1, 2` now also builds a tuple, exactly as Python does.
+     */
+    parseRhs(line) {
+        const first = this.parseExpr();
+        if (!this.at("OP", ",")) return first;
+        const elts = [first];
+        while (this.at("OP", ",")) {
+            this.next();
+            // Een afsluitende komma (`x = 1,`) is geldig en levert een tuple
+            // van één op.
+            if (this.at("NEWLINE") || this.at("EOF") || this.at("DEDENT")) break;
+            elts.push(this.parseExpr());
+        }
+        return { type: "Tuple", elts, line };
+    }
+
     endSimple() {
         if (this.at("NEWLINE")) this.next();
         else if (!this.at("EOF") && !this.at("DEDENT")) {
@@ -527,7 +549,7 @@ class Parser {
             const targets = [first];
             while (this.at("OP", "=")) {
                 this.next();
-                targets.push(this.parseExpr());
+                targets.push(this.parseRhs(line));
             }
             const value = targets.pop();
             this.endSimple();
@@ -543,7 +565,7 @@ class Parser {
             }
             if (this.at("OP", "=")) {
                 this.next();
-                const value = this.parseExpr();
+                const value = this.parseRhs(line);
                 this.endSimple();
                 return { type: "Assign", targets: [{ type: "Tuple", elts, line }], value, line };
             }
@@ -1247,9 +1269,17 @@ class Interpreter {
                 if (b === 0) throw new BuckyError("ZeroDivisionError", "integer division by zero", line);
                 return Math.floor(a / b);
             case "%":
+                // `'hi %s' % name` — string formatting, not arithmetic.
+                //
+                // This used to `return a` for anything non-numeric, so
+                // `print('hi %s' % 'bob')` printed `hi %s`: no error, no
+                // warning, just the wrong answer. A silently wrong result is
+                // worse than a refusal, because nothing points at the cause.
+                if (typeof a === "string") return pyFormat(a, b, line);
                 if (b === 0) throw new BuckyError("ZeroDivisionError", "modulo by zero", line);
                 if (typeof a === "number") return ((a % b) + b) % b;
-                return a;
+                throw new BuckyError("TypeError",
+                    `unsupported operand type(s) for %: '${typeName(a)}'`, line);
             case "**": return Math.pow(a, b);
             default:
                 throw new BuckyError("RuntimeError", `unsupported operator '${op}'`, line);
@@ -1532,6 +1562,50 @@ const STRING_METHODS = {
     zfill: native("zfill", (s, a) => s.padStart(a[0], "0")),
     ljust: native("ljust", (s, a) => s.padEnd(a[0], a[1] || " ")),
     rjust: native("rjust", (s, a) => s.padStart(a[0], a[1] || " ")),
+    // BLOK 4 - de methoden waar een speler het snelst tegenaan loopt. Ze zijn
+    // los stuk voor stuk triviaal, en samen schelen ze meer frustratie dan
+    // try/except: dit is wat je typt zodra je tekst uit een leak of een
+    // profielnaam moet verwerken.
+    isdigit: native("isdigit", (s) => s.length > 0 && /^[0-9]+$/.test(s)),
+    isalpha: native("isalpha", (s) => s.length > 0 && /^[A-Za-z]+$/.test(s)),
+    isupper: native("isupper", (s) => /[A-Za-z]/.test(s) && s === s.toUpperCase()),
+    islower: native("islower", (s) => /[A-Za-z]/.test(s) && s === s.toLowerCase()),
+    isspace: native("isspace", (s) => s.length > 0 && s.trim() === ""),
+    swapcase: native("swapcase", (s) => s.replace(/[a-zA-Z]/g,
+        (c) => (c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase()))),
+    casefold: native("casefold", (s) => s.toLowerCase()),
+    splitlines: native("splitlines", (s) => (s === "" ? [] : s.split(/\r?\n/))),
+    removeprefix: native("removeprefix", (s, a) =>
+        (a[0] && s.startsWith(a[0]) ? s.slice(a[0].length) : s)),
+    removesuffix: native("removesuffix", (s, a) =>
+        (a[0] && s.endsWith(a[0]) ? s.slice(0, -a[0].length) : s)),
+    center: native("center", (s, a) => {
+        const n = Number(a[0]) || 0;
+        if (s.length >= n) return s;
+        const links = Math.floor((n - s.length) / 2);
+        const vul = a.length > 1 ? String(a[1])[0] : " ";
+        return vul.repeat(links) + s + vul.repeat(n - s.length - links);
+    }),
+    // `index` gooit waar `find` -1 geeft. Dat verschil is het hele punt van de
+    // twee: `find` gebruik je in een `if`, `index` als je zeker weet dat het
+    // erin staat en een stille -1 verderop een IndexError zou worden.
+    index: native("index", (s, a, kw, interp, line) => {
+        const i = s.indexOf(a[0]);
+        if (i < 0) throw new BuckyError("ValueError", "substring not found", line || 0);
+        return i;
+    }),
+    rsplit: native("rsplit", (s, a) => {
+        const sep = a[0];
+        if (sep == null) return s.split(/\s+/).filter((x) => x !== "");
+        const delen = s.split(sep);
+        const n = a.length > 1 ? Number(a[1]) : -1;
+        if (n < 0 || delen.length <= n + 1) return delen;
+        return [delen.slice(0, delen.length - n).join(sep), ...delen.slice(delen.length - n)];
+    }),
+    partition: native("partition", (s, a) => {
+        const i = s.indexOf(a[0]);
+        return i < 0 ? [s, "", ""] : [s.slice(0, i), a[0], s.slice(i + a[0].length)];
+    }),
     format: native("format", (s, a) => {
         let idx = 0;
         return s.replace(/\{\}/g, () => pyStr(a[idx++]));
@@ -1554,10 +1628,64 @@ const LIST_METHODS = {
     index: native("index", (l, a) => l.findIndex((x) => pyEquals(x, a[0]))),
     count: native("count", (l, a) => l.filter((x) => pyEquals(x, a[0])).length),
     sort: native("sort", (l, a, kw) => { sortInPlace(l, kw); return null; }),
+    clear: native("clear", (l) => { l.length = 0; return null; }),
     reverse: native("reverse", (l) => { l.reverse(); return null; }),
     copy: native("copy", (l) => l.slice())
 };
+/**
+ * `'%s scored %d' % value` — printf-style formatting.
+ *
+ * Supports the specifiers a player actually types: s d i f g r % plus an
+ * optional width and precision (`%-8s`, `%5.2f`). A single non-tuple argument
+ * fills one slot, exactly as Python does.
+ */
+function pyFormat(fmt, arg, line) {
+    const args = Array.isArray(arg) ? arg.slice() : [arg];
+    let i = 0;
+    const uit = fmt.replace(/%(-)?(\d+)?(?:\.(\d+))?([sdifgr%])/g,
+        (heel, links, breedte, precisie, soort) => {
+            if (soort === "%") return "%";
+            if (i >= args.length) {
+                throw new BuckyError("TypeError",
+                    "not enough arguments for format string", line);
+            }
+            const v = args[i++];
+            let s;
+            if (soort === "d" || soort === "i") s = String(Math.trunc(Number(v)));
+            else if (soort === "f") s = Number(v).toFixed(precisie == null ? 6 : Number(precisie));
+            else if (soort === "g") s = String(Number(v));
+            else if (soort === "r") s = pyRepr(v);
+            else s = pyStr(v);
+            if (breedte) {
+                const n = Number(breedte);
+                s = links ? s.padEnd(n) : s.padStart(n);
+            }
+            return s;
+        });
+    if (i < args.length) {
+        throw new BuckyError("TypeError",
+            "not all arguments converted during string formatting", line);
+    }
+    return uit;
+}
+
 function sortInPlace(l, kw) {
+    // `key=` WERD STILZWIJGEND GENEGEERD, en dat is de gevaarlijkste soort
+    // fout in dit bestand: `sorted(rows, key=op_naam)` gaf een lijst terug die
+    // er goed uitzag en in de verkeerde volgorde stond. Niets wees op de
+    // oorzaak.
+    //
+    // Hem ECHT ondersteunen vraagt de generatormachinerie van de interpreter -
+    // een sleutelfunctie is Python-code en `callValue` is een generator, dus
+    // `sorted` zou zelf een generator moeten worden. Dat is een eigen ingreep.
+    // Tot die er is, is een weigering die zegt wat je in plaats daarvan doet
+    // strikt beter dan een stil verkeerd antwoord.
+    if (kw && kw.key != null) {
+        throw new BuckyError("NotImplementedError",
+            "sorted(key=...) is not available yet. Build the pairs yourself: "
+            + "rows = [[k(x), x] for x in rows] is not available either, so use "
+            + "a loop that appends [key, item] and sort that.", 0);
+    }
     const rev = kw && truthy(kw.reverse);
     l.sort((x, y) => (x < y ? -1 : x > y ? 1 : 0));
     if (rev) l.reverse();
@@ -1570,6 +1698,14 @@ const DICT_METHODS = {
     get: native("get", (d, a) => (a[0] in d ? d[a[0]] : (a.length > 1 ? a[1] : null))),
     copy: native("copy", (d) => ({ ...d })),
     update: native("update", (d, a) => { Object.assign(d, a[0] || {}); return null; }),
+    // Blok 4. `setdefault` is wat je typt bij de eerste teller of groepering,
+    // en zonder hem schrijf je elke keer drie regels met een `in`-controle.
+    setdefault: native("setdefault", (d, a) => {
+        const k = String(a[0]);
+        if (!(k in d)) d[k] = a.length > 1 ? a[1] : null;
+        return d[k];
+    }),
+    clear: native("clear", (d) => { Object.keys(d).forEach((k) => delete d[k]); return null; }),
     pop: native("pop", (d, a) => { const k = String(a[0]); if (k in d) { const v = d[k]; delete d[k]; return v; } return a.length > 1 ? a[1] : null; })
 };
 

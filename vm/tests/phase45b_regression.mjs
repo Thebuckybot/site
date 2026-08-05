@@ -257,6 +257,51 @@ const J=(r)=>r.output.join(" ");
       "DOCS searching for a method name finds its module page");
   }
 
+  // BLOK 4 - de taalgaten waar een speler het snelst tegenaan loopt. Elk hiervan
+  // was een SyntaxError of, erger, een stil verkeerd antwoord.
+  r = await run("a = 1\nb = 2\na, b = b, a\nprint(a, b)");
+  assert(r.ok && /2 1/.test(J(r)), "LANG a, b = b, a swaps (was a SyntaxError)");
+  r = await run("x = 1, 2, 3\nprint(x)");
+  assert(r.ok && /1, 2, 3/.test(J(r)), "LANG a bare tuple on the right-hand side");
+
+  // `'hi %s' % name` gaf `hi %s` terug: geen fout, geen waarschuwing, het
+  // verkeerde antwoord.
+  r = await run("print('hi %s' % 'bob')");
+  assert(r.ok && /hi bob/.test(J(r)), "LANG %-formatting on a string");
+  r = await run("print('%d and %5.2f' % [7, 3.14159])");
+  assert(r.ok && /7 and\s+3\.14/.test(J(r)), "LANG %-formatting with width and precision");
+  r = await run("print('%s %s' % 'een')");
+  assert(!r.ok && /not enough arguments/.test(r.error || ""), "LANG too few format arguments is an error");
+  r = await run("print(7 % 3)");
+  assert(r.ok && /\b1\b/.test(J(r)), "LANG % on numbers is still modulo");
+  r = await run("print([1] % 2)");
+  assert(!r.ok && /unsupported operand/.test(r.error || ""), "LANG % on a list refuses instead of returning it");
+
+  // sorted(key=) WERD GENEGEERD: een lijst die er goed uitzag in de verkeerde
+  // volgorde. Een weigering die zegt wat je moet doen is strikt beter.
+  r = await run("print(sorted([3, 1], key=len))");
+  assert(!r.ok && /sorted\(key=/.test(r.error || ""), "LANG sorted(key=) refuses instead of silently ignoring");
+  r = await run("print(sorted([3, 1, 2], reverse=True))");
+  assert(r.ok && /3, 2, 1/.test(J(r)), "LANG sorted(reverse=) still works");
+
+  // De methoden die je typt zodra je tekst uit een leak moet verwerken.
+  r = await run("print('42'.isdigit(), 'x'.isdigit())");
+  assert(r.ok && /True False/.test(J(r)), "LANG str.isdigit");
+  r = await run("print('a\\nb\\nc'.splitlines())");
+  assert(r.ok && /'a', 'b', 'c'/.test(J(r)), "LANG str.splitlines");
+  r = await run("print('LEAK-9'.removeprefix('LEAK-'), 'a.py'.removesuffix('.py'))");
+  assert(r.ok && /9 a/.test(J(r)), "LANG str.removeprefix / removesuffix");
+  r = await run("print('a=b'.partition('='))");
+  assert(r.ok && /'a', '=', 'b'/.test(J(r)), "LANG str.partition");
+  r = await run("print('a/b/c'.rsplit('/', 1))");
+  assert(r.ok && /'a\/b', 'c'/.test(J(r)), "LANG str.rsplit with a limit");
+  r = await run("print('abc'.index('z'))");
+  assert(!r.ok && /substring not found/.test(r.error || ""), "LANG str.index raises where find returns -1");
+  r = await run("d = {}\nd.setdefault('n', 0)\nd.setdefault('n', 9)\nprint(d)");
+  assert(r.ok && /'n': 0/.test(J(r)), "LANG dict.setdefault keeps the first value");
+  r = await run("l = [1, 2]\nl.clear()\nd = {'a': 1}\nd.clear()\nprint(l, d)");
+  assert(r.ok && /\[\] \{\}/.test(J(r)), "LANG list.clear / dict.clear");
+
   // Hydration — cold 200-empty must NOT poison the section; it re-hydrates.
   let mode="empty";
   const eLB={available:true,kinds:[],boards:[{kind:"richest",items:[]}]};
