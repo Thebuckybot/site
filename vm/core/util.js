@@ -11,7 +11,15 @@ export function escapeHtml(value) {
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+        .replace(/"/g, "&quot;")
+        // DE APOSTROF HOORT ERBIJ, ook al gebruikt geen enkel attribuut in de VM
+        // vandaag enkele quotes. Dat is precies waarom hij er in stond te
+        // ontbreken: de functie was correct voor élk bestaand aanroeppunt en
+        // fout voor het eerste dat anders geschreven zou worden. Een escaper
+        // die van zijn aanroepers afhangt, is geen escaper.
+        // `&#39;` en niet `&apos;`: die laatste is XML/HTML5 en wordt door oude
+        // HTML-parsers niet herkend. Getalsvorm werkt overal.
+        .replace(/'/g, "&#39;");
 }
 
 /** Clamp a number between a minimum and maximum. */

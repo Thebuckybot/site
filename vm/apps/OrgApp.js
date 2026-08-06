@@ -42,6 +42,7 @@
 // De client is EEN named export met de verbs erin, geen losse functies. Een
 // namespace-import geeft dan een object zonder `request` en de app valt om op
 // de eerste fetch - stil, want het gebeurt in een promise.
+import { escapeHtml as sharedEscapeHtml } from "../core/util.js";
 import { gatewayClient } from "../core/gatewayClient.js";
 import { applyOrgTheme, applyOrgMaterial, accentColour } from "./orgTheme.js";
 
@@ -80,10 +81,22 @@ const RANK_LABEL = {
 /* ------------------------------------------------------------------ */
 /* helpers                                                             */
 /* ------------------------------------------------------------------ */
+/**
+ * De GEDEELDE escaper, en niet meer een eigen kopie.
+ *
+ * Hier stond een tweede implementatie, en die was per ongeluk de betere: hij
+ * escapete de apostrof en `core/util.js` deed dat niet. Twee kopieën van een
+ * beveiligingscontrole lopen uit elkaar — dat is letterlijk de reden die
+ * `utils/cors.py` opschrijft voor zijn eigen samenvoeging — en hier was de
+ * kopie die minder deed juist degene die de rest van de VM gebruikte.
+ *
+ * `core/util.js` escapet sinds bevinding G-3 alle vijf de tekens, dus deze
+ * kopie is overbodig geworden. Het verschil in gedrag is nul, op één punt na:
+ * de oude versie maakte van `null`/`undefined` een lege string en de gedeelde
+ * maakt er `"null"` van. Daarom staat de leegcheck hier nog, als dunne wikkel.
+ */
 function escapeHtml(value) {
-    return String(value === null || value === undefined ? "" : value)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    return value === null || value === undefined ? "" : sharedEscapeHtml(value);
 }
 
 /**

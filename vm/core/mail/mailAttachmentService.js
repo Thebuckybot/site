@@ -64,8 +64,40 @@ export function createMailAttachmentService(storage, filesystem) {
     return { store, listFor, open, materialize, DEFAULT_DIR };
 }
 
-/** Keep a filename safe for the VFS; fall back to a generic name. */
+/**
+ * Keep a filename safe for the VFS AND for every surface that renders it.
+ *
+ * TWEE SOORTEN GEVAAR, EN ZE ZIJN NIET HETZELFDE.
+ *
+ * 1. HET PAD. Slashes eruit, anders schrijft een bijlage buiten `/mail/
+ *    attachments/`. Dat stond er al en het klopte.
+ *
+ * 2. DE WEERGAVE (bevinding G-1). De naam komt van de AFZENDER en reist mee
+ *    tot in `notify("Attachment saved", result.path)`. Die toast rendeerde hem
+ *    ongeëscaped, en daarmee was een bestandsnaam een uitvoerbaar stuk HTML in
+ *    de browser van de ontvanger. De toast is gerepareerd; dit is de tweede
+ *    laag, want een bestandsnaam die `<` bevat is sowieso onzin en er komen nog
+ *    oppervlakken bij die hem tonen.
+ *
+ * De control- en HTML-actieve tekens worden VERWIJDERD en niet vervangen door
+ * een underscore: een naam die `_img src=x onerror=..._` heet, leest als iets
+ * wat de afzender bedoeld heeft. Weglaten maakt zichtbaar dat er iets is
+ * weggehaald zonder er een leesbare zin van te maken.
+ *
+ * De lengtegrens is 200 en niet 255: de map (`/mail/attachments/`, 18 tekens)
+ * telt mee in wat een pad ooit ergens moet passen, en 200 laat daar ruimte
+ * voor zonder ooit een echte bijlagenaam te raken.
+ */
+const MAX_FILENAME = 200;
+
 function sanitizeName(name, id) {
-    const cleaned = String(name || "").replace(/[\\/]+/g, "_").trim();
+    const cleaned = String(name || "")
+        .replace(/[\\/]+/g, "_")
+        .replace(/[<>"'&]/g, "")
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u001f\u007f]/g, "")
+        .trim()
+        .slice(0, MAX_FILENAME)
+        .trim();
     return cleaned || `attachment_${id}.txt`;
 }

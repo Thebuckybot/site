@@ -12,5 +12,8 @@ code=$?
 # v3 blok 3 - de War Room. Aparte suite: hij stubt de gatewayClient, en dat mag
 # de runtime-suite hierboven niet zien.
 node "$tmp/vm/tests/warroom_leaks.mjs" || code=$?
+# Bevindingen G-1 en G-3 - de XSS-oppervlaktes. Aparte suite omdat hij niets
+# stubt en niets van de runtime nodig heeft: hij draait de renderfuncties kaal.
+node "$tmp/vm/tests/xss_surfaces.mjs" || code=$?
 rm -rf "$tmp"
 exit $code
