@@ -19,6 +19,18 @@
 
 import { API_URL } from "./config.js";
 
+// Dezelfde deadline-regel als de navigatiebalk: een stille server mag deze
+// pagina op "Loading..." zetten, maar nooit voor eeuwig - de statusregel moet
+// binnen de deadline omslaan naar een echte melding.
+const FETCH_DEADLINE_MS = 8000;
+
+function fetchMetDeadline(url, opts = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_DEADLINE_MS);
+  return fetch(url, { ...opts, signal: controller.signal })
+    .finally(() => clearTimeout(timer));
+}
+
 const grid = document.getElementById("pr-grid");
 const status = document.getElementById("pr-status");
 const you = document.getElementById("pr-you");
@@ -143,7 +155,7 @@ function say(text) {
 async function load() {
   let tiers = [];
   try {
-    const res = await fetch(`${API_URL}/api/premium/tiers`, {
+    const res = await fetchMetDeadline(`${API_URL}/api/premium/tiers`, {
       credentials: "include",
     });
     if (res.status === 404) {
@@ -169,7 +181,7 @@ async function load() {
   // als hij faalt.
   let mine = null;
   try {
-    const res = await fetch(`${API_URL}/api/premium/me`, {
+    const res = await fetchMetDeadline(`${API_URL}/api/premium/me`, {
       credentials: "include",
     });
     if (res.ok) {

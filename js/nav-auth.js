@@ -8,6 +8,39 @@ const essentialLinksHTML = `
   <li><a href="privacy.html">Privacy Policy</a></li>
 `;
 
+// DE BALK HANGT AAN GEEN ENKELE FETCH. Dat is de les van 12 augustus: de HTML
+// heeft een leeg <ul>, renderNav was de enige vuller, en die draaide pas nadat
+// /api/me had geantwoord - zonder timeout. Eén hangend of door CORS geblokkeerd
+// antwoord en de héle balk bleef leeg, op elke pagina. De premiumlink kreeg
+// eerder al zijn eigen vangrails, maar de balk zelf was altijd al gegijzeld
+// door de login-check.
+//
+// Daarom: (1) de balk wordt METEEN getekend, voordat er ook maar één request
+// vertrekt - uitgelogd als default, ingelogd als er een sessiecache ligt;
+// (2) elke fetch hier draagt een deadline, zodat "traag" nooit "nooit" wordt.
+const FETCH_DEADLINE_MS = 8000;
+
+function fetchMetDeadline(url, opts = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_DEADLINE_MS);
+  return fetch(url, { ...opts, signal: controller.signal })
+    .finally(() => clearTimeout(timer));
+}
+
+function renderNavDirect() {
+  // Ingelogd tekenen als de vorige pagina dat wist, anders uitgelogd. Beide
+  // zijn compleet; checkLogin werkt het daarna bij als de server iets anders
+  // zegt. Een verkeerde eerste gok kost een knopwissel - een lege balk kost
+  // de hele navigatie.
+  let user = null;
+  try {
+    user = JSON.parse(sessionStorage.getItem("user_info") || "null");
+  } catch (err) {
+    user = null;
+  }
+  renderNav(Boolean(user), user);
+}
+
 function storeTokenFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
@@ -80,7 +113,7 @@ function renderNav(loggedIn, user = null) {
 async function addPremiumLink() {
   if (!navMenu) return;
   try {
-    const res = await fetch(`${API_URL}/api/premium/tiers`, {
+    const res = await fetchMetDeadline(`${API_URL}/api/premium/tiers`, {
       credentials: "include",
     });
     if (!res.ok) return;                 // 404 = nog niet open, 503 = even niet
@@ -110,7 +143,10 @@ async function checkLogin() {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_URL}/api/me`, {
+    // MET DEADLINE. Zonder abort hangt een stille server deze promise voor
+    // eeuwig op - en al hangt de balk daar sinds 12 augustus niet meer aan,
+    // een login-status die nooit komt is nog steeds een kapotte upgrade.
+    const res = await fetchMetDeadline(`${API_URL}/api/me`, {
       credentials: "include",
       headers
     });
@@ -118,6 +154,9 @@ async function checkLogin() {
     const data = await res.json();
 
     if (data.logged_in) {
+      try {
+        sessionStorage.setItem("user_info", JSON.stringify(data.user));
+      } catch (err) { /* private mode: geen cache, wel een balk */ }
       renderNav(true, data.user);
     } else {
       clearUserData();
@@ -170,10 +209,12 @@ window.addEventListener("storage", (event) => {
 
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
-  // DE BALK EERST, PREMIUM DAARNA. `checkLogin` rendert de nav; de premiumlink is
-  // een toevoeging erop en wordt daarom apart gestart in plaats van ervoor of
-  // erbinnen. Zo kan een langzame of stukke premium-endpoint de navigatie niet
-  // vertragen en niet meenemen.
+  // TEKENEN VOOR HET NETWERK. De balk staat er vanaf de eerste tick, uit de
+  // sessiecache of als uitgelogde default; checkLogin is daarna een UPGRADE en
+  // geen voorwaarde. Premium blijft erachter gehaakt omdat renderNav het menu
+  // wist - maar met de deadline op /api/me vuurt die finally altijd binnen
+  // acht seconden, ook als de server zwijgt.
+  renderNavDirect();
   checkLogin().finally(() => addPremiumLink());
 });
 
