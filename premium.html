@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bucky Premium</title>
+  <meta name="description" content="The four Bucky premium tiers: what each boost does, and exactly what is in the monthly cache." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="premium.css" />
+</head>
+<body class="pr-body">
+  <!--
+    ACCESSIBILITY IS BUILT IN HERE, NOT BOLTED ON LATER.
+
+    * A skip link, because the first thing on the page is navigation.
+    * One <h1>, then <h2> per tier: the heading order is the document outline a
+      screen reader navigates by, so it never skips a level for looks.
+    * The cache contents sit in <details>/<summary>. That is keyboard operable
+      and announced as expandable by every screen reader without a line of
+      JavaScript - an ARIA accordion built by hand is the version that breaks.
+    * The tier a signed-in player holds is marked with TEXT ("Your tier"), not
+      only with a coloured border. Colour is the second signal, never the only
+      one.
+    * The live region below announces load failures, because a fetch that fails
+      silently is invisible to someone who cannot see the empty grid.
+  -->
+  <a class="pr-skip" href="#pr-main">Skip to content</a>
+
+  <header class="pr-top">
+    <nav class="pr-nav" aria-label="Main">
+      <a class="pr-brand" href="index.html">
+        <span class="pr-brand-mark" aria-hidden="true">B</span>
+        <span>Bucky</span>
+      </a>
+      <ul class="pr-nav-list">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="premium.html" aria-current="page">Premium</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="pr-main" id="pr-main" tabindex="-1">
+    <h1 class="pr-title">Bucky Premium</h1>
+    <p class="pr-lede">
+      Four tiers. Each one multiplies what you earn by playing, adds a bonus to
+      the shard half of organisation challenges, and pays out a cache once a
+      month that you claim with <code>premium</code> in Discord.
+    </p>
+
+    <!-- Wat een ingelogde speler heeft. Leeg en aria-hidden zolang er niets is:
+         een leeg blok met een kop erboven leest als iets dat stuk is. -->
+    <section class="pr-you" id="pr-you" hidden aria-labelledby="pr-you-title">
+      <h2 class="pr-you-title" id="pr-you-title">Your subscription</h2>
+      <p class="pr-you-body" id="pr-you-body"></p>
+    </section>
+
+    <!-- De statusmelding. `role="status"` zodat een fout ook wordt VOORGELEZEN
+         en niet alleen te zien is. -->
+    <p class="pr-status" id="pr-status" role="status" aria-live="polite">
+      Loading the tiers…
+    </p>
+
+    <ul class="pr-grid" id="pr-grid" aria-describedby="pr-grid-note"></ul>
+    <p class="pr-note" id="pr-grid-note">
+      Prices and billing are handled by Discord. Buying opens Discord's own
+      store page for that tier.
+    </p>
+
+    <section class="pr-faq" aria-labelledby="pr-faq-title">
+      <h2 id="pr-faq-title">How the monthly cache works</h2>
+      <dl class="pr-dl">
+        <dt>You claim it, it is never dropped on you</dt>
+        <dd>
+          A new cache appears once per calendar month while your subscription is
+          running. It waits until you run <code>premium</code> and press claim.
+        </dd>
+        <dt>An unclaimed cache cannot be stolen</dt>
+        <dd>
+          It is not part of your balance and not part of your net worth, so it is
+          out of reach of robberies by construction — there is nothing there to
+          take.
+        </dd>
+        <dt>One cache per month</dt>
+        <dd>
+          Subscribing twice in the same month still gives one cache. Upgrading
+          mid-month lifts the waiting cache to the higher tier.
+        </dd>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="pr-foot">
+    <p>
+      <a href="privacy.html">Privacy</a> ·
+      <a href="cookie.html">Cookies</a> ·
+      <a href="contact.html">Contact</a>
+    </p>
+  </footer>
+
+  <script type="module" src="js/premium.js"></script>
+</body>
+</html>
