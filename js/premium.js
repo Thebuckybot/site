@@ -56,6 +56,9 @@ function formatShards(amount) {
 function card(tier, mine) {
   const item = el("li", "pr-card");
   if (mine) item.classList.add("pr-card-mine");
+  // DE AANRADER KOMT UIT DE DATA, en de data komt uit de botconfig
+  // (website.featured_tier) via de catalogus - hier staat geen tiernaam.
+  if (tier.featured === true) item.classList.add("pr-card-featured");
 
   const head = el("div", "pr-card-head");
   const title = el("h2", "pr-card-title");
@@ -69,6 +72,11 @@ function card(tier, mine) {
   title.appendChild(document.createTextNode(tier.name || tier.tier_key || ""));
   head.appendChild(title);
 
+  if (tier.featured === true) {
+    // TEKST EN NIET ALLEEN DE RAND: wie de kleur of de beweging niet ziet,
+    // moet de aanbeveling nog steeds kunnen lezen.
+    head.appendChild(el("p", "pr-featured-flag", "Recommended"));
+  }
   if (mine) {
     // TEKST EN NIET ALLEEN EEN KLEUR. Dit is de reden dat deze regel bestaat:
     // wie de rand niet ziet, moet het nog steeds kunnen weten.

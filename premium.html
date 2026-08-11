@@ -9,10 +9,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="public.css" />
   <link rel="stylesheet" href="premium.css" />
+  <script src="js/nav-auth.js" type="module"></script>
 </head>
 <body class="pr-body">
   <!--
+    DE NAV EN DE FOOTER ZIJN DE GEDEELDE, NIET EEN EIGEN KOPIE. De eerste versie
+    van deze pagina had een eigen pr-nav en pr-foot, en zag er daardoor uit alsof
+    hij van een andere site kwam. Dit is nu hetzelfde skelet als index/contact/
+    privacy: `site-nav` + `#nav-menu` (gevuld door js/nav-auth.js, dus login,
+    dashboard en de premiumlink komen uit dezelfde bron als overal) en de
+    `site-footer` uit public.css. Het logo is de echte afbeelding, zoals op
+    index - niet de "tijdelijke" letter B.
+
     ACCESSIBILITY IS BUILT IN HERE, NOT BOLTED ON LATER.
 
     * A skip link, because the first thing on the page is navigation.
@@ -21,27 +31,20 @@
     * The cache contents sit in <details>/<summary>. That is keyboard operable
       and announced as expandable by every screen reader without a line of
       JavaScript - an ARIA accordion built by hand is the version that breaks.
-    * The tier a signed-in player holds is marked with TEXT ("Your tier"), not
-      only with a coloured border. Colour is the second signal, never the only
-      one.
+    * The tier a signed-in player holds is marked with TEXT ("Your tier"), and
+      the recommended tier with the word "Recommended" - never colour alone.
     * The live region below announces load failures, because a fetch that fails
       silently is invisible to someone who cannot see the empty grid.
   -->
   <a class="pr-skip" href="#pr-main">Skip to content</a>
 
-  <header class="pr-top">
-    <nav class="pr-nav" aria-label="Main">
-      <a class="pr-brand" href="index.html">
-        <span class="pr-brand-mark" aria-hidden="true">B</span>
-        <span>Bucky</span>
-      </a>
-      <ul class="pr-nav-list">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="dashboard.html">Dashboard</a></li>
-        <li><a href="premium.html" aria-current="page">Premium</a></li>
-      </ul>
-    </nav>
-  </header>
+  <nav class="site-nav" id="site-nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><img class="mark" src="pics/buckypfp.JPEG" alt="Bucky" /><span>Bucky</span></a>
+      <button class="hamburger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <ul id="nav-menu"></ul>
+    </div>
+  </nav>
 
   <main class="pr-main" id="pr-main" tabindex="-1">
     <h1 class="pr-title">Bucky Premium</h1>
@@ -93,14 +96,44 @@
     </section>
   </main>
 
-  <footer class="pr-foot">
-    <p>
-      <a href="privacy.html">Privacy</a> ·
-      <a href="cookie.html">Cookies</a> ·
-      <a href="contact.html">Contact</a>
-    </p>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a class="brand" href="index.html"><img class="mark" src="pics/buckypfp.JPEG" alt="Bucky" /><span>Bucky</span></a>
+        <p>Security, economy and interactive storytelling for your Discord server — one platform, endlessly configurable.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="index.html#security">Security</a>
+        <a href="index.html#economy">Economy</a>
+        <a href="index.html#adventures">Adventures</a>
+        <a href="arcade.html">Arcade</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal &amp; support</h4>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="tos.html">Terms of Service</a>
+        <a href="cookie.html">Cookie Policy</a>
+        <a href="contact.html">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 Bucky Bot. All rights reserved.</div>
   </footer>
 
   <script type="module" src="js/premium.js"></script>
+  <!-- Hamburger: hetzelfde snippet als op index/contact, want het is dezelfde nav. -->
+  <script>
+    (function () {
+      var hb = document.querySelector('.hamburger');
+      var menu = document.getElementById('nav-menu');
+      if (!hb || !menu) return;
+      hb.addEventListener('click', function () {
+        var open = hb.getAttribute('aria-expanded') === 'true';
+        hb.setAttribute('aria-expanded', String(!open));
+        hb.classList.toggle('open');
+        menu.classList.toggle('open');
+      });
+    })();
+  </script>
 </body>
 </html>

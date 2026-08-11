@@ -27,6 +27,10 @@ img { max-width: 100%; display: block; }
   width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-weight: 800;
   background: linear-gradient(135deg, var(--bk-red), var(--bk-red-500)); box-shadow: var(--bk-glow);
 }
+/* Het echte logo in plaats van de tijdelijke letter B. Deze regel stond alleen in
+   index.css, dus elke andere pagina die het logo kreeg toonde hem uitgerekt -
+   daarom hoort hij hier, bij de rest van de gedeelde nav. */
+.brand img.mark { object-fit: cover; overflow: hidden; }
 #nav-menu { display: flex; align-items: center; gap: 6px; list-style: none; margin: 0; padding: 0; }
 #nav-menu li a {
   color: var(--bk-muted); text-decoration: none; font-weight: 600; font-size: 14px;

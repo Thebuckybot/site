@@ -14,11 +14,11 @@
    duidelijkers in de plaats komt; dat is de fout die een pagina onbruikbaar maakt
    voor wie geen muis gebruikt. */
 
+/* DE NAV, DE FOOTER EN DE BODY KOMEN UIT public.css - dit bestand styleert
+   alleen de inhoud. De eerste versie had hier een eigen .pr-top/.pr-nav/.pr-foot
+   en een eigen body-achtergrond, en daardoor zag de pagina eruit alsof hij van
+   een andere site kwam. Eén bron, geen kopie. */
 .pr-body {
-  margin: 0;
-  background: var(--bk-bg-1, #0b0f16);
-  color: var(--bk-text, #eef1f6);
-  font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.6;
 }
 
@@ -40,66 +40,12 @@
   left: 0;
 }
 
-/* --- kop ---------------------------------------------------------------- */
-.pr-top {
-  border-bottom: 1px solid var(--bk-border, rgba(255, 255, 255, 0.07));
-  background: var(--bk-bg-2, #141a26);
-}
-.pr-nav {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 0.9rem 1.25rem;
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-.pr-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 800;
-  color: var(--bk-text, #eef1f6);
-  text-decoration: none;
-}
-.pr-brand-mark {
-  display: grid;
-  place-items: center;
-  width: 1.9rem;
-  height: 1.9rem;
-  border-radius: 8px;
-  background: var(--bk-red, #8B1E3F);
-  color: #fff;
-}
-.pr-nav-list {
-  display: flex;
-  gap: 1.25rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.pr-nav-list a {
-  color: var(--bk-muted, #a7b0c2);
-  text-decoration: none;
-  padding: 0.25rem 0;
-}
-.pr-nav-list a:hover {
-  color: var(--bk-text, #eef1f6);
-  text-decoration: underline;
-}
-/* De huidige pagina wordt met een onderstreping ÉN met `aria-current` gemarkeerd.
-   Alleen kleur zou het enige signaal zijn, en dat mag niet. */
-.pr-nav-list a[aria-current="page"] {
-  color: var(--bk-text, #eef1f6);
-  border-bottom: 2px solid var(--bk-red-300, #c24f6f);
-  font-weight: 700;
-}
-
 /* --- inhoud ------------------------------------------------------------- */
 .pr-main {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 2.5rem 1.25rem 4rem;
+  /* de gedeelde nav is position:fixed, dus de inhoud begint eronder */
+  padding: 7rem 1.25rem 4rem;
 }
 .pr-main:focus {
   outline: none;             /* het doel van de skip link, niet een bedienbaar element */
@@ -264,12 +210,9 @@
   font-size: 0.9rem;
 }
 
-.pr-note,
-.pr-foot {
+.pr-note {
   color: var(--bk-muted, #a7b0c2);
   font-size: 0.9rem;
-}
-.pr-note {
   margin: 0 0 3rem;
 }
 
@@ -288,16 +231,6 @@
 .pr-dl dd {
   margin: 0.2rem 0 0;
   color: var(--bk-muted, #a7b0c2);
-}
-
-.pr-foot {
-  border-top: 1px solid var(--bk-border, rgba(255, 255, 255, 0.07));
-  padding: 1.5rem 1.25rem;
-  text-align: center;
-}
-.pr-foot a,
-.pr-you a {
-  color: var(--bk-red-100, #e7b9c6);
 }
 
 /* --- alleen voor schermlezers ------------------------------------------- */
@@ -338,8 +271,90 @@
   }
   .pr-stats dt,
   .pr-note,
-  .pr-foot,
   .pr-count {
     color: var(--bk-text, #eef1f6);
   }
+}
+
+/* --- de draaiende rand ---------------------------------------------------
+   Een conic-gradient waarvan het beginpunt (--pr-a) door een keyframe wordt
+   geanimeerd. Dat kán alleen doordat @property de custom property als <angle>
+   registreert - zonder registratie is een custom property niet interpoleerbaar
+   en doet de animatie niets.
+
+   DE TERUGVAL IS PRECIES DAARDOOR GRATIS, in twee treden:
+     1. Browser zonder @property (Firefox < 128, Safari < 16.4, Chrome < 85):
+        de animatie interpoleert niet, dus de rand staat STIL op zijn beginstand
+        - een nette statische gradient-rand, geen kapotte.
+     2. Browser zonder conic-gradient (antiek): het @supports-blok geldt niet en
+        de effen rand eronder blijft staan.
+
+   BEWEGING UIT: het bestaande prefers-reduced-motion-blok hierboven zet élke
+   animatie uit met !important, dus ook deze - de rand blijft, hij draait niet.
+
+   DE KLEUREN ZIJN DE CRIMSON-RAMP van de site (tokens.css), niet het rood-geel
+   uit het voorbeeld. Eerste en laatste kleur gelijk, anders knipt de lus. */
+@property --pr-a {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes pr-spin {
+  to {
+    --pr-a: 360deg;
+  }
+}
+
+/* Effen terugval-rand voor trede 2; binnen @supports wordt hij transparant en
+   neemt de gradient het over. */
+.pr-buy,
+.pr-card-featured {
+  border: 2px solid var(--bk-red-300, #c24f6f);
+}
+
+@supports (background: conic-gradient(from 0deg, #000, #fff)) {
+  .pr-buy {
+    border-color: transparent;
+    background:
+      linear-gradient(var(--bk-red, #8B1E3F), var(--bk-red, #8B1E3F)) padding-box,
+      conic-gradient(from var(--pr-a),
+        var(--bk-red-700, #7a1a37), var(--bk-red-300, #c24f6f),
+        var(--bk-red-100, #e7b9c6), var(--bk-red-300, #c24f6f),
+        var(--bk-red-700, #7a1a37)) border-box;
+    animation: pr-spin 4s linear infinite;
+  }
+  .pr-buy:hover {
+    background:
+      linear-gradient(var(--bk-red-500, #a3264d), var(--bk-red-500, #a3264d)) padding-box,
+      conic-gradient(from var(--pr-a),
+        var(--bk-red-700, #7a1a37), var(--bk-red-300, #c24f6f),
+        var(--bk-red-100, #e7b9c6), var(--bk-red-300, #c24f6f),
+        var(--bk-red-700, #7a1a37)) border-box;
+  }
+
+  .pr-card-featured {
+    border-color: transparent;
+    background:
+      linear-gradient(var(--bk-panel, #151b28), var(--bk-panel, #151b28)) padding-box,
+      conic-gradient(from var(--pr-a),
+        var(--bk-red, #8B1E3F), var(--bk-red-300, #c24f6f),
+        var(--bk-red-100, #e7b9c6), var(--bk-red-300, #c24f6f),
+        var(--bk-red, #8B1E3F)) border-box;
+    animation: pr-spin 6s linear infinite;
+  }
+}
+
+/* Kleur is nooit het enige signaal: de aanrader draagt het woord. */
+.pr-featured-flag {
+  margin: 0;
+  align-self: flex-start;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--bk-red, #8B1E3F);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
 }
