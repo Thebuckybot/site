@@ -84,6 +84,13 @@ function card(tier, mine) {
   }
   item.appendChild(head);
 
+  // DE PRIJS, uit dezelfde bron als de rest (de catalogus die de bot vult) en
+  // dus nooit hardgecodeerd hier. Een string die de portal-prijs herhaalt;
+  // ontbreekt hij, dan staat er geen prijs in plaats van een verzonnen bedrag.
+  if (tier.price) {
+    head.appendChild(el("p", "pr-price", tier.price));
+  }
+
   const stats = el("dl", "pr-stats");
   const rows = [
     ["Earnings boost", formatBoost(tier.boost)],

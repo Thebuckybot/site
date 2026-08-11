@@ -127,6 +127,13 @@
 .pr-badge {
   color: var(--bk-red-300, #c24f6f);
 }
+/* De prijs, direct onder de titel. Herhaalt de portal-prijs uit de data. */
+.pr-price {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--bk-red-100, #e7b9c6);
+}
 .pr-mine-flag {
   margin: 0;
   align-self: flex-start;
