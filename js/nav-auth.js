@@ -61,6 +61,46 @@ function renderNav(loggedIn, user = null) {
   }
 }
 
+// --- Premium in de navigatiebalk -------------------------------------------
+//
+// DE VLAG IS NIET DE BRON, DE GEPUBLICEERDE DATA IS DAT. `website.enabled` staat
+// in een configbestand van de bot; de site kan dat niet lezen en hoort dat ook
+// niet te willen. Wat de site wél kan zien is of er tiers zijn om te tonen, en
+// dat is precies hetzelfde feit één stap later: de bot schrijft de tiers pas weg
+// mét `published = 1` als de vlag aanstaat.
+//
+// Daarmee bestaat het venster niet meer waarin de vlag aanstaat en de pagina nog
+// niets heeft. De link verschijnt op hetzelfde moment als de inhoud, want het IS
+// de inhoud.
+//
+// DIT MAG DE REST VAN DE NAVIGATIE NOOIT OPHOUDEN OF SLOPEN. Daarom staat het in
+// een eigen functie die NA `renderNav` draait, niets await wat de nav blokkeert,
+// en zijn eigen fouten opeet. Een navigatiebalk die verdwijnt omdat één extra
+// link niet op te halen was, is oneindig erger dan een ontbrekende link.
+async function addPremiumLink() {
+  if (!navMenu) return;
+  try {
+    const res = await fetch(`${API_URL}/api/premium/tiers`, {
+      credentials: "include",
+    });
+    if (!res.ok) return;                 // 404 = nog niet open, 503 = even niet
+    const data = await res.json();
+    if (!data || data.available !== true) return;
+    if (!Array.isArray(data.tiers) || data.tiers.length === 0) return;
+    if (navMenu.querySelector("#premium-link")) return;
+
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.id = "premium-link";
+    a.href = "premium.html";
+    a.textContent = "Premium";
+    li.appendChild(a);
+    navMenu.appendChild(li);
+  } catch (err) {
+    /* geen premium in de balk; de rest van de balk staat er al */
+  }
+}
+
 async function checkLogin() {
   try {
     const token = localStorage.getItem("api_token");
@@ -120,12 +160,20 @@ async function doLogout() {
 // Sync logout/login over meerdere tabs
 window.addEventListener("storage", (event) => {
   if (event.key === "user_info" && !event.newValue) {
+    // `renderNav` begint met `innerHTML = essentialLinksHTML` en veegt de
+    // premiumlink dus weg. Hij hoort daarna opnieuw te komen, want uitloggen in
+    // een ander tabblad verandert niets aan of premium open staat.
     renderNav(false);
+    addPremiumLink();
   }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
-  checkLogin();
+  // DE BALK EERST, PREMIUM DAARNA. `checkLogin` rendert de nav; de premiumlink is
+  // een toevoeging erop en wordt daarom apart gestart in plaats van ervoor of
+  // erbinnen. Zo kan een langzame of stukke premium-endpoint de navigatie niet
+  // vertragen en niet meenemen.
+  checkLogin().finally(() => addPremiumLink());
 });
 
