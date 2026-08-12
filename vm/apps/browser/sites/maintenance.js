@@ -54,7 +54,7 @@ const maintenanceSite = createWorldFeedSite({
     siteTitle: "Bucky Maintenance",
     siteLead: "Scheduled and emergency maintenance windows for the Grid.",
     siteDomain: "Bucky Maintenance",
-    introText: "Bucky Maintenance — the Grid's downtime channel. Scheduled and emergency " +
+    introText: "Bucky Maintenance - the Grid's downtime channel. Scheduled and emergency " +
                "maintenance windows appear here live. This feed never carries announcements, " +
                "leaks or incidents; they each have their own dedicated page.",
     domains: ["maintenance_notice"],

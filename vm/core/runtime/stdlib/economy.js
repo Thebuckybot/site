@@ -44,7 +44,7 @@ export function createEconomyModule(ctx) {
         networth: def(networth),
         summary: def(summary),
         transfer: def(transfer, {
-            raises: "Moving shards is the bot's job — the VM never writes to a "
+            raises: "Moving shards is the bot's job - the VM never writes to a "
                   + "wallet. This routes through the Discord bridge and raises "
                   + "until that write path lands."
         })

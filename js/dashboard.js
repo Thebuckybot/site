@@ -169,7 +169,7 @@ function renderEmpty(guildContainer) {
     wrap.innerHTML =
       '<div class="e-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="14" width="18" height="5" rx="1.5"/><path d="M7 6.5h.01M7 16.5h.01"/></svg></div>' +
       '<h2>No manageable servers yet</h2>' +
-      '<p>You need <strong>Manage&nbsp;Server</strong> permission on a server that has Bucky. Invite Bucky to a server you manage, then refresh — it will appear here.</p>' +
+      '<p>You need <strong>Manage&nbsp;Server</strong> permission on a server that has Bucky. Invite Bucky to a server you manage, then refresh - it will appear here.</p>' +
       '<div class="e-actions"></div>';
     const actions = wrap.querySelector(".e-actions");
     const invite = document.createElement("a");
@@ -235,7 +235,7 @@ function createGuildCard(guild, guildContainer) {
     // it without another round-trip. Frontend-only; no backend/SQL involved.
     try {
       localStorage.setItem("bucky_active_guild", JSON.stringify({ id: guild.id, name: guild.name, icon: guild.icon || null }));
-    } catch (_) { /* storage disabled — dashboard falls back to the id */ }
+    } catch (_) { /* storage disabled - dashboard falls back to the id */ }
     guildContainer.querySelectorAll(".server-card.selected").forEach((c) => c.classList.remove("selected"));
     card.classList.add("selected");
     setTimeout(() => { window.location.href = `security.html?guild_id=${guild.id}`; }, 160);

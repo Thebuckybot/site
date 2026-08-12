@@ -129,7 +129,7 @@ export function table(columns, rows) {
       tbody.appendChild(el("tr", {}, columns.map((c) => {
         // el() coerces strings/numbers/booleans to text and passes Nodes through,
         // so a render() returning any primitive is safe (never crashes appendChild).
-        const cell = c.render ? c.render(r) : (r[c.key] ?? "—");
+        const cell = c.render ? c.render(r) : (r[c.key] ?? "-");
         return el("td", { "data-label": c.label }, [cell]);
       })));
     }
@@ -246,7 +246,7 @@ export function formModal({ title, fields, submitLabel = "Save" }) {
 }
 
 export function fmtTime(iso) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
   if (isNaN(d)) return String(iso);
   return d.toLocaleString();
@@ -409,7 +409,7 @@ export function dataTable(columns, rows, opts = {}) {
     } else {
       for (const r of data) {
         tbody.appendChild(el("tr", {}, columns.map((c) => {
-          const cell = c.render ? c.render(r) : (r[c.key] ?? "—");
+          const cell = c.render ? c.render(r) : (r[c.key] ?? "-");
           return el("td", { "data-label": c.label }, [cell]);
         })));
       }

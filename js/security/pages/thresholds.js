@@ -58,7 +58,7 @@ export default {
       const L = labelsFor(m);
       const b = bounds();
       const vals = await formModal({
-        title: `${m.label} — ${t.event_type} (${t.mode})`,
+        title: `${m.label} - ${t.event_type} (${t.mode})`,
         fields: [
           { name: "limit_count", label: `${L.limit_count} [${b.limit[0]}-${b.limit[1]}]`, type: "number", value: t.limit_count },
           { name: "window_seconds", label: `${L.window_seconds} [${b.window[0]}-${b.window[1]}]`, type: "number", value: t.window_seconds },
@@ -85,7 +85,7 @@ export default {
       const L = labelsFor(m);
       const b = bounds();
       const vals = await formModal({
-        title: `Create threshold — ${m.label} (${event}, ${mode})`,
+        title: `Create threshold - ${m.label} (${event}, ${mode})`,
         fields: [
           { name: "limit_count", label: `${L.limit_count} [${b.limit[0]}-${b.limit[1]}]`, type: "number", value: "" },
           { name: "window_seconds", label: `${L.window_seconds} [${b.window[0]}-${b.window[1]}]`, type: "number", value: "" },
@@ -119,7 +119,7 @@ export default {
         wrap.appendChild(head);
         if (!rows.length) {
           wrap.appendChild(el("div", { class: "sec-settings-row" }, [
-            el("span", { class: "sec-muted", text: `No ${mode}-mode row configured — the module cannot fire on this event in ${mode} mode.` }),
+            el("span", { class: "sec-muted", text: `No ${mode}-mode row configured - the module cannot fire on this event in ${mode} mode.` }),
             canEdit
               ? el("button", { class: "sec-btn sec-btn-sm sec-btn-primary", text: "Create", onclick: () => createRow(m, event) })
               : lockIcon(),
@@ -152,23 +152,23 @@ export default {
       const [tLabel, tKind] = TRIGGER_BADGE[m.trigger] || ["unknown", "muted"];
       const head = el("div", { class: "sec-chain-title" }, [
         el("strong", { text: m.label }), " ",
-        badge(m.category || "—", "muted"), " ",
+        badge(m.category || "-", "muted"), " ",
         badge(tLabel, tKind),
         m.status === "unavailable" ? badge("NOT AVAILABLE", "bad") : "",
       ]);
       const body = [head,
         el("p", { class: "sec-muted", text: m.description || "" }),
-        el("div", { class: "sec-muted", text: `Events: ${(m.events || []).join(", ") || "—"}` })];
+        el("div", { class: "sec-muted", text: `Events: ${(m.events || []).join(", ") || "-"}` })];
 
       if (m.status === "unavailable") {
         body.push(el("p", { class: "sec-muted", text: "This module has no runtime implementation yet. It cannot be enabled and cannot be tested as functional." }));
       } else if (m.trigger === "fixed") {
         body.push(el("p", { class: "sec-muted", text:
-          `Fixed trigger — fires on the first occurrence; repeats are deduplicated for ${m.cooldown_seconds}s. ` +
+          `Fixed trigger - fires on the first occurrence; repeats are deduplicated for ${m.cooldown_seconds}s. ` +
           "There is NO threshold to edit for this module (the cooldown is fixed in the bot)." }));
       } else {
         if (m.trigger === "specialized") {
-          body.push(el("p", { class: "sec-muted", text: "⚠ Specialized threshold — the fields below do NOT mean \"X events in Y seconds\" for this module; labels show their real meaning." }));
+          body.push(el("p", { class: "sec-muted", text: "⚠ Specialized threshold - the fields below do NOT mean \"X events in Y seconds\" for this module; labels show their real meaning." }));
         }
         body.push(thresholdTable(m));
       }

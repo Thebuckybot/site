@@ -72,7 +72,7 @@ function renderGrid(entries, selected) {
         return `
             <div class="vm-files-empty">
                 <strong>This folder is empty</strong>
-                <span>Create files and folders from the terminal with mkdir and touch — they appear here instantly.</span>
+                <span>Create files and folders from the terminal with mkdir and touch - they appear here instantly.</span>
             </div>
         `;
     }

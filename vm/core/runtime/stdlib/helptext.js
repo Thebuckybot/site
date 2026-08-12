@@ -101,7 +101,7 @@ export const HELP = {
             "bank()": "Banked coins (int).",
             "networth()": "Total net worth (int).",
             "summary()": "{ coins, bank, networth }.",
-            "transfer(to, amount)": "NOT available in the VM — routes to Discord (raises)."
+            "transfer(to, amount)": "NOT available in the VM - routes to Discord (raises)."
         },
         example: "print(economy.summary())"
     },
@@ -237,12 +237,12 @@ export const HELP = {
             "available()": "owned() AND off cooldown.",
             "cooldown()": "Seconds remaining (0 = ready).",
             "status()": "{ owned, available, cooldown, note }.",
-            "run(target)": "NOT available in the VM — routes to Discord (raises)."
+            "run(target)": "NOT available in the VM - routes to Discord (raises)."
         },
         example: "if hackbank.available(): print('ready')"
     },
     mail: {
-        description: "Your Bucky Mail mailbox — read and send, the same one the Mail app shows.",
+        description: "Your Bucky Mail mailbox - read and send, the same one the Mail app shows.",
         methods: {
             "identity()": "Your <username>@bucky.net address.",
             "available()": "True when the mailbox is reachable from this run.",
@@ -252,9 +252,9 @@ export const HELP = {
             "sent([limit])": "Recent sent messages, newest first.",
             "unread()": "Only the unread inbox messages.",
             "read(id)": "Open one message (marks it read) and return it.",
-            "attachments(id)": "Attachment metadata for a message — no payload.",
+            "attachments(id)": "Attachment metadata for a message - no payload.",
             "send(to, subject, body, cc=, bcc=)": "Send a message. Attachments via attachments=[...].",
-            "search(query)": "NOT available — search arrives in a later phase (raises)."
+            "search(query)": "NOT available - search arrives in a later phase (raises)."
         },
         example: "print('My address:', mail.identity())\nprint(mail.unread_count(), 'unread')"
     },
@@ -302,7 +302,7 @@ export const HELP = {
             "rule()": "A horizontal rule.",
             "banner(title)": "A boxed title block.",
             "header(title)": "A title with a rule under it.",
-            "input": "Read one typed line. NEEDS the interactive Terminal — see form.ask()."
+            "input": "Read one typed line. NEEDS the interactive Terminal - see form.ask()."
         },
         example: "terminal.banner('SCAN')\nterminal.line('starting...')"
     },
@@ -315,7 +315,7 @@ export const HELP = {
         example: "ui.table.render([{'a': 1}])"
     },
     database: {
-        description: "Database Viewer — INTERFACE ONLY. Every member raises NotImplemented.",
+        description: "Database Viewer - INTERFACE ONLY. Every member raises NotImplemented.",
         methods: {
             "query(sql)": "Not built yet (raises).",
             "tables()": "Not built yet (raises).",
@@ -324,7 +324,7 @@ export const HELP = {
         example: "# nothing here runs yet - the seam exists so the import resolves"
     },
     missions: {
-        description: "Mission Board — INTERFACE ONLY. Every member raises NotImplemented.",
+        description: "Mission Board - INTERFACE ONLY. Every member raises NotImplemented.",
         methods: {
             "list()": "Not built yet (raises).",
             "current()": "Not built yet (raises).",

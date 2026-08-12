@@ -61,7 +61,7 @@ const SEED_POSTS = [
         date: "Cycle 312",
         category: "Patch Notes",
         author: "Bucky Dev",
-        title: "Patch 0.4 — Tabs, Bookmarks & Ecosystem Expansion",
+        title: "Patch 0.4 - Tabs, Bookmarks & Ecosystem Expansion",
         summary: "Browser tabs, a bookmarks system, a bigger BuckyNet, hidden pages and a richer PulseSearch.",
         keywords: ["patch", "tabs", "bookmarks", "update", "release", "ecosystem", "developer", "dev", "log"],
         tags: ["dev", "patch", "release"],
@@ -70,24 +70,24 @@ const SEED_POSTS = [
                 "application and the fake internet is meaningfully larger and more interconnected."],
             ["h", "Browser"],
             ["patch", [
-                ["new", "Browser tabs — open, close and switch tabs, each with its own history."],
-                ["new", "Bookmarks — star any page; reopen from the bookmarks panel."],
+                ["new", "Browser tabs - open, close and switch tabs, each with its own history."],
+                ["new", "Bookmarks - star any page; reopen from the bookmarks panel."],
                 ["add", "PulseSearch now highlights query matches and suggests related searches."],
                 ["fix", "Rapid navigation no longer leaves a stale page mid-load."]
             ]],
             ["h", "BuckyNet"],
             ["patch", [
                 ["new", "Two new sites: the Bucky landing page and the Bucky Community hub."],
-                ["new", "Hidden pages — unindexed routes reachable only by direct address."],
+                ["new", "Hidden pages - unindexed routes reachable only by direct address."],
                 ["add", "BuckyWiki gained corporation, faction and timeline articles."],
-                ["add", "Sites now cross-link — every page points somewhere else on the Grid."]
+                ["add", "Sites now cross-link - every page points somewhere else on the Grid."]
             ]],
-            ["note", "Backend sync is not in this patch. The architecture is prepared for it — see " +
-                "the roadmap post — but dev posts, leaks and counters are still authored content."]
+            ["note", "Backend sync is not in this patch. The architecture is prepared for it - see " +
+                "the roadmap post - but dev posts, leaks and counters are still authored content."]
         ],
         attachments: [
-            { kind: "image", caption: "Browser tabs — multiple investigation threads" },
-            { kind: "image", caption: "PulseSearch — categorised results with highlights" }
+            { kind: "image", caption: "Browser tabs - multiple investigation threads" },
+            { kind: "image", caption: "PulseSearch - categorised results with highlights" }
         ],
         crossRefs: [
             { url: "bucky://tube/devlog-1", label: "Developer Log #1", note: "the video version" }
@@ -98,7 +98,7 @@ const SEED_POSTS = [
         date: "Cycle 311",
         category: "Patch Notes",
         author: "Bucky Dev",
-        title: "Patch 0.3 — Browser Layer Online",
+        title: "Patch 0.3 - Browser Layer Online",
         summary: "The BuckyNet browser, the PulseSearch engine and the first four sites are live.",
         keywords: ["patch", "browser", "update", "release", "pulsesearch", "buckynet", "developer", "dev", "log"],
         tags: ["dev", "patch", "release"],
@@ -107,11 +107,11 @@ const SEED_POSTS = [
                 "with back / forward / reload, an omnibox, per-window history and loading states."],
             ["patch", [
                 ["new", "Internal bucky:// router and the SiteRegistry."],
-                ["new", "PulseSearch — search opens a results page, never teleports into a site."],
+                ["new", "PulseSearch - search opens a results page, never teleports into a site."],
                 ["new", "Four launch sites: BuckyWiki, BuckTube, Bucky Dev, Leak Database."]
             ]],
-            ["p", "Every site is a SiteRegistry entry. Later patches register new pages — including " +
-                "Discord-fed posts — without touching the browser core."]
+            ["p", "Every site is a SiteRegistry entry. Later patches register new pages - including " +
+                "Discord-fed posts - without touching the browser core."]
         ],
         attachments: [],
         crossRefs: []
@@ -121,15 +121,15 @@ const SEED_POSTS = [
         date: "Cycle 305",
         category: "Announcement",
         author: "Bucky Dev",
-        title: "Announcement — BuckyNet Goes Online",
+        title: "Announcement - BuckyNet Goes Online",
         summary: "The Grid is open. A first look at the internal network and the roadmap toward OSINT and Discord progression.",
         keywords: ["announcement", "buckynet", "grid", "roadmap", "discord", "osint", "developer", "dev", "future"],
         tags: ["dev", "announcement", "roadmap"],
         body: [
-            ["p", "BuckyNet is online. The Grid is a closed, simulated network built into the VM — no " +
+            ["p", "BuckyNet is online. The Grid is a closed, simulated network built into the VM - no " +
                 "real internet, no real services. Everything an operator finds here is fictional."],
             ["p", "Hints will be seeded across the sites as missions arrive. If a page feels like it is " +
-                "watching back — it is. Read the developer logs on BuckTube for the running commentary."]
+                "watching back - it is. Read the developer logs on BuckTube for the running commentary."]
         ],
         attachments: [],
         crossRefs: [
@@ -146,21 +146,21 @@ const SEED_POSTS = [
         keywords: ["roadmap", "backend", "future", "discord", "missions", "mail", "announcement", "developer", "dev"],
         tags: ["dev", "announcement", "roadmap"],
         body: [
-            ["p", "Patch 0.4 finished the ecosystem expansion. The next phase is integration — wiring " +
+            ["p", "Patch 0.4 finished the ecosystem expansion. The next phase is integration - wiring " +
                 "BuckyNet to live, backend-fed content. Here is the plan."],
             ["h", "Coming next"],
             ["patch", [
-                ["new", "Backend-fed dev posts and announcements — this feed goes live."],
-                ["new", "Discord integration — community events and the economy sync to the Grid."],
-                ["new", "Mail system — bucky,net addresses and an inbox app."],
-                ["new", "Mission-triggered content — pages and leaks that change as operators progress."],
-                ["new", "Accounts and comments — real profiles behind the handles you already see."]
+                ["new", "Backend-fed dev posts and announcements - this feed goes live."],
+                ["new", "Discord integration - community events and the economy sync to the Grid."],
+                ["new", "Mail system - bucky,net addresses and an inbox app."],
+                ["new", "Mission-triggered content - pages and leaks that change as operators progress."],
+                ["new", "Accounts and comments - real profiles behind the handles you already see."]
             ]],
             ["note", "None of the above ships yet. Patch 0.4 only prepares the architecture: the " +
                 "SiteRegistry, the dev-post data shape and the attachment slot are all backend-ready."]
         ],
         attachments: [
-            { kind: "image", caption: "Roadmap — BuckyNet integration phases" }
+            { kind: "image", caption: "Roadmap - BuckyNet integration phases" }
         ],
         crossRefs: [
             { url: "bucky://community", label: "Bucky Community", note: "where live events will land" }
@@ -316,17 +316,17 @@ function renderFeedStatus() {
     const status = feedState.status;
     if (status === "live") {
         return `<div class="vm-dev-feedstatus is-live">
-            <span class="vm-dev-feeddot"></span>Live feed online — ${feedState.posts.length} post(s) served by the backend.
+            <span class="vm-dev-feeddot"></span>Live feed online - ${feedState.posts.length} post(s) served by the backend.
         </div>`;
     }
     if (status === "empty") {
         return `<div class="vm-dev-feedstatus is-idle">
-            <span class="vm-dev-feeddot"></span>Live feed online — no posts published yet. Showing bundled posts.
+            <span class="vm-dev-feeddot"></span>Live feed online - no posts published yet. Showing bundled posts.
         </div>`;
     }
     if (status === "offline") {
         return `<div class="vm-dev-feedstatus is-offline">
-            <span class="vm-dev-feeddot"></span>Live feed offline — showing bundled posts.
+            <span class="vm-dev-feeddot"></span>Live feed offline - showing bundled posts.
         </div>`;
     }
     return `<div class="vm-dev-feedstatus is-loading">
@@ -353,7 +353,7 @@ function renderHome() {
     const body = `
         <div class="vm-wiki-body">
             <p class="vm-wiki-intro">
-                The Bucky Dev feed — patch notes, announcements and hints, straight from the team
+                The Bucky Dev feed - patch notes, announcements and hints, straight from the team
                 behind the VM. This feed is now backend-connected: posts authored by staff appear
                 here live.
             </p>
@@ -405,7 +405,7 @@ export function registerDevSite(registry) {
         title: "Bucky Dev",
         type: "home",
         keywords: ["dev", "developer", "patch", "notes", "updates", "announcements", "changelog", "team"],
-        description: "The Bucky Dev feed — patch notes, announcements and hints from the VM team.",
+        description: "The Bucky Dev feed - patch notes, announcements and hints from the VM team.",
         tags: ["dev", "site", "updates"],
         render: () => renderHome()
     });

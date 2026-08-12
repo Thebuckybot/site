@@ -69,7 +69,7 @@ function problemFor(info) {
     };
     const head = byType[info.type];
     if (head && info.problem && head.toLowerCase() !== String(info.problem).toLowerCase()) {
-        return `${head} — ${info.problem}`;
+        return `${head} - ${info.problem}`;
     }
     return info.problem || head || "Unknown problem";
 }

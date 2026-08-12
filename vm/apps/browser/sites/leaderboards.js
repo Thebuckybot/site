@@ -29,7 +29,7 @@ const SITE_DOMAIN = "Grid Leaderboards";
 const TTL = gatewayClient.softRefreshTtl || 60000;
 
 const KINDS = [
-    { id: "richest",         title: "Richest Operators",  lead: "Ranked by net worth. The amount is private — only the position is shown." },
+    { id: "richest",         title: "Richest Operators",  lead: "Ranked by net worth. The amount is private - only the position is shown." },
     { id: "level",           title: "Highest Level",       lead: "Top operators by level and prestige." },
     { id: "org-reputation",  title: "Organisation Reputation", lead: "Cumulative reputation across each org's members." },
     { id: "most-leaked",     title: "Most Leaked",         lead: "Operators with the most credential exposures on record." },
@@ -68,7 +68,7 @@ function renderHome() {
     const body = `
         <div class="vm-wiki-body">
             <p class="vm-wiki-intro">
-                Live rankings across the Grid. Every entry is a public projection — balances,
+                Live rankings across the Grid. Every entry is a public projection - balances,
                 inventory and security state are never shown here.
             </p>
             ${renderStatus(s)}
@@ -84,7 +84,7 @@ function renderHome() {
         site: SITE,
         domain: `${SITE_DOMAIN} · ${SITE_URL}`,
         title: "Grid Leaderboards",
-        lead: "Live rankings — richest, highest-level, organisation reputation and most-leaked.",
+        lead: "Live rankings - richest, highest-level, organisation reputation and most-leaked.",
         bodyHtml: body,
     });
 }
@@ -129,7 +129,7 @@ function renderEntryRow(entry) {
                     <span class="vm-org-emblem" style="--vm-org-accent:${escapeHtml(normaliseColor(entry.color) || "#10E0C8")};">${escapeHtml(entry.emblem || "?")}</span>
                     ${link(`bucky://organizations/${escapeHtml(entry.org_id)}`, entry.name || entry.org_id)}
                 </span>
-                <span class="vm-leaderboard-score">${escapeHtml(String(entry.score_value != null ? entry.score_value : "—"))}</span>
+                <span class="vm-leaderboard-score">${escapeHtml(String(entry.score_value != null ? entry.score_value : "-"))}</span>
                 <span class="vm-leaderboard-meta">${entry.members != null ? escapeHtml(`${entry.members} members`) : ""}</span>
             </li>
         `;
@@ -143,9 +143,9 @@ function renderEntryRow(entry) {
                 ${link(`bucky://profile/${escapeHtml(String(entry.user_id || ""))}`, `Operator ${entry.user_id || ""}`)}
                 ${entry.equipped_title ? chip(entry.equipped_title) : ""}
             </span>
-            <span class="vm-leaderboard-score">${escapeHtml(entry.score_value != null ? String(entry.score_value) : "—")}</span>
+            <span class="vm-leaderboard-score">${escapeHtml(entry.score_value != null ? String(entry.score_value) : "-")}</span>
             <span class="vm-leaderboard-meta">
-                ${org ? `${escapeHtml(org.emblem || "")} ${escapeHtml(org.name || "")}` : "—"}
+                ${org ? `${escapeHtml(org.emblem || "")} ${escapeHtml(org.name || "")}` : "-"}
             </span>
         </li>
     `;
@@ -159,7 +159,7 @@ function renderStatus(s) {
     }
     if (s.status === "offline") {
         return `<div class="vm-dev-feedstatus is-offline">
-            <span class="vm-dev-feeddot"></span>Rankings offline — try again in a moment.
+            <span class="vm-dev-feeddot"></span>Rankings offline - try again in a moment.
         </div>`;
     }
     return `<div class="vm-dev-feedstatus is-loading">
@@ -267,7 +267,7 @@ export function registerLeaderboardsSite(registry) {
         type: "home",
         keywords: ["leaderboards", "leaderboard", "rankings", "rank", "richest",
                    "level", "reputation", "leaked", "top", "best", "grid"],
-        description: "Live Grid rankings — richest, highest-level, organisation reputation, most-leaked.",
+        description: "Live Grid rankings - richest, highest-level, organisation reputation, most-leaked.",
         tags: ["leaderboards", "rankings"],
         render: () => renderHome(),
     });

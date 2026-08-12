@@ -38,7 +38,7 @@ export default {
         const st = ev(i).attribution_status || "unresolved";
         return badge("attr: " + st, ATTR_TONE[st] || "muted");
       }
-      return badge(i.attribution_confidence || "—", i.attribution_confidence === "confirmed" ? "ok" : "muted");
+      return badge(i.attribution_confidence || "-", i.attribution_confidence === "confirmed" ? "ok" : "muted");
     };
 
     const draw = (data) => {
@@ -49,7 +49,7 @@ export default {
           { label: "Severity", render: (i) => badge("sev " + i.severity, SEV[i.severity] || "muted") },
           { label: "Executor / Entities", render: executorCell },
           { label: "Confidence", render: confidenceCell },
-          { label: "Reason", render: (i) => el("span", { class: "sec-muted", text: (i.details && i.details.reason) || "—" }) },
+          { label: "Reason", render: (i) => el("span", { class: "sec-muted", text: (i.details && i.details.reason) || "-" }) },
           { label: "When", render: (i) => el("span", { text: fmtTime(i.created_at) }) },
         ], items),
         pager(page, items.length >= 15, (p) => { page = p; load(); }),

@@ -14,10 +14,10 @@ export default {
       ]));
       root.appendChild(table([
         { label: "#", key: "id" },
-        { label: "Event", render: (i) => i.event_type || i.event || "—" },
+        { label: "Event", render: (i) => i.event_type || i.event || "-" },
         { label: "Severity", render: (i) => badge("sev " + (i.severity ?? "?"), "warn") },
         { label: "User", render: (i) => el("code", { text: i.user_id || "?" }) },
-        { label: "Channel", render: (i) => el("code", { text: i.channel_id || "—" }) },
+        { label: "Channel", render: (i) => el("code", { text: i.channel_id || "-" }) },
         { label: "When", render: (i) => el("span", { text: fmtTime(i.created_at) }) },
       ], list.slice(0, 25)));
       if (!list.length) root.appendChild(el("p", { class: "sec-muted", text: "No recent SOC events." }));

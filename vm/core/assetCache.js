@@ -173,7 +173,7 @@ class AssetCache {
         const gltf = await new Promise((resolve, reject) => loader.parse(buffer, path, resolve, reject));
 
         entry.gltf = gltf;
-        entry.scene = gltf.scene; // pristine ORIGINAL — never added to a live scene; only cloned
+        entry.scene = gltf.scene; // pristine ORIGINAL - never added to a live scene; only cloned
         entry.status = STATUS.READY;
         entry.parseMs = nowMs() - t0;
         entry.parsedAt = Date.now();

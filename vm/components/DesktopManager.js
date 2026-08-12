@@ -56,7 +56,7 @@ export function renderDesktopIcons(runtime) {
     if (!entries.length) {
         return `
             <p class="vm-desktop-empty">
-                Your desktop is empty. Create items from the terminal —
+                Your desktop is empty. Create items from the terminal -
                 <br>mkdir ~/Desktop/intel · touch ~/Desktop/notes.txt
             </p>
         `;

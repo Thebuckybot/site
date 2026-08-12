@@ -192,17 +192,17 @@ export function createWorldFeedSite(config) {
         const status = feedState.status;
         if (status === "live") {
             return `<div class="vm-dev-feedstatus is-live">
-                <span class="vm-dev-feeddot"></span>Live feed online — ${feedState.items.length} item(s) served by the backend.
+                <span class="vm-dev-feeddot"></span>Live feed online - ${feedState.items.length} item(s) served by the backend.
             </div>`;
         }
         if (status === "empty") {
             return `<div class="vm-dev-feedstatus is-idle">
-                <span class="vm-dev-feeddot"></span>Live feed online — nothing published yet. Showing the bundled briefing.
+                <span class="vm-dev-feeddot"></span>Live feed online - nothing published yet. Showing the bundled briefing.
             </div>`;
         }
         if (status === "offline") {
             return `<div class="vm-dev-feedstatus is-offline">
-                <span class="vm-dev-feeddot"></span>Live feed offline — showing the bundled briefing.
+                <span class="vm-dev-feeddot"></span>Live feed offline - showing the bundled briefing.
             </div>`;
         }
         return `<div class="vm-dev-feedstatus is-loading">

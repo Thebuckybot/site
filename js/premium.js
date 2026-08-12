@@ -192,8 +192,8 @@ async function load() {
         if (data.waiting > 0) {
           parts.push(
             data.waiting === 1
-              ? "1 cache is waiting — run premium in Discord to claim it."
-              : `${data.waiting} caches are waiting — run premium in Discord to claim them.`
+              ? "1 cache is waiting - run premium in Discord to claim it."
+              : `${data.waiting} caches are waiting - run premium in Discord to claim them.`
           );
         } else {
           parts.push("Nothing is waiting to be claimed right now.");

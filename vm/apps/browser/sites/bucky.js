@@ -20,14 +20,14 @@ const FEATURES = [
     {
         tag: "Workstation",
         title: "The Bucky VM",
-        body: "A simulated cybersecurity workstation — terminal, filesystem, editor and browser. " +
+        body: "A simulated cybersecurity workstation - terminal, filesystem, editor and browser. " +
             "Every operator gets a clean session and a node to keep warm."
     },
     {
         tag: "Network",
         title: "BuckyNet",
         body: "A closed, in-universe internet. A search engine, a wiki, a video platform, a leak " +
-            "database — all fictional, all interconnected, all hiding something."
+            "database - all fictional, all interconnected, all hiding something."
     },
     {
         tag: "Gameplay",
@@ -44,14 +44,14 @@ const FEATURES = [
     {
         tag: "Tooling",
         title: "Terminal & Installable Tools",
-        body: "A believable command line with installable tools and scripts — progression you " +
+        body: "A believable command line with installable tools and scripts - progression you " +
             "carry from one mission to the next."
     },
     {
         tag: "Live",
         title: "Discord-Linked Progression",
         body: "Bucky lives in your Discord server. Missions, the economy and global events sync " +
-            "to the community — the VM is never played alone."
+            "to the community - the VM is never played alone."
     }
 ];
 
@@ -63,7 +63,7 @@ const STATS = [
 ];
 
 const LORE = [
-    "Bucky is the intelligence that runs the Grid — calm, dry, and always logging.",
+    "Bucky is the intelligence that runs the Grid - calm, dry, and always logging.",
     "The Virus is out there, rewriting itself between every scan. Operators do not defeat it. They learn to see it.",
     "Every page on BuckyNet is watching back. The good operators read the comments."
 ];
@@ -75,7 +75,7 @@ function renderHero() {
             <span class="vm-bucky-kicker">OFFICIAL PLATFORM</span>
             <h1 class="vm-bucky-wordmark">BUCKY</h1>
             <p class="vm-bucky-tagline">
-                The cybersecurity ARG that lives inside your Discord server — a simulated
+                The cybersecurity ARG that lives inside your Discord server - a simulated
                 workstation, a fake internet, and a Virus that never stops moving.
             </p>
             <div class="vm-bucky-cta">
@@ -124,9 +124,9 @@ function renderShowcase() {
         <section class="vm-bucky-section">
             <h2 class="vm-bucky-h2">Inside the VM</h2>
             <div class="vm-bucky-shots">
-                ${mediaBox("Bucky VM — desktop & terminal", "shot")}
-                ${mediaBox("BuckyNet browser — PulseSearch", "shot")}
-                ${mediaBox("Leak Database — OSINT investigation", "shot")}
+                ${mediaBox("Bucky VM - desktop & terminal", "shot")}
+                ${mediaBox("BuckyNet browser - PulseSearch", "shot")}
+                ${mediaBox("Leak Database - OSINT investigation", "shot")}
             </div>
         </section>
     `;
@@ -138,7 +138,7 @@ function renderLore() {
             <h2 class="vm-bucky-h2">The world</h2>
             ${LORE.map((line) => `<p class="vm-bucky-lore-line">${escapeHtml(line)}</p>`).join("")}
             <p class="vm-bucky-lore-foot">
-                Read the full story on ${link("bucky://wiki", "BuckyWiki")} — start with
+                Read the full story on ${link("bucky://wiki", "BuckyWiki")} - start with
                 ${link("bucky://wiki/bucky", "Bucky")} and ${link("bucky://wiki/virus", "The Virus")}.
             </p>
         </section>
@@ -152,7 +152,7 @@ function renderConnect() {
             <h2 class="vm-bucky-h2">Connect to Discord</h2>
             <p>
                 Bucky runs as a Discord bot. Add it to your server to link operators, sync the
-                economy, and unlock mission progression. The VM is the workstation — Discord is
+                economy, and unlock mission progression. The VM is the workstation - Discord is
                 the world around it.
             </p>
             <div class="vm-bucky-cta">
@@ -188,7 +188,7 @@ function renderBuckyHome() {
             ])}
         </div>
     `;
-    return { title: "Bucky — Official Platform", html: body };
+    return { title: "Bucky - Official Platform", html: body };
 }
 
 // ----- Registration ----------------------------------------------------------
@@ -199,10 +199,10 @@ export function registerBuckySite(registry) {
         id: "bucky-home",
         url: "bucky://bucky",
         site: "bucky",
-        title: "Bucky — Official Platform",
+        title: "Bucky - Official Platform",
         type: "landing",
         keywords: ["bucky", "bot", "discord", "home", "official", "platform", "app", "invite"],
-        description: "The official Bucky platform — the cybersecurity ARG that lives in your Discord server.",
+        description: "The official Bucky platform - the cybersecurity ARG that lives in your Discord server.",
         tags: ["bucky", "official", "discord"],
         render: () => renderBuckyHome()
     });

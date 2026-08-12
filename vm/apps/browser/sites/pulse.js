@@ -50,7 +50,7 @@ function renderHome() {
     const body = `
         <div class="vm-wiki-body">
             <p class="vm-wiki-intro">
-                PulseNet is the Grid's heartbeat — the live combined feed of incidents,
+                PulseNet is the Grid's heartbeat - the live combined feed of incidents,
                 credential leaks, news and rankings. Everything here is real-time and
                 drawn from the same backend the VM consumes elsewhere.
             </p>
@@ -115,7 +115,7 @@ function renderLeaks() {
             <span class="vm-leak-cred">${escapeHtml(leak.masked_credential || "")}</span>
             <span class="vm-pulse-meta">${leak.incident_slug
                 ? link(`bucky://leaks/${escapeHtml(leak.incident_slug)}`, leak.incident_title || leak.incident_slug)
-                : escapeHtml(leak.incident_title || "—")}</span>
+                : escapeHtml(leak.incident_title || "-")}</span>
             <span class="vm-pulse-meta">${escapeHtml(formatDate(leak.leaked_at))}</span>
         </li>
     `).join("")}</ul>`;
@@ -143,7 +143,7 @@ function renderTopOfBoards() {
         const top = (board.items || [])[0];
         const title = labelForKind(board.kind);
         if (!top) {
-            return `<div class="vm-pulse-board"><span class="vm-leaderboard-rank">#1</span> <span>${escapeHtml(title)}: <em>—</em></span></div>`;
+            return `<div class="vm-pulse-board"><span class="vm-leaderboard-rank">#1</span> <span>${escapeHtml(title)}: <em>-</em></span></div>`;
         }
         const who = top.org_id
             ? `${escapeHtml(top.emblem || "")} ${escapeHtml(top.name || top.org_id)}`
@@ -161,17 +161,17 @@ function renderTopOfBoards() {
 function renderStatus() {
     if (state.status === "live") {
         return `<div class="vm-dev-feedstatus is-live">
-            <span class="vm-dev-feeddot"></span>PulseNet online — incidents, leaks, news and rankings refreshing in the background.
+            <span class="vm-dev-feeddot"></span>PulseNet online - incidents, leaks, news and rankings refreshing in the background.
         </div>`;
     }
     if (state.status === "partial") {
         return `<div class="vm-dev-feedstatus is-idle">
-            <span class="vm-dev-feeddot"></span>PulseNet partial — some channels are still warming up.
+            <span class="vm-dev-feeddot"></span>PulseNet partial - some channels are still warming up.
         </div>`;
     }
     if (state.status === "offline") {
         return `<div class="vm-dev-feedstatus is-offline">
-            <span class="vm-dev-feeddot"></span>PulseNet offline — backend unreachable.
+            <span class="vm-dev-feeddot"></span>PulseNet offline - backend unreachable.
         </div>`;
     }
     return `<div class="vm-dev-feedstatus is-loading">

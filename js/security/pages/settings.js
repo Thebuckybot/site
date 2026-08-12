@@ -12,7 +12,7 @@ export default {
       const canEdit = !!(perms && perms.can_edit);
 
       root.appendChild(infoTitle("Settings", "General configuration, provisioning and data retention for this server."));
-      root.appendChild(el("p", { class: "sec-page-sub", text: "The bot is always the authority — these settings are validated and applied server-side." }));
+      root.appendChild(el("p", { class: "sec-page-sub", text: "The bot is always the authority - these settings are validated and applied server-side." }));
 
       // ---- General -------------------------------------------------------
       root.appendChild(el("div", { class: "sec-card" }, [

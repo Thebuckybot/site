@@ -87,13 +87,13 @@ const JOURNEY_DURATION = 20.0;
 const JOURNEY_KEYS = [
     { t: 0.00, pos: "camStart",     look: "glassCenter", lens: 32 },
     { t: 0.11, pos: "camHover",     look: "glassCenter", lens: 44 },
-    { t: 0.21, pos: "camHover",     look: "glassCenter", lens: 46 }, // HOLD — phone clearly in frame
+    { t: 0.21, pos: "camHover",     look: "glassCenter", lens: 46 }, // HOLD - phone clearly in frame
     { t: 0.28, pos: "glassAbove",   look: "pad",         lens: 48 },
     { t: 0.35, pos: "camGlassExit", look: "pad",         lens: 48 }, // THROUGH the glass
     { t: 0.52, pos: "camDescent",   look: "pad",         lens: 40 }, // free fall
     { t: 0.68, pos: "camBirdEye",   look: "lookUniverse", lens: 26 }, // world reveal
     { t: 0.78, pos: "camBirdEye",   look: "lookUniverse", lens: 25 }, // DWELL
-    { t: 1.00, pos: "camArrival",   look: "lookArrival",  lens: 40 }  // Arc 1 pad — Bucky appears
+    { t: 1.00, pos: "camArrival",   look: "lookArrival",  lens: 40 }  // Arc 1 pad - Bucky appears
 ];
 
 const LOOK = {
@@ -221,7 +221,7 @@ export function mountMissionHubApp(runtime, windowState, element) {
 
     buildScene(scene, stage, setStatus, { hint, jumpBtn }).catch((error) => {
         logError("MissionHub buildScene", error);
-        setStatus("error", "3D runtime unavailable — check your connection and reopen.");
+        setStatus("error", "3D runtime unavailable - check your connection and reopen.");
     });
 }
 
@@ -277,7 +277,7 @@ async function buildScene(scene, stage, setStatus, ui) {
     stage.appendChild(renderer.domElement);
     scene.renderer = renderer;
 
-    const onCtxLost = (e) => { e.preventDefault(); debugLog("MissionHub WebGL context lost"); setStatus("paused", "Graphics paused — restoring…"); };
+    const onCtxLost = (e) => { e.preventDefault(); debugLog("MissionHub WebGL context lost"); setStatus("paused", "Graphics paused - restoring…"); };
     const onCtxRestored = () => { debugLog("MissionHub WebGL context restored"); setStatus("armed", "Look into the phone…"); };
     renderer.domElement.addEventListener("webglcontextlost", onCtxLost, false);
     renderer.domElement.addEventListener("webglcontextrestored", onCtxRestored, false);
@@ -929,10 +929,10 @@ async function buildScene(scene, stage, setStatus, ui) {
                 const e = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
                 input.yaw = e.y; input.pitch = -0.25;
                 if (camera.fov !== 50) { camera.fov = 50; camera.updateProjectionMatrix(); }
-                setStatus("explore", "Arc 1 — verken de wereld");
-                if (ui.hint) ui.hint.textContent = isTouchDevice() ? "joystick: lopen — sleep: kijken — ⤒: springen" : "WASD: lopen — shift: rennen — spatie: springen — sleep: kijken";
+                setStatus("explore", "Arc 1 - verken de wereld");
+                if (ui.hint) ui.hint.textContent = isTouchDevice() ? "joystick: lopen - sleep: kijken - ⤒: springen" : "WASD: lopen - shift: rennen - spatie: springen - sleep: kijken";
                 if (ui.jumpBtn && isTouchDevice()) ui.jumpBtn.classList.add("is-active");
-                debugLog("MissionHub V9 arrived — Bucky spawned, explore mode");
+                debugLog("MissionHub V9 arrived - Bucky spawned, explore mode");
             }
             return;
         }
@@ -979,7 +979,7 @@ async function buildScene(scene, stage, setStatus, ui) {
                     nvy = Math.min(nvy + 2.0 * dt, 1.5); // buoyancy
                     if (origin.y < best.y - 0.2) {
                         nvy += 6.0 * dt;        // stronger lift when submerged
-                        nvx *= 0.93; nvz *= 0.93; // water drag — swimming is slower
+                        nvx *= 0.93; nvz *= 0.93; // water drag - swimming is slower
                     }
                 }
             }
@@ -1269,7 +1269,7 @@ function smootherstep(x) { x = clamp01(x); return x * x * x * (x * (x * 6 - 15) 
 function enterLabel(p) {
     if (p < 0.21) return "approaching the phone";
     if (p < 0.35) return "through the glass";
-    if (p < 0.52) return "falling — 2.9 km to go";
+    if (p < 0.52) return "falling - 2.9 km to go";
     if (p < 0.72) return "the world below";
     if (p < 1.0) return "descending to Arc 1";
     return "Arc 1";

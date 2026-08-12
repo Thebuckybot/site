@@ -230,7 +230,7 @@ function renderOrgBlock(org) {
             <p class="vm-profile-note">
                 ${(org.season_contribution || 0) > 0
                     ? "You count as an active member this term."
-                    : "You have not contributed this term yet, so you do not count as active — and active members are what the quarterly payout, the interest bands and the ballot are all measured on."}
+                    : "You have not contributed this term yet, so you do not count as active - and active members are what the quarterly payout, the interest bands and the ballot are all measured on."}
             </p>
             <div class="vm-leak-more">${link("bucky://organizations/" + (org.id || ""), "Open organisation page")}</div>
         </section>
@@ -312,13 +312,13 @@ function renderCompromisedBanner(view) {
     const last = exposures[0] || {};
     const when = sec.last_breached_at ? formatDateTime(sec.last_breached_at) : "unknown";
     const source = sec.last_breached_by || "unknown source";
-    const lastIncident = last.incident_title || last.incident_slug || "—";
+    const lastIncident = last.incident_title || last.incident_slug || "-";
 
     return `
         <section class="vm-profile-compromised" role="alert">
             <div class="vm-profile-compromised-head">
                 <span class="vm-profile-compromised-badge">SECURITY STATUS: COMPROMISED</span>
-                <span class="vm-profile-compromised-sub">Active incident — credentials exposed on BuckyNet</span>
+                <span class="vm-profile-compromised-sub">Active incident - credentials exposed on BuckyNet</span>
             </div>
             <div class="vm-profile-grid vm-profile-compromised-grid">
                 ${statTile("Breached at", escapeHtml(when))}
@@ -329,7 +329,7 @@ function renderCompromisedBanner(view) {
             <p class="vm-profile-compromised-cta">
                 Your account is flagged as compromised. Rotate your bank code in Discord with
                 <code>+setbankcode</code> to clear this alert and return to <strong>SECURE</strong>.
-                Historical exposures below remain immutable — recovery never erases them.
+                Historical exposures below remain immutable - recovery never erases them.
             </p>
         </section>
     `;
@@ -504,8 +504,8 @@ function renderPublicProfile(userId) {
                 <div class="vm-profile-grid">
                     ${statTile("Achievements", String(view.achievements_count || 0))}
                     ${statTile("Titles", String((view.titles || []).length))}
-                    ${statTile("Joined", view.joined ? formatDate(view.joined) : "—")}
-                    ${statTile("Organisation", org ? `${escapeHtml(org.emblem || "")} ${escapeHtml(org.name || "")}` : "—", true)}
+                    ${statTile("Joined", view.joined ? formatDate(view.joined) : "-")}
+                    ${statTile("Organisation", org ? `${escapeHtml(org.emblem || "")} ${escapeHtml(org.name || "")}` : "-", true)}
                 </div>
                 <p class="vm-leak-cred-note">
                     Public projections never reveal balances, inventory, security state or warnings.

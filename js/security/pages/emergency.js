@@ -47,7 +47,7 @@ export default {
           btn("Roll Back From Snapshot", "sec-btn", settingDesc("rollback_action"), rollback),
         );
       } else {
-        actions.append(el("span", { class: "sec-muted", text: "Read-only — emergency controls require the owner or a whitelisted Security Admin." }));
+        actions.append(el("span", { class: "sec-muted", text: "Read-only - emergency controls require the owner or a whitelisted Security Admin." }));
       }
 
       root.replaceChildren(

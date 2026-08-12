@@ -17,8 +17,8 @@ const SOURCE_LABEL = { baseline: "Baseline", scheduled: "Scheduled", manual: "Ma
                        pre_action: "Incident (pre-action)", join: "Baseline" };
 const USABLE = new Set(["baseline", "scheduled", "manual"]);
 const WHY_NOT_USABLE = {
-  incident: "Captured at incident/pre-action time — may contain attack damage; never auto-selected.",
-  legacy: "Legacy v1 payload — the v2 recovery engine cannot safely restore it; a fresh baseline is needed.",
+  incident: "Captured at incident/pre-action time - may contain attack damage; never auto-selected.",
+  legacy: "Legacy v1 payload - the v2 recovery engine cannot safely restore it; a fresh baseline is needed.",
   invalid: "Payload is malformed / unparseable.",
   unsupported: "Payload schema is newer than this build understands.",
 };
@@ -57,7 +57,7 @@ export default {
       snaps = payload;                                  // tolerate a bare array
     } else {
       return errorState(root, { message: "Snapshots API returned an unexpected shape. "
-        + "The bot/backend may be a version behind — check the console." }, () => this.render(root));
+        + "The bot/backend may be a version behind - check the console." }, () => this.render(root));
     }
     snaps = snaps.filter((s) => s && typeof s === "object").map(norm);
     hasUsable = hasUsable || snaps.some((s) => s.usable);
@@ -80,7 +80,7 @@ export default {
       "Browse, preview, pin and restore from structural recovery points.", "h1", "sec-page-title"));
 
     root.appendChild(el("div", { class: "sec-card", style: "margin:8px 0" }, [
-      el("p", { text: "A snapshot is a structural server backup — roles, channels, categories, permission overwrites and security settings." }),
+      el("p", { text: "A snapshot is a structural server backup - roles, channels, categories, permission overwrites and security settings." }),
       el("p", { class: "sec-muted", text: "It does NOT back up messages, files, member history, emojis/stickers or webhook tokens. Recreated channels/roles receive new Discord ids. Repair always uses the Current Snapshot; if none is pinned it uses the newest usable one." }),
     ]));
 
@@ -97,8 +97,8 @@ export default {
         el("div", { class: "sec-grid sec-grid-3", style: "margin-top:8px" }, [
           kv("Repair will use", effective
             ? `${displayName(effective)} (#${effective.id})${pinned && effective.id === pinned.id ? " · pinned" : " · newest usable"}`
-            : "None — no usable baseline yet"),
-          kv("Current Snapshot", pinned ? `${displayName(pinned)} (#${pinned.id})` : "Not pinned — using newest usable"),
+            : "None - no usable baseline yet"),
+          kv("Current Snapshot", pinned ? `${displayName(pinned)} (#${pinned.id})` : "Not pinned - using newest usable"),
           kv("Automatic snapshots", "at most one every 6 hours (on structural change)"),
           kv("Stored snapshots", `${counts.total} of 10 · ${counts.usable} usable · ${counts.incident} incident · ${counts.legacy} legacy${counts.bad ? ` · ${counts.bad} invalid` : ""}`),
         ]),
@@ -114,12 +114,12 @@ export default {
         btn.disabled = true; status.textContent = "Queuing…"; renderHealth(true);
         try {
           const r = await api.post("/snapshots/capture", {});
-          status.textContent = "Pending — the bot is capturing…";
+          status.textContent = "Pending - the bot is capturing…";
           pollCapture(r && r.command, status, btn);
         } catch (e) { toast(e.message, "err"); btn.disabled = false; status.textContent = ""; renderHealth(false); }
       });
       root.appendChild(el("div", { class: "sec-actions", style: "margin:10px 0" }, [btn, status,
-        el("span", { class: "sec-muted", text: "Manual snapshots always work — they ignore the 6-hour automatic cooldown." })]));
+        el("span", { class: "sec-muted", text: "Manual snapshots always work - they ignore the 6-hour automatic cooldown." })]));
     }
 
     const pollCapture = (key, status, btn) => {
@@ -128,15 +128,15 @@ export default {
       stopPolling();
       pollTimer = setInterval(async () => {
         if (unmounted || !document.body.contains(btn)) { stopPolling(); return; }
-        if (tries++ > 20) { stopPolling(); status.textContent = "Still pending — refresh shortly."; btn.disabled = false; return; }
+        if (tries++ > 20) { stopPolling(); status.textContent = "Still pending - refresh shortly."; btn.disabled = false; return; }
         let c;
         try { c = await api.get(`/command/${encodeURIComponent(key)}`); }
-        catch { if (tries > 5) { stopPolling(); status.textContent = "Status unavailable — refresh."; btn.disabled = false; } return; }
+        catch { if (tries > 5) { stopPolling(); status.textContent = "Status unavailable - refresh."; btn.disabled = false; } return; }
         if (c.status === "done") {
           stopPolling();
           const res = c.result || {};
           status.textContent = res.status === "reused"
-            ? "No structural change — reused the latest snapshot."
+            ? "No structural change - reused the latest snapshot."
             : `Snapshot #${res.snapshot_id || "?"} created.`;
           btn.disabled = false;
           this.render(clearRoot(root));
@@ -185,12 +185,12 @@ export default {
       listBody.replaceChildren(table([
         { label: "#", key: "id" },
         { label: "Name", render: (s) => displayName(s) },
-        { label: "Source", render: (s) => badge(SOURCE_LABEL[s.source] || s.source || "—", "muted") },
-        { label: "Suitability", render: (s) => badge(SUIT_LABEL[s.suitability] || s.suitability || "—", SUIT_TONE[s.suitability] || "muted") },
+        { label: "Source", render: (s) => badge(SOURCE_LABEL[s.source] || s.source || "-", "muted") },
+        { label: "Suitability", render: (s) => badge(SUIT_LABEL[s.suitability] || s.suitability || "-", SUIT_TONE[s.suitability] || "muted") },
         { label: "Current", render: (s) => (pinned && s.id === pinned.id) ? badge("Current", "ok")
-            : (!pinned && effective && s.id === effective.id) ? badge("Newest (default)", "muted") : "—" },
-        { label: "Roles", render: (s) => (s.role_count == null ? "—" : String(s.role_count)) },
-        { label: "Channels", render: (s) => (s.channel_count == null ? "—" : String(s.channel_count)) },
+            : (!pinned && effective && s.id === effective.id) ? badge("Newest (default)", "muted") : "-" },
+        { label: "Roles", render: (s) => (s.role_count == null ? "-" : String(s.role_count)) },
+        { label: "Channels", render: (s) => (s.channel_count == null ? "-" : String(s.channel_count)) },
         { label: "Captured", render: (s) => fmtTime(s.created_at) },
         { label: "", render: (s) => {
             const view = el("button", { class: "sec-btn sec-btn-sm", text: "Preview" });
@@ -217,17 +217,17 @@ export default {
 
       detail.replaceChildren(el("div", { class: "sec-card" }, [
         el("div", { class: "sec-page-title" }, [`${displayName(s)} `,
-          badge(SUIT_LABEL[s.suitability] || s.suitability || "—", SUIT_TONE[s.suitability] || "muted"),
+          badge(SUIT_LABEL[s.suitability] || s.suitability || "-", SUIT_TONE[s.suitability] || "muted"),
           isPinned ? el("span", {}, [" ", badge("Current", "ok")]) : null]),
         el("div", { class: "sec-grid sec-grid-2", style: "margin-top:8px" }, [
           kv("Snapshot id", `#${s.id}`),
           kv("Captured", fmtTime(s.created_at)),
-          kv("Source", SOURCE_LABEL[s.source] || s.source || "—"),
-          kv("Schema version", s.schema_version == null ? "—" : String(s.schema_version)),
-          kv("Roles", s.role_count == null ? "—" : String(s.role_count)),
-          kv("Channels", s.channel_count == null ? "—" : String(s.channel_count)),
+          kv("Source", SOURCE_LABEL[s.source] || s.source || "-"),
+          kv("Schema version", s.schema_version == null ? "-" : String(s.schema_version)),
+          kv("Roles", s.role_count == null ? "-" : String(s.role_count)),
+          kv("Channels", s.channel_count == null ? "-" : String(s.channel_count)),
           kv("Usable for recovery", usable ? "Yes" : "No"),
-          kv("Full Restore eligible", s.fr_eligible ? "Yes (v3)" : "No — Safe Repair only"),
+          kv("Full Restore eligible", s.fr_eligible ? "Yes (v3)" : "No - Safe Repair only"),
         ]),
         usable ? null : el("p", { class: "sec-muted", text: `Not usable: ${WHY_NOT_USABLE[s.suitability] || "unknown"}` }),
         el("div", { class: "sec-actions", style: "margin-top:8px;flex-wrap:wrap;gap:6px" }, actions),
@@ -238,14 +238,14 @@ export default {
     // ---- PREVIEW: a read-only, frozen virtual Discord ---------------------- #
     const showPreview = async (s) => {
       detail.replaceChildren(el("div", { class: "sec-card" }, [
-        el("div", { class: "sec-page-title", text: `Preview — ${displayName(s)}` }),
+        el("div", { class: "sec-page-title", text: `Preview - ${displayName(s)}` }),
         el("p", { class: "sec-muted", text: "Loading the frozen server view…" }),
       ]));
       detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
       let pv;
       try { pv = await api.get(`/snapshots/${s.id}/preview`); }
       catch (e) { return void detail.replaceChildren(el("div", { class: "sec-card" }, [
-        el("div", { class: "sec-page-title", text: `Preview — ${displayName(s)}` }),
+        el("div", { class: "sec-page-title", text: `Preview - ${displayName(s)}` }),
         el("p", { class: "sec-bad", text: `Could not load preview: ${e.message}` }),
         el("div", { class: "sec-actions" }, [ghostBtn("Close", () => detail.replaceChildren())]),
       ])); }
@@ -253,7 +253,7 @@ export default {
       const roles = Array.isArray(pv.roles) ? pv.roles.slice() : [];
       const channels = Array.isArray(pv.channels) ? pv.channels.slice() : [];
       detail.replaceChildren(el("div", { class: "sec-card sec-preview" }, [
-        el("div", { class: "sec-page-title" }, [`Preview — ${displayName(s)} `,
+        el("div", { class: "sec-page-title" }, [`Preview - ${displayName(s)} `,
           badge("Read-only", "muted"),
           el("span", { class: "sec-muted", style: "margin-left:8px", text: `captured ${fmtTime(pv.created_at || s.created_at)}` })]),
         el("p", { class: "sec-muted", text: "A frozen copy of the server's structure at capture time. Nothing here changes your server." }),

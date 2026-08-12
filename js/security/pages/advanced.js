@@ -47,7 +47,7 @@ export default {
           el("div", { class: "sec-actions" }, actions),
           el("p", { class: "sec-muted", text: canEdit
             ? "Imports are validated server-side; malformed configurations are rejected."
-            : "Read-only access — export is available; switching mode and importing are disabled." }),
+            : "Read-only access - export is available; switching mode and importing are disabled." }),
         ]),
       );
     } catch (err) { errorState(root, err, () => this.render(root)); }

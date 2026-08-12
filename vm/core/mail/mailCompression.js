@@ -78,7 +78,7 @@ export function decompress(packed) {
     const seq = (code) => (code < 256 ? [code] : dict[code]);
 
     let prev = seq(codes[0]);
-    if (!prev) return "";     // corrupt input — fail safe to empty
+    if (!prev) return "";     // corrupt input - fail safe to empty
     pushAll(bytes, prev);
 
     for (let i = 1; i < codes.length; i++) {
@@ -87,7 +87,7 @@ export function decompress(packed) {
         if (code < 256) entry = [code];
         else if (dict[code]) entry = dict[code];
         else if (code === nextCode) entry = prev.concat(prev[0]); // KwKwK
-        else return _decoder.decode(new Uint8Array(bytes)); // unexpected — stop safely
+        else return _decoder.decode(new Uint8Array(bytes)); // unexpected - stop safely
         pushAll(bytes, entry);
         if (nextCode <= MAX_CODE) dict[nextCode++] = prev.concat(entry[0]); // else frozen
         prev = entry;

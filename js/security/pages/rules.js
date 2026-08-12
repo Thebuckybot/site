@@ -34,7 +34,7 @@ export default {
       return alertBox({ kind: "premium", title: "Maximum rules reached", icon: el("span", { text: "★" }), message: el("div", {}, [
         el("p", { class: "sec-muted", style: "margin:0 0 8px", text: `You are using all ${usage.limit} rules on the Free plan. Upgrade to Bucky Premium to unlock more:` }),
         el("ul", { class: "sec-premium-list", style: "margin:0 0 8px" }, ladder),
-        el("span", { class: "sec-badge muted", text: "Premium — coming soon" }),
+        el("span", { class: "sec-badge muted", text: "Premium - coming soon" }),
       ]) });
     };
 
@@ -51,20 +51,20 @@ export default {
       if (!rules.length) {
         body.replaceChildren(pc || emptyCard({
           title: "No detection rules yet",
-          message: "SOC rules are custom automations you build in the Rule Builder — WHEN an event fires, IF conditions match, THEN run actions. They complement the built-in modules.",
+          message: "SOC rules are custom automations you build in the Rule Builder - WHEN an event fires, IF conditions match, THEN run actions. They complement the built-in modules.",
           actionLabel: canCreate ? "Open Rule Builder" : null, onAction: () => { window.location.hash = "#rulebuilder"; },
         }));
         return;
       }
       const tbl = table([
         { label: "Name", key: "name" },
-        { label: "Event", render: (r) => r.event_type || "—" },
+        { label: "Event", render: (r) => r.event_type || "-" },
         { label: "Severity", render: (r) => badge("sev " + (r.severity ?? "?"), "muted") },
         { label: "Enabled", render: (r) => canEdit ? toggle(!!r.enabled, async (v) => {
           try { await soc.patch(`/rules/${r.id}/toggle`); r.enabled = v; toast("Rule updated."); }
           catch (e) { toast(e.message, "err"); draw(); }
         }) : badge(r.enabled ? "On" : "Off", r.enabled ? "ok" : "muted") },
-        { label: "", render: (r) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Delete", onclick: () => del(r) }) : el("span", { class: "sec-muted", text: "—" }) },
+        { label: "", render: (r) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Delete", onclick: () => del(r) }) : el("span", { class: "sec-muted", text: "-" }) },
       ], rules);
       body.replaceChildren(...(pc ? [pc, tbl] : [tbl]));
     };

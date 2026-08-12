@@ -63,7 +63,7 @@ export function createReportModule(ctx) {
 
     return mod("bucky.report", {
         text: def(text),
-        create: def(text), // alias — build a titled text report block
+        create: def(text), // alias - build a titled text report block
         table: def(table),
         json: def(json),
         save: def(save),

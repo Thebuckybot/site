@@ -40,7 +40,7 @@ export default {
       body.replaceChildren(table([
         { label: "Type", render: (e) => badge(e.target_type, "muted") },
         { label: "Target", render: (e) => el("code", { text: e.ref_id }) },
-        { label: "", render: (e) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => remove(e) }) : el("span", { class: "sec-muted", text: "—" }) },
+        { label: "", render: (e) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => remove(e) }) : el("span", { class: "sec-muted", text: "-" }) },
       ], rows));
     };
 

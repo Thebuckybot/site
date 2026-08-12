@@ -196,7 +196,7 @@ export function buildStandardLibrary(ctx) {
         }
         const mod = resolveModule(target);
         if (!mod) {
-            emit("Bucky VM — available modules (use help(name) for detail):");
+            emit("Bucky VM - available modules (use help(name) for detail):");
             const names = Object.keys(bucky).filter((k) => k !== "__module__" && k !== "__name__").sort();
             names.forEach((n) => { const h = HELP[n]; emit("  " + n.padEnd(15) + (h ? h.description : "")); });
             emit("Try: help('profile'), help('profile.level'), dir(profile, detailed=True)");
@@ -214,7 +214,7 @@ export function buildStandardLibrary(ctx) {
         if (h.description) emit("  " + h.description);
         emit("FUNCTIONS");
         if (h.methods && Object.keys(h.methods).length) {
-            Object.keys(h.methods).forEach((sig) => emit("  " + key + "." + sig + "  —  " + h.methods[sig]));
+            Object.keys(h.methods).forEach((sig) => emit("  " + key + "." + sig + "  -  " + h.methods[sig]));
         } else {
             memberNames(mod).forEach((m) => emit("  " + key + "." + m + "()"));
         }

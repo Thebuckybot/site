@@ -88,12 +88,12 @@ export default {
     const saveChain = async () => {
       if (!editing || !editing.stages.length) { toast("A chain needs at least one stage.", "err"); return; }
       const payload = {
-        trigger_key: editing.trigger_key,   // locked — never changes
-        mode: editing.mode,                 // locked — part of the identity
+        trigger_key: editing.trigger_key,   // locked - never changes
+        mode: editing.mode,                 // locked - part of the identity
         name: editing.name || editing.trigger_key,
         stages: editing.stages.map((s) => {
           const params = { ...(s.params || {}) };
-          if (s.type === "timeout") delete params.seconds; // retired legacy key — never re-persist
+          if (s.type === "timeout") delete params.seconds; // retired legacy key - never re-persist
           const out = {
             type: s.type, params, on_failure: s.on_failure || "continue",
             delay: s.delay === "" || s.delay == null ? null : Number(s.delay),
@@ -198,12 +198,12 @@ export default {
       const nameIn = el("input", { class: "sec-input", value: editing.name || "", placeholder: "Chain name" });
       nameIn.addEventListener("input", () => { editing.name = nameIn.value; });
       return el("div", { class: "sec-card sec-chain-editor" }, [
-        el("div", { class: "sec-page-title" }, [`Edit chain — ${editing.trigger_key} `, badge(editing.mode, "muted")]),
+        el("div", { class: "sec-page-title" }, [`Edit chain - ${editing.trigger_key} `, badge(editing.mode, "muted")]),
         el("p", { class: "sec-muted", text: "This chain runs when this module triggers. Reorder stages, set a delay before a stage, a duration for timed actions (timeout/lock), and whether a failed stage continues or aborts the chain. The module and mode are fixed." }),
         el("p", { class: "sec-muted", text: "Timeout can never be permanent: an empty duration applies Discord's maximum (28 days, executed with a small safety margin below the hard cap). For indefinite containment use Quarantine or Ban instead." }),
         ...(isAntiBot() ? [el("div", { class: "sec-callout", style: "border-left:3px solid #7aa2f7;padding:8px 12px;margin:8px 0;background:rgba(122,162,247,.08)" }, [
           el("strong", { text: "Anti-Bot targets two different entities." }),
-          el("p", { class: "sec-muted", style: "margin:6px 0 0", text: "Every removal/containment stage must say WHO it acts on: the Added Bot (the bot that joined) or the Responsible Member (the human who added it). The Responsible Member is only known when Discord's audit log identifies them — if attribution is unresolved, Responsible-Member stages are SKIPPED and never fall back to the bot. Choose 'Added Bot' to remove the unauthorized bot; choose 'Responsible Member' to punish the human." }),
+          el("p", { class: "sec-muted", style: "margin:6px 0 0", text: "Every removal/containment stage must say WHO it acts on: the Added Bot (the bot that joined) or the Responsible Member (the human who added it). The Responsible Member is only known when Discord's audit log identifies them - if attribution is unresolved, Responsible-Member stages are SKIPPED and never fall back to the bot. Choose 'Added Bot' to remove the unauthorized bot; choose 'Responsible Member' to punish the human." }),
         ])] : []),
         el("div", { class: "sec-settings-row" }, [el("div", { class: "k" }, ["Name"]), nameIn]),
         el("div", { class: "sec-chain-stages-head", text: "Stages" }),
@@ -245,7 +245,7 @@ export default {
       body.replaceChildren(...chains.map(chainCard));
     };
 
-    root.appendChild(pageHeader("Punishments", "One predefined chain per module — edit its stages here. To build custom automations, use SOC Rules."));
+    root.appendChild(pageHeader("Punishments", "One predefined chain per module - edit its stages here. To build custom automations, use SOC Rules."));
     root.appendChild(el("div", { id: "pun-body" }));
     paint();
   },

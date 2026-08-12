@@ -135,7 +135,7 @@ function renderSimBanner() {
     return `
         <div class="vm-osint-simbanner" role="status">
             <span class="vm-osint-simdot" aria-hidden="true"></span>
-            <strong>SIMULATION MODE</strong> — showing ${testSize} fictional operators from
+            <strong>SIMULATION MODE</strong> - showing ${testSize} fictional operators from
             <code>+leaks test ${testSize}</code>. No real exposures, profiles or DMs are involved.
             ${link("bucky://leaks", "Exit to live data")}
         </div>
@@ -143,7 +143,7 @@ function renderSimBanner() {
 }
 
 function formatDate(value) {
-    if (!value) return "—";
+    if (!value) return "-";
     const d = new Date(value);
     if (isNaN(d.getTime())) return String(value);
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -169,8 +169,8 @@ function renderStats() {
             : "Loading breach statistics from the Grid…";
         return `<div class="vm-osint-statbar is-empty"><span class="vm-dev-feeddot"></span>${escapeHtml(msg)}</div>`;
     }
-    const hs = s.highest_severity ? sevMeta(s.highest_severity).label : "—";
-    const recentTitle = (s.most_recent && s.most_recent.title) || "—";
+    const hs = s.highest_severity ? sevMeta(s.highest_severity).label : "-";
+    const recentTitle = (s.most_recent && s.most_recent.title) || "-";
     const recentAt = s.most_recent && s.most_recent.at ? formatDate(s.most_recent.at) : "";
     return `
         <div class="vm-osint-statbar">
@@ -327,7 +327,7 @@ function renderOperatorResults() {
             <td class="vm-osint-email">${escapeHtml(o.email || "")}</td>
             <td class="vm-leak-cred">${escapeHtml(o.masked_credential || "")}</td>
             <td>${severityBadge(o.severity)}</td>
-            <td>${o.incident_id ? link(incidentUrl(o.incident_id, testSize), o.incident_id) : escapeHtml(o.incident_title || "—")}</td>
+            <td>${o.incident_id ? link(incidentUrl(o.incident_id, testSize), o.incident_id) : escapeHtml(o.incident_title || "-")}</td>
             <td>${escapeHtml(formatDate(o.leaked_at))}</td>
         </tr>
     `).join("");
@@ -404,7 +404,7 @@ function renderHome(ctx) {
         site: SITE,
         domain: `${DOMAIN} · bucky://leaks`,
         title: "Leak Database",
-        lead: "Live OSINT breach archive — real incidents, real exposed operators.",
+        lead: "Live OSINT breach archive - real incidents, real exposed operators.",
         bodyHtml: body,
     });
 }
@@ -590,7 +590,7 @@ export function registerLeaksSite(registry) {
         type: "home",
         keywords: ["leaks", "leak", "breach", "breaches", "osint", "exposed", "dump",
                    "incident", "credential", "compromised", "operators", "database"],
-        description: "BuckyNet's live OSINT breach database — real incidents and exposed operators.",
+        description: "BuckyNet's live OSINT breach database - real incidents and exposed operators.",
         tags: ["leaks", "site", "osint"],
         render: (ctx) => renderHome(ctx),
     });

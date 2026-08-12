@@ -29,7 +29,7 @@ export default {
       };
       const danger = action === "kick" || action === "ban";
       if (!(await confirmDialog({
-        title: `${action[0].toUpperCase() + action.slice(1)} — <@${rec.user_id}>`.replace(/<@\d+>/, ""),
+        title: `${action[0].toUpperCase() + action.slice(1)} - <@${rec.user_id}>`.replace(/<@\d+>/, ""),
         message: MSG[action] || `${action}?`,
         danger, confirmLabel: action[0].toUpperCase() + action.slice(1),
       }))) return;
@@ -48,7 +48,7 @@ export default {
       if (!(await confirmDialog({ title: "Create / repair quarantine role", message: settingDesc("quarantine_repair") + " Continue?", confirmLabel: "Repair" }))) return;
       try {
         await api.post("/repair");
-        toast("Repair queued — updating coverage…");
+        toast("Repair queued - updating coverage…");
         pollCoverage();   // refresh as soon as the bot processes it (no 5-min wait)
       } catch (e) { toast(e.message, "err"); }
     };
@@ -77,7 +77,7 @@ export default {
       const rid = settings.quarantine_role_id;
       const statusRow = el("div", { class: "sec-settings-row" }, [
         el("div", { class: "k" }, ["Status ", info(settingDesc("quarantine_role"))]),
-        rid ? badge(`Configured — role ${rid}`, "ok") : badge("Not configured", "warn"),
+        rid ? badge(`Configured - role ${rid}`, "ok") : badge("Not configured", "warn"),
       ]);
       const permRow = el("div", { class: "sec-settings-row" }, [
         el("div", { class: "k" }, ["Permissions preview ", info(settingDesc("quarantine_perms"))]),
@@ -89,8 +89,8 @@ export default {
       if (rid && cov && cov.total != null) {
         const missing = cov.total - cov.configured;
         const val = missing === 0
-          ? badge(`Configured — ${cov.configured} / ${cov.total} channels`, "ok")
-          : badge(`Needs Repair — ${missing} channel(s) missing overwrites (${cov.coverage_pct}%)`, "bad");
+          ? badge(`Configured - ${cov.configured} / ${cov.total} channels`, "ok")
+          : badge(`Needs Repair - ${missing} channel(s) missing overwrites (${cov.coverage_pct}%)`, "bad");
         coverageRow = el("div", { class: "sec-settings-row" }, [
           el("div", { class: "k" }, ["Coverage ", info("Every channel and category must deny the quarantine role (view, chat, voice, threads, reactions, uploads). Repair re-applies any that were changed or added.")]),
           val,
@@ -118,14 +118,14 @@ export default {
       body.replaceChildren(
         table([
           { label: "User", render: (r) => el("code", { text: r.user_id }) },
-          { label: "Reason", render: (r) => el("span", { class: "sec-muted", text: r.reason || "—" }) },
+          { label: "Reason", render: (r) => el("span", { class: "sec-muted", text: r.reason || "-" }) },
           { label: "Status", render: (r) => (r.status === "active" && r.sync_status === "out_of_sync")
               ? el("span", { title: r.sync_reason || "Out of sync with Discord" }, [badge("⚠ Out of Sync", "bad")])
               : badge(r.status, r.status === "active" ? "warn" : "muted") },
           { label: "Since", render: (r) => el("span", { text: fmtTime(r.quarantined_at) }) },
           { label: "Expires", render: (r) => el("span", { text: r.expires_at ? fmtTime(r.expires_at) : "never" }) },
           { label: "Actions", render: (r) => {
-            if (!(r.status === "active" && canEdit)) return el("span", { class: "sec-muted", text: "—" });
+            if (!(r.status === "active" && canEdit)) return el("span", { class: "sec-muted", text: "-" });
             if (r.sync_status === "out_of_sync") {
               // Out of sync: do NOT auto-restore. Offer explicit operator choices.
               return el("div", { class: "sec-row" }, [
@@ -161,7 +161,7 @@ export default {
           ]),
         ]);
         if (canEdit) head.append(el("button", { class: "sec-btn sec-btn-sm", text: "Scan now", onclick: async () => {
-          try { await api.post("/quarantine/external/scan"); toast("Scan queued — results refresh within a minute."); }
+          try { await api.post("/quarantine/external/scan"); toast("Scan queued - results refresh within a minute."); }
           catch (e) { toast(e.message, "err"); }
         } }));
         kids.push(head);
@@ -196,7 +196,7 @@ export default {
         } else {
           ctl.append(
             el("button", { class: "sec-btn sec-btn-sm sec-btn-primary", text: "Adopt into Bucky", onclick: async () => {
-              try { await api.post(`/quarantine/external/${u.user_id}/adopt`); toast("Adopt queued — Bucky will take over management shortly."); setTimeout(renderExternal, 1500); }
+              try { await api.post(`/quarantine/external/${u.user_id}/adopt`); toast("Adopt queued - Bucky will take over management shortly."); setTimeout(renderExternal, 1500); }
               catch (e) { toast(e.message, "err"); } } }),
             el("button", { class: "sec-btn sec-btn-sm sec-btn-ghost", text: "Ignore", onclick: async () => {
               try { await api.post(`/quarantine/external/${u.user_id}/ignore`); toast("Ignored."); renderExternal(); }

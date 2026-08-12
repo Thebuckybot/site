@@ -47,7 +47,7 @@ const TTL = gatewayClient.softRefreshTtl || 60000;
 
 const DISCLAIMER =
     "Every row is a partial snapshot taken at the moment of the attack. It is " +
-    "not refreshed and it is not marked stale — an operator who has rotated " +
+    "not refreshed and it is not marked stale - an operator who has rotated " +
     "their code since looks exactly like one who has not.";
 
 const SORTS = [
@@ -148,7 +148,7 @@ function renderRow(item) {
                 ${escapeHtml(item.handle || "unknown")}
                 <span class="vm-leak-id">${escapeHtml(item.victim_id || "")}</span>
             </td>
-            <td>${chip(`${org.emblem || ""} ${org.name || "—"}`.trim())}</td>
+            <td>${chip(`${org.emblem || ""} ${org.name || "-"}`.trim())}</td>
             <td class="vm-leak-age" title="${escapeHtml(item.leaked_at || "")}">${escapeHtml(fmtAge(item.age_hours))}</td>
         </tr>
     `;
@@ -159,7 +159,7 @@ function renderTable() {
         return `<p class="vm-site-note">Reading the archive…</p>`;
     }
     if (cache.status === "offline") {
-        return `<p class="vm-site-note">The archive is unreachable right now. Nothing has been lost — try again in a moment.</p>`;
+        return `<p class="vm-site-note">The archive is unreachable right now. Nothing has been lost - try again in a moment.</p>`;
     }
     const data = cache.data;
     if (!data) {
@@ -328,7 +328,7 @@ export function registerWarRoomSite(registry) {
         type: "home",
         keywords: ["warroom", "war", "leaks", "org", "organisation", "attack",
                    "bank code", "archive", "intel", "haul"],
-        description: "Your organisation's private leak archive — what its attacks have taken.",
+        description: "Your organisation's private leak archive - what its attacks have taken.",
         tags: ["warroom", "site", "osint", "org"],
         render: () => renderHome(),
     });

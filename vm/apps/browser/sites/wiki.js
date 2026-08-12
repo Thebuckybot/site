@@ -35,7 +35,7 @@ const WIKI_ARTICLES = [
         slug: "bucky",
         title: "Bucky",
         category: "The Grid",
-        description: "Bucky is the resident intelligence of the Bucky VM and the namesake of BuckyNet — the fictional network this workstation connects to.",
+        description: "Bucky is the resident intelligence of the Bucky VM and the namesake of BuckyNet - the fictional network this workstation connects to.",
         keywords: ["bucky", "mascot", "intelligence", "ai", "grid", "buckynet", "lore", "universe", "operator"],
         tags: ["wiki", "lore", "core"],
         lead: "Resident intelligence of the Bucky VM and namesake of BuckyNet.",
@@ -47,11 +47,11 @@ const WIKI_ARTICLES = [
         ],
         sections: [
             ["Overview", [
-                "Bucky is the in-universe intelligence that runs the Bucky VM, a fictional cybersecurity workstation. Bucky is not a person and not a real product — it is a character of the Bucky universe, woven through the terminal, the filesystem and the network you are browsing now.",
+                "Bucky is the in-universe intelligence that runs the Bucky VM, a fictional cybersecurity workstation. Bucky is not a person and not a real product - it is a character of the Bucky universe, woven through the terminal, the filesystem and the network you are browsing now.",
                 "Operators interact with Bucky indirectly: every command, every file and every page on BuckyNet passes through systems Bucky maintains. The VM presents Bucky as calm, dry and faintly amused by the operators it supervises."
             ]],
             ["The Grid", [
-                "BuckyNet is informally called the Grid — a closed, simulated network with no path to the real internet. Everything reachable from this browser is internal VM content.",
+                "BuckyNet is informally called the Grid - a closed, simulated network with no path to the real internet. Everything reachable from this browser is internal VM content.",
                 "The Grid is deliberately small and knowable. Bucky logs every route an operator takes, which is why the wiki, the leak database and the developer feed all feel like they are watching back."
             ]],
             ["Operators", [
@@ -60,7 +60,7 @@ const WIKI_ARTICLES = [
         ],
         seeAlso: ["virus", "commands", "items", "grid-timeline"],
         crossRefs: [
-            { url: "bucky://bucky", label: "Bucky — official platform", note: "the landing site" },
+            { url: "bucky://bucky", label: "Bucky - official platform", note: "the landing site" },
             { url: "bucky://community", label: "Bucky Community", note: "the support server" }
         ]
     },
@@ -68,13 +68,13 @@ const WIKI_ARTICLES = [
         slug: "virus",
         title: "The Virus",
         category: "Threats",
-        description: "The Virus is the recurring antagonist of the Bucky universe — a fictional self-rewriting malware family that hunts the Grid for unguarded nodes.",
+        description: "The Virus is the recurring antagonist of the Bucky universe - a fictional self-rewriting malware family that hunts the Grid for unguarded nodes.",
         keywords: ["virus", "the virus", "malware", "infection", "threat", "enemy", "attack", "worm", "payload"],
         tags: ["wiki", "lore", "threat", "enemy"],
         lead: "The recurring antagonist of the Bucky universe.",
         infobox: [
             ["Classification", "Self-rewriting malware"],
-            ["Origin", "Unknown — see Transmission 0"],
+            ["Origin", "Unknown - see Transmission 0"],
             ["Behaviour", "Spreads node to node"],
             ["Threat level", "Severe"],
             ["First contained", "Cycle 188"]
@@ -85,7 +85,7 @@ const WIKI_ARTICLES = [
                 "Within VM missions the Virus is the reason the workstation exists. Operators are trained against it, not expected to defeat it outright."
             ]],
             ["Behaviour", [
-                "The Virus spreads across the Grid one node at a time, preferring nodes with weak or default credentials. It leaves fragments — corrupted files, half-finished transmissions — that operators can recover and study.",
+                "The Virus spreads across the Grid one node at a time, preferring nodes with weak or default credentials. It leaves fragments - corrupted files, half-finished transmissions - that operators can recover and study.",
                 "It does not act with malice in the story so much as appetite. The Virus consumes attention, storage and trust, and the Grid is its feeding ground. It favours sectors no one searches for."
             ]],
             ["Countermeasures", [
@@ -109,12 +109,12 @@ const WIKI_ARTICLES = [
         infobox: [
             ["Currency", "Bucky Credits"],
             ["Tokens", "LuckyChip"],
-            ["Collectables", "Series 1 — 3"],
+            ["Collectables", "Series 1 - 3"],
             ["Tradeable", "In-universe only"]
         ],
         sections: [
             ["Currency", [
-                "The Bucky economy runs on Bucky Credits, represented in-universe as printed banknotes. Credits are entirely fictional and exist only to drive missions and progression — they buy nothing real.",
+                "The Bucky economy runs on Bucky Credits, represented in-universe as printed banknotes. Credits are entirely fictional and exist only to drive missions and progression - they buy nothing real.",
                 "Banknotes recovered from the Grid carry serial fragments. Some of those fragments are clues."
             ]],
             ["LuckyChip", [
@@ -152,7 +152,7 @@ const WIKI_ARTICLES = [
                 "cat prints a file to the screen. edit opens a file in BuckyCode, creating it if it does not exist. open routes a file to BuckyCode or a folder to the Files app. chmod +x marks a file executable so it can be run directly as ./script.py."
             ]],
             ["Scripts and the network", [
-                "python runs a .py file through the VM's simulated execution layer — no real code is ever executed. The browser command opens BuckyNet in a new browser window and optionally navigates straight to a bucky:// address.",
+                "python runs a .py file through the VM's simulated execution layer - no real code is ever executed. The browser command opens BuckyNet in a new browser window and optionally navigates straight to a bucky:// address.",
                 "Commands are intentionally close to a real shell so the skill transfers, while staying entirely inside the VM."
             ]]
         ],
@@ -162,19 +162,19 @@ const WIKI_ARTICLES = [
         slug: "attack-scripts",
         title: "Attack Scripts",
         category: "Tools",
-        description: "Fictional offensive tooling of the Bucky universe — the script archetypes operators study to understand how the Grid is attacked.",
+        description: "Fictional offensive tooling of the Bucky universe - the script archetypes operators study to understand how the Grid is attacked.",
         keywords: ["attack", "scripts", "attack scripts", "offensive", "exploit", "payload", "intrusion", "red team"],
         tags: ["wiki", "tools", "offensive", "scripts"],
         lead: "Fictional offensive script archetypes of the Grid.",
         infobox: [
             ["Category", "Offensive tooling"],
             ["Status", "Lore reference"],
-            ["Real code", "None — fictional"],
+            ["Real code", "None - fictional"],
             ["Counterpart", "Security Scripts"]
         ],
         sections: [
             ["About this page", [
-                "This article is a lore reference. It describes attack scripts as fictional objects in the Bucky universe — it does not contain, teach or imply any real offensive technique. Everything here is set dressing for missions.",
+                "This article is a lore reference. It describes attack scripts as fictional objects in the Bucky universe - it does not contain, teach or imply any real offensive technique. Everything here is set dressing for missions.",
                 "In-universe, attack scripts are how the Virus and rival crews move through the Grid."
             ]],
             ["Archetypes", [
@@ -188,24 +188,24 @@ const WIKI_ARTICLES = [
         slug: "security-scripts",
         title: "Security Scripts",
         category: "Tools",
-        description: "Fictional defensive tooling of the Bucky universe — the security script archetypes operators run to harden and watch a node.",
+        description: "Fictional defensive tooling of the Bucky universe - the security script archetypes operators run to harden and watch a node.",
         keywords: ["security", "scripts", "security scripts", "defensive", "firewall", "hardening", "protection", "blue team"],
         tags: ["wiki", "tools", "defensive", "scripts"],
         lead: "Fictional defensive script archetypes of the Grid.",
         infobox: [
             ["Category", "Defensive tooling"],
             ["Status", "Lore reference"],
-            ["Real code", "None — fictional"],
+            ["Real code", "None - fictional"],
             ["Counterpart", "Attack Scripts"]
         ],
         sections: [
             ["About this page", [
-                "Like its counterpart, this article is pure lore. Security scripts are fictional objects used to give missions a defensive vocabulary — there is no real code here.",
+                "Like its counterpart, this article is pure lore. Security scripts are fictional objects used to give missions a defensive vocabulary - there is no real code here.",
                 "In-universe, security scripts are the operator's standard answer to the Virus."
             ]],
             ["Archetypes", [
                 "Defensive archetypes mirror the offensive ones: watchers that log every route into a node, walls that refuse weak credentials, and traces that follow an intrusion back through the Grid.",
-                "A security script never removes the Virus. It buys time and visibility — and in the Bucky universe, visibility is usually enough to win the mission."
+                "A security script never removes the Virus. It buys time and visibility - and in the Bucky universe, visibility is usually enough to win the mission."
             ]]
         ],
         seeAlso: ["attack-scripts", "virus", "bucky-security"]
@@ -214,15 +214,15 @@ const WIKI_ARTICLES = [
         slug: "helix-dynamics",
         title: "Helix Dynamics",
         category: "Corporations",
-        description: "Helix Dynamics is a fictional Grid corporation — a data-logistics firm and a recurring target of BuckyNet incidents.",
+        description: "Helix Dynamics is a fictional Grid corporation - a data-logistics firm and a recurring target of BuckyNet incidents.",
         keywords: ["helix", "dynamics", "helix dynamics", "corporation", "company", "corp", "data", "logistics"],
         tags: ["wiki", "corporation", "corp"],
         lead: "Fictional data-logistics corporation operating on the Grid.",
         infobox: [
             ["Sector", "Data logistics"],
             ["Founded", "Cycle 140 (in-universe)"],
-            ["Grid nodes", "Helix-1 — Helix-6"],
-            ["Standing", "Breached — see Leak Database"]
+            ["Grid nodes", "Helix-1 - Helix-6"],
+            ["Standing", "Breached - see Leak Database"]
         ],
         sections: [
             ["Overview", [
@@ -243,7 +243,7 @@ const WIKI_ARTICLES = [
         slug: "caldera-energy",
         title: "Caldera Energy",
         category: "Corporations",
-        description: "Caldera Energy is a fictional Grid corporation — a power utility whose nodes keep the arcade and the Grid lit.",
+        description: "Caldera Energy is a fictional Grid corporation - a power utility whose nodes keep the arcade and the Grid lit.",
         keywords: ["caldera", "energy", "caldera energy", "corporation", "company", "corp", "power", "utility"],
         tags: ["wiki", "corporation", "corp"],
         lead: "Fictional power utility keeping the Grid lit.",
@@ -256,7 +256,7 @@ const WIKI_ARTICLES = [
         sections: [
             ["Overview", [
                 "Caldera Energy is a fictional utility corporation. It runs the power nodes the rest of the Grid depends on, including the arcade relay that keeps the LuckyChip casino online.",
-                "Caldera is written as old, slow and careful — the opposite of Helix Dynamics. Its nodes are rarely breached, which in the Bucky universe makes operators suspicious rather than reassured."
+                "Caldera is written as old, slow and careful - the opposite of Helix Dynamics. Its nodes are rarely breached, which in the Bucky universe makes operators suspicious rather than reassured."
             ]],
             ["Role in missions", [
                 "Caldera is the corporation missions use for infrastructure stakes: when a node goes dark, it is usually a Caldera relay, and the blackout is the timer the operator races."
@@ -268,7 +268,7 @@ const WIKI_ARTICLES = [
         slug: "static-den",
         title: "The Static Den",
         category: "Factions",
-        description: "The Static Den is a fictional threat crew of the Bucky universe — pseudonymous operators who trade in leaks and unguarded nodes.",
+        description: "The Static Den is a fictional threat crew of the Bucky universe - pseudonymous operators who trade in leaks and unguarded nodes.",
         keywords: ["static", "den", "static den", "faction", "crew", "threat", "hacker", "group"],
         tags: ["wiki", "faction", "threat"],
         lead: "Fictional threat crew that trades in leaks and unguarded nodes.",
@@ -280,11 +280,11 @@ const WIKI_ARTICLES = [
         ],
         sections: [
             ["Overview", [
-                "The Static Den is a fictional crew — a loose faction of pseudonymous operators. They are not the Virus; they are people. That makes them, in mission terms, the easier and the more dangerous threat: easier to trace, harder to predict.",
+                "The Static Den is a fictional crew - a loose faction of pseudonymous operators. They are not the Virus; they are people. That makes them, in mission terms, the easier and the more dangerous threat: easier to trace, harder to predict.",
                 "The Den's signature is patience. They do not break nodes. They wait for a node to be left open and walk in."
             ]],
             ["On the Grid", [
-                "Static Den handles surface across BuckyNet — in leak records, in BuckTube comments, in forum chatter. Following a Den handle from one site to the next is a standard OSINT mission pattern.",
+                "Static Den handles surface across BuckyNet - in leak records, in BuckTube comments, in forum chatter. Following a Den handle from one site to the next is a standard OSINT mission pattern.",
                 "Several Helix Dynamics breaches are attributed to the Den."
             ]]
         ],
@@ -313,7 +313,7 @@ const WIKI_ARTICLES = [
                 "Its doctrine is simple and repeated everywhere: you cannot delete the Virus, so make sure you can always see it."
             ]],
             ["Training", [
-                "Bucky Security produces the training reels on BuckTube and the tool documentation in this wiki. An operator's progression — levels, installed tools, mission flags — is tracked by Bucky Security and synced to the community."
+                "Bucky Security produces the training reels on BuckTube and the tool documentation in this wiki. An operator's progression - levels, installed tools, mission flags - is tracked by Bucky Security and synced to the community."
             ]]
         ],
         seeAlso: ["security-scripts", "static-den", "commands"],
@@ -325,18 +325,18 @@ const WIKI_ARTICLES = [
         slug: "grid-timeline",
         title: "Timeline of the Grid",
         category: "History",
-        description: "A fictional in-universe history of BuckyNet — how the Grid was built, breached and brought online.",
+        description: "A fictional in-universe history of BuckyNet - how the Grid was built, breached and brought online.",
         keywords: ["timeline", "history", "grid", "buckynet", "cycles", "events", "lore"],
         tags: ["wiki", "history", "timeline", "lore"],
         lead: "A fictional in-universe history of BuckyNet, cycle by cycle.",
         infobox: [
-            ["Scope", "Cycle 0 — present"],
+            ["Scope", "Cycle 0 - present"],
             ["Unit", "Cycle (in-universe)"],
             ["Status", "Maintained by Bucky Security"]
         ],
         sections: [
             ["About this timeline", [
-                "Cycles are the Bucky universe's unit of in-universe time. This timeline is lore — it gives missions and articles a shared history to reference."
+                "Cycles are the Bucky universe's unit of in-universe time. This timeline is lore - it gives missions and articles a shared history to reference."
             ]]
         ],
         timeline: [
@@ -460,7 +460,7 @@ function renderHome() {
         <div class="vm-wiki-body">
             <p class="vm-wiki-intro">
                 BuckyWiki is the community knowledge base of BuckyNet. ${WIKI_ARTICLES.length} articles
-                cover the lore, tools, threats, factions and corporations of the Bucky universe — all
+                cover the lore, tools, threats, factions and corporations of the Bucky universe - all
                 internal VM content.
             </p>
             <div class="vm-site-chiprow">${["The Grid", "Threats", "Factions", "Corporations", "Tools", "History"].map((c) => chip(c)).join("")}</div>
@@ -492,7 +492,7 @@ export function registerWikiSite(registry) {
         title: "BuckyWiki",
         type: "home",
         keywords: ["wiki", "buckywiki", "encyclopedia", "knowledge", "articles", "reference", "bucky"],
-        description: "The community knowledge base of BuckyNet — lore, tools, threats, factions and corporations.",
+        description: "The community knowledge base of BuckyNet - lore, tools, threats, factions and corporations.",
         tags: ["wiki", "site", "reference"],
         render: () => renderHome()
     });

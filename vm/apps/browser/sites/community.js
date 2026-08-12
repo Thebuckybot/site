@@ -40,7 +40,7 @@ const EVENTS = [
     },
     {
         tag: "Event",
-        title: "Grid Night — Co-op OSINT Run",
+        title: "Grid Night - Co-op OSINT Run",
         when: "Weekend",
         body: "Squad up in #the-grid and work a shared investigation. Credits doubled for the " +
             "duration of the event."
@@ -67,7 +67,7 @@ function renderHeader() {
             <span class="vm-comm-kicker">COMMUNITY HUB</span>
             <h1 class="vm-comm-wordmark">Bucky Community</h1>
             <p class="vm-comm-tagline">
-                The support server for the Grid — operators, mission help, events, giveaways and
+                The support server for the Grid - operators, mission help, events, giveaways and
                 the people who keep BuckyNet alive.
             </p>
             <div class="vm-comm-cta">
@@ -187,7 +187,7 @@ export function registerCommunitySite(registry) {
         title: "Bucky Community",
         type: "community",
         keywords: ["community", "discord", "server", "support", "events", "giveaway", "join", "social"],
-        description: "The Bucky community hub — Discord support server, events, giveaways and updates.",
+        description: "The Bucky community hub - Discord support server, events, giveaways and updates.",
         tags: ["community", "discord", "social"],
         render: () => renderCommunityHome()
     });

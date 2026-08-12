@@ -318,7 +318,7 @@ function renderOutsider(s) {
         </div>
         <div class="og-col og-col-side">
             <section class="og-panel og-rank">${CORRUPT}
-                <div class="og-eyebrow">League table — REP per active member</div>
+                <div class="og-eyebrow">League table - REP per active member</div>
                 <ol class="og-rank-list">${rijen}</ol>
                 <p class="og-faint">This is what anybody may see, organization or not.</p>
             </section>
@@ -401,7 +401,7 @@ function renderIdentity(org, s) {
         </div>
         <div class="og-ident-facts">
             ${fact("Members", `${num(org.active)} / ${num(org.members)}`)}
-            ${fact("Standing", mij >= 0 ? `#${mij + 1} / ${s.standings.length}` : "—")}
+            ${fact("Standing", mij >= 0 ? `#${mij + 1} / ${s.standings.length}` : "-")}
             ${fact("Credits", num(org.credits.available))}
         </div>
         ${renderTermStrip(org)}
@@ -483,7 +483,7 @@ function renderTerm(org) {
         <div class="og-term-head">
             <span class="og-eyebrow">Campaign</span>
             <span class="og-term-name">${escapeHtml(c.title || "")}</span>
-            <span class="og-term-left">${dagen === null ? "—"
+            <span class="og-term-left">${dagen === null ? "-"
                 : `${num(dagen)} ${dagen === 1 ? "day" : "days"} left`}</span>
         </div>
         ${meter(c.percent, c.full)}
@@ -492,7 +492,7 @@ function renderTerm(org) {
             <span class="og-faint">of ${num(c.goal)}</span>
             <span class="og-term-pct og-mono">${c.percent}%</span>
         </div>
-        ${c.full ? `<p class="og-flag">Pot is full — the Leader can buy now.</p>` : ""}
+        ${c.full ? `<p class="og-flag">Pot is full - the Leader can buy now.</p>` : ""}
     </section>`;
 }
 
@@ -538,7 +538,7 @@ function renderStandings(s, org) {
         </li>`;
     }).join("");
     return `<section class="og-panel og-rank">${CORRUPT}
-        <div class="og-eyebrow">League table — REP per active member</div>
+        <div class="og-eyebrow">League table - REP per active member</div>
         <ol class="og-rank-list">${rijen}</ol>
     </section>`;
 }
@@ -581,8 +581,8 @@ function renderTreasurySummary(org) {
         </div>
         <div class="og-treas-goal">
             <span class="og-faint">${c ? "Target: next upgrade"
-                : "No target — no campaign running"}</span>
-            <span class="og-mono">${c ? num(c.goal) : "—"}</span>
+                : "No target - no campaign running"}</span>
+            <span class="og-mono">${c ? num(c.goal) : "-"}</span>
         </div>
         ${meter(pctVol, c && c.full)}
     </section>`;
@@ -669,7 +669,7 @@ function renderFeedContext(s, f) {
         <ul class="og-rules">
             <li>At most ${num(BODY_LIMIT)} characters per message.</li>
             <li>A few seconds between two messages.</li>
-            <li>Report what does not belong — it counts, and the
+            <li>Report what does not belong - it counts, and the
                 leadership sees it.</li>
             ${f.can_moderate ? `<li class="og-rule-mod">You may delete other people's messages.</li>` : ""}
         </ul>
@@ -811,11 +811,11 @@ function renderTreasury(s) {
                 </div>
                 <div class="og-treas-goal">
                     <span class="og-faint">${c ? "Target: next upgrade"
-                        : "No target — no campaign running"}</span>
-                    <span class="og-mono">${c ? num(c.goal) : "—"}</span>
+                        : "No target - no campaign running"}</span>
+                    <span class="og-mono">${c ? num(c.goal) : "-"}</span>
                 </div>
                 ${meter(pctVol, c && c.full)}
-                ${c && c.full ? `<p class="og-flag">Pot is full — the Leader can buy now.</p>` : ""}
+                ${c && c.full ? `<p class="og-flag">Pot is full - the Leader can buy now.</p>` : ""}
             </section>
             ${renderDonors(c)}
             ${renderTransactions(c)}
@@ -838,7 +838,7 @@ function renderDonors(c) {
     }
     const top = Math.max(1, ...donateurs.map((d) => Number(d.amount) || 0));
     return `<section class="og-panel">${CORRUPT}
-        <div class="og-eyebrow">Top donors — this campaign</div>
+        <div class="og-eyebrow">Top donors - this campaign</div>
         <ol class="og-donors">${donateurs.map((d, i) => `
             <li class="og-donor">
                 <span class="og-donor-pos og-mono">${i + 1}</span>
@@ -1191,7 +1191,7 @@ function renderUpgrade(it, u) {
                 <span class="og-mono">${num(it.next_price)} credits</span>
             </div>
             ${meter(deel, genoeg)}`}
-        ${genoeg ? `<p class="og-flag">Available — the Leader buys in Discord.</p>` : ""}
+        ${genoeg ? `<p class="og-flag">Available - the Leader buys in Discord.</p>` : ""}
     </li>`;
 }
 
@@ -1452,7 +1452,7 @@ function renderIncumbent(e, winnaar, totaal) {
     const deel = totaal ? Math.round(stemmen / totaal * 100) : 0;
     const dagen = dagenSinds(e.closed_at);
     return `<section class="og-panel og-leader">${CORRUPT}
-        <div class="og-eyebrow">Current leader — term ${num(e.term)}</div>
+        <div class="og-eyebrow">Current leader - term ${num(e.term)}</div>
         <div class="og-leader-row">
             <img class="og-leader-avatar" alt=""
                  src="${escapeHtml(avatar(e.winner_user_id))}">
@@ -1476,7 +1476,7 @@ function renderBallot(e, totaal) {
     const dagen = dagenTot(e.closes_at);
     return `<section class="og-panel">${CORRUPT}
         <div class="og-ballot-head">
-            <span class="og-eyebrow">Candidates — term ${num(e.term)}</span>
+            <span class="og-eyebrow">Candidates - term ${num(e.term)}</span>
             <span class="og-term-left og-mono">${dagen === null ? "open"
                 : `${num(dagen)} ${dagen === 1 ? "day" : "days"} left`}</span>
         </div>
@@ -1501,13 +1501,13 @@ function renderBallotNote(e) {
     return `<section class="og-panel">${CORRUPT}
         <div class="og-eyebrow">Voting happens in Discord</div>
         <p class="og-faint">The ballot is in <code>#announcements</code>.
-            This screen is the window onto it — there is nothing to click
+            This screen is the window onto it - there is nothing to click
             here, and that is deliberate: one ballot box.</p>
         ${e && e.open ? `<p class="og-faint">You may change your vote for as long as the box is
             open.</p>` : ""}
         <div class="og-eyebrow">How you get on the list</div>
         <p class="og-faint">Automatic. The highest contributions of the term are on
-            the ballot — there is nothing to sign up for.</p>
+            the ballot - there is nothing to sign up for.</p>
     </section>`;
 }
 
@@ -1603,7 +1603,7 @@ function renderCard(s) {
                 <div class="og-ident-facts og-you-facts">
                     ${fact("This term", num(v.season_contribution))}
                     ${fact("Lifetime", num(v.contribution))}
-                    ${fact("In the org", plek ? `#${plek} / ${num(leden.length)}` : "—")}
+                    ${fact("In the org", plek ? `#${plek} / ${num(leden.length)}` : "-")}
                 </div>
                 <div class="og-eyebrow">Rank</div>
                 <div class="og-ladder">${orde.map((r, n) => `

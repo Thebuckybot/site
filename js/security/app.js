@@ -21,7 +21,7 @@ async function applyReadonlyIndicator() {
     if (document.getElementById("sec-readonly-pill")) return;
     const pill = el("span", {
       id: "sec-readonly-pill", class: "sec-readonly-pill", role: "status",
-      title: "Read-only access — only the server owner or a whitelisted Security Admin can make changes.",
+      title: "Read-only access - only the server owner or a whitelisted Security Admin can make changes.",
     }, [
       el("span", { class: "ic", "aria-hidden": "true", text: "🔒" }),
       el("span", { text: "Read Only" }),

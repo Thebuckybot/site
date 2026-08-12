@@ -114,7 +114,7 @@ function buildSeedTree(username) {
                         `Welcome ${username || "operator"}.\n` +
                         "This is the Bucky VM virtual filesystem.\n" +
                         "Files and directories you create live for this session only.\n" +
-                        "Try: mkdir ~/Desktop/intel and touch ~/Desktop/notes.txt — they appear on the desktop.",
+                        "Try: mkdir ~/Desktop/intel and touch ~/Desktop/notes.txt - they appear on the desktop.",
                     "mission.txt":
                         "Objective: keep the arcade node warm.\n" +
                         "Inspect /logs, organise /downloads, and document findings.",
@@ -133,7 +133,7 @@ function buildSeedTree(username) {
                         "org.link": "org",
                         "welcome.md":
                             "# Bucky VM\n\n" +
-                            "Welcome to the **Bucky VM** — a fictional cybersecurity workstation.\n\n" +
+                            "Welcome to the **Bucky VM** - a fictional cybersecurity workstation.\n\n" +
                             "## Getting started\n\n" +
                             "- Open the *Terminal* and type `help`\n" +
                             "- Create files with `touch ~/Desktop/notes.txt`\n" +
@@ -180,7 +180,7 @@ function buildSeedTree(username) {
             "README.md":
                 "# /projects\n\n" +
                 "Your BuckyCode workspace.\n\n" +
-                "- **examples/** — commented demos. Try: `run examples/profile_demo.py`\n" +
+                "- **examples/** - commented demos. Try: `run examples/profile_demo.py`\n" +
                 "- **scripts/** — runnable tools. Try: `run scripts/leak_reporter.py`\n" +
                 "- **data/** — JSON state (watchlists, trackers) your scripts keep\n" +
                 "- **reports/** — generated reports (report.to_reports / report.save)\n" +

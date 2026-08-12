@@ -41,22 +41,22 @@ const SEED_NEWS = [
         category: "Launch",
         author: "Bucky Network",
         title: "Bucky News Goes Live on the Grid",
-        summary: "The world-content channel is online — announcements, events and broadcasts now have a home at bucky://news.",
+        summary: "The world-content channel is online - announcements, events and broadcasts now have a home at bucky://news.",
         keywords: ["news", "announcement", "launch", "buckynet", "grid", "world", "content"],
         tags: ["news", "launch", "buckynet"],
         featured: true,
         priority: "high",
         body: [
             "**bucky://news is online.** The Grid now has a dedicated channel for ",
-            "world content — announcements, milestones, network broadcasts and live ",
+            "world content - announcements, milestones, network broadcasts and live ",
             "events.\n\n",
             "## What lands here\n\n",
-            "- **Announcements** — launches, events and community milestones.\n",
-            "- **Broadcasts** — faction and network signals across BuckyNet.\n",
-            "- **World events** — in-universe happenings as the world evolves.\n\n",
+            "- **Announcements** - launches, events and community milestones.\n",
+            "- **Broadcasts** - faction and network signals across BuckyNet.\n",
+            "- **World events** - in-universe happenings as the world evolves.\n\n",
             "Leaks, incidents and maintenance each have their own dedicated page on ",
             "the Grid and never show up here. When this feed is quiet, the Grid ",
-            "shows its bundled briefing — nothing ever breaks."
+            "shows its bundled briefing - nothing ever breaks."
         ].join(""),
         crossRefs: [
             { url: "bucky://dev", label: "Bucky Dev", note: "patch notes & hints" },
@@ -75,7 +75,7 @@ const SEED_NEWS = [
         featured: false,
         priority: "normal",
         body: [
-            "Bucky News is the Grid's **news channel** — the page that carries the ",
+            "Bucky News is the Grid's **news channel** - the page that carries the ",
             "three news-class signals: **announcements**, **world events** and ",
             "**broadcasts**. They render through one shared pipeline and one set ",
             "of cards.\n\n",
@@ -96,7 +96,7 @@ const newsSite = createWorldFeedSite({
     siteTitle: "Bucky News",
     siteLead: "Announcements, events and broadcasts from across the Grid.",
     siteDomain: "Bucky News",
-    introText: "Bucky News — announcements, events and network broadcasts from across the Grid. " +
+    introText: "Bucky News - announcements, events and network broadcasts from across the Grid. " +
                "This feed is backend-connected: world content authored by staff appears here live, " +
                "and refreshes itself in the background.",
     domains: ["announcement", "world_event", "broadcast"],

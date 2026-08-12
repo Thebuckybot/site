@@ -17,13 +17,13 @@ export default {
         (!state.q || m.label.toLowerCase().includes(state.q) || m.key.includes(state.q)));
       body.replaceChildren(table([
         { label: "Module", render: (m) => el("div", {}, [el("strong", { text: m.label }), info(moduleDesc(m.key)), el("div", { class: "sec-muted", text: m.key })]) },
-        { label: "Category", render: (m) => badge(m.category || "—", "muted") },
+        { label: "Category", render: (m) => badge(m.category || "-", "muted") },
         // SV2-MAN-002: honest states — an unavailable module (no runtime
         // implementation, e.g. Vanity URL Change) can never look functional.
         { label: "Status", render: (m) => m.status === "unavailable"
             ? badge("Not available", "bad")
             : badge(m.enabled ? "Enabled" : "Disabled", m.enabled ? "ok" : "muted") },
-        { label: "Trigger", render: (m) => badge(m.status === "unavailable" ? "—" : (m.trigger || "threshold"), "muted") },
+        { label: "Trigger", render: (m) => badge(m.status === "unavailable" ? "-" : (m.trigger || "threshold"), "muted") },
         { label: "", render: (m) => {
           if (m.status === "unavailable") {
             return el("span", { class: "sec-muted",

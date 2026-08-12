@@ -27,9 +27,9 @@ export default {
         table([
           { label: "Action", render: (a) => el("code", { text: a.action }) },
           { label: "Result", render: (a) => badge(a.result, a.result === "success" ? "ok" : a.result === "failed" ? "bad" : "muted") },
-          { label: "Module", render: (a) => a.module_key || "—" },
-          { label: "Target", render: (a) => el("code", { text: a.target_id || "—" }) },
-          { label: "Source", render: (a) => badge(a.source || "—", "muted") },
+          { label: "Module", render: (a) => a.module_key || "-" },
+          { label: "Target", render: (a) => el("code", { text: a.target_id || "-" }) },
+          { label: "Source", render: (a) => badge(a.source || "-", "muted") },
           { label: "When", render: (a) => el("span", { text: fmtTime(a.created_at) }) },
         ], items),
         pager(page, items.length >= 20, (p) => { page = p; load(); }),

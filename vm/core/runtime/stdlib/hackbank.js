@@ -91,7 +91,7 @@ export function createHackbankModule(ctx) {
         cooldown: def(cooldown),
         status: def(status),
         run: def(run, {
-            raises: "Breaking into a bank is the bot's job — the VM only "
+            raises: "Breaking into a bank is the bot's job - the VM only "
                   + "inspects. This routes through the Discord bridge and "
                   + "raises until that write path lands."
         })

@@ -45,11 +45,11 @@ export default {
       ]);
       const roleCol = [
         { label: "Trusted Role", render: (t) => el("code", { text: t.ref_id }) },
-        { label: "", render: (t) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => removeTrust(t) }) : el("span", { class: "sec-muted", text: "—" }) },
+        { label: "", render: (t) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => removeTrust(t) }) : el("span", { class: "sec-muted", text: "-" }) },
       ];
       const userCol = [
         { label: "Protected User", render: (t) => el("code", { text: t.ref_id }) },
-        { label: "", render: (t) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => removeTrust(t) }) : el("span", { class: "sec-muted", text: "—" }) },
+        { label: "", render: (t) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Remove", onclick: () => removeTrust(t) }) : el("span", { class: "sec-muted", text: "-" }) },
       ];
 
       const roleHead = el("div", { class: "sec-actions", style: "margin-top:16px" }, [

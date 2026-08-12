@@ -14,10 +14,10 @@
  */
 import { mod, def, defEx, notImplemented } from "./kit.js";
 
-const MAIL_MSG = "Mail is not available in this run — the MailService was not threaded into the runtime context.";
+const MAIL_MSG = "Mail is not available in this run - the MailService was not threaded into the runtime context.";
 const SEARCH_MSG = "mail.search is not part of Phase 5.0 (search/filters arrive in a later phase).";
-const DB_MSG = "Database Viewer (bucky.database) is not built yet — it arrives in a later phase. Interface-only seam.";
-const MISSION_MSG = "Mission Board (bucky.missions) is not built yet — it arrives in a later phase. Interface-only seam.";
+const DB_MSG = "Database Viewer (bucky.database) is not built yet - it arrives in a later phase. Interface-only seam.";
+const MISSION_MSG = "Mission Board (bucky.missions) is not built yet - it arrives in a later phase. Interface-only seam.";
 
 /** Derive the bucky.net mail handle from the operator's Discord username. */
 function mailHandle(ctx) {

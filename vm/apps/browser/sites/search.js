@@ -232,7 +232,7 @@ function renderEmpty(query) {
             <strong>No BuckyNet results for "${escapeHtml(query)}"</strong>
             <p>
                 PulseSearch only indexes the Grid, and some pages are unindexed by design. Try a
-                broader word — for example
+                broader word - for example
                 ${queryChips(["wiki", "virus", "developer logs", "bucky leaks"])}
             </p>
         </div>
@@ -285,7 +285,7 @@ function renderSearch(ctx) {
     if (!query) {
         return { title: "PulseSearch", html: renderHome(ctx) };
     }
-    return { title: `${query} — PulseSearch`, html: renderResults(ctx, query) };
+    return { title: `${query} - PulseSearch`, html: renderResults(ctx, query) };
 }
 
 /** Register PulseSearch into the given SiteRegistry. */

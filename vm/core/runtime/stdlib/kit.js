@@ -43,7 +43,7 @@ export function mod(name, members) {
     Object.keys(members || {}).forEach((key) => {
         const v = m[key];
         if (v && typeof v === "function" && !v.pyName) {
-            try { v.pyName = short + "." + key; } catch (_e) { /* frozen fn — ignore */ }
+            try { v.pyName = short + "." + key; } catch (_e) { /* frozen fn - ignore */ }
         }
     });
     return m;

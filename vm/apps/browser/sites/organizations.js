@@ -57,7 +57,7 @@ const SEED_ORGS = [
     {
         id: "aether", name: "Aether Systems", emblem: "⯂", color: "#102A54",
         tagline: "Order through architecture.",
-        description: "Aether Systems is the old establishment — the consortium that wrote the standards everyone else now follows.",
+        description: "Aether Systems is the old establishment - the consortium that wrote the standards everyone else now follows.",
         philosophy: "Well-defined process is the only durable defence.",
         security_ideology: "Governance. Standards, audits, signed change records.",
         members: null,
@@ -105,7 +105,7 @@ function renderHome() {
         <div class="vm-wiki-body">
             <p class="vm-wiki-intro">
                 The four founding organisations of the Grid. Affiliation is permanent and is the
-                anchor of the Phase 4.3 cyberworld — your rank, reputation and warnings all
+                anchor of the Phase 4.3 cyberworld - your rank, reputation and warnings all
                 accrue against your chosen org.
             </p>
             ${renderFeedStatus()}
@@ -164,11 +164,11 @@ function renderOrgPage(slug) {
             </section>
             <section class="vm-wiki-section">
                 <h2>Philosophy</h2>
-                <p>${escapeHtml(org.philosophy || "—")}</p>
+                <p>${escapeHtml(org.philosophy || "-")}</p>
             </section>
             <section class="vm-wiki-section">
                 <h2>Security ideology</h2>
-                <p>${escapeHtml(org.security_ideology || "—")}</p>
+                <p>${escapeHtml(org.security_ideology || "-")}</p>
             </section>
             <div class="vm-leak-more">${link(SITE_URL, "‹ Back to all organisations")}</div>
             ${crossRefs("Across BuckyNet", [
@@ -189,12 +189,12 @@ function renderOrgPage(slug) {
 function renderFeedStatus() {
     if (state.status === "live") {
         return `<div class="vm-dev-feedstatus is-live">
-            <span class="vm-dev-feeddot"></span>Live registry online — member counts are current.
+            <span class="vm-dev-feeddot"></span>Live registry online - member counts are current.
         </div>`;
     }
     if (state.status === "offline") {
         return `<div class="vm-dev-feedstatus is-offline">
-            <span class="vm-dev-feeddot"></span>Backend offline — showing the bundled registry.
+            <span class="vm-dev-feeddot"></span>Backend offline - showing the bundled registry.
         </div>`;
     }
     return `<div class="vm-dev-feedstatus is-loading">
@@ -265,7 +265,7 @@ function notifyHydrated(source) {
 // Helpers
 // ---------------------------------------------------------------------------
 function formatMembers(members) {
-    if (members == null) return "members: —";
+    if (members == null) return "members: -";
     if (members === 0) return "no members yet";
     if (members === 1) return "1 member";
     return `${members} members`;
@@ -293,7 +293,7 @@ export function registerOrganizationsSite(registry) {
         type: "home",
         keywords: ["organizations", "organisations", "factions", "orgs", "cytek",
                    "nulldiv", "null division", "aether", "vanta", "affiliation", "guild"],
-        description: "The four founding organisations of the Grid — permanent affiliations and their philosophies.",
+        description: "The four founding organisations of the Grid - permanent affiliations and their philosophies.",
         tags: ["organizations", "identity"],
         render: () => renderHome(),
     });

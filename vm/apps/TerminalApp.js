@@ -87,7 +87,7 @@ function resolveDirectExec(runtime, state, command, args, out) {
         return null;
     }
     if (!node.flags || !node.flags.executable) {
-        out("error", `${command}: Permission denied — run: chmod +x ${command}`);
+        out("error", `${command}: Permission denied - run: chmod +x ${command}`);
         return null;
     }
     if (!isRunnable(node.name)) {
@@ -136,7 +136,7 @@ function execCommand(runtime, state, raw) {
             return { cleared: true, lines: [] };
 
         case "help":
-            out("system", "Bucky VM terminal — command reference");
+            out("system", "Bucky VM terminal - command reference");
             out("output", "  help            show this command list");
             out("output", "  ls [-alR][path] list a directory (-a hidden, -l long, -R recursive)");
             out("output", "  cd [path]       change the working directory");
@@ -428,13 +428,13 @@ function execCommand(runtime, state, raw) {
 
         case "fg": {
             const f = procs.foreground();
-            if (f) out("system", `foreground: ${f.name} (PID ${f.pid}) — ${f.state}`);
+            if (f) out("system", `foreground: ${f.name} (PID ${f.pid}) - ${f.state}`);
             else out("output", "fg: no current job");
             break;
         }
 
         case "bg":
-            out("system", "bg: launch a background job with a trailing & — e.g. ./scanner.py &");
+            out("system", "bg: launch a background job with a trailing & - e.g. ./scanner.py &");
             break;
 
         // ----- Phase 4.5 — virtual filesystem inspection -----

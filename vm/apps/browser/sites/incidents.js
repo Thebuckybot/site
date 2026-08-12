@@ -41,7 +41,7 @@ const SEED_INCIDENTS = [
             "lifecycle stage: **investigating → identified → monitoring → resolved**, ",
             "with an optional **postmortem** once the incident is closed.\n\n",
             "Incidents NEVER appear on `bucky://news`. This page is the only channel ",
-            "for incident traffic — a real status feed."
+            "for incident traffic - a real status feed."
         ].join(""),
         crossRefs: []
     }
@@ -51,9 +51,9 @@ const incidentsSite = createWorldFeedSite({
     siteId: "incidents",
     siteUrl: "bucky://incidents",
     siteTitle: "Bucky Incidents",
-    siteLead: "Live incident lifecycle — investigating, identified, monitoring, resolved.",
+    siteLead: "Live incident lifecycle - investigating, identified, monitoring, resolved.",
     siteDomain: "Bucky Incidents",
-    introText: "Bucky Incidents — the Grid's status channel. Active incidents and their " +
+    introText: "Bucky Incidents - the Grid's status channel. Active incidents and their " +
                "lifecycle stages appear here live. This feed never carries announcements, " +
                "leaks or maintenance notices; they each have their own dedicated page.",
     domains: ["incident"],

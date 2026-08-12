@@ -74,7 +74,7 @@ function taalBlok(taal) {
     return `
         <div class="vm-docs-block">
             <h2 class="vm-docs-h2">The language</h2>
-            <p class="vm-docs-note">Not real Python — a bounded subset, running
+            <p class="vm-docs-note">Not real Python - a bounded subset, running
             entirely inside the VM. No eval, no host filesystem, no network.</p>
             <h3 class="vm-docs-h3">What works</h3>
             <ul class="vm-docs-bullets">${taal.statements.map(
@@ -106,8 +106,8 @@ function homePagina() {
     const waarschuwing = stuk ? `
         <div class="vm-docs-warn">
             <strong>${stuk}</strong> documentation entries do not match the
-            runtime. The function lists below are still correct — they come from
-            the runtime itself — but some prose is stale.
+            runtime. The function lists below are still correct - they come from
+            the runtime itself - but some prose is stale.
         </div>` : "";
 
     const body = `
@@ -127,7 +127,7 @@ from bucky.leaderboards import richest
 for r in richest(5):
     print(r['rank'], r['user_id'])</code></pre>
                 <p class="vm-docs-note">In a script, <code>help()</code> and
-                <code>dir()</code> answer the same questions this page does —
+                <code>dir()</code> answer the same questions this page does -
                 try <code>help('economy')</code> or
                 <code>dir(profile, True)</code>.</p>
             </div>
@@ -138,7 +138,7 @@ for r in richest(5):
                 <p class="vm-docs-note"><strong>A script you received by mail
                 gets fewer of these.</strong> Pressing Run on a mail attachment
                 grants only <code>terminal</code>, <code>ui</code> and
-                <code>process</code> — no filesystem, no profile, no economy,
+                <code>process</code> - no filesystem, no profile, no economy,
                 no mail. Save it and open it from Files to run it under your own
                 grant.</p>
             </div>

@@ -46,11 +46,11 @@ const VIDEOS = [
         likes: 842,
         published: "Cycle 305",
         category: "Lore",
-        snippet: "An orientation reel for new operators — what BuckyNet is, and what it is not.",
+        snippet: "An orientation reel for new operators - what BuckyNet is, and what it is not.",
         keywords: ["welcome", "grid", "intro", "orientation", "bucky", "buckynet", "start", "new operator"],
         tags: ["tube", "lore", "intro"],
         description:
-            "New to BuckyNet? Start here. The Grid is a closed, simulated network — there is no real " +
+            "New to BuckyNet? Start here. The Grid is a closed, simulated network - there is no real " +
             "internet on the other side of this browser. Every site, account and transmission you find " +
             "is internal VM content. Take the tour, learn the omnibox, and remember: searching is not " +
             "the same as arriving.",
@@ -77,7 +77,7 @@ const VIDEOS = [
         likes: 503,
         published: "Cycle 311",
         category: "Dev",
-        snippet: "The first developer log — what shipped, what broke, and what is coming next to the VM.",
+        snippet: "The first developer log - what shipped, what broke, and what is coming next to the VM.",
         keywords: ["developer", "dev", "log", "logs", "devlog", "patch", "build", "update", "grid", "changelog"],
         tags: ["tube", "dev", "dev-log", "developer"],
         description:
@@ -86,7 +86,7 @@ const VIDEOS = [
             "and Discord-linked progression. Patch notes live on the Bucky Dev site.",
         comments: [
             { author: "Bucky Dev", when: "Cycle 311", pinned: true, likes: 88,
-              text: "Reply: tabs and bookmarks landed in patch 0.3 — read the dev feed." },
+              text: "Reply: tabs and bookmarks landed in patch 0.3 - read the dev feed." },
             { author: "trace_void", when: "Cycle 311", likes: 67,
               text: "browser layer feels great. the search-results-first flow is the right call." },
             { author: "gridhopper", when: "Cycle 312", likes: 22,
@@ -110,14 +110,14 @@ const VIDEOS = [
         keywords: ["security", "awareness", "training", "developer", "log", "safety", "phishing", "defense", "operator"],
         tags: ["tube", "dev-log", "training", "security"],
         description:
-            "Security Awareness — operator training. The Virus does not break in; it is let in. This reel " +
+            "Security Awareness - operator training. The Virus does not break in; it is let in. This reel " +
             "covers the three tells of an unsafe node: default credentials, an unsigned transmission, and " +
             "a file that wants to be opened. When in doubt, run a security script and watch the logs.",
         comments: [
             { author: "Bucky Security", when: "Cycle 307", pinned: true, likes: 73,
               text: "Pinned: training continues in the Terminal Commands wiki article." },
             { author: "coldstart", when: "Cycle 309", likes: 95,
-              text: "'the virus does not break in, it is let in' — putting that on a sticky note." },
+              text: "'the virus does not break in, it is let in' - putting that on a sticky note." },
             { author: "m1rror", when: "Cycle 310", likes: 40,
               text: "the unsigned transmission tell saved me a mission. good reel." }
         ],
@@ -143,7 +143,7 @@ const VIDEOS = [
             "// no description provided //\n" +
             "Transmission recovered from an unguarded node. Sixty-seven seconds of static and one " +
             "repeated string. BuckTube cannot verify the uploader. Cross-reference it in the leak " +
-            "database — the address it came from is filed under BRCH-0117.",
+            "database - the address it came from is filed under BRCH-0117.",
         comments: [
             { author: "halflight", when: "Cycle 309", likes: 210,
               text: "the repeated string matches a serial fragment on a banknote. not joking." },
@@ -169,11 +169,11 @@ const VIDEOS = [
         likes: 934,
         published: "Cycle 310",
         category: "Lore",
-        snippet: "A breakdown of the Grid's most-named threat crew — and how operators trace them.",
+        snippet: "A breakdown of the Grid's most-named threat crew - and how operators trace them.",
         keywords: ["static", "den", "static den", "faction", "crew", "lore", "threat", "explained"],
         tags: ["tube", "lore", "faction"],
         description:
-            "The Static Den are not the Virus — they are people, and that changes everything. This reel " +
+            "The Static Den are not the Virus - they are people, and that changes everything. This reel " +
             "explains how the crew operates, why patience is their signature, and how operators follow a " +
             "Den handle from BuckTube comments to the leak database and back.",
         comments: [
@@ -189,7 +189,7 @@ const VIDEOS = [
     },
     {
         slug: "arcade-night",
-        title: "Arcade Night — LuckyChip Run",
+        title: "Arcade Night - LuckyChip Run",
         channel: "gridhopper",
         subscribers: "9.4K",
         duration: "11:05",
@@ -202,7 +202,7 @@ const VIDEOS = [
         tags: ["tube", "arcade", "community"],
         description:
             "Arcade night on the LuckyChip casino node. Tokens, collectables and a Series 3 giveaway run. " +
-            "Community creator content — drop your node ID in the Bucky community server to get in on " +
+            "Community creator content - drop your node ID in the Bucky community server to get in on " +
             "the next one.",
         comments: [
             { author: "gridhopper", when: "Cycle 312", pinned: true, likes: 52,
@@ -340,7 +340,7 @@ function renderHome() {
         <div class="vm-wiki-body">
             <p class="vm-wiki-intro">
                 BuckTube is BuckyNet's video platform. Dev logs, lore, training reels, arcade nights and
-                the occasional transmission no one will claim. ${VIDEOS.length} videos — all internal VM content.
+                the occasional transmission no one will claim. ${VIDEOS.length} videos - all internal VM content.
             </p>
             <div class="vm-tube-grid">${cards}</div>
             ${crossRefs("Across BuckyNet", [
@@ -370,7 +370,7 @@ export function registerTubeSite(registry) {
         title: "BuckTube",
         type: "home",
         keywords: ["tube", "bucktube", "video", "videos", "watch", "channel", "buckynet"],
-        description: "BuckyNet's video platform — dev logs, lore reels, training, arcade nights and transmissions.",
+        description: "BuckyNet's video platform - dev logs, lore reels, training, arcade nights and transmissions.",
         tags: ["tube", "site", "video"],
         render: () => renderHome()
     });

@@ -198,7 +198,7 @@ function renderBookmarksPanel() {
     const items = bookmarkStore.list();
     const head = `<div class="vm-browser-bm-head">Bookmarks</div>`;
     if (!items.length) {
-        return `${head}<p class="vm-browser-bm-empty">No bookmarks yet — use the star to save a page.</p>`;
+        return `${head}<p class="vm-browser-bm-empty">No bookmarks yet - use the star to save a page.</p>`;
     }
     const rows = items.map((item) => `
         <div class="vm-browser-bm-row">

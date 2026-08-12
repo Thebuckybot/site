@@ -24,7 +24,7 @@ const IMPACT_CELLS = [
   ["restore", "Restore", "ok", "settings / permissions corrected"],
   ["move", "Move", "muted", "position / parent restored (best-effort)"],
   ["delete", "Delete", "bad", "live extras removed (Full Restore only)"],
-  ["blocked", "Blocked", "warn", "ambiguous / unsafe — not run"],
+  ["blocked", "Blocked", "warn", "ambiguous / unsafe - not run"],
   ["unsupported", "Unsupported", "muted", "cannot be faithfully restored"],
   ["protected_kept", "Kept", "muted", "extras kept / protected"],
 ];
@@ -60,7 +60,7 @@ function strongConfirm({ guildName, deleteCount, affected, snapshotId }) {
     });
     cancel.addEventListener("click", () => close(null));
     overlay.appendChild(el("div", { class: "sec-card", style: "max-width:520px;width:92%" }, [
-      el("div", { class: "sec-page-title" }, ["⚠ Full Restore — destructive ", badge(`${deleteCount} delete`, "bad")]),
+      el("div", { class: "sec-page-title" }, ["⚠ Full Restore - destructive ", badge(`${deleteCount} delete`, "bad")]),
       el("p", { class: "sec-muted", text: `This will restore the server toward snapshot #${snapshotId} and permanently DELETE ${deleteCount} live resource(s) that are absent from it. ${affected || 0} resource(s) are affected in total. Managed, protected and ambiguous resources are never deleted.` }),
       el("label", { class: "sec-muted", text: `Type the server name (${guildName || "unknown"}) to continue:` }), nameInput,
       el("label", { class: "sec-muted", text: "Type RESTORE:" }), tokenInput,
@@ -100,12 +100,12 @@ export default {
       stop(); job = null;
       if (!hasUsable) {
         body.replaceChildren(emptyCard({ title: "Recovery unavailable",
-          message: "There is no usable (healthy) recovery baseline yet. Capture one on Snapshots — incident/legacy snapshots are never used as a baseline.",
+          message: "There is no usable (healthy) recovery baseline yet. Capture one on Snapshots - incident/legacy snapshots are never used as a baseline.",
           actionLabel: "View Snapshots", onAction: () => { window.location.hash = "#snapshots"; } }));
         return;
       }
       if (!canEdit) {
-        body.replaceChildren(el("div", { class: "sec-card" }, [el("p", { class: "sec-muted", text: "Read-only — only the Server Owner or a Trusted Administrator can run recovery." })]));
+        body.replaceChildren(el("div", { class: "sec-card" }, [el("p", { class: "sec-muted", text: "Read-only - only the Server Owner or a Trusted Administrator can run recovery." })]));
         return;
       }
       // mode selector
@@ -116,7 +116,7 @@ export default {
         r.addEventListener("change", () => { if (r.checked) mode = key; });
         return el("label", { class: "sec-settings-row", style: "align-items:flex-start;gap:8px" }, [
           r, el("div", {}, [el("strong", { text: title }),
-            el("div", { class: "sec-muted", text: desc + (disabled ? " — no Full-Restore-eligible (v3) snapshot yet; capture a new one." : "") })]),
+            el("div", { class: "sec-muted", text: desc + (disabled ? " - no Full-Restore-eligible (v3) snapshot yet; capture a new one." : "") })]),
         ]);
       };
       const btn = el("button", { class: "sec-btn sec-btn-primary", text: "Generate Recovery Preview" });
@@ -124,7 +124,7 @@ export default {
       body.replaceChildren(el("div", { class: "sec-card" }, [
         el("div", { class: "sec-page-title", text: "1 · Choose a restore mode" }),
         mkMode("safe_repair", "Safe Repair (recommended)",
-          "Repairs missing or modified structure. Never deletes live resources that are absent from the snapshot — they are reported and kept.", false),
+          "Repairs missing or modified structure. Never deletes live resources that are absent from the snapshot - they are reported and kept.", false),
         mkMode("full_restore", "Full Restore (destructive)",
           "Returns supported structure toward the snapshot. Eligible live resources absent from the snapshot MAY be deleted after Preview and an explicit confirmation.", !hasFrEligible),
         el("div", { class: "sec-actions", style: "margin-top:10px" }, [btn, el("a", { class: "sec-btn", href: "#snapshots", text: "View Snapshots" })]),
@@ -140,7 +140,7 @@ export default {
         const r = await api.post("/recovery/plan", { restore_mode: mode });
         const id = r && r.job_id;
         if (!validJobId(id)) {
-          job = { id: null, status: "failed", error: "The server did not return a valid recovery job id — please retry." };
+          job = { id: null, status: "failed", error: "The server did not return a valid recovery job id - please retry." };
           renderJob(); return;
         }
         job = { id: Number(id), status: r.status || "planned", restore_mode: r.restore_mode || mode };
@@ -162,9 +162,9 @@ export default {
         let j, err = null;
         try { j = await api.get(`/recovery/job/${job.id}`); } catch (e) { err = e; }
         const outcome = pollOutcome({ error: err, job: j });
-        if (outcome === "stop-404") { stop(); job = { ...job, status: "failed", error: "Recovery job not found — stopping." }; renderJob(); return; }
+        if (outcome === "stop-404") { stop(); job = { ...job, status: "failed", error: "Recovery job not found - stopping." }; renderJob(); return; }
         if (outcome === "retry") return;
-        if (outcome === "stop-malformed") { stop(); job = { ...job, status: "failed", error: "Malformed recovery job response — stopping." }; renderJob(); return; }
+        if (outcome === "stop-malformed") { stop(); job = { ...job, status: "failed", error: "Malformed recovery job response - stopping." }; renderJob(); return; }
         job = j; renderJob();
         if (outcome === "terminal" || outcome === "preview-ready") stop();
       }, 3000);
@@ -187,7 +187,7 @@ export default {
         danger: false, confirmLabel: "Repair" }))) return;
       try {
         await api.post(`/recovery/job/${job.id}/confirm`, confBody);
-        toast("Recovery queued — the bot is executing.");
+        toast("Recovery queued - the bot is executing.");
         job = { ...job, status: "queued" }; renderJob(); pollJob();
       } catch (e) { toast(e.message, "err"); }
     };
@@ -216,7 +216,7 @@ export default {
 
         // visual impact diff
         parts.push(el("div", { class: "sec-card", style: "margin-top:8px" }, [
-          el("div", { class: "sec-page-title", text: "Preview — Snapshot vs Current" }),
+          el("div", { class: "sec-page-title", text: "Preview - Snapshot vs Current" }),
           impactBar(job.impact),
         ]));
 
@@ -224,9 +224,9 @@ export default {
           // TRUTHFUL wording — never "matches snapshot" when extras exist
           const msg = extras.length
             ? (destructive
-              ? `No repair operations are required. ${extras.length} live resource(s) are absent from this snapshot and are eligible for deletion — but none were classified safe to delete (protected/ambiguous), so nothing will be removed.`
+              ? `No repair operations are required. ${extras.length} live resource(s) are absent from this snapshot and are eligible for deletion - but none were classified safe to delete (protected/ambiguous), so nothing will be removed.`
               : `No repair operations are required. ${extras.length} live resource(s) are absent from this snapshot and will be KEPT in Safe Repair mode.`)
-            : "The current supported structure already matches this snapshot exactly — nothing to do.";
+            : "The current supported structure already matches this snapshot exactly - nothing to do.";
           parts.push(el("div", { class: "sec-card", style: "margin-top:8px" }, [el("p", { text: msg })]));
           parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [mkGhost("New recovery", renderIdle)]));
         } else {
@@ -236,7 +236,7 @@ export default {
           if (ops.length) {
             parts.push(accordion({ title: "Operations to run", count: ops.length, open: openByDefault, body: () => table([
               { label: "Operation", render: (o) => o.type || "?" },
-              { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
+              { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "-" },
               { label: "Change", render: (o) => el("span", { class: "sec-muted", text: o.change_class || "" }) },
             ], ops) }));
           }
@@ -246,8 +246,8 @@ export default {
             parts.push(alertBox({ kind: "danger", message: el("strong", { text: `${deletes.length} resource(s) will be DELETED (Full Restore).` }) }));
             parts.push(accordion({ title: "Resources to delete", count: deletes.length, tone: "danger", open: openByDefault, body: () => table([
               { label: "Type", render: (o) => o.resource || "?" },
-              { label: "Name", render: (o) => (o.target && o.target.name) || "—" },
-              { label: "Live id", render: (o) => el("code", { text: (o.target && o.target.id) || "—" }) },
+              { label: "Name", render: (o) => (o.target && o.target.name) || "-" },
+              { label: "Live id", render: (o) => el("code", { text: (o.target && o.target.id) || "-" }) },
               { label: "Why extra", render: (o) => el("span", { class: "sec-muted", text: o.reason || "" }) },
             ], deletes) }));
           }
@@ -255,11 +255,11 @@ export default {
             parts.push(alertBox({ kind: "warn", message: el("strong", { text: `${blocked.length} operation(s) are BLOCKED and will NOT run.` }) }));
             parts.push(accordion({ title: "Blocked operations", count: blocked.length, tone: "warn", open: openByDefault, body: () => table([
               { label: "Operation", render: (o) => o.type || "?" },
-              { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "—" },
+              { label: "Target", render: (o) => (o.target && (o.target.name || o.target.kind)) || "-" },
               { label: "Why", render: (o) => el("span", { class: "sec-muted", text: o.reason || o.safety || "" }) },
             ], blocked) }));
           }
-          if ((job.unsupported || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.unsupported.length} unsupported difference(s) — not recoverable.` }));
+          if ((job.unsupported || []).length) parts.push(el("p", { class: "sec-muted", text: `${job.unsupported.length} unsupported difference(s) - not recoverable.` }));
           if (extras.length && !deletes.length) parts.push(el("p", { class: "sec-muted", text: `${extras.length} live resource(s) not in the snapshot will be KEPT.` }));
 
           if (!executable) {
@@ -275,7 +275,7 @@ export default {
           }
         }
       } else if (job.status === "queued" || job.status === "running") {
-        parts.push(el("p", { class: "sec-muted", text: `Executing on the bot${job.phase ? ` — ${job.phase}` : ""}… this page updates automatically.` }));
+        parts.push(el("p", { class: "sec-muted", text: `Executing on the bot${job.phase ? ` - ${job.phase}` : ""}… this page updates automatically.` }));
       } else {
         const v = job.verification || {};
         const conv = (job.convergence && job.convergence.result) || null;
@@ -290,7 +290,7 @@ export default {
         if (results.length) parts.push(table([
           { label: "Operation", render: (o) => o.type || "?" },
           { label: "Status", render: (o) => badge(o.status || "?", o.status === "success" ? "ok" : o.status === "failed" ? "bad" : "muted") },
-          { label: "New id", render: (o) => (o.new_id ? el("code", { text: o.new_id }) : "—") },
+          { label: "New id", render: (o) => (o.new_id ? el("code", { text: o.new_id }) : "-") },
           { label: "Reason", render: (o) => el("span", { class: "sec-muted", text: o.reason || "" }) },
         ], results));
         parts.push(el("div", { class: "sec-actions", style: "margin-top:8px" }, [mkGhost("New recovery", renderIdle)]));

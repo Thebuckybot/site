@@ -179,7 +179,7 @@ function renderList(runtime, state) {
     const listInner = (state.loading && !items.length)
         ? `<div class="vm-mail-empty"><strong>Loading mail…</strong><span>Fetching your inbox from the server.</span></div>`
         : renderListItems(items, state.selectedId);
-    const connLabel = isOnline ? "Connected to Bucky Mail Service" : "Offline — local mailbox";
+    const connLabel = isOnline ? "Connected to Bucky Mail Service" : "Offline - local mailbox";
     return `
         <section class="vm-mail-list">
             <header class="vm-mail-list-head">

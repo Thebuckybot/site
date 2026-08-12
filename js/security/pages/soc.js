@@ -8,7 +8,7 @@ export default {
         soc.get("/risk").catch(() => ({})),
         soc.get("/incidents?page=1").catch(() => []),
       ]);
-      root.appendChild(pageHeader("SOC Dashboard", "Security Operations Center — advanced, rule-based detection inside the Security Center."));
+      root.appendChild(pageHeader("SOC Dashboard", "Security Operations Center - advanced, rule-based detection inside the Security Center."));
       const score = Number((risk && (risk.risk_score ?? risk.score ?? risk.risk)) || 0);
       root.appendChild(el("div", { class: "sec-grid sec-grid-3" }, [
         statCard("Risk Score", Math.round(score)),
@@ -20,7 +20,7 @@ export default {
         el("div", { class: "sec-page-title", text: "Recent SOC Incidents" }),
         table([
           { label: "#", key: "id" },
-          { label: "Event", render: (i) => i.event_type || i.event || "—" },
+          { label: "Event", render: (i) => i.event_type || i.event || "-" },
           { label: "Severity", render: (i) => badge("sev " + (i.severity ?? "?"), "warn") },
           { label: "User", render: (i) => el("code", { text: i.user_id || "?" }) },
           { label: "When", render: (i) => el("span", { text: fmtTime(i.created_at) }) },

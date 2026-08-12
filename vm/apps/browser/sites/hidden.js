@@ -33,7 +33,7 @@ const HIDDEN_PAGES = [
         sections: [
             ["Status", [
                 "Sector 9 is not on any BuckyNet index. You reached it because someone gave you the " +
-                "address — a leak record, a comment, a serial fragment on a banknote.",
+                "address - a leak record, a comment, a serial fragment on a banknote.",
                 "The sector is quiet. Nine nodes, eight of them dark. The ninth is still logging."
             ]],
             ["Notice", [
@@ -55,7 +55,7 @@ const HIDDEN_PAGES = [
         lead: "A private node inside Sector 9. Access was never meant to be public.",
         sections: [
             ["Private", [
-                "The cold room is a private node. There is no login here yet — the gate is simulated " +
+                "The cold room is a private node. There is no login here yet - the gate is simulated " +
                 "and the door is, for now, simply unlocked.",
                 "Whoever kept this node kept it cold on purpose: no index, no links in, no traffic. A " +
                 "place to leave something and be sure no search would ever surface it."
@@ -74,7 +74,7 @@ const HIDDEN_PAGES = [
     {
         slug: "transmission-0",
         url: "bucky://archive/transmission-0",
-        title: "Archived — Transmission 0",
+        title: "Archived - Transmission 0",
         type: "archived",
         posture: "Archived record",
         lead: "An archived transmission. The archive keeps it; the index forgot it.",
@@ -113,7 +113,7 @@ function renderHidden(page) {
         <div class="vm-hidden-body">
             <div class="vm-hidden-banner">
                 ${chip(page.posture, "vm-hidden-chip")}
-                <span>This page is not indexed by PulseSearch — it is reachable only by direct address.</span>
+                <span>This page is not indexed by PulseSearch - it is reachable only by direct address.</span>
             </div>
             <div class="vm-wiki-body">
                 ${sections}

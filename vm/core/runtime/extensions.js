@@ -128,7 +128,7 @@ export function createScheduleRegistry() {
 
 function notBridged(action) {
     const err = new Error(
-        `Discord bridge action '${action}' is not implemented yet — the VM is a read-only ` +
+        `Discord bridge action '${action}' is not implemented yet - the VM is a read-only ` +
         "consumer in Phase 4.4. Write paths (hackbank, missions, economy, security) flow " +
         "through the Discord bot and arrive in a later phase."
     );

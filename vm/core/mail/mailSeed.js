@@ -72,7 +72,7 @@ export function buildSeed(operatorAddress) {
                 "Here is your weekly briefing. Stay sharp.\n\n" +
                 "1. Corporate target HELIX-DYNAMICS rotated their VPN certs early.\n" +
                 "2. The Financial District contract board is unusually active.\n" +
-                "3. Three new operators flagged on the watchlist — see attachment.\n\n" +
+                "3. Three new operators flagged on the watchlist - see attachment.\n\n" +
                 "Burn after reading.",
             attachments: [{
                 filename: "weekly_briefing.txt", mime: "text/plain",
@@ -136,7 +136,7 @@ export function buildSeed(operatorAddress) {
             from: "intel@shadownet.mail", display: "ShadowNet",
             subject: "Leak: City Infrastructure", priority: "normal",
             source: "authored", read: true, ago: 28 * HOUR, to,
-            body: "Attached is what you asked for. Handle carefully — this one is hot.",
+            body: "Attached is what you asked for. Handle carefully - this one is hot.",
             attachments: [{
                 filename: "city_infrastructure.csv", mime: "text/csv",
                 content: "node,district,status,exposed\nwater-04,industrial,online,yes\ngrid-11,financial,degraded,yes\ntransit-02,central,offline,no\n"

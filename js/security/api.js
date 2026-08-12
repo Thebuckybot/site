@@ -31,7 +31,7 @@ async function call(method, path, body) {
   } catch (networkErr) {
     const timedOut = !!(networkErr && (networkErr.name === "AbortError" || ctrl.signal.aborted));
     const e = new Error(timedOut
-      ? "The request timed out — the backend is slow or unreachable."
+      ? "The request timed out - the backend is slow or unreachable."
       : "Network error - the backend is unreachable.");
     e.code = timedOut ? "timeout" : "network";
     throw e;

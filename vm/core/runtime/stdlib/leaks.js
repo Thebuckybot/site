@@ -67,7 +67,7 @@ export function createLeaksModule(ctx) {
 
     return mod("bucky.leaks", {
         latest: def(latest),
-        recent: def(latest), // alias — recently exposed operators (newest first)
+        recent: def(latest), // alias - recently exposed operators (newest first)
         mine: def(mine),
         incidents: def(incidents),
         search: def(search),

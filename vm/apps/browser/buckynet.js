@@ -92,7 +92,7 @@ export function getBuckyNet() {
     // Members-only: preloadWarRoom slaat zichzelf over zonder sessie, dus een
     // publiek bezoek doet hier geen enkele aanroep.
     try { preloadWarRoom(); }       catch (_e) { /* ditto */ }
-    try { preloadLeaks(); }         catch (_e) { /* ditto — live OSINT leak DB */ }
+    try { preloadLeaks(); }         catch (_e) { /* ditto - live OSINT leak DB */ }
 
     return registry;
 }
