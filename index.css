@@ -114,13 +114,9 @@
 .coin-3 { width: 168px; top: 12px; right: 6%; z-index: 2; }
 .coin-4 { width: 132px; bottom: 6px; left: 26%; z-index: 3; }
 
-/* Arcade game cards */
-.arcade-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; width: 100%; }
-.game-card { position: relative; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--bk-border); border-radius: 16px;
-  padding: 30px 18px; text-align: center; font-weight: 800; font-size: 1.05rem; backdrop-filter: blur(8px);
-  transition: transform .3s var(--ease), box-shadow .3s var(--ease), border-color .3s var(--ease); }
-.game-card .gic { display: block; font-size: 26px; margin-bottom: 10px; }
-.game-card:hover { transform: translateY(-8px); border-color: rgba(139, 30, 63, 0.6); box-shadow: var(--bk-glow); }
+/* `.arcade-cards` en `.game-card` stonden hier en zijn weg met de sectie die ze
+   droeg: de vier kaarten Blackjack / Coinflip / Slots / Live Events op de
+   homepage. Geen andere pagina gebruikte ze. */
 
 /* CTA link with underline sweep */
 .plink { display: inline-flex; align-items: center; gap: 8px; color: var(--bk-red-300); font-weight: 700; text-decoration: none; }
@@ -167,7 +163,6 @@
 }
 @media (max-width: 560px) {
   .feature-cards { grid-template-columns: 1fr; }
-  .arcade-cards { grid-template-columns: 1fr 1fr; }
 }
 /* Tablets & below (≤1024): stack the flagship vertically — no horizontal pin,
    no sideways swiping. Desktop (≥1025) keeps the horizontal storytelling. */
