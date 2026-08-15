@@ -124,8 +124,16 @@
   align-items: center;
   gap: 0.5rem;
 }
+/* De tierbadge. WAS EEN GLYPH IN EEN <span> en is sinds 15 augustus 2026 een
+   <img> uit site/assets/badges/, aangeleverd als `badge_url` door de bot. De
+   kleurregel hoefde niet mee: een PNG kleurt zichzelf.
+   `flex-shrink: 0` zodat een lange tiernaam de badge niet platdrukt, en een
+   vaste hoogte zodat de titelregel niet verspringt terwijl de plaat laadt. */
 .pr-badge {
-  color: var(--bk-red-300, #c24f6f);
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 /* De prijs, direct onder de titel. Herhaalt de portal-prijs uit de data. */
 .pr-price {

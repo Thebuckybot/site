@@ -74,11 +74,30 @@ function card(tier, mine) {
 
   const head = el("div", "pr-card-head");
   const title = el("h2", "pr-card-title");
-  if (tier.badge) {
-    // De badge is decoratief: de naam ernaast zegt hetzelfde. `aria-hidden`
-    // voorkomt dat een screenreader "circled ring operator Elite" voorleest.
-    const badge = el("span", "pr-badge", tier.badge);
-    badge.setAttribute("aria-hidden", "true");
+  // DE BADGE IS `badge_url` EN NIET `badge`, en dat onderscheid is de hele
+  // reden dat er twee velden zijn.
+  //
+  // `badge` draagt de DISCORD-emoji (`<:elite:1537...>`). Die rendert binnen
+  // Discord en nergens anders: als tekst in een `<span>` staat er letterlijk
+  // `<:elite:1537...>` op de kaart. Tot 15 augustus 2026 stond er een
+  // unicode-glyph in dat veld en viel dat niet op, want een glyph rendert
+  // overal - het brak op de dag dat de echte emoji werd geüpload.
+  //
+  // `badge_url` is de PNG uit `site/assets/badges/<tier_key>.png`, afgeleid
+  // door de bot via `cogs/assets.py` en dus uit dezelfde bron als elke andere
+  // plaat. Hier staat geen pad: als het bestand er niet is stuurt de bot
+  // `null`, en dan blijft de kaart gewoon staan zonder plaatje.
+  if (tier.badge_url) {
+    const badge = el("img", "pr-badge");
+    badge.src = tier.badge_url;
+    badge.alt = "";                 // decoratief: de naam ernaast zegt hetzelfde
+    badge.loading = "lazy";
+    badge.width = 40;
+    badge.height = 40;
+    // EEN PLAAT DIE NIET LAADT VERDWIJNT, en laat geen gebroken icoon achter.
+    // Het bestand kan tussen publiceren en bezoeken zijn weggehaald; de kaart
+    // hoort dan hetzelfde te doen als wanneer hij er nooit was.
+    badge.addEventListener("error", () => badge.remove());
     title.appendChild(badge);
   }
   title.appendChild(document.createTextNode(tier.name || tier.tier_key || ""));
