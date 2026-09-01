@@ -634,12 +634,25 @@ export class BuckyVMRuntime {
 
     getMaximizedBounds() {
         const bounds = this.getDesktopBounds();
-        const leftInset = bounds.width < 720 ? 86 : 102;
+        // MAXIMALISEREN DEKT DE ICONEN AF, en dat is de reparatie van "de
+        // maximaliseerknop doet niets".
+        //
+        // Hier stond een inspringing van 102px links om de iconenrail vrij te
+        // houden. Het gevolg was dat een gemaximaliseerd venster 659px breed
+        // werd terwijl een venster standaard al 620px is: 39 pixels erbij, wat
+        // niet te zien is. De knop wérkte (de klasse ging om, de geometrie
+        // veranderde) maar deed zichtbaar niets, en dat is hetzelfde als stuk.
+        //
+        // Op elk echt bureaublad dekt een gemaximaliseerd venster de iconen af.
+        // Dat mag hier ook: vensters staan op z-index 21 en de iconenrail op
+        // 18, dus dat klopt vanzelf. De 12px rondom houdt de afgeronde hoek van
+        // de VM zichtbaar, zodat het venster niet uit zijn kast lijkt te lopen.
+        const rand = 12;
         return {
-            x: leftInset,
-            y: 12,
-            width: Math.max(330, bounds.width - leftInset - 14),
-            height: Math.max(230, bounds.height - 22)
+            x: rand,
+            y: rand,
+            width: Math.max(330, bounds.width - rand * 2),
+            height: Math.max(230, bounds.height - rand - 10)
         };
     }
 
