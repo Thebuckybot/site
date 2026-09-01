@@ -215,9 +215,64 @@ function initArcadeScrollEffects() {
     const heroLeft = document.querySelector(".hero-left");
     let ticking = false;
 
+    // DE KAART VERHUIST NAAR <BODY> ZODRA HIJ VASTZET, en dat is de eigenlijke
+    // reparatie van "de hero gaat onder de VM".
+    //
+    // WAAROM EEN HOGER GETAL NOOIT GENOEG WAS. De kaart is bij het vastzetten
+    // `position: fixed` met `z-index: 78`, maar dat getal wordt opgelost binnen
+    // de stapelcontext waar hij in hangt - en dat waren er VIER boven elkaar:
+    //
+    //     .player-hero-card   fixed, z-index 78
+    //       .hero-left        z-index 6
+    //       .hero-content     z-index 2
+    //       .arcade-hero      z-index 100
+    //       #arcade-world     position: relative + z-index 0   <-- klemt alles
+    //
+    // `#arcade-world` staat op 0, dus de hele arcade zit in een context van 0.
+    // Wat je binnen die context ook op de hero zet, hij kan nooit boven iets
+    // uitkomen dat buiten die context ligt. Dat is de reden dat de vorige twee
+    // pogingen (78, daarna 100) niets veranderden: het getal was nooit het
+    // probleem.
+    //
+    // Erger nog: `.hero-left` krijgt hieronder een inline `transform` bij het
+    // scrollen, en een ouder met een transform wordt het CONTAINING BLOCK van
+    // een `position: fixed` kind. Op dat moment is de kaart niet meer aan het
+    // scherm vastgezet maar aan een element dat zelf wegschuift.
+    //
+    // Door hem bij het vastzetten naar `<body>` te verplaatsen heeft hij geen
+    // enkele ouder meer die hem kan klemmen of verplaatsen. Er is dan niets
+    // meer tussen hem en het scherm. Bij het losmaken gaat hij terug op zijn
+    // eigen plek, want in de hero hoort hij gewoon in de indeling te staan.
+    const kaart = document.querySelector(".player-hero-card");
+    const anker = kaart ? document.createComment("player-hero-card") : null;
+    if (kaart && anker) kaart.parentNode.insertBefore(anker, kaart);
+    let verhuisd = false;
+
+    // ALLEEN VERHUIZEN ALS HIJ OOK ECHT VASTGEZET WORDT. Onder 700px laat de
+    // CSS hem bewust in de indeling staan (op een telefoon legde hij zich over
+    // de kop eronder). Zou hij daar tóch naar <body> gaan, dan staat hij als
+    // gewoon blok onderaan de pagina, onder de voettekst - precies het soort
+    // fout dat een verhuizing zonder voorwaarde oplevert. Deze grens moet
+    // gelijk blijven aan de media query in arcade.css.
+    const magVastzetten = window.matchMedia("(min-width: 701px)");
+
+    const zetVast = (vast) => {
+        if (!kaart || !anker) return;
+        vast = vast && magVastzetten.matches;
+        if (vast === verhuisd) return;
+        if (vast) {
+            document.body.appendChild(kaart);
+        } else if (anker.parentNode) {
+            anker.parentNode.insertBefore(kaart, anker);
+        }
+        verhuisd = vast;
+    };
+
     const update = () => {
         const scrollY = window.scrollY || 0;
-        document.body.classList.toggle("arcade-profile-pinned", scrollY > 260);
+        const vast = scrollY > 260;
+        document.body.classList.toggle("arcade-profile-pinned", vast);
+        zetVast(vast);
 
         if (heroBackground) {
             heroBackground.style.transform = `translate3d(0, ${scrollY * 0.12}px, 0) scale(${1 + Math.min(scrollY, 700) * 0.00008})`;
@@ -237,6 +292,9 @@ function initArcadeScrollEffects() {
         ticking = true;
         window.requestAnimationFrame(update);
     }, { passive: true });
+
+    // Draaien van een tablet wisselt de kant van die grens, dus opnieuw kijken.
+    magVastzetten.addEventListener("change", update);
 
     update();
 }

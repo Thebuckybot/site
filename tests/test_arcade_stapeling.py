@@ -56,26 +56,38 @@ def meet(page):
     }""")
 
 
-# De z-indexen die de VM opzet zodra hij naar het volle scherm gaat. Uit
-# vm/styles/vm.css: .bucky-vm-backdrop 80, .bucky-vm-shell.is-expanded 90,
-# body.vm-focus-active .arcade-vm-bay 95.
-VM_HOOGSTE = 95
-
-
 def controleer_volgorde(page):
-    """De hero moet boven alles staan wat de VM kan opzetten.
+    """DE EIGENSCHAP DIE ER ECHT TOE DOET: de vastgezette kaart hangt direct
+    onder <body> en heeft dus geen enkele ouder die hem kan klemmen.
 
-    Dit is de eigenschap die er echt toe doet: zolang hij klopt KAN de kaart
-    niet onder de VM vallen, ongeacht in welke toestand de VM staat.
+    Dit verving het tellen van z-indexen, want dat bleek de verkeerde vraag.
+    De kaart zat in VIER geneste stapelcontexten (.hero-left 6, .hero-content 2,
+    .arcade-hero 100, #arcade-world 0), en de buitenste stond op 0 - dus geen
+    enkel getal daarbinnen kon hem boven iets daarbuiten krijgen. Bovendien
+    kreeg `.hero-left` bij het scrollen een inline transform, en een ouder met
+    een transform wordt het containing block van een `position: fixed` kind.
+
+    Zolang de ouder <body> is, bestaat die hele klasse problemen niet meer.
     """
     return page.evaluate("""() => {
-      const lees = (sel) => {
-        const el = document.querySelector(sel);
-        if (!el) return null;
-        const z = getComputedStyle(el).zIndex;
-        return z === 'auto' ? null : Number(z);
-      };
-      return {hero: lees('.arcade-hero'), nav: lees('.arcade-nav')};
+      const kaart = document.querySelector('.player-hero-card');
+      if (!kaart) return {fout: 'geen kaart'};
+      const ouders = [];
+      let e = kaart.parentElement;
+      while (e && e !== document.documentElement) { ouders.push(e.tagName); e = e.parentElement; }
+      // Elke ouder die een stapelcontext of containing block maakt.
+      const boosdoeners = [];
+      e = kaart.parentElement;
+      while (e && e !== document.documentElement) {
+        const s = getComputedStyle(e);
+        if (s.transform !== 'none' || s.filter !== 'none' || s.perspective !== 'none'
+            || (s.position !== 'static' && s.zIndex !== 'auto')) {
+          boosdoeners.push(e.tagName + '.' + (e.className || '').toString().split(' ')[0]
+                           + ' z=' + s.zIndex + (s.transform !== 'none' ? ' +transform' : ''));
+        }
+        e = e.parentElement;
+      }
+      return {ouder: kaart.parentElement.tagName, keten: ouders, boosdoeners};
     }""")
 
 
@@ -108,15 +120,26 @@ def main():
             page.wait_for_timeout(800)
 
             volgorde = controleer_volgorde(page)
-            hero = volgorde.get("hero")
-            if hero is None or hero <= VM_HOOGSTE:
-                print(f"  {naam:<8} FOUT .arcade-hero staat op {hero}, niet boven "
-                      f"de {VM_HOOGSTE} die de VM opzet")
-                mislukt.append(f"{naam} (volgorde)")
-            elif volgorde.get("nav") is not None and volgorde["nav"] <= hero:
-                print(f"  {naam:<8} FOUT de navigatie ({volgorde['nav']}) ligt onder "
-                      f"de hero ({hero}); het menu is dan niet klikbaar")
-                mislukt.append(f"{naam} (nav)")
+            # Onder 700px zet de kaart bewust niet vast (zie arcade.css), dus
+            # daar hoort hij juist wél in de hero te blijven staan.
+            if w > 700:
+                if volgorde.get("ouder") != "BODY":
+                    print(f"  {naam:<8} FOUT de vastgezette kaart hangt onder "
+                          f"{volgorde.get('ouder')} in plaats van BODY; "
+                          f"klemmende ouders: {volgorde.get('boosdoeners')}")
+                    mislukt.append(f"{naam} (ouder)")
+                elif volgorde.get("boosdoeners"):
+                    print(f"  {naam:<8} FOUT er zit alsnog een klemmende ouder "
+                          f"tussen: {volgorde['boosdoeners']}")
+                    mislukt.append(f"{naam} (context)")
+
+            if w <= 700:
+                # Onder 700px zet de kaart met opzet niet vast: op een telefoon
+                # legde hij zich over de inhoud eronder. Dan is "ligt hij
+                # bovenop" niet de vraag.
+                print(f"  {naam:<8} OK   pint niet op deze breedte, met opzet")
+                ctx.close()
+                continue
 
             uit = meet(page)
             if uit.get("fout"):
@@ -131,8 +154,9 @@ def main():
 
     if mislukt:
         print(f"\nDe spelerskaart verdwijnt onder de VM op: {', '.join(mislukt)}")
-        print("Kijk naar de z-index van .arcade-hero in arcade.css: die bepaalt")
-        print("wat de vastgezette kaart waard is, niet de 78 op de kaart zelf.")
+        print("De vastgezette kaart hoort direct onder <body> te hangen. Zie")
+        print("`zetVast` in js/arcade.js: een hoger getal binnen #arcade-world")
+        print("(z-index 0) helpt niet, want die context klemt alles eronder.")
         return 1
     print("\nDe kaart ligt op elke maat bovenop.")
     return 0
