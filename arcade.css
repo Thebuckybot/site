@@ -40,6 +40,19 @@ body {
     color: var(--arcade-text);
 }
 
+/* DE VANGRAIL ONDER DE REGEL HIERBOVEN. De JS haalt de kaart uit zijn
+   vastgezette stand zodra de VM het scherm pakt, maar als dat om welke reden
+   dan ook niet gebeurt - een fout eerder in het script, een toestand die niemand
+   voorzag - mag de kaart nog steeds niet over de VM liggen. Dan kom je er
+   namelijk niet meer uit, en dat is precies de klacht.
+
+   `visibility` en niet `display`, zodat de kaart zijn plek in de hero houdt en
+   er niets verspringt als je de VM sluit. */
+body.vm-focus-active .player-hero-card {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 body.vm-focus-active {
     overflow: hidden;
 }
@@ -1316,6 +1329,17 @@ body.arcade-profile-pinned:not(:hover) .hero-refresh { width: 30px; height: 30px
    ======================================================================== */
 .wordle-boardwrap { position: relative; }
 
+/* HET WINPANEEL VERBORG ZICHZELF NIET, EN DAT IS DE GROENE LIJST DIE ER ALTIJD
+   STOND. `.wordle-win` zet `display: grid`, en een klasseregel wint van de
+   `[hidden] { display: none }` uit de browser-stylesheet. Het paneel droeg dus
+   keurig het `hidden`-attribuut en stond er evengoed: 811 bij 40 pixels, met
+   die groene rand, boven een bord zonder tegels.
+
+   Het attribuut erbij maakt de selector specifieker dan de klasse alleen, dus
+   dit werkt zonder `!important`. Elk paneel dat later met `hidden` wordt
+   geschakeld en zelf een `display` zet, heeft precies dezelfde regel nodig. */
+.wordle-win[hidden] { display: none; }
+
 .wordle-win { position: absolute; inset: -8px -8px -4px; z-index: 3;
   display: grid; place-content: center; gap: 2px; text-align: center;
   padding: 18px; border-radius: 14px;
@@ -1360,26 +1384,134 @@ body.arcade-profile-pinned:not(:hover) .hero-refresh { width: 30px; height: 30px
    naast tikt. `touch-action: none` voorkomt dat een veeg over de knop de pagina
    meeneemt terwijl je stuurt.
    ======================================================================== */
-.mg-touch { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.mg-touch-btn { flex: 1 1 auto; min-width: 44px; min-height: 44px; cursor: pointer;
-  font-size: 17px; line-height: 1; color: #eaf2ff; touch-action: none;
-  background: rgba(82, 255, 243, .10); border: 1px solid rgba(82, 255, 243, .30);
-  border-radius: 10px; }
-.mg-touch-btn:hover { background: rgba(82, 255, 243, .20); }
-.mg-touch-btn:active { background: rgba(82, 255, 243, .32); }
-.mg-touch-btn:focus-visible { outline: 3px solid #52fff3; outline-offset: 3px; }
-/* De geluidsschakelaar is geen stuurknop en hoort er ook niet als een uit te
-   zien: smaller, en in de ingedrukte stand blijvend opgelicht zodat de stand
-   te zien is zonder de tekst te lezen. NOOIT ALLEEN KLEUR - het opschrift zegt
-   ON of OFF, dus de kleur bevestigt hooguit wat er al staat. */
-.mg-touch-toggle { flex: 0 0 auto; min-width: 72px; font-size: .78rem; letter-spacing: .04em; }
-.mg-touch-toggle[aria-pressed="true"] { background: rgba(82, 255, 243, .26);
-  border-color: rgba(82, 255, 243, .7); color: #d6fffb; }
+/* ===================================================================
+   DE BEDIENING VAN HET BOOTSPEL LIGT OP HET SPEELVELD
+
+   Hier stond `.mg-touch`: een rij knoppen ONDER het canvas. Dat werkt met een
+   muis en verder eigenlijk niet. Op een telefoon staat je duim dan onder het
+   beeld, je moet kijken waar je drukt, en sturen was aan/uit in plaats van
+   sturen.
+
+   Nu ligt de bediening erop: een joystick linksonder, drie knoppen rechtsonder,
+   allebei precies waar je duimen liggen als je het toestel met twee handen
+   vasthoudt. `touch-action: none` op alles wat je vastpakt, anders scrolt de
+   pagina mee terwijl je stuurt.
+   =================================================================== */
+
+.mg-veld { position: relative; display: block; }
+
+.mg-hud {
+  position: absolute; inset: 0;
+  /* De hoes vangt zelf niets af: door de hoes heen kun je gewoon op het canvas
+     klikken en slepen. Alleen de stick en de knoppen pakken aan. */
+  pointer-events: none;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  padding: 14px; gap: 12px;
+}
+
+/* --- de joystick --- */
+.mg-stick {
+  pointer-events: auto; touch-action: none; cursor: grab;
+  position: relative; flex: 0 0 auto;
+  width: 116px; height: 116px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%,
+    rgba(10, 26, 44, .62), rgba(6, 16, 30, .74));
+  border: 2px solid rgba(130, 226, 255, .34);
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, .45), 0 6px 18px rgba(0, 0, 0, .35);
+  display: grid; place-items: center;
+}
+.mg-stick:active, .mg-stick.is-actief { cursor: grabbing;
+  border-color: rgba(130, 226, 255, .62); }
+.mg-stick:focus-visible { outline: 3px solid #52fff3; outline-offset: 4px; }
+
+.mg-stick-knob {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #9fe9ff, #2f7fa8 62%, #1b4f6b);
+  border: 1px solid rgba(200, 244, 255, .5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .45), inset 0 -3px 8px rgba(0, 0, 0, .3);
+  /* Zonder overgang springt de knop terug naar het midden; met een korte
+     overgang veert hij terug, en dat voelt als een echte stick. Tijdens het
+     slepen staat er een transform per pointermove, dus de overgang is daar
+     kort genoeg om niet als vertraging te voelen. */
+  transition: transform 90ms ease-out;
+  will-change: transform;
+}
+
+/* --- de knoppen rechts --- */
+.mg-knoppen {
+  pointer-events: auto;
+  display: grid; grid-template-columns: repeat(2, auto); gap: 10px;
+  align-items: end; justify-items: center;
+}
+
+.mg-knop {
+  pointer-events: auto; touch-action: none; cursor: pointer;
+  position: relative;
+  width: 60px; height: 60px; border-radius: 50%;
+  display: grid; place-content: center; gap: 1px;
+  color: #eaf7ff; font-size: 22px; line-height: 1;
+  background: radial-gradient(circle at 40% 34%,
+    rgba(24, 58, 84, .92), rgba(9, 24, 40, .92));
+  border: 2px solid rgba(130, 226, 255, .34);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, .4), inset 0 -3px 8px rgba(0, 0, 0, .3);
+}
+.mg-knop:hover { border-color: rgba(130, 226, 255, .58); }
+.mg-knop:active, .mg-knop.is-in {
+  transform: translateY(2px);
+  background: radial-gradient(circle at 40% 34%,
+    rgba(46, 106, 148, .95), rgba(14, 38, 62, .95));
+  border-color: #52fff3;
+}
+.mg-knop:focus-visible { outline: 3px solid #52fff3; outline-offset: 3px; }
+
+/* Gas is de knop die je het vaakst gebruikt, dus hij is de grootste en staat
+   het dichtst bij de duim: rechtsonder, over twee kolommen. */
+.mg-knop-gas { grid-column: 1 / -1; order: 3; width: 76px; height: 76px;
+  font-size: 26px; }
+.mg-knop-anker { order: 1; }
+.mg-knop-geluid { order: 2; }
+
+.mg-knop-teken { display: block; }
+/* NOOIT ALLEEN KLEUR (WCAG 1.4.1): de stand van het geluid staat er in letters
+   onder, niet alleen in de rand. */
+.mg-knop-stand { display: block; font-size: 9px; letter-spacing: .09em;
+  font-weight: 700; opacity: .85; }
+.mg-knop-geluid.is-aan { border-color: #52fff3;
+  background: radial-gradient(circle at 40% 34%,
+    rgba(40, 118, 130, .95), rgba(10, 44, 52, .95)); }
+
+/* Op een smal scherm mag de bediening dichter naar de randen en iets kleiner,
+   zodat er speelveld overblijft om naar te kijken. */
+@media (max-width: 560px) {
+  .mg-hud { padding: 10px; }
+  .mg-stick { width: 104px; height: 104px; }
+  .mg-stick-knob { width: 46px; height: 46px; }
+  .mg-knop { width: 54px; height: 54px; font-size: 20px; }
+  .mg-knop-gas { width: 66px; height: 66px; font-size: 24px; }
+}
+
+/* Wie beweging heeft afgezet krijgt geen veerende knop; de stick springt dan
+   meteen naar zijn plek in plaats van erheen te lopen. */
+@media (prefers-reduced-motion: reduce) {
+  .mg-stick-knob { transition: none; }
+  .mg-knop:active, .mg-knop.is-in { transform: none; }
+}
 
 /* Het canvas mag hoger op een groot scherm: de wereld is veel groter dan het
    beeld, dus meer zicht is meer spel. */
 .mg-card-wide .mg-canvas, .mg-card .mg-canvas { aspect-ratio: 7 / 5; height: auto; }
 @media (min-width: 900px) { .mg-canvas { aspect-ratio: 16 / 10; } }
+
+/* HET BOOTSPEL KRIJGT OP EEN TELEFOON EEN STAAND SPEELVELD.
+   Op 7:5 is het canvas daar ongeveer 310 bij 221, en met een joystick van 104
+   en een gasknop van 66 eronder blijft er nauwelijks water over: op de preview
+   lag de ankerknop bovenop de boot. De bediening kan niet kleiner - 44 bij 44
+   is de ondergrens (WCAG 2.5.8) en een duim wil meer - dus moet het VELD
+   groter, en op een staand toestel is dat naar boven. Alleen dit spel: de
+   andere kaarten hebben geen bediening op het veld liggen. */
+@media (max-width: 620px) {
+  #mg-boat { aspect-ratio: 3 / 4; }
+}
 
 /* De streak. Staat er alleen als hij boven de 1 is, en zegt er zelf bij dat hij
    met de sessie verdwijnt - anders lijkt het iets waar je aan bouwt. */

@@ -70,20 +70,40 @@ export function createWordle(root, options = {}) {
 
     root.append(melding, bordhoes, toetsen, knop);
 
+    // De vorm van het bord, los van een ronde. Komt van de server bij het
+    // laden en blijft daarna staan, zodat het lege raster ook klopt als er
+    // geen partij loopt. De waarden hier zijn alleen een terugval voor het
+    // geval de server ze niet meestuurt.
+    const bordmaat = { rijen: 6, lengte: 5 };
+
     // --- tekenen -----------------------------------------------------------
     function tekenBord() {
         bord.textContent = "";
-        if (!staat) return;
 
-        const rijen = staat.max_guesses;
-        const lengte = staat.length;
-        const gedaan = staat.guesses || [];
+        // ZONDER LOPENDE RONDE STOND HIER EEN LEEG VLAK. `tekenBord` sprong er
+        // meteen uit als `staat` leeg was, en `staat` blijft leeg tot je op
+        // start drukt - dus wie de pagina opende zag geen bord maar niets, en
+        // dat leest als kapot in plaats van als "nog niet begonnen".
+        //
+        // Het lege raster is de uitnodiging: je ziet meteen dat het zes keer
+        // vijf letters zijn. De maten komen van de server (`bordmaat`), zodat
+        // ze hier niet nog een keer als getal in de code staan.
+        const rijen = staat ? staat.max_guesses : bordmaat.rijen;
+        const lengte = staat ? staat.length : bordmaat.lengte;
+        if (!rijen || !lengte) return;
+        const gedaan = (staat && staat.guesses) || [];
 
         for (let r = 0; r < rijen; r++) {
             const rij = document.createElement("div");
             rij.className = "wordle-row";
             const gok = gedaan[r];
-            const actief = !gok && r === gedaan.length && staat.status === "playing";
+            // `staat` mag hier leeg zijn (nog geen ronde), en dan is er ook
+            // geen actieve rij. Zonder de controle erop gooide deze regel een
+            // TypeError midden in het tekenen, en dat is de echte reden dat het
+            // bord leeg bleef: niet omdat er niets werd getekend, maar omdat
+            // het tekenen halverwege afbrak.
+            const actief = !gok && staat !== null && r === gedaan.length
+                && staat.status === "playing";
 
             for (let c = 0; c < lengte; c++) {
                 const vak = document.createElement("div");
@@ -202,6 +222,14 @@ export function createWordle(root, options = {}) {
     }
 
     async function laad() {
+        // METEEN EEN BORD, VOOR DE SERVER IETS HEEFT GEZEGD. Elke uitgang
+        // hieronder (niet ingelogd, server onbereikbaar, spel gesloten) sprong
+        // eruit voordat er ooit getekend werd, dus in al die gevallen zag je
+        // een leeg vlak in plaats van een bord met een uitleg eronder. Het
+        // raster is de vorm van het spel en hangt niet van de server af.
+        tekenBord();
+        tekenToetsen();
+
         const { ok, status, body } = await haal("state");
         if (vernietigd) return;
         if (status === 401 || status === 403) {
@@ -219,6 +247,8 @@ export function createWordle(root, options = {}) {
             knop.disabled = true;
             return;
         }
+        if (Number.isInteger(body.max_guesses)) bordmaat.rijen = body.max_guesses;
+        if (Number.isInteger(body.length)) bordmaat.lengte = body.length;
         staat = body.game;
         toonRuimte(body);
         tekenBord();
