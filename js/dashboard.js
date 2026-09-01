@@ -386,6 +386,21 @@ window.refreshServers = refreshServers;
 // Start
 window.addEventListener("DOMContentLoaded", () => {
     storeTokenFromUrl(); // <-- Token uit ?token=... opslaan
+
+    // ALLEEN OP HET DASHBOARD ZELF DOORSTARTEN.
+    //
+    // Deze module wordt door andere pagina's geimporteerd puur voor `apiFetch`
+    // (arcade.js doet dat, de Security-SPA ook). Tot nu toe startte dit blok
+    // dan ook de HELE dashboard-opstart op die pagina's, en `fetchMe` stuurt
+    // een bezoeker die niet is ingelogd meteen weg. Gevolg: wie niet ingelogd
+    // de arcade opende werd van de arcade af gestuurd, en dat viel niet op
+    // omdat iedereen die het testte wel was ingelogd.
+    //
+    // Dat werd zichtbaar toen de spellen onder de VM kwamen: die horen juist
+    // ook zonder account te spelen te zijn. De container van de serverlijst is
+    // het kenmerk dat alleen dashboard.html heeft.
+    if (!document.getElementById("guilds-container")) return;
+
     const refreshBtn = document.getElementById("refresh-servers");
     if (refreshBtn) refreshBtn.addEventListener("click", refreshServers);
     loadDashboard();

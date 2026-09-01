@@ -26,43 +26,55 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ==============================
-    // Cinematic pause.
+    // De opening.
     // ==============================
+    //
+    // WAT HIER EERST MIS GING. Elke kolom kreeg `Math.random() * 1200` aan
+    // vertraging en de fade begon op een vaste 3000ms. Twee gevolgen: de
+    // luiken gingen in een willekeurige volgorde open, wat als schokkerig leest
+    // en niet als een beweging, en een kolom die pech had met zijn worp was op
+    // 3000ms nog bezig terwijl het scherm al begon te vervagen - dan zie je een
+    // half opengeschoven luik verdwijnen.
+    //
+    // Nu loopt de opening VAN HET MIDDEN NAAR BUITEN met een vaste stap. Dat is
+    // een richting in plaats van ruis, en het einde is uit te rekenen in plaats
+    // van te hopen: de fade begint precies wanneer het laatste luik klaar is.
 
-    setTimeout(() => {
+    const reduceerBeweging = window.matchMedia(
+        "(prefers-reduced-motion: reduce)").matches;
 
-        columns.forEach(column => {
+    const STAP = 70;        // ms tussen twee kolommen
+    const SCHUIF = 1500;    // ms dat een luik zelf onderweg is (zie arcade.css)
+    const FADE = 500;
 
+    if (reduceerBeweging) {
+        // Geen filmische opening voor wie dat heeft uitgezet: meteen weg, en
+        // geen 3,5 seconden naar een dicht scherm kijken.
+        opening.remove();
+    } else {
+        const midden = (columns.length - 1) / 2;
+        let laatste = 0;
+
+        columns.forEach((column, i) => {
             const topSegment = column.querySelector(".segment.top");
             const bottomSegment = column.querySelector(".segment.bottom");
-
-            // grotere random delay voor zichtbare spreiding
-            const delay = Math.random() * 1200;
+            const vertraging = Math.round(Math.abs(i - midden) * STAP);
+            laatste = Math.max(laatste, vertraging);
 
             setTimeout(() => {
                 topSegment.style.transform = "translateY(-120%)";
                 bottomSegment.style.transform = "translateY(120%)";
-            }, delay);
-
+            }, 600 + vertraging);
         });
 
-    }, 1500);
-
-
-    // ==============================
-    // Fade out.
-    // ==============================
-
-    // Fade zodra laatste shutter ongeveer klaar is
-    setTimeout(() => {
-        opening.style.transition = "opacity 0.6s ease";
-        opening.style.opacity = "0";
-
+        // Pas fade als het traagste luik echt uit beeld is.
+        const klaar = 600 + laatste + SCHUIF;
         setTimeout(() => {
-            opening.remove();
-        }, 600);
-
-    }, 3000);
+            opening.style.transition = `opacity ${FADE}ms ease`;
+            opening.style.opacity = "0";
+            setTimeout(() => opening.remove(), FADE);
+        }, klaar);
+    }
 
 
     // ==============================

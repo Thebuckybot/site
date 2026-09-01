@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="arcade.css">
 <link rel="stylesheet" href="vm/styles/vm.css">
 <script type="module" src="js/arcade.js"></script>
+<script type="module" src="js/minigames/mount.js"></script>
 
 </head>
 <body>
@@ -142,8 +143,8 @@
                 </article>
                 <article class="arcade-machine-card is-live">
                     <span>02</span>
-                    <strong>Hacker Terminal</strong>
-                    <p>Enter a simulated workstation built for digital sleuthing.</p>
+                    <strong>The Deck</strong>
+                    <p>Jack into an operator workstation and read the Grid from the inside.</p>
                 </article>
                 <article class="arcade-machine-card">
                     <span>03</span>
@@ -153,12 +154,12 @@
             </div>
         </section>
 
-        <section class="arcade-vm-section" id="hacker-terminal" aria-label="Bucky VM Hacker Terminal">
+        <section class="arcade-vm-section" id="the-deck" aria-label="The Deck, the Bucky workstation">
             <div class="vm-feature-panel">
                 <div class="panel-scan-code">BUCKY NETWORK // CABINET 02</div>
-                <h2>Hacker Terminal</h2>
+                <h2>The Deck</h2>
                 <p class="panel-lede">
-                    Slide into the secure workstation, sync your Discord profile, and explore a fake-but-fierce cyber desktop built for arcade investigations.
+                    A whole workstation inside the page. Sync your Discord profile, open the terminal, read your mail, follow a handle across BuckyNet and see where your organisation stands.
                 </p>
                 <div class="panel-briefing">
                     <span>Access Secure Workstations</span>
@@ -176,6 +177,63 @@
                 <div class="arcade-vm-bay" aria-label="Bucky VM arcade cabinet">
                     <div id="bucky-vm-root"></div>
                 </div>
+            </div>
+        </section>
+
+        <!--
+            DE SPELLEN ONDER DE DECK.
+
+            EEN VAN DE DRIE BETAALT, EN DE PAGINA ZEGT WELKE. De server kan een
+            woordgok narekenen en een uitgeweken auto niet, dus alleen het
+            woordspel keert shards uit. Dat staat er met zoveel woorden bij, want
+            een speler die een uur oversteekt en dan een lege balans ziet is
+            terecht boos. Zie backend/api/minigames.py voor de onderbouwing.
+        -->
+        <section class="arcade-minigames" id="minigames" aria-label="Minigames">
+            <div class="arcade-section-kicker">CABINET 03 // SIDE GAMES</div>
+            <h2>Three machines by the door.</h2>
+            <p class="mg-intro">
+                One of these pays. The word puzzle is scored on our server, so
+                the shards it awards are real and land on your balance. The other
+                two run entirely in your browser, which means we cannot check a
+                score, so they award nothing and are here to be played.
+            </p>
+
+            <div class="mg-grid">
+
+                <article class="mg-card mg-card-wide">
+                    <header class="mg-head">
+                        <h3>Word Break</h3>
+                        <span class="mg-tag is-paid">Pays pixel shards</span>
+                    </header>
+                    <p class="mg-note">Six tries at a five letter word. Scored on the server.</p>
+                    <div id="wordle-root" class="wordle-root"></div>
+                </article>
+
+                <article class="mg-card">
+                    <header class="mg-head">
+                        <h3>Grid Crossing</h3>
+                        <span class="mg-tag">For fun only</span>
+                    </header>
+                    <p class="mg-note">Hop the lanes. Arrow keys or WASD, Space to hop.</p>
+                    <canvas id="mg-crossing" class="mg-canvas" width="420" height="300"
+                            aria-label="Grid Crossing game. Use the arrow keys to hop between lanes."></canvas>
+                    <p class="mg-status" id="mg-crossing-status" role="status" aria-live="polite"></p>
+                    <button type="button" class="mg-btn" data-game="crossing">Start</button>
+                </article>
+
+                <article class="mg-card">
+                    <header class="mg-head">
+                        <h3>Runner</h3>
+                        <span class="mg-tag">For fun only</span>
+                    </header>
+                    <p class="mg-note">Steer the boat, keep going. Left and right, Space to start.</p>
+                    <canvas id="mg-boat" class="mg-canvas" width="420" height="300"
+                            aria-label="Runner boat game. Use left and right to steer."></canvas>
+                    <p class="mg-status" id="mg-boat-status" role="status" aria-live="polite"></p>
+                    <button type="button" class="mg-btn" data-game="boat">Start</button>
+                </article>
+
             </div>
         </section>
 

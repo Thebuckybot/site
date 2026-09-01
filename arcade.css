@@ -81,7 +81,11 @@ a {
     border: 1px solid rgba(0, 255, 255, 0.2);
     backdrop-filter: blur(2px);
 
-    transition: transform 1.8s cubic-bezier(.4,0,.2,1);
+    /* 1500ms en deze curve horen bij `SCHUIF` in js/arcade.js: die rekent
+       uit wanneer de fade mag beginnen. Verzet je er een, verzet dan de
+       ander. De curve start trager en eindigt sneller dan de oude, wat
+       een luik laat wegschieten in plaats van wegglijden. */
+    transition: transform 1500ms cubic-bezier(.65, 0, .35, 1);
     will-change: transform;
 }
 
@@ -319,6 +323,14 @@ a {
 
 .arcade-hero {
     position: relative;
+    /* HOGER DAN `.arcade-scroll` (z-index 3), anders schuift de terminal er
+       overheen. De hero had geen z-index, dus zijn kinderen (hero-content op 2,
+       de LED-balk op 3) vochten in de wortelcontext met een sectie die op 3
+       staat EN zichzelf met margin-top:-1px omhooghaalt. Met een eigen
+       stapelcontext op de hero staat het hele blok in een keer goed en kan er
+       binnenin niets meer los uitsteken. `overflow: clip` zorgt dat de hero
+       nooit over de inhoud eronder valt. */
+    z-index: 5;
     min-height: clamp(680px, 100svh, 980px);
     width: 100%;
     overflow: clip;
@@ -854,8 +866,13 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 }
 
 .panel-briefing {
+    /* WAS EEN RECHTE LIJN. Deze vier labels stonden naast elkaar en braken op
+       elk smal scherm: op een telefoon liep de rij buiten het paneel. Een
+       auto-fit-raster laat ze vanzelf onder elkaar vallen zodra er geen ruimte
+       meer is, zonder een breekpunt per schermmaat. */
     display: grid;
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px 18px;
     margin: 26px 0;
 }
 
@@ -1056,6 +1073,77 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
     }
 }
 
+
+/* ===========================================================================
+   ZWEVEN EN SCHEEFSTAAN
+   ===========================================================================
+   De pagina buiten de VM las als een formulier: alles recht, alles even ver
+   uit elkaar, niets bewoog. Dit is een arcade, geen invulveld.
+
+   Twee ingrepen, allebei klein gehouden zodat het niet gaat afleiden van het
+   ding waar het om draait (de VM zelf):
+
+     * ZWEVEN. Een paar elementen ademen langzaam. De cykels zijn met opzet
+       ONGELIJK (7s, 9s, 11s) en de vertragingen ook: gelijke duur laat alles
+       synchroon pompen, en dat leest als een laadscherm in plaats van als een
+       ruimte waarin iets aan staat.
+     * SCHEEFSTAAN. De machinekaarten en de "coming next"-tegels krijgen elk
+       een eigen lichte hoek. Handmatig per kaart en niet met nth-child-wiskunde,
+       want het gaat om een reeks die niet als reeks voelt.
+
+   ALLES HIERONDER STAAT UIT BIJ `prefers-reduced-motion` (zie het blok
+   daaronder, dat alle animaties en overgangen uitzet). Het scheefstaan blijft
+   wel, want dat is geen beweging.
+   ======================================================================== */
+@keyframes arcade-drift {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50%      { transform: translate3d(0, -10px, 0); }
+}
+
+.arcade-machine-card { animation: arcade-drift 9s ease-in-out infinite; }
+.arcade-machine-card:nth-child(2) { animation-duration: 11s; animation-delay: -3.5s; }
+.arcade-machine-card:nth-child(3) { animation-duration: 7s;  animation-delay: -1.2s; }
+
+.bucky-hero { animation: arcade-drift 11s ease-in-out infinite; }
+.arcade-coming-soon > div { animation: arcade-drift 8s ease-in-out infinite; }
+.arcade-coming-soon > div:nth-child(2) { animation-duration: 10.5s; animation-delay: -2.5s; }
+.arcade-coming-soon > div:nth-child(3) { animation-duration: 9.5s;  animation-delay: -4.5s; }
+
+/* De hoeken. Klein genoeg om als toon te lezen en niet als fout. */
+.arcade-machine-card:nth-child(1) { rotate: -1.1deg; }
+.arcade-machine-card:nth-child(2) { rotate:  0.7deg; }
+.arcade-machine-card:nth-child(3) { rotate: -0.5deg; }
+.arcade-coming-soon > div:nth-child(1) { rotate:  0.8deg; }
+.arcade-coming-soon > div:nth-child(2) { rotate: -1deg; }
+.arcade-coming-soon > div:nth-child(3) { rotate:  0.5deg; }
+
+/* De kop en de kicker mogen ook uit het gelid stappen. */
+.arcade-intro-band h2 { rotate: -0.6deg; }
+.arcade-section-kicker { rotate: -1.4deg; transform-origin: left center; }
+
+/* Bij hover gaat een kaart RECHT staan: dat geeft het scheefstaan een reden
+   en maakt de kaart tegelijk beter leesbaar op het moment dat je hem leest. */
+.arcade-machine-card:hover,
+.arcade-machine-card:focus-within { rotate: 0deg; }
+
+/* ===========================================================================
+   ZICHTBARE FOCUS
+   ===========================================================================
+   WCAG 2.1 AA (2.4.7). Deze pagina is donker met veel eigen kleuren, dus de
+   standaardring van de browser verdwijnt erin. Cyaan steekt af tegen elk vlak
+   dat hier gebruikt wordt.
+   ======================================================================== */
+.arcade-nav a:focus-visible,
+.arcade-machine-card:focus-visible,
+.arcade-coming-soon > div:focus-visible,
+.wordle-key:focus-visible,
+.mg-canvas:focus-visible,
+.mg-btn:focus-visible {
+    outline: 3px solid #52fff3;
+    outline-offset: 3px;
+    border-radius: 6px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -1067,3 +1155,87 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
     }
 }
 
+
+/* ===========================================================================
+   DE SPELLEN ONDER DE DECK
+   ======================================================================== */
+.arcade-minigames { padding: clamp(40px, 6vw, 80px) 0 clamp(30px, 5vw, 60px); }
+.arcade-minigames h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); margin: 6px 0 14px; rotate: -0.4deg; }
+.mg-intro { max-width: 62ch; color: rgba(214, 230, 245, .74); line-height: 1.7; margin: 0 0 30px; }
+
+.mg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; align-items: start; }
+/* Het woordspel is het spel dat ertoe doet, dus het krijgt de brede plek. */
+.mg-card-wide { grid-column: 1 / -1; }
+@media (min-width: 1100px) { .mg-card-wide { grid-column: span 2; } }
+
+.mg-card { background: linear-gradient(160deg, rgba(15, 27, 56, .78), rgba(6, 10, 26, .82));
+  border: 1px solid rgba(82, 255, 243, .18); border-radius: 18px; padding: 20px 20px 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .38); }
+.mg-card:nth-child(2) { rotate: 0.5deg; }
+.mg-card:nth-child(3) { rotate: -0.6deg; }
+
+.mg-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; }
+.mg-head h3 { margin: 0; font-size: 1.25rem; letter-spacing: .4px; }
+
+/* HET LABEL IS TEKST, GEEN KLEURCODE (WCAG 1.4.1): er staat letterlijk of het
+   spel betaalt. De kleur bevestigt het en draagt het niet. */
+.mg-tag { font-size: 11px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px; color: rgba(214, 230, 245, .82);
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .16); }
+.mg-tag.is-paid { color: #061018; background: #52fff3; border-color: #52fff3; }
+
+.mg-note { color: rgba(214, 230, 245, .62); font-size: 14px; margin: 8px 0 16px; }
+.mg-status { color: rgba(214, 230, 245, .8); font-size: 13.5px; min-height: 1.4em; margin: 12px 0 0; }
+
+.mg-canvas { width: 100%; height: auto; display: block; border-radius: 12px;
+  background: #060b1a; border: 1px solid rgba(82, 255, 243, .16); }
+
+.mg-btn { margin-top: 14px; cursor: pointer; font: inherit; font-weight: 800; letter-spacing: .6px;
+  padding: 10px 20px; border-radius: 10px; color: #061018; background: #52fff3;
+  border: 1px solid #52fff3; }
+.mg-btn:hover { filter: brightness(1.08); }
+.mg-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* --------------------------------------------------------------------------
+   Het woordspel
+   -------------------------------------------------------------------------- */
+.wordle-message { color: rgba(214, 230, 245, .9); font-size: 14.5px; min-height: 2.6em;
+  margin: 0 0 14px; line-height: 1.6; }
+
+.wordle-board { display: grid; gap: 6px; justify-content: center; margin-bottom: 16px; }
+.wordle-board:focus-visible { outline: 3px solid #52fff3; outline-offset: 6px; border-radius: 8px; }
+.wordle-row { display: grid; grid-template-columns: repeat(5, minmax(0, 52px)); gap: 6px; }
+
+.wordle-tile { aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px;
+  font-size: clamp(18px, 4vw, 26px); font-weight: 800; text-transform: uppercase;
+  color: #eaf2ff; background: rgba(255, 255, 255, .04);
+  border: 2px solid rgba(255, 255, 255, .14); }
+.wordle-tile.is-filled { border-color: rgba(82, 255, 243, .55); }
+
+/* NOOIT ALLEEN KLEUR. Elke uitslag heeft ook een eigen VORM:
+     goed     = dichte vlakke vulling, dikke rand
+     bijna    = diagonale streping, dus zichtbaar anders van textuur
+     ernaast  = dof en vlak, zonder rand
+   Iemand die groen en oranje niet uit elkaar houdt leest het verschil nog
+   steeds af, en de aria-label eronder zegt het voluit. */
+.wordle-tile.is-correct { background: #2f8f5b; border-color: #47c982; color: #f2fff8; }
+.wordle-tile.is-present { border-color: #e0a53a; color: #fff6e4;
+  background: repeating-linear-gradient(135deg, rgba(224,165,58,.85) 0 7px, rgba(224,165,58,.45) 7px 14px); }
+.wordle-tile.is-absent { background: rgba(255, 255, 255, .05); border-color: transparent;
+  color: rgba(234, 242, 255, .5); }
+
+.wordle-keyboard { display: grid; gap: 6px; justify-content: center; }
+.wordle-keyrow { display: flex; gap: 5px; justify-content: center; }
+.wordle-key { cursor: pointer; font: inherit; font-weight: 700; font-size: 13px;
+  min-width: 30px; padding: 11px 8px; border-radius: 7px; color: #eaf2ff;
+  background: rgba(255, 255, 255, .09); border: 1px solid rgba(255, 255, 255, .14); }
+.wordle-key:hover { background: rgba(255, 255, 255, .16); }
+.wordle-key.is-correct { background: #2f8f5b; border-color: #47c982; }
+.wordle-key.is-present { background: rgba(224, 165, 58, .8); border-color: #e0a53a; color: #1a1204; }
+.wordle-key.is-absent { opacity: .38; }
+.wordle-key[data-key="enter"], .wordle-key[data-key="back"] { min-width: 54px; }
+
+@media (max-width: 560px) {
+  .wordle-row { grid-template-columns: repeat(5, minmax(0, 44px)); }
+  .wordle-key { min-width: 26px; padding: 10px 5px; font-size: 12px; }
+}
