@@ -31,6 +31,9 @@ export function createWordle(root, options = {}) {
     // beloning. Sluit je het tabblad, dan is hij weg - en dat hoort ook, want
     // een streak die de browser bijhoudt kan de server niet controleren.
     let streak = 0;
+    // Wat de eerstvolgende winst oplevert. Komt van de server, wordt hier
+    // alleen getoond.
+    let volgendeBedrag = 0;
 
     // --- opbouw ------------------------------------------------------------
     const bord = document.createElement("div");
@@ -222,19 +225,22 @@ export function createWordle(root, options = {}) {
         tekenToetsen();
     }
 
+    /**
+     * WAT DE VOLGENDE WINST OPLEVERT, altijd zichtbaar.
+     *
+     * De uitbetaling loopt per winst af, dus een vast bedrag noemen zou
+     * onwaar worden zodra je er een paar hebt gehad. De server rekent het
+     * getal uit en stuurt het mee; hier wordt het alleen getoond. Niemand
+     * hoort te spelen voor een bedrag dat achteraf lager blijkt.
+     */
     function toonRuimte(body) {
-        const over = body.rewarded_wins_left;
-        const rondes = body.plays_left;
+        volgendeBedrag = body.next_reward || 0;
+        const shards = volgendeBedrag.toLocaleString("en-GB");
         if (staat && staat.status === "playing") {
-            zeg(`Guess the ${staat.length} letter word. ${rondes} rounds left today.`);
-        } else if (rondes <= 0) {
-            zeg("You have used all your rounds for today. Come back tomorrow.");
-            knop.disabled = true;
+            zeg(`Guess the ${staat.length} letter word. This one pays ${shards} pixel shards.`);
         } else {
-            const shards = (body.reward_shards || 0).toLocaleString("en-GB");
-            zeg(over > 0
-                ? `Solve it and ${shards} pixel shards go to your balance. ${over} paid wins left today.`
-                : "You have had today's shards, but you can still play for fun.");
+            zeg(`Solve it and ${shards} pixel shards go to your balance. `
+                + "Play as often as you like; the payout tapers as the day goes on.");
         }
     }
 
@@ -305,6 +311,7 @@ export function createWordle(root, options = {}) {
      */
     function toonWinst(beloning, huidig) {
         viering.textContent = "";
+        let volgendeRegel = null;
 
         const kop = document.createElement("p");
         kop.className = "wordle-win-kop";
@@ -324,6 +331,15 @@ export function createWordle(root, options = {}) {
         const betaald = beloning && beloning.paid;
         if (betaald) {
             prijs.textContent = `+${Number(betaald).toLocaleString("en-GB")} pixel shards`;
+            // En meteen eerlijk over wat de volgende oplevert, zodat de
+            // afloop geen verrassing is als je doorspeelt.
+            if (beloning.next_reward) {
+                volgendeBedrag = beloning.next_reward;
+                volgendeRegel = document.createElement("p");
+                volgendeRegel.className = "wordle-win-regel";
+                volgendeRegel.textContent = "Next solve pays "
+                    + Number(beloning.next_reward).toLocaleString("en-GB") + ".";
+            }
         } else {
             // Ook zonder uitbetaling is winnen een moment. Alleen eerlijk zijn
             // over waarom er niets bij komt.
@@ -341,7 +357,9 @@ export function createWordle(root, options = {}) {
             knop.focus();
         });
 
-        viering.append(kop, woord, pogingen, prijs, sluit);
+        viering.append(kop, woord, pogingen, prijs);
+        if (volgendeRegel) viering.appendChild(volgendeRegel);
+        viering.appendChild(sluit);
         viering.hidden = false;
         // De focus verplaatsen zodat een toetsenbordgebruiker in het paneel
         // staat en niet achter een onzichtbaar bord blijft typen.
