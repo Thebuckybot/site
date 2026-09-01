@@ -34,33 +34,12 @@
 // server hun inhoud bepalen en de vondst kunnen verifieren - de plek daarvoor is
 // een endpoint dat een kist-id inruilt, niet een score die de browser meldt.
 
+import {
+    WERELD, START, EILANDEN, STEIGERS, eilandOp, straalOp, opLand, landOnder,
+    kustSoort, steigerMaten, opSteiger, dichtstbijzijndeLand,
+} from "./boat/wereld.js";
+
 const TAU = Math.PI * 2;
-
-// De wereld is veel groter dan het scherm. Dit is fase 1's maat; hij mag groeien
-// zonder dat er iets anders verandert, want de camera klemt op deze waarden.
-const WERELD = { w: 3200, h: 2200 };
-
-/**
- * Ligt (x, y) op de plank van steiger `s`?
- *
- * DIT STAAT HIER BUITEN DE CLOSURE OMDAT HET DE ENIGE REGEL IS DIE STIL FOUT
- * KON ZIJN. De kust is dicht op één plek na: de steiger. Zolang die opening
- * niet precies zo groot is als de plank die je ziet, kun je door het gras
- * varen zonder dat er iets misgaat dat je kunt aflezen - geen fout, geen
- * melding, alleen een boot die ergens ligt waar hij niet hoort.
- *
- * En zo was het ook: er stond `s.w` en `s.h` terwijl de steiger wordt getekend
- * vanaf `s.x - s.w / 2` over een breedte `s.w`. De opening was dus twee keer
- * zo breed en twee keer zo hoog als de plank. In de code ziet `s.w` er prima
- * uit; het viel alleen op een screenshot op.
- *
- * Als losse functie is de regel te controleren zonder browser, zonder spel en
- * zonder te hoeven sturen - en sturen bleek te grof om er een test op te
- * bouwen. Zie tests/test_boot_wereld.js.
- */
-export function opSteiger(x, y, s) {
-    return Math.abs(x - s.x) < s.w / 2 && Math.abs(y - s.y) < s.h / 2;
-}
 
 /**
  * DIEPTE IN EEN PLATTE TEKENING.
@@ -124,71 +103,59 @@ export function createBoat(canvas, options = {}) {
     let vorigeTijd = 0;
 
     // --- de wereld ---------------------------------------------------------
-    // Landen zijn cirkels: goedkoop om te tekenen en goedkoop om op te botsen,
-    // en genoeg vorm voor een eiland. Een latere fase mag hier polygonen van
-    // maken zonder dat de rest het merkt, zolang `raaktLand` blijft kloppen.
+    //
+    // De eilanden, de kusten en de steigers staan in `boat/wereld.js`, als
+    // beschrijving en niet als tekening. Zie daar waarom: met de hand geplaatste
+    // cirkels houden geen baai vast en schalen niet naar tien eilanden.
+    //
+    // Hier blijft alleen wat PER SESSIE verschilt: de losse dingen op het water
+    // en de vogels. Die horen niet in de wereldbeschrijving omdat ze geen
+    // meetkunde hebben waar iets op botst.
+    const steigerlijst = STEIGERS.map(steigerMaten).filter(Boolean);
+
     const wereld = {
-        landen: [
-            { x: 2100, y: 900, r: 260, naam: "Still Harbour" },
-        ],
-        // De steiger is waar je mag aanmeren. Hij hoort bij een eiland en steekt
-        // het water in.
-        steigers: [
-            { x: 1840, y: 900, w: 180, h: 44, eiland: 0 },
-        ],
-        // IETS OM NAAR TE KIJKEN, EN GENOEG ERVAN.
+        // Boeien, rotsen en de vuurtoren: ankers voor het oog. Je vaart er
+        // dwars doorheen; het zijn geen obstakels.
         //
-        // Eerst stonden hier zeven dingen op een wereld van 3200 bij 2200. Met
-        // de camera op zoom 1.75 zie je daar ongeveer 460 bij 330 van, oftewel
-        // een zevende deel in de breedte - dus zeven dingen betekent dat er
-        // gemiddeld nul in beeld staan. Op de preview was het dan ook leeg
-        // water, en op leeg water voel je geen vaart en zie je geen richting.
-        //
-        // Daarom een ROOSTER met verspringing in plaats van een handjevol
-        // losse punten: overal waar je vaart staat er iets binnen een halve
-        // schermbreedte. De verspringing komt uit de index en niet uit
-        // Math.random, zodat de wereld er elke ronde hetzelfde uitziet - een
-        // zeekaart die per sessie verandert is geen zeekaart.
-        //
-        // Dit zijn ankers voor het oog, geen obstakels: je vaart er dwars
-        // doorheen. Ze staan met een `soort` in dezelfde lijst waar fase 4
-        // (schatkisten) in komt, en de tekenlus negeert wat hij niet kent.
+        // Een ROOSTER met verspringing, geen handjevol losse punten. Met zoom
+        // 1.75 zie je ongeveer 460 bij 330 van een wereld van 6400 bij 4400,
+        // dus losse punten betekent gemiddeld niets in beeld - en op leeg water
+        // voel je geen vaart en zie je geen richting. De verspringing komt uit
+        // de index en niet uit Math.random, zodat de zeekaart elke ronde
+        // hetzelfde is.
         dingen: (() => {
-            const uit = [{ soort: "vuurtoren", x: 2380, y: 640 }];
-            const eiland = { x: 2100, y: 900, r: 260 };
+            const uit = [];
             let n = 0;
-            for (let gy = 260; gy < 2100; gy += 300) {
-                for (let gx = 260; gx < 3050; gx += 340) {
+            for (let gy = 260; gy < WERELD.h - 200; gy += 320) {
+                for (let gx = 260; gx < WERELD.w - 200; gx += 360) {
                     n++;
-                    // Verspringing per rij, zodat het geen ruitjespapier wordt.
-                    const x = gx + ((gy / 300) % 2 ? 150 : 0) + ((n * 53) % 90) - 45;
+                    const x = gx + ((gy / 320) % 2 ? 160 : 0) + ((n * 53) % 90) - 45;
                     const y = gy + ((n * 37) % 70) - 35;
-                    // Niets bovenop het eiland of de vuurtoren.
-                    if (Math.hypot(x - eiland.x, y - eiland.y) < eiland.r + 90) continue;
-                    if (Math.hypot(x - 2380, y - 640) < 150) continue;
-                    // Ongeveer één op de vier is een rots, de rest een boei.
-                    if (n % 4 === 0) {
-                        uit.push({ soort: "rots", x, y, r: 22 + ((n * 17) % 16) });
-                    } else {
-                        uit.push({ soort: "boei", x, y });
-                    }
+                    // Niets op het land, en niets vlak voor een kust.
+                    if (landOnder(x, y, -70)) continue;
+                    uit.push(n % 4 === 0
+                        ? { soort: "rots", x, y, r: 22 + ((n * 17) % 16) }
+                        : { soort: "boei", x, y });
                 }
+            }
+            // De vuurtoren staat op Cape Light, niet op een roosterpunt.
+            const kaap = eilandOp("cape-light");
+            if (kaap) {
+                uit.push({ soort: "vuurtoren", x: kaap.x, y: kaap.y - kaap.r * 0.35 });
             }
             return uit;
         })(),
-        // Vogels bewegen zelf; ze krijgen een eigen lijst omdat hun positie per
-        // frame verandert en `dingen` juist stilstaat.
-        vogels: Array.from({ length: 14 }, (_, i) => ({
-            x: 200 + i * 230,
-            y: 220 + ((i * 311) % 1800),
+        vogels: Array.from({ length: 22 }, (_, i) => ({
+            x: 200 + i * 290,
+            y: 220 + ((i * 311) % (WERELD.h - 400)),
             snelheid: 22 + (i % 5) * 7,
             fase: i * 1.3,
         })),
     };
 
     const boot = {
-        x: 1430, y: 900,
-        hoek: 0,          // radialen, 0 = naar rechts
+        x: START.x, y: START.y,
+        hoek: START.hoek,          // radialen, 0 = naar rechts
         snelheid: 0,
         maxSnelheid: 210, // eenheden per seconde
         draaiSnelheid: 2.1,
@@ -701,33 +668,38 @@ export function createBoat(canvas, options = {}) {
             binnen() {
                 staat.aangemeerd = true;
                 speler.aanBoord = false;
-                const s = dichtsteSteiger();
-                // WAAR STAPT HIJ AAN WAL? Aan de LANDkant van de steiger, en op
-                // veilige afstand van de boot.
+                const m = dichtsteSteiger();
+
+                // DE BOOT LEGT AAN NAAST DE PLANKEN. Dit was het open punt.
                 //
-                // Eerst stond hij dertig eenheden naar links; bij deze steiger
-                // is dat de kant van het open water, dus hij stapte het water
-                // in. Daarna zette ik hem aan het eind van de plank, en toen
-                // stond hij bovenop de boot - want de boot ligt precies daar
-                // waar je hem naartoe hebt gevaren, en dat is meestal het eind
-                // van de steiger. Nu wordt de boot ontweken: hij stapt het
-                // eiland op, ruim voorbij waar het schip kan liggen.
-                const naarLand = s.x < wereld.landen[s.eiland].x ? 1 : -1;
-                let px = s.x + naarLand * (s.w / 2 + 26);
-                let py = s.y;
-                // Mocht die plek niet begaanbaar zijn, schuif dan op tot het
-                // wel kan. Anders sta je vast op de eerste stap.
-                for (let poging = 0; poging < 12 && !magLopen(px, py); poging++) {
-                    px += naarLand * 12;
-                }
-                speler.x = px;
-                speler.y = py;
-                speler.kijk = naarLand > 0 ? 0 : Math.PI;
+                // De steiger liep dwars over de kustlijn - half over water,
+                // half over gras - dus waar je ook aanlegde, je lag op het dek.
+                // Nu steekt de steiger vanaf de kust het water op, en bij het
+                // aanmeren gaat de boot naar zijn LIGPLAATS: evenwijdig aan de
+                // steiger, een halve plankbreedte plus een halve boot opzij.
+                //
+                // Dat is een verplaatsing en geen vrije keuze, en dat is precies
+                // wat aanmeren is. In elk bootspel legt het schip netjes aan
+                // zodra je aanmeert; je hoeft hem niet op de pixel te parkeren.
+                // Elke nieuwe steiger erft dit vanzelf, want de ligplaats wordt
+                // uit de kustlijn afgeleid en niet per steiger overgetypt.
+                boot.x = m.ligplaats.x;
+                boot.y = m.ligplaats.y;
+                boot.hoek = m.ligplaats.hoek;
+                boot.snelheid = 0;
+                boot.helling = 0;
+                boot.kielzog.length = 0;
+
+                // Bucky stapt aan wal aan de landkant van de steiger.
+                speler.x = m.walkant.x;
+                speler.y = m.walkant.y;
+                speler.kijk = Math.atan2(m.richting.y, m.richting.x) + Math.PI;
+
                 staat.streak += staat.schoon ? 1 : 0;
                 meld("streak", staat.streak);
                 zeg(staat.schoon
-                    ? `Moored at ${wereld.landen[s.eiland].naam}. Clean run, streak ${staat.streak}.`
-                    : `Moored at ${wereld.landen[s.eiland].naam}. Streak reset by the scrape.`);
+                    ? `Moored at ${m.eiland.naam}. Clean run, streak ${staat.streak}.`
+                    : `Moored at ${m.eiland.naam}. Streak reset by the scrape.`);
                 if (!staat.schoon) { staat.streak = 0; meld("streak", 0); }
             },
             stap(dt) {
@@ -769,15 +741,31 @@ export function createBoat(canvas, options = {}) {
 
     function doeActie() {
         if (!draait) return;
+        // TIJDENS EEN OVERGANG GEBEURT ER NIETS.
+        //
+        // Zonder deze regel start elke nieuwe druk op het anker de overgang
+        // opnieuw. Wie het knopje twee keer aantikt - of het ingedrukt houdt,
+        // of ongeduldig is - zet het scherm dus in een fade die nooit afloopt,
+        // en dan lijkt aanmeren kapot terwijl het elke keer keurig begint.
+        //
+        // Gevonden doordat een test het anker om de halve seconde probeerde tot
+        // het pakte, en het daardoor veertien keer opnieuw liet beginnen.
+        if (staat.overgang > 0) return;
         if (staat.modus === "varen") {
             const s = dichtsteSteiger();
-            const dichtbij = s && afstandTot(s.x, s.y) < 140;
+            const dichtbij = s && afstandTot(s.ligplaats.x, s.ligplaats.y) < 150;
             const langzaam = Math.abs(boot.snelheid) < 95;
             if (!dichtbij) return zeg("Steer up to the jetty to moor.");
             if (!langzaam) return zeg("Too fast to moor. Ease off the throttle.");
             geluid.piep(660);
             overgang(() => zetModus("aangemeerd"));
         } else if (staat.modus === "aangemeerd") {
+            // Alleen aan boord als je bij de boot staat. Anders kun je van het
+            // andere eind van het eiland teleporteren, en dan is een steiger
+            // geen plek meer maar een knop.
+            const m = dichtsteSteiger();
+            const bij = m && Math.hypot(speler.x - boot.x, speler.y - boot.y) < 120;
+            if (!bij) return zeg("Walk back to the boat to cast off.");
             overgang(() => {
                 staat.aangemeerd = false;
                 speler.aanBoord = true;
@@ -816,44 +804,35 @@ export function createBoat(canvas, options = {}) {
      * `tekenEiland` het strand tekent) en niet in de natte rand. De steiger
      * telt mee, want daar stapt hij aan wal.
      */
+    /**
+     * Mag Bucky op (x, y) staan?
+     *
+     * Het spiegelbeeld van `raaktLand`: de boot mag niet OP het land en Bucky
+     * mag er niet AF. Dezelfde kustlijn, dus dezelfde som - anders lopen die
+     * twee uit elkaar en ontstaat er een rand waar de een wel komt en de ander
+     * niet.
+     */
     function magLopen(x, y) {
-        for (const s of wereld.steigers) {
-            if (opSteiger(x, y, s)) return true;
+        for (const m of steigerlijst) {
+            if (opSteiger(x, y, m)) return true;
         }
-        for (const l of wereld.landen) {
-            const strandRand = l.r + 13 - speler.straal;
-            if (Math.hypot(x - l.x, y - l.y) < strandRand) return true;
-        }
-        return false;
+        // Een marge zo groot als Bucky zelf, zodat hij niet half in zee staat.
+        return landOnder(x, y, speler.straal) !== null;
     }
 
+    /** Raakt de boot land? De steiger is een gat in de kust. */
     function raaktLand(x, y, marge) {
-        for (const l of wereld.landen) {
-            if (Math.hypot(x - l.x, y - l.y) < l.r + marge) {
-                // De steiger is een gat in de kust: daar mag je wel komen.
-                //
-                // HIER STOND s.w EN s.h EN DAT WAS TWEE KEER TE GROOT. De
-                // steiger wordt getekend vanaf s.x - s.w / 2 over een breedte
-                // s.w, dus zijn halve maat is s.w / 2 - maar het gat gebruikte
-                // de HELE maat. Het gevolg was een opening in de kustlijn die
-                // twee keer zo breed en twee keer zo hoog was als de plank die
-                // je ziet: je kon er naast varen, dwars het groen op, en dan
-                // lag je midden op het eiland. Zo kwam ik het ook tegen, op een
-                // screenshot en niet in de code.
-                for (const s of wereld.steigers) {
-                    if (opSteiger(x, y, s)) return false;
-                }
-                return true;
-            }
+        for (const m of steigerlijst) {
+            if (opSteiger(x, y, m)) return false;
         }
-        return false;
+        return landOnder(x, y, -marge) !== null;
     }
 
     function dichtsteSteiger() {
         let beste = null, best = Infinity;
-        for (const s of wereld.steigers) {
-            const d = afstandTot(s.x, s.y);
-            if (d < best) { best = d; beste = s; }
+        for (const m of steigerlijst) {
+            const d = afstandTot(m.ligplaats.x, m.ligplaats.y);
+            if (d < best) { best = d; beste = m; }
         }
         return beste;
     }
@@ -908,9 +887,23 @@ export function createBoat(canvas, options = {}) {
         tekenWater(zb, zh, tijd);
         tekenWolkenschaduw(zb, zh, tijd);
         tekenKielzog();
-        for (const d of wereld.dingen) tekenDing(d, tijd);
-        for (const l of wereld.landen) tekenEiland(l);
-        for (const s of wereld.steigers) tekenSteiger(s);
+        // ALLEEN WAT IN BEELD STAAT. De wereld is van 3200x2200 naar 6400x4400
+        // gegaan en heeft nu honderden boeien; die allemaal per frame tekenen
+        // is werk voor niets, want je ziet er hooguit een paar. Een rechthoek-
+        // controle vooraf is een vergelijking per ding en scheelt het tekenen.
+        const inBeeld = (x, y, rand) =>
+            x > camera.x - rand && x < camera.x + zb + rand
+            && y > camera.y - rand && y < camera.y + zh + rand;
+
+        for (const d of wereld.dingen) {
+            if (inBeeld(d.x, d.y, 120)) tekenDing(d, tijd);
+        }
+        for (const l of EILANDEN) {
+            if (inBeeld(l.x, l.y, l.r * 1.8)) tekenEiland(l, zb, zh);
+        }
+        for (const m of steigerlijst) {
+            if (inBeeld(m.kust.x, m.kust.y, m.lengte + 120)) tekenSteiger(m);
+        }
         tekenBoot(tijd);
         if (!speler.aanBoord) tekenBucky();
         tekenVogels(tijd);
@@ -918,6 +911,7 @@ export function createBoat(canvas, options = {}) {
         ctx.restore();
 
         tekenHud(b, h);
+        if (staat.modus === "varen") tekenKompas(b, h);
         if (staat.overgang > 0) tekenOvergang(b, h);
         if (document.activeElement === canvas) tekenFocus(b, h);
     }
@@ -986,17 +980,35 @@ export function createBoat(canvas, options = {}) {
         // wolkenschaduwen die op een ANDERE snelheid dan de camera meelopen.
         // Dat parallax-verschil lees je als vaart. Op leeg water lijkt volle
         // kracht op stilliggen, en dat was precies de klacht.
-        const drift = minderBeweging ? 0 : tijd * 0.006;
         const eigen = 0.55; // trager dan de camera, dus ze blijven achter
         const g = 420;
-        const ox = camera.x * (1 - eigen) + drift;
-        const x0 = Math.floor((camera.x - ox) / g) * g;
+
+        // MODULO HET ROOSTERHOK, EN DAT IS EEN REPARATIE.
+        //
+        // Hier stond `ox = camera.x * (1 - eigen) + drift` met een drift die
+        // gewoon `tijd * 0.006` was, en de lus liep van `(camera.x - ox) / g`
+        // tot `camera.x + b + g`. Die twee lopen UIT ELKAAR: de ondergrens
+        // zakt mee met de drift, de bovengrens niet. Hoe langer je speelde en
+        // hoe verder je van de oorsprong voer, hoe meer wolken er per frame
+        // werden getekend - na tien minuten was dat een veelvoud van het begin.
+        //
+        // Niemand ziet dat gebeuren, want het is een geleidelijke vertraging
+        // zonder foutmelding, en op een desktop val je er nooit doorheen. Op
+        // een telefoon wel.
+        //
+        // Het rooster is oneindig en herhaalt zich elke `g`, dus alleen de REST
+        // doet ertoe. Zo blijft het aantal wolken per frame constant, wat de
+        // camerastand of de speelduur ook is.
+        const drift = minderBeweging ? 0 : (tijd * 0.006) % g;
+        const ox = (((camera.x * (1 - eigen) + drift) % g) + g) % g;
+        const oy = (((camera.y * (1 - eigen)) % g) + g) % g;
+        const x0 = Math.floor(camera.x / g) * g;
         const y0 = Math.floor(camera.y / g) * g;
         ctx.fillStyle = "rgba(6, 16, 34, .17)";
         for (let y = y0 - g; y < camera.y + h + g; y += g) {
             for (let x = x0 - g; x < camera.x + b + g; x += g) {
                 const cx = x + ox + Math.sin(y * 0.01) * 90;
-                const cy = y + Math.cos(x * 0.008) * 60;
+                const cy = y + oy + Math.cos(x * 0.008) * 60;
                 ctx.beginPath();
                 ctx.ellipse(cx, cy, 150, 84, 0.4, 0, TAU);
                 ctx.fill();
@@ -1163,215 +1175,360 @@ export function createBoat(canvas, options = {}) {
         ctx.lineCap = "butt";
     }
 
-    function tekenEiland(l) {
-        // HET EILAND STEEKT BOVEN HET WATER UIT, EN DAT MOET JE OVERAL ZIEN.
-        //
-        // Eerste poging was het bovenvlak een stukje naar linksboven schuiven,
-        // zodat er onderaan een randje zijkant bleef staan. Dat werkt voor een
-        // klein voorwerp, maar niet voor een eiland van 260 straal: je ziet er
-        // altijd maar een stukje van, en aan de LINKERkant is die verschuiving
-        // vrijwel tangentieel - dus daar is er niets van te zien. Op de preview
-        // liep het gras naadloos in het zand over en was er geen hoogte.
-        //
-        // Wat wel klopt voor een rond eiland is een TALUD RONDOM: een ring
-        // tussen zand en gras die overal even breed is, en waarvan de tint
-        // afhangt van de hoek ten opzichte van het licht. Aan de kant waar het
-        // licht op valt is het talud licht, aan de andere kant donker, en
-        // daartussen loopt het vloeiend over. Dat leest van elke kant als een
-        // helling, ook als je er maar een sliver van in beeld hebt.
-        const TALUD = 17;   // hoe breed de helling is
-        const TOP = l.r - TALUD;
+    // --- eilanden ----------------------------------------------------------
+    //
+    // LIVE GETEKEND, NA EEN OMWEG DIE IK NIET HAD MOETEN NEMEN.
+    //
+    // Mijn eerste opzet bakte elk eiland één keer op een eigen canvas en zette
+    // dat daarna alleen nog maar neer. Dat klonk als de juiste zet, maar het
+    // was een oplossing voor een probleem dat ik niet had gemeten - en het
+    // bracht twee echte problemen mee:
+    //
+    //   - The Mainland (straal 900) wordt dan een doek van 4300 bij 4300, en
+    //     dat is 18,5 megapixel. Een telefoon geeft daar geen canvas voor terug
+    //     maar een LEEG canvas: geen fout, geen melding, alleen een eiland dat
+    //     er als een grijze vlek uitziet. Precies wat er op de preview stond.
+    //   - Begrens je het doek wel, dan wordt het grote land op een derde
+    //     gebakken en drie keer opgeschaald, en dan is de kust zichtbaar wazig.
+    //
+    // Er is geen maat waarop allebei goed gaat, want een eiland van 2000
+    // eenheden past niet scherp op een doek dat een telefoon aankan. Dus wordt
+    // het weer live getekend, met twee dingen die het goedkoop houden:
+    //
+    //   1. De verlopen worden ÉÉN keer gemaakt en bewaard. Een
+    //      `createLinearGradient` per frame per eiland was het duurste deel.
+    //   2. Alleen de kustsectoren die in beeld staan worden getekend. Van de
+    //      96 sectoren zie je er hooguit een stuk of tien tegelijk.
+    //
+    // De framerate is daarna gemeten op een telefoonprofiel; zie de commit.
+    const eilandVerlopen = new Map();
 
-        // 1. De slagschaduw OP HET WATER. Zonder deze laag zweeft het eiland.
-        const sch = ctx.createRadialGradient(
-            l.x + LICHT.SCHADUW_X, l.y + LICHT.SCHADUW_Y, l.r * 0.7,
-            l.x + LICHT.SCHADUW_X, l.y + LICHT.SCHADUW_Y, l.r + 34);
-        sch.addColorStop(0, "rgba(2, 10, 22, .52)");
-        sch.addColorStop(0.55, "rgba(2, 10, 22, .3)");
-        sch.addColorStop(1, "rgba(2, 10, 22, 0)");
-        ctx.fillStyle = sch;
-        ctx.beginPath();
-        ctx.arc(l.x + LICHT.SCHADUW_X, l.y + LICHT.SCHADUW_Y, l.r + 34, 0, TAU);
-        ctx.fill();
-
-        // 2. Ondiep water: de zandbank die je door het water heen ziet.
-        ctx.fillStyle = KLEUR.ondiep;
-        ctx.beginPath(); ctx.arc(l.x, l.y, l.r + 46, 0, TAU); ctx.fill();
-
-        // 3. De natte rand, waar het water tegen het zand komt.
-        ctx.fillStyle = KLEUR.strandNat;
-        ctx.beginPath(); ctx.arc(l.x, l.y, l.r + 22, 0, TAU); ctx.fill();
-
-        // 4. Het droge strand.
-        ctx.fillStyle = KLEUR.strand;
-        ctx.beginPath(); ctx.arc(l.x, l.y, l.r + 13, 0, TAU); ctx.fill();
-
-        // 5 EN 7. HET TALUD EN DE GRASKANT, elk als EEN GEVULDE RING MET EEN
-        //         VERLOOP - en dat is de derde opzet.
-        //
-        // De eerste twee tekenden de rand als een REEKS STREKEN, en dat ging
-        // twee keer op een andere manier mis. Met een boog per zijde zag je de
-        // platte lijnkappen als een kras dwars op de rand. Met tweeënzeventig
-        // segmentjes met doorzichtigheid stapelden de overlappingen op, en dan
-        // krijg je een streepjespatroon over de hele ring.
-        //
-        // Twee verschillende fouten, maar dezelfde oorzaak: ik tekende een
-        // OPPERVLAK als een verzameling lijnen. Een helling die van licht naar
-        // donker loopt is geen reeks streken maar één vlak met een verloop, en
-        // dan is er niets om naden of stapeling in te krijgen. Een lineair
-        // verloop langs de lichtas doet precies wat de cosinus per segment
-        // deed, in één keer en zonder randen.
-        const LICHTHOEK = -Math.PI * 0.75;   // linksboven
+    function verloopVan(eiland) {
+        let v = eilandVerlopen.get(eiland.id);
+        if (v) return v;
+        const LICHTHOEK = -Math.PI * 0.75;
         const lx = Math.cos(LICHTHOEK), ly = Math.sin(LICHTHOEK);
-
-        const langsLicht = (straal, van, tot) => {
+        const maak = (straal, van, tot) => {
             const g = ctx.createLinearGradient(
-                l.x + lx * straal, l.y + ly * straal,
-                l.x - lx * straal, l.y - ly * straal);
+                eiland.x + lx * straal, eiland.y + ly * straal,
+                eiland.x - lx * straal, eiland.y - ly * straal);
             g.addColorStop(0, van);
             g.addColorStop(1, tot);
             return g;
         };
+        v = {
+            talud: maak(eiland.r, "#5f9a6f", "#12281b"),
+            graskant: maak(eiland.r, "rgba(122, 186, 140, .8)", "rgba(8, 22, 14, .55)"),
+        };
+        eilandVerlopen.set(eiland.id, v);
+        return v;
+    }
 
-        // De ring tussen het gras en het zand: de helling zelf.
-        ctx.save();
+    /**
+     * Een RING langs de omtrek, tussen twee opslagen op de straal.
+     *
+     * DIT IS DEZELFDE LES ALS BIJ DE KUSTBANDEN, en ik had hem maar half
+     * toegepast. De banden werden taartpunten vanaf het middelpunt; die zijn
+     * ringstukken geworden. Maar het ondiepe water, het talud en de schaduw
+     * bleven VOLLE SCHIJVEN, en die overtekenen elkaar precies zo: van een
+     * eiland met straal 900 zie je alleen de buitenste vijftig eenheden, en
+     * daar lagen vier schijven van 900 overheen.
+     *
+     * Buitenrand heen, binnenrand terug. Het gat in het midden wordt nooit
+     * aangeraakt.
+     */
+    function ringPad(eiland, binnen, buiten, punten = 128) {
         ctx.beginPath();
-        ctx.arc(l.x, l.y, l.r, 0, TAU);
-        ctx.arc(l.x, l.y, TOP, 0, TAU, true);
-        ctx.clip();
-        ctx.fillStyle = langsLicht(l.r, "#5f9a6f", "#12281b");
-        ctx.fillRect(l.x - l.r - 2, l.y - l.r - 2, l.r * 2 + 4, l.r * 2 + 4);
+        for (let i = 0; i <= punten; i++) {
+            const a = (i / punten) * TAU;
+            const r = straalOp(eiland, a) + buiten;
+            const x = eiland.x + Math.cos(a) * r, y = eiland.y + Math.sin(a) * r;
+            if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+        }
+        for (let i = punten; i >= 0; i--) {
+            const a = (i / punten) * TAU;
+            const r = straalOp(eiland, a) + binnen;
+            ctx.lineTo(eiland.x + Math.cos(a) * r, eiland.y + Math.sin(a) * r);
+        }
+        ctx.closePath();
+    }
+
+    /** Een pad langs de omtrek, met een opslag `extra` op de straal. */
+    function omtrekPad(eiland, extra, punten = 128) {
+        ctx.beginPath();
+        for (let i = 0; i <= punten; i++) {
+            const a = (i / punten) * TAU;
+            const r = straalOp(eiland, a) + extra;
+            const x = eiland.x + Math.cos(a) * r;
+            const y = eiland.y + Math.sin(a) * r;
+            if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+        }
+        ctx.closePath();
+    }
+
+    const KUSTKLEUR = {
+        nat: { strand: KLEUR.strandNat, rots: "#4a5563", klif: "#3c4450" },
+        droog: { strand: KLEUR.strand, rots: "#5d6b7a", klif: "#4d5766" },
+    };
+
+    function tekenEiland(eiland, zb, zh) {
+        const v = verloopVan(eiland);
+
+        // 1. Slagschaduw op het water: een verschoven RING, zonder blur.
+        //    Een `filter: blur()` per frame is een van de duurste dingen die
+        //    canvas kent, en op deze schaal zie je het verschil niet.
+        ctx.save();
+        ctx.translate(LICHT.SCHADUW_X, LICHT.SCHADUW_Y);
+        ringPad(eiland, 10, 24);
+        ctx.fillStyle = "rgba(2, 10, 22, .34)";
+        ctx.fill();
         ctx.restore();
 
-        // 6. Het gras erbovenop, tot waar het talud begint.
+        // 2. Ondiep water rond de kust: alleen de ring die je ziet. De banden
+        //    hieronder beginnen op +30, dus daaronder valt niets te tekenen.
+        ringPad(eiland, 28, 52);
+        ctx.fillStyle = KLEUR.ondiep;
+        ctx.fill();
+
+        // 3. DE KUSTSOORTEN, als taartpunten - maar alleen die in beeld staan.
+        //    Dit is wat het eiland een PLEK maakt in plaats van een vorm:
+        //    strand, rots en klif zien er anders uit, en welke je krijgt hangt
+        //    af van waar je aan land komt.
+        const SECTOREN = 96;
+        // Welke hoeken zijn zichtbaar? De hoek van elk hoekpunt van het beeld
+        // ten opzichte van het eiland, plus alles ertussen. Staat het eiland
+        // gedeeltelijk om het beeld heen, dan is dat alles.
+        const hoeken = [];
+        for (const [hx, hy] of [[camera.x, camera.y], [camera.x + zb, camera.y],
+                                [camera.x, camera.y + zh], [camera.x + zb, camera.y + zh]]) {
+            hoeken.push(Math.atan2(hy - eiland.y, hx - eiland.x));
+        }
+        const middenIn = eiland.x > camera.x && eiland.x < camera.x + zb
+                      && eiland.y > camera.y && eiland.y < camera.y + zh;
+
+        for (let i = 0; i < SECTOREN; i++) {
+            const a0 = (i / SECTOREN) * TAU;
+            const a1 = ((i + 1.4) / SECTOREN) * TAU;
+            const mid = (a0 + a1) / 2;
+            if (!middenIn && !hoekInBeeld(eiland, mid, hoeken)) continue;
+            const soort = kustSoort(eiland, mid);
+            // RINGSTUKKEN, GEEN TAARTPUNTEN. Hier liep een driehoek van het
+            // MIDDELPUNT naar de kust, en dat is voor een eiland van straal 900
+            // een enorm vlak - 96 sectoren maal twee banden is dus twee keer de
+            // hele schijf overtekenen, terwijl je er alleen de buitenste dertig
+            // eenheden van ziet: het gras en het talud gaan er meteen weer
+            // overheen. Gemeten kostte het eiland daardoor 45% van de
+            // framerate op een telefoonprofiel.
+            //
+            // Alleen de ring tekenen die zichtbaar is, scheelt vrijwel al dat
+            // vlak. Buitenrand heen, binnenrand terug.
+            for (const [binnen, buiten, tabel] of [
+                [15, 30, KUSTKLEUR.nat], [0, 15, KUSTKLEUR.droog],
+            ]) {
+                ctx.fillStyle = tabel[soort] || tabel.strand;
+                ctx.beginPath();
+                for (let t = 0; t <= 5; t++) {
+                    const a = a0 + (a1 - a0) * (t / 5);
+                    const r = straalOp(eiland, a) + buiten;
+                    const x = eiland.x + Math.cos(a) * r, y = eiland.y + Math.sin(a) * r;
+                    if (t) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+                }
+                for (let t = 5; t >= 0; t--) {
+                    const a = a0 + (a1 - a0) * (t / 5);
+                    const r = straalOp(eiland, a) + binnen;
+                    ctx.lineTo(eiland.x + Math.cos(a) * r, eiland.y + Math.sin(a) * r);
+                }
+                ctx.closePath(); ctx.fill();
+            }
+        }
+
+        // 4. Het talud: een RING met een verloop langs de lichtas. Geen reeks
+        //    streken - dat gaf eerder een kras of een streepjespatroon, want een
+        //    helling is een oppervlak en geen stapel lijnen.
+        ringPad(eiland, -21, 1);
+        ctx.fillStyle = v.talud;
+        ctx.fill();
+
+        // 5. Het gras. Dit is de ENIGE laag die het binnenste nodig heeft, en
+        //    zelfs die hoeft niet verder te reiken dan het beeld: knippen op de
+        //    kustlijn en dan de zichtbare rechthoek vullen kost hetzelfde
+        //    ongeacht hoe groot het eiland is. Op The Mainland scheelt dat een
+        //    vulling van twee miljoen vierkante eenheden per frame.
+        ctx.save();
+        omtrekPad(eiland, -20);
+        ctx.clip();
         ctx.fillStyle = KLEUR.land;
-        ctx.beginPath(); ctx.arc(l.x, l.y, TOP, 0, TAU); ctx.fill();
-
-        // En de kant van het gras: licht waar het licht op valt, met een
-        // schaduw aan de andere kant zodat de rand over de helling hangt in
-        // plaats van er plat tegenaan te liggen.
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(l.x, l.y, TOP, 0, TAU);
-        ctx.arc(l.x, l.y, TOP - 9, 0, TAU, true);
-        ctx.clip();
-        ctx.fillStyle = langsLicht(TOP, "rgba(122, 186, 140, .75)", "rgba(8, 22, 14, .6)");
-        ctx.fillRect(l.x - TOP - 2, l.y - TOP - 2, TOP * 2 + 4, TOP * 2 + 4);
+        ctx.fillRect(camera.x - 10, camera.y - 10, zb + 20, zh + 20);
+        // De belichte graskant, binnen dezelfde knip zodat hij niet uitloopt.
+        omtrekPad(eiland, -20);
+        ctx.lineWidth = 16;
+        ctx.strokeStyle = v.graskant;
+        ctx.stroke();
         ctx.restore();
 
-        // 9. Struiken, met hun eigen schaduw in dezelfde richting als de rest.
-        //    Vaste plaatsen uit de index: een eiland dat per ronde anders
-        //    begroeid is leest als ruis en niet als een plek.
-        for (let i = 0; i < 11; i++) {
-            const a = (i / 11) * TAU + 0.4;
-            const d = TOP * (0.22 + ((i * 29) % 15) / 24);
-            const bx = l.x + Math.cos(a) * d, by = l.y + Math.sin(a) * d;
-            const rr = 10 + ((i * 17) % 9);
+        // 6. Binnenmeren: water IN het land, met een oever eromheen.
+        for (const meer of eiland.meren || []) {
+            const mx = eiland.x + meer.dx, my = eiland.y + meer.dy;
+            ctx.fillStyle = KLEUR.strand;
+            ctx.beginPath(); ctx.arc(mx, my, meer.r + 14, 0, TAU); ctx.fill();
+            ctx.fillStyle = KLEUR.ondiep;
+            ctx.beginPath(); ctx.arc(mx, my, meer.r + 4, 0, TAU); ctx.fill();
+            ctx.fillStyle = KLEUR.diep;
+            ctx.beginPath(); ctx.arc(mx, my, meer.r - 6, 0, TAU); ctx.fill();
+        }
+
+        // 7. Struiken, alleen die in beeld staan.
+        const struiken = Math.round(eiland.r / 22);
+        for (let i = 0; i < struiken; i++) {
+            const a = (i / struiken) * TAU + 0.4;
+            const d = straalOp(eiland, a) * (0.22 + ((i * 29) % 15) / 26);
+            const bx = eiland.x + Math.cos(a) * d;
+            const by = eiland.y + Math.sin(a) * d;
+            if (bx < camera.x - 40 || bx > camera.x + zb + 40
+                || by < camera.y - 40 || by > camera.y + zh + 40) continue;
+            let inMeer = false;
+            for (const meer of eiland.meren || []) {
+                if (Math.hypot(bx - (eiland.x + meer.dx), by - (eiland.y + meer.dy))
+                    < meer.r + 24) inMeer = true;
+            }
+            if (inMeer) continue;
+            const rr = 10 + ((i * 17) % 11);
             ctx.fillStyle = "rgba(10, 28, 18, .45)";
             ctx.beginPath();
             ctx.ellipse(bx + LICHT.SCHADUW_X * 0.45, by + LICHT.SCHADUW_Y * 0.4,
                         rr * 1.05, rr * 0.6, 0, 0, TAU);
             ctx.fill();
-            const bol = ctx.createRadialGradient(
-                bx - rr * 0.35, by - rr * 0.4, rr * 0.1, bx, by, rr);
+            const bol = ctx.createRadialGradient(bx - rr * 0.35, by - rr * 0.4,
+                                                 rr * 0.1, bx, by, rr);
             bol.addColorStop(0, "#4a8a5c");
             bol.addColorStop(1, "#1e4530");
             ctx.fillStyle = bol;
             ctx.beginPath(); ctx.arc(bx, by, rr, 0, TAU); ctx.fill();
         }
 
-        ctx.fillStyle = "rgba(233, 243, 252, .9)";
-        ctx.font = "600 15px ui-sans-serif, system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(l.naam, l.x, l.y - l.r - 20);
-        ctx.textAlign = "left";
+        // De naam, alleen als het middelpunt in de buurt van het beeld ligt -
+        // anders zweeft er een label over open water waar geen eiland te zien is.
+        if (Math.abs(eiland.x - (camera.x + zb / 2)) < zb * 0.9
+            && Math.abs(eiland.y - (camera.y + zh / 2)) < zh * 0.9) {
+            ctx.fillStyle = "rgba(233, 243, 252, .9)";
+            ctx.font = "600 15px ui-sans-serif, system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(eiland.naam, eiland.x, eiland.y - eiland.r - 26);
+            ctx.textAlign = "left";
+        }
     }
 
-    function tekenSteiger(s) {
-        // EEN DOCK, GEEN RECHTHOEK. Er stond een bruin vlak met een lijn
-        // eromheen, en dat leest als een deurmat op het water. Wat een steiger
-        // een steiger maakt is dat hij ERGENS OP STAAT: palen in het water,
-        // met schaduw eronder, en een dek dat dikte heeft.
-        const halfB = s.w / 2, halfH = s.h / 2;
+    /** Ligt de kust op hoek `a` binnen het bereik dat het beeld beslaat? */
+    function hoekInBeeld(eiland, a, hoeken) {
+        for (const h of hoeken) {
+            let d = a - h;
+            while (d > Math.PI) d -= TAU;
+            while (d < -Math.PI) d += TAU;
+            if (Math.abs(d) < 1.1) return true;
+        }
+        return false;
+    }
+
+    function tekenSteiger(m) {
+        // De steiger loopt nu SCHUIN: van de kust naar buiten, in de richting
+        // van zijn eigen hoek. Alles hieronder wordt in de assen van de steiger
+        // getekend en daarna meegedraaid, zodat de code niet per steiger
+        // opnieuw hoeft na te denken over welke kant het water op ligt.
+        const hoek = Math.atan2(m.richting.y, m.richting.x);
+        const L = m.lengte, B = m.breedte;
         const DIKTE = 7;
 
-        // 1. De schaduw van het hele dek op het water.
+        ctx.save();
+        ctx.translate(m.kust.x, m.kust.y);
+        ctx.rotate(hoek);
+        // Vanaf hier: +x is naar zee, y is dwars op de steiger.
+
+        // 1. De slagschaduw van het hele dek op het water.
+        ctx.save();
+        ctx.rotate(-hoek);
+        ctx.translate(LICHT.SCHADUW_X, LICHT.SCHADUW_Y);
+        ctx.rotate(hoek);
         ctx.fillStyle = "rgba(3, 12, 24, .38)";
         ctx.beginPath();
-        ctx.roundRect(s.x - halfB + LICHT.SCHADUW_X, s.y - halfH + LICHT.SCHADUW_Y,
-                      s.w, s.h + DIKTE, 4);
+        ctx.roundRect(0, -B / 2, L, B + DIKTE, 4);
         ctx.fill();
+        ctx.restore();
 
-        // 2. De palen. Ze staan onder het dek uit, dus ze worden EERST
-        //    getekend; wat je ervan ziet is het stukje dat aan de onderkant
-        //    uitsteekt. Elk met een eigen schaduwvlek op het water eronder.
-        // Palen staan in het WATER, niet op het gras. Ze waren ook veel te
-        // lang: van bovenaf zie je van een paal alleen het stukje dat onder de
-        // plank uitsteekt, en in de eerste versie hingen er tafelpoten onder
-        // het dek die tot over het eiland doorliepen.
+        // 2. De palen. Alleen waar er water onder zit - een paal op het gras is
+        //    een tafelpoot. Ze steken onder de plank uit, dus ze gaan eerst.
         const PAAL = 13;
-        for (let px = s.x - halfB + 16; px <= s.x + halfB - 12; px += 44) {
-            if (raaktLand(px, s.y + halfH + PAAL, 0)) continue;  // daar is land
-            const py = s.y + halfH - 3;
-            ctx.fillStyle = "rgba(3, 12, 24, .34)";
-            ctx.beginPath();
-            ctx.ellipse(px + LICHT.SCHADUW_X * 0.5, py + PAAL + 3, 8, 3.5, 0, 0, TAU);
-            ctx.fill();
-            ctx.fillStyle = KLEUR.steigerDonker;
-            ctx.fillRect(px - 4.5, py, 9, PAAL);
-            ctx.fillStyle = "#54371f";
-            ctx.fillRect(px - 4.5, py, 3, PAAL);
+        for (let d = 22; d < L - 10; d += 44) {
+            const wx = m.kust.x + m.richting.x * d;
+            const wy = m.kust.y + m.richting.y * d;
+            if (landOnder(wx, wy, 0)) continue;
+            for (const zijde of [-1, 1]) {
+                const py = zijde * (B / 2 - 5);
+                ctx.fillStyle = "rgba(3, 12, 24, .34)";
+                ctx.beginPath();
+                ctx.ellipse(d + 3, py + PAAL + 4, 8, 3.5, 0, 0, TAU);
+                ctx.fill();
+                ctx.fillStyle = KLEUR.steigerDonker;
+                ctx.fillRect(d - 4.5, py, 9, PAAL);
+                ctx.fillStyle = "#54371f";
+                ctx.fillRect(d - 4.5, py, 3, PAAL);
+            }
         }
 
-        // 3. De zijkant van het dek: hetzelfde vlak, op grondhoogte. Het dek
-        //    komt er straks bovenop maar verschoven, en wat hier onderuit
-        //    steekt is de dikte van de planken.
+        // 3. De zijkant van het dek, op grondhoogte.
         ctx.fillStyle = KLEUR.steigerDonker;
         ctx.beginPath();
-        ctx.roundRect(s.x - halfB, s.y - halfH, s.w, s.h + DIKTE, 3);
+        ctx.roundRect(0, -B / 2, L, B + DIKTE, 3);
         ctx.fill();
 
-        // 4. Het dek zelf, met losse planken. Planken lopen in de LENGTE van
-        //    de steiger, want zo timmert niemand het en zo ziet het er ook uit
-        //    als je het andersom doet.
-        const dy = s.y - halfH - 2;
+        // 4. Het dek, met losse planken in de LENGTE van de steiger.
         ctx.fillStyle = KLEUR.steiger;
         ctx.beginPath();
-        ctx.roundRect(s.x - halfB, dy, s.w, s.h, 3);
+        ctx.roundRect(0, -B / 2 - 2, L, B, 3);
         ctx.fill();
 
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(s.x - halfB, dy, s.w, s.h, 3);
+        ctx.roundRect(0, -B / 2 - 2, L, B, 3);
         ctx.clip();
-        const plankH = s.h / 4;
+        const plankB = B / 4;
         for (let i = 0; i < 4; i++) {
-            const py = dy + i * plankH;
-            // Om en om iets lichter, zodat je losse planken ziet en niet een
-            // vlak met streepjes.
+            const py = -B / 2 - 2 + i * plankB;
             ctx.fillStyle = i % 2 ? "rgba(138, 99, 64, .38)" : "rgba(63, 42, 26, .22)";
-            ctx.fillRect(s.x - halfB, py, s.w, plankH - 1.5);
+            ctx.fillRect(0, py, L, plankB - 1.5);
             ctx.fillStyle = "rgba(30, 18, 10, .55)";
-            ctx.fillRect(s.x - halfB, py + plankH - 1.5, s.w, 1.5);
+            ctx.fillRect(0, py + plankB - 1.5, L, 1.5);
         }
-        // De belichte bovenrand, linksboven zoals overal.
         ctx.fillStyle = "rgba(214, 180, 138, .5)";
-        ctx.fillRect(s.x - halfB, dy, s.w, 2);
+        ctx.fillRect(0, -B / 2 - 2, L, 2);
         ctx.restore();
 
         ctx.strokeStyle = "rgba(30, 18, 10, .6)";
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.roundRect(s.x - halfB, dy, s.w, s.h, 3);
+        ctx.roundRect(0, -B / 2 - 2, L, B, 3);
         ctx.stroke();
 
+        // 5. Bolders langs de kant waar de boot ligt, zodat te zien is WAAR je
+        //    aanlegt. Zonder dat is een ligplaats een onzichtbare afspraak.
+        const kant = Math.sign(
+            (m.ligplaats.x - m.kust.x) * m.dwars.x
+            + (m.ligplaats.y - m.kust.y) * m.dwars.y) || 1;
+        for (const d of [L * 0.45, L * 0.78]) {
+            ctx.fillStyle = "#2b2119";
+            ctx.beginPath();
+            ctx.ellipse(d, kant * (B / 2 - 4), 4.5, 5.5, 0, 0, TAU);
+            ctx.fill();
+        }
+
+        ctx.restore();
+
         // Aanlegmarkering: nooit alleen kleur, er staat ook een woord.
-        const dichtbij = afstandTot(s.x, s.y) < 140;
-        if (dichtbij && staat.modus === "varen") {
+        if (staat.modus === "varen"
+            && afstandTot(m.ligplaats.x, m.ligplaats.y) < 150) {
             ctx.fillStyle = KLEUR.accent;
             ctx.font = "700 13px ui-sans-serif, system-ui, sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("MOOR", s.x, s.y - halfH - 18);
+            ctx.fillText("MOOR", m.ligplaats.x, m.ligplaats.y - 26);
             ctx.textAlign = "left";
         }
     }
@@ -1562,6 +1719,66 @@ export function createBoat(canvas, options = {}) {
         }
     }
 
+    function tekenKompas(b, h) {
+        // VERDWALEN OP LEEG WATER IS NIET LEUK, en met een wereld van 6400 bij
+        // 4400 waarvan je 460 bij 330 ziet, is verdwalen de normale toestand.
+        //
+        // Een kaartje zou het ook oplossen, maar een kaart moet je LEZEN: hij
+        // vraagt aandacht van het scherm terwijl je vaart, en op een telefoon
+        // is er geen ruimte om hem naast het spel te leggen. Een naald die naar
+        // de dichtstbijzijnde kust wijst geeft dezelfde informatie in één blik
+        // en kost een hoek in beeld.
+        //
+        // De afstand staat er in cijfers bij, want een richting zonder afstand
+        // laat je niet kiezen of je erheen vaart. En de naam van het land staat
+        // erbij, want dan is het geen richting maar een bestemming.
+        const doel = dichtstbijzijndeLand(boot.x, boot.y);
+        if (!doel) return;
+
+        const straal = 26;
+        const cx = b - straal - 14;
+        const cy = 30 + straal + 10;
+
+        ctx.fillStyle = "rgba(4, 10, 22, .62)";
+        ctx.beginPath(); ctx.arc(cx, cy, straal, 0, TAU); ctx.fill();
+        ctx.strokeStyle = "rgba(130, 226, 255, .34)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // De naald. Als je AL op het land staat wijst hij nergens heen, dus
+        // dan wordt het een stip: geen valse richting geven.
+        if (doel.afstand < 10) {
+            ctx.fillStyle = KLEUR.accent;
+            ctx.beginPath(); ctx.arc(cx, cy, 5, 0, TAU); ctx.fill();
+        } else {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(doel.richting);
+            ctx.fillStyle = KLEUR.accent;
+            ctx.beginPath();
+            ctx.moveTo(straal - 7, 0);
+            ctx.lineTo(-4, -6);
+            ctx.lineTo(-1, 0);
+            ctx.lineTo(-4, 6);
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = "rgba(219, 231, 245, .5)";
+            ctx.beginPath();
+            ctx.moveTo(-straal + 7, 0);
+            ctx.lineTo(-4, -4);
+            ctx.lineTo(-4, 4);
+            ctx.closePath(); ctx.fill();
+            ctx.restore();
+        }
+
+        ctx.fillStyle = "rgba(219, 231, 245, .92)";
+        ctx.font = "700 10px ui-monospace, monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(doel.eiland.naam.toUpperCase().slice(0, 14), cx, cy + straal + 13);
+        ctx.fillText(`${Math.max(0, Math.round(doel.afstand / 10))} m`,
+                     cx, cy + straal + 24);
+        ctx.textAlign = "left";
+    }
+
     function tekenHud(b, h) {
         ctx.fillStyle = "rgba(4, 8, 18, .62)";
         ctx.fillRect(0, 0, b, 30);
@@ -1659,7 +1876,8 @@ export function createBoat(canvas, options = {}) {
             staat.modus = "varen";
             staat.aangemeerd = false;
             speler.aanBoord = true;
-            boot.x = 1430; boot.y = 900; boot.hoek = 0; boot.snelheid = 0;
+            boot.x = START.x; boot.y = START.y;
+            boot.hoek = START.hoek; boot.snelheid = 0;
             meld("streak", 0);
             zeg(minderBeweging
                 ? "Underway. Press a key to advance one step at a time."

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Water framerate bench</title>
+<!--
+  EEN KALE BANK OM DE FRAMERATE VAN OPEN WATER TE METEN.
+
+  WAAROM DIT BESTAAT
+  Meten op arcade.html meet de hele PAGINA: daar staan drie spellen op, elk met
+  hun eigen canvas en hun eigen lus, plus de VM en een hoop achtergrondwerk. Ik
+  heb daar eerst wel op gemeten en er conclusies aan verbonden ("het eiland kost
+  45%"), en dat getal klopte toevallig wel omdat het een VERSCHIL was - maar de
+  absolute framerate zei niets over dit spel.
+
+  Hier staat alleen het bootspel op de pagina. Geen andere spellen, geen VM,
+  geen netwerk. Wat je hier meet is Open Water en verder niets.
+
+  DRAAIEN:
+      cd site && python -m http.server 8899
+      python tests/test_openwater_prestaties.py
+-->
+<style>
+  body { margin: 0; background: #060b1a; color: #dbe7f5;
+         font: 14px ui-monospace, monospace; }
+  #veld { position: relative; width: 390px; height: 520px; margin: 0 auto; }
+  canvas { width: 100%; height: 100%; display: block; background: #060b1a; }
+  #uit { padding: 8px 12px; }
+  /* De bediening van het spel komt hier binnen; dezelfde stijlen als op de
+     arcade, maar alleen wat de HUD nodig heeft. */
+  .mg-hud { position: absolute; inset: 0; pointer-events: none;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 12px; }
+  .mg-stick { pointer-events: auto; touch-action: none; position: relative;
+    width: 104px; height: 104px; border-radius: 50%;
+    background: rgba(10, 26, 44, .62); border: 2px solid rgba(130, 226, 255, .34);
+    display: grid; place-items: center; }
+  .mg-stick-knob { width: 46px; height: 46px; border-radius: 50%;
+    background: #2f7fa8; }
+  .mg-knoppen { pointer-events: auto; display: grid;
+    grid-template-columns: repeat(2, auto); gap: 8px; }
+  .mg-knop { width: 54px; height: 54px; border-radius: 50%; color: #eaf7ff;
+    background: rgba(24, 58, 84, .92); border: 2px solid rgba(130, 226, 255, .34); }
+  .mg-knop-gas { grid-column: 1 / -1; order: 3; }
+</style>
+</head>
+<body>
+<div id="veld">
+  <canvas id="mg-boat" width="420" height="560"
+          aria-label="Open Water benchmark"></canvas>
+</div>
+<p id="uit">wachten...</p>
+<p id="mg-boat-status" role="status" aria-live="polite"></p>
+
+<script type="module">
+import { createBoat } from "../js/minigames/boat.js";
+
+const canvas = document.getElementById("mg-boat");
+const spel = createBoat(canvas, {
+    onStatus: (t) => { document.getElementById("mg-boat-status").textContent = t; },
+});
+spel.start();
+
+// De meting wordt vanuit de test gestuurd; dit is alleen het gereedschap.
+window.__bank = {
+    meet(ms) {
+        return new Promise((klaar) => {
+            let n = 0, som = 0, ergste = 0, vorige = 0, id = 0;
+            const eind = performance.now() + ms;
+            const tik = (t) => {
+                if (vorige) {
+                    const dt = t - vorige;
+                    n++; som += dt;
+                    if (dt > ergste) ergste = dt;
+                }
+                vorige = t;
+                if (t < eind) id = requestAnimationFrame(tik);
+                else klaar({ frames: n, gemiddeld: som / Math.max(1, n), ergste });
+            };
+            id = requestAnimationFrame(tik);
+        });
+    },
+    spel,
+};
+</script>
+</body>
+</html>

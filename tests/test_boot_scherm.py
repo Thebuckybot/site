@@ -23,6 +23,13 @@ DRAAIEN:
 
 import sys
 
+# De uitvoer moet UTF-8 zijn, ook door een pipe heen. Windows zet
+# stdout dan op cp1252, en dan valt deze test om op het notenteken
+# van de geluidsknop - een crash in de RAPPORTAGE die eruitziet als
+# een crash in het spel.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 from playwright.sync_api import sync_playwright
 
 BASIS = "http://127.0.0.1:8899"
@@ -228,11 +235,38 @@ def main():
             toggle.first.click()
 
         # --- aanmeren en lopen ------------------------------------------
-        # Naar het eiland en aanmeren.
-        stick(page, 46, 0, 3600)
-        page.wait_for_timeout(900)
-        page.locator(".mg-knop-anker").click()
-        page.wait_for_timeout(1800)
+        #
+        # De wereld is gegroeid, dus deze route ook. Het startpunt ligt pal ten
+        # westen van The Mainland, ruim vijfhonderd eenheden van de steiger
+        # daar; drie seconden vol gas plus uitrollen brengt de boot binnen
+        # aanmeerbereik. Die getallen komen uit `wereld.js` en niet uit een gok:
+        # zie tests/test_boot_wereld.js, dat de ligplaatsen narekent.
+        #
+        # NIET DE VAARTIJD UITREKENEN MAAR HET GEWOON PROBEREN.
+        #
+        # Eerst stond hier een afgepaste tijd vol gas. Dat is een som met vier
+        # onzekerheden erin - optrekken, uitrollen, de afstand tot de ligplaats
+        # en het aanmeerbereik - en elke wijziging aan een daarvan maakt de test
+        # rood zonder dat er iets stuk is. Precies wat er gebeurde toen de
+        # wereld groter werd.
+        #
+        # Aanmeren lukt of lukt niet, en het spel ZEGT welke van de twee. Dus:
+        # varen, en dan tijdens het uitrollen elke halve seconde het anker
+        # proberen tot het pakt. Dat is ook wat een speler doet.
+        stick(page, 46, 0, 1800)
+        aangemeerd = False
+        for _ in range(14):
+            page.locator(".mg-knop-anker").click()
+            page.wait_for_timeout(500)
+            status = (page.locator("#mg-boat-status").text_content() or "")
+            if "Moored at" in status:
+                aangemeerd = True
+                print(f"  {status.strip()}")
+                break
+        page.wait_for_timeout(1200)
+        if not aangemeerd:
+            print("  FOUT er kon in veertien pogingen niet worden aangemeerd")
+            mislukt.append("aanmeren")
 
         aan_wal = grond_rond_het_midden(page)
         nat = sum(1 for k in aan_wal if is_water(k))
