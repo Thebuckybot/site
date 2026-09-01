@@ -82,6 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==============================
 
     loadProfile();
+    hangRefreshOp();
 
     const headsBtn = document.getElementById("heads-btn");
     const tailsBtn = document.getElementById("tails-btn");
@@ -133,23 +134,64 @@ async function loadProfile() {
     document.getElementById("hero-avatar").src = user.avatarUrl;
     mountBuckyVM(user);
 
-    let arcadeData;
+    await ververisStats();
+}
 
+// DE STATS APART, ZODAT DE REFRESH-KNOP ZE OPNIEUW KAN HALEN.
+// Ze zaten in `loadProfile`, samen met het monteren van de VM. Dat betekende
+// dat je je shards alleen kon bijwerken door de hele pagina te herladen - en
+// dan start de VM opnieuw op en ben je kwijt waar je was.
+//
+// Geeft true terug als het gelukt is, zodat de knop iets kan zeggen.
+async function ververisStats() {
+    let arcadeData;
     try {
         const arcadeRes = await apiFetch(`${API_URL}/api/arcade/profile`);
         arcadeData = await arcadeRes.json();
     } catch (error) {
         console.error("Arcade stats load failed:", error);
-        return;
+        return false;
     }
+    if (!arcadeData || typeof arcadeData.coins === "undefined") return false;
 
-    document.getElementById("coins").innerText = arcadeData.coins;
-    document.getElementById("xp").innerText = arcadeData.xp;
-    document.getElementById("level").innerText = arcadeData.level;
+    // textContent, geen innerText/innerHTML: dit komt van de server.
+    document.getElementById("coins").textContent = arcadeData.coins;
+    document.getElementById("xp").textContent = arcadeData.xp;
+    document.getElementById("level").textContent = arcadeData.level;
+    document.getElementById("xp-progress").style.width = (arcadeData.xp % 100) + "%";
+    return true;
+}
 
-    // XP progress (voorbeeld)
-    const progress = (arcadeData.xp % 100) + "%";
-    document.getElementById("xp-progress").style.width = progress;
+// DE KNOP OP DE SPELERSKAART.
+//
+// Waarom er een status naast staat en niet alleen een draaiend icoon: een
+// animatie zegt "er gebeurt iets", niet "het is gelukt". Wie de shards net
+// heeft verdiend met de Wordle wil bevestigd zien dat ze binnen zijn, en een
+// schermlezer moet dat ook horen - vandaar de aria-live ernaast.
+function hangRefreshOp() {
+    const knop = document.getElementById("hero-refresh");
+    const status = document.getElementById("hero-refresh-status");
+    if (!knop) return;
+
+    let bezig = false;
+    knop.addEventListener("click", async () => {
+        if (bezig) return;
+        bezig = true;
+        knop.classList.add("is-busy");
+        knop.disabled = true;
+        if (status) status.textContent = "Refreshing...";
+
+        const gelukt = await ververisStats();
+
+        knop.classList.remove("is-busy");
+        knop.disabled = false;
+        bezig = false;
+        if (status) {
+            status.textContent = gelukt
+                ? "Updated just now."
+                : "Could not refresh. Try again in a moment.";
+        }
+    });
 }
 
 function mountBuckyVM(user) {

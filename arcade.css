@@ -99,7 +99,8 @@ a {
     position: fixed;
     top: clamp(18px, 3vw, 30px);
     right: clamp(18px, 4vw, 40px);
-    z-index: 72;
+    /* Boven de hero (100), zodat het menu klikbaar blijft nu die is opgehoogd. */
+    z-index: 110;
 }
 
 /* ========== HAMBURGER ========== */
@@ -323,14 +324,39 @@ a {
 
 .arcade-hero {
     position: relative;
-    /* HOGER DAN `.arcade-scroll` (z-index 3), anders schuift de terminal er
-       overheen. De hero had geen z-index, dus zijn kinderen (hero-content op 2,
-       de LED-balk op 3) vochten in de wortelcontext met een sectie die op 3
-       staat EN zichzelf met margin-top:-1px omhooghaalt. Met een eigen
-       stapelcontext op de hero staat het hele blok in een keer goed en kan er
-       binnenin niets meer los uitsteken. `overflow: clip` zorgt dat de hero
-       nooit over de inhoud eronder valt. */
-    z-index: 5;
+    /* BOVEN ALLES WAT DE VM KAN OPWERPEN, en dat is een hoger getal dan je
+       zou verwachten. Twee dingen spelen hier tegelijk.
+
+       Ten eerste: `.arcade-scroll` staat op z-index 3 en haalt zichzelf met
+       margin-top:-1px omhoog, dus zonder eigen stapelcontext verdween de
+       onderrand van de hero eronder.
+
+       Ten tweede: de SPELERSKAART wordt bij het scrollen `position: fixed` met
+       z-index 78 (zie `.arcade-profile-pinned` verderop). Die 78 is GEEN
+       absolute waarde - hij wordt opgelost BINNEN de stapelcontext van deze
+       sectie. Wat de hero waard is, is dus wat de kaart waard is.
+
+       EERLIJK OVER WAT HIER IS AANGETOOND: de melding dat de kaart onder de VM
+       verdwijnt is NIET gereproduceerd. Gemeten op drie schermmaten, met de VM
+       op vol scherm en de backdrop zichtbaar, lag de kaart steeds bovenop - ook
+       met deze waarde nog op 5. De VM-elementen (backdrop 80, shell 90, bay 95)
+       zitten namelijk zelf in `.arcade-scroll` (z-index 3) en worden daar al
+       geklemd.
+
+       Waarom hij dan tóch omhoog gaat: zolang de hero LAGER staat dan wat de VM
+       opzet, hangt het van de DOM-plaats van die elementen af of het goed gaat,
+       en dat is een aanname die bij de eerstvolgende wijziging aan de VM kan
+       omvallen. Op 100 kan die toestand niet meer bestaan.
+
+       100 zet de hele hero, en daarmee de vastgezette kaart, boven die drie.
+       De sectie zelf dekt niets af: hij is dan allang weggescrold, en
+       `overflow: clip` houdt de inhoud binnen zijn eigen doos. De navigatie is
+       meeverhoogd naar 110 zodat het menu boven de kaart blijft, en de opening
+       staat nog steeds als hoogste op 120.
+
+       `tests/test_arcade_stapeling.py` bewaakt die volgorde in een echte
+       browser; hij faalt als iemand dit getal onder de 95 zet. */
+    z-index: 100;
     min-height: clamp(680px, 100svh, 980px);
     width: 100%;
     overflow: clip;
@@ -1238,4 +1264,143 @@ body.arcade-profile-pinned .player-hero-card:hover .xp-bar {
 @media (max-width: 560px) {
   .wordle-row { grid-template-columns: repeat(5, minmax(0, 44px)); }
   .wordle-key { min-width: 26px; padding: 10px 5px; font-size: 12px; }
+}
+
+/* ===========================================================================
+   DE REFRESH-KNOP OP DE SPELERSKAART
+   ===========================================================================
+   Je shards bijwerken zonder de pagina te herladen, want herladen start de VM
+   opnieuw op en dan ben je kwijt waar je was.
+
+   De knop zit IN de kaartkop en niet ernaast, zodat hij meekrimpt als de kaart
+   bij het scrollen vastzet en smaller wordt. 34px is boven de 24px die WCAG
+   2.1 AA als minimum doelwit noemt (2.5.8), en op aanraakschermen wordt hij
+   niet kleiner.
+   ======================================================================== */
+.player-header { display: flex; align-items: center; gap: 10px; }
+.hero-refresh { margin-left: auto; flex: 0 0 auto; display: grid; place-items: center;
+  width: 34px; height: 34px; padding: 0; cursor: pointer;
+  border-radius: 10px; color: #bfe9ff;
+  background: rgba(82, 255, 243, .10); border: 1px solid rgba(82, 255, 243, .30); }
+.hero-refresh svg { width: 17px; height: 17px; }
+.hero-refresh:hover { background: rgba(82, 255, 243, .20); color: #eaffff; }
+.hero-refresh:focus-visible { outline: 3px solid #52fff3; outline-offset: 3px; }
+.hero-refresh:disabled { cursor: progress; opacity: .6; }
+
+/* Draaien terwijl hij bezig is. Het is de bevestiging NIET: die staat als tekst
+   in de aria-live eronder, want een animatie zegt alleen dat er iets gebeurt. */
+@keyframes hero-refresh-spin { to { transform: rotate(360deg); } }
+.hero-refresh.is-busy svg { animation: hero-refresh-spin 900ms linear infinite; }
+
+.hero-refresh-status { margin: 8px 0 0; min-height: 1.2em;
+  font-size: 12px; color: rgba(214, 230, 245, .7); }
+
+/* Vastgezet is de kaart smal; dan past de statusregel er niet meer bij en zou
+   hij de kaart laten verspringen. De knop blijft, de tekst gaat naar de
+   schermlezer alleen. */
+body.arcade-profile-pinned .hero-refresh-status {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; }
+body.arcade-profile-pinned:not(:hover) .hero-refresh { width: 30px; height: 30px; }
+
+/* ===========================================================================
+   HET WINMOMENT VAN DE WORDLE
+   ===========================================================================
+   Een regel tekst die verandert wordt gemist: je kijkt naar het bord, niet
+   naar de melding eronder. Dit legt een paneel OVER het bord.
+
+   Het valt niet vanzelf weg. Je sluit het zelf, zodat het bedrag te lezen is
+   en je daarna nog naar je eigen oplossing kunt kijken. De focus springt naar
+   de sluitknop, dus een toetsenbordgebruiker staat in het paneel en typt niet
+   verder achter een bord dat hij niet meer ziet.
+   ======================================================================== */
+.wordle-boardwrap { position: relative; }
+
+.wordle-win { position: absolute; inset: -8px -8px -4px; z-index: 3;
+  display: grid; place-content: center; gap: 2px; text-align: center;
+  padding: 18px; border-radius: 14px;
+  background: linear-gradient(160deg, rgba(9, 26, 20, .96), rgba(6, 16, 26, .97));
+  border: 2px solid #47c982;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .5), 0 0 34px rgba(71, 201, 130, .22);
+  animation: wordle-win-in 320ms cubic-bezier(.16, 1, .3, 1); }
+
+@keyframes wordle-win-in {
+  from { opacity: 0; transform: scale(.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.wordle-win-kop { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: 2.4px;
+  text-transform: uppercase; color: #47c982; }
+.wordle-win-woord { margin: 2px 0 0; font-size: clamp(26px, 6vw, 40px); font-weight: 800;
+  letter-spacing: 5px; color: #eaf2ff; }
+.wordle-win-regel { margin: 4px 0 0; font-size: 13.5px; color: rgba(214, 230, 245, .72); }
+.wordle-win-prijs { margin: 12px 0 4px; font-size: clamp(17px, 3.6vw, 22px); font-weight: 800;
+  color: #52fff3; }
+/* Winnen zonder uitbetaling blijft een moment, maar zegt eerlijk waarom er
+   niets bij komt. Kleiner en rustiger, en nooit alleen op kleur: de tekst
+   zegt het zelf. */
+.wordle-win-prijs.is-none { font-size: 13.5px; font-weight: 600;
+  color: rgba(214, 230, 245, .75); }
+.wordle-win-sluit { margin-top: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wordle-win { animation: none; }
+}
+
+/* ===========================================================================
+   AANRAAKBEDIENING VOOR DE SPELLEN
+   ===========================================================================
+   Deze knoppen staan in de DOM naast het canvas en zijn niet erin getekend, en
+   dat is met opzet: een getekende knop is niet te focussen, niet voor te lezen
+   en niet te bedienen met een toetsenbord. Zo zetten toets, muis, aanraking en
+   schermlezer allemaal dezelfde vlaggen.
+
+   44px is de doelgrootte die WCAG 2.1 AA (2.5.8) als comfortabel aanhoudt; op
+   een telefoon zijn dat vier knoppen die naast elkaar passen zonder dat je er
+   naast tikt. `touch-action: none` voorkomt dat een veeg over de knop de pagina
+   meeneemt terwijl je stuurt.
+   ======================================================================== */
+.mg-touch { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.mg-touch-btn { flex: 1 1 auto; min-width: 44px; min-height: 44px; cursor: pointer;
+  font-size: 17px; line-height: 1; color: #eaf2ff; touch-action: none;
+  background: rgba(82, 255, 243, .10); border: 1px solid rgba(82, 255, 243, .30);
+  border-radius: 10px; }
+.mg-touch-btn:hover { background: rgba(82, 255, 243, .20); }
+.mg-touch-btn:active { background: rgba(82, 255, 243, .32); }
+.mg-touch-btn:focus-visible { outline: 3px solid #52fff3; outline-offset: 3px; }
+
+/* Het canvas mag hoger op een groot scherm: de wereld is veel groter dan het
+   beeld, dus meer zicht is meer spel. */
+.mg-card-wide .mg-canvas, .mg-card .mg-canvas { aspect-ratio: 7 / 5; height: auto; }
+@media (min-width: 900px) { .mg-canvas { aspect-ratio: 16 / 10; } }
+
+/* De streak. Staat er alleen als hij boven de 1 is, en zegt er zelf bij dat hij
+   met de sessie verdwijnt - anders lijkt het iets waar je aan bouwt. */
+.mg-streak { margin: 4px 0 0; min-height: 1.2em; font-size: 13px; font-weight: 700;
+  color: #52fff3; letter-spacing: .4px; }
+
+/* ===========================================================================
+   DE VASTGEZETTE KAART NIET OP EEN TELEFOON
+   ===========================================================================
+   Vastzetten linksboven is een HUD-gebaar dat werkt als er ruimte naast de
+   inhoud is. Op een telefoon is die ruimte er niet: de kaart legde zich over
+   de kop van de kaart eronder, zodat je "Open Water" niet meer kon lezen.
+
+   Onder 700px blijft hij dus gewoon in de hero staan waar hij hoort. Je raakt
+   er niets mee kwijt - de refresh-knop zit op de kaart zelf, dus die scrol je
+   gewoon naar boven om te gebruiken, en dat is op een telefoon een normaal
+   gebaar.
+   ======================================================================== */
+@media (max-width: 700px) {
+    body.arcade-profile-pinned .player-hero-card {
+        position: relative;
+        top: auto;
+        left: auto;
+        width: auto;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    body.arcade-profile-pinned .hero-refresh-status {
+        position: static; width: auto; height: auto; clip-path: none;
+    }
 }

@@ -96,9 +96,18 @@
 
                 <div class="glass-card player-hero-card">
                     <div class="player-header">
-                        <img id="hero-avatar" class="hero-avatar">
+                        <img id="hero-avatar" class="hero-avatar" alt="">
                         <div class="hero-name" id="hero-username">Loading...</div>
+                        <button type="button" id="hero-refresh" class="hero-refresh"
+                                aria-label="Refresh your shards and XP">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>
+                            </svg>
+                        </button>
                     </div>
+                    <p class="hero-refresh-status" id="hero-refresh-status"
+                       role="status" aria-live="polite"></p>
 
                     <div class="hero-stats">
                         <div>
@@ -143,7 +152,7 @@
                 </article>
                 <article class="arcade-machine-card is-live">
                     <span>02</span>
-                    <strong>The Deck</strong>
+                    <strong>The VM</strong>
                     <p>Jack into an operator workstation and read the Grid from the inside.</p>
                 </article>
                 <article class="arcade-machine-card">
@@ -154,10 +163,10 @@
             </div>
         </section>
 
-        <section class="arcade-vm-section" id="the-deck" aria-label="The Deck, the Bucky workstation">
+        <section class="arcade-vm-section" id="the-vm" aria-label="The VM, the Bucky workstation">
             <div class="vm-feature-panel">
                 <div class="panel-scan-code">BUCKY NETWORK // CABINET 02</div>
-                <h2>The Deck</h2>
+                <h2>The VM</h2>
                 <p class="panel-lede">
                     A whole workstation inside the page. Sync your Discord profile, open the terminal, read your mail, follow a handle across BuckyNet and see where your organisation stands.
                 </p>
@@ -219,18 +228,20 @@
                     <canvas id="mg-crossing" class="mg-canvas" width="420" height="300"
                             aria-label="Grid Crossing game. Use the arrow keys to hop between lanes."></canvas>
                     <p class="mg-status" id="mg-crossing-status" role="status" aria-live="polite"></p>
+                    <p class="mg-streak" id="mg-crossing-streak" aria-live="polite"></p>
                     <button type="button" class="mg-btn" data-game="crossing">Start</button>
                 </article>
 
-                <article class="mg-card">
+                <article class="mg-card mg-card-wide">
                     <header class="mg-head">
-                        <h3>Runner</h3>
+                        <h3>Open Water</h3>
                         <span class="mg-tag">For fun only</span>
                     </header>
-                    <p class="mg-note">Steer the boat, keep going. Left and right, Space to start.</p>
+                    <p class="mg-note">Sail an open map, moor at the jetty and step ashore. Arrows or the buttons below; the anchor moors you.</p>
                     <canvas id="mg-boat" class="mg-canvas" width="420" height="300"
-                            aria-label="Runner boat game. Use left and right to steer."></canvas>
+                            aria-label="Open Water. Steer the boat with the arrow keys and moor at the jetty."></canvas>
                     <p class="mg-status" id="mg-boat-status" role="status" aria-live="polite"></p>
+                    <p class="mg-streak" id="mg-boat-streak" aria-live="polite"></p>
                     <button type="button" class="mg-btn" data-game="boat">Start</button>
                 </article>
 
