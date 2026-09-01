@@ -1368,6 +1368,13 @@ body.arcade-profile-pinned:not(:hover) .hero-refresh { width: 30px; height: 30px
 .mg-touch-btn:hover { background: rgba(82, 255, 243, .20); }
 .mg-touch-btn:active { background: rgba(82, 255, 243, .32); }
 .mg-touch-btn:focus-visible { outline: 3px solid #52fff3; outline-offset: 3px; }
+/* De geluidsschakelaar is geen stuurknop en hoort er ook niet als een uit te
+   zien: smaller, en in de ingedrukte stand blijvend opgelicht zodat de stand
+   te zien is zonder de tekst te lezen. NOOIT ALLEEN KLEUR - het opschrift zegt
+   ON of OFF, dus de kleur bevestigt hooguit wat er al staat. */
+.mg-touch-toggle { flex: 0 0 auto; min-width: 72px; font-size: .78rem; letter-spacing: .04em; }
+.mg-touch-toggle[aria-pressed="true"] { background: rgba(82, 255, 243, .26);
+  border-color: rgba(82, 255, 243, .7); color: #d6fffb; }
 
 /* Het canvas mag hoger op een groot scherm: de wereld is veel groter dan het
    beeld, dus meer zicht is meer spel. */
