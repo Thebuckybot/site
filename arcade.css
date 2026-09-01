@@ -1470,6 +1470,13 @@ body.arcade-profile-pinned:not(:hover) .hero-refresh { width: 30px; height: 30px
   font-size: 26px; }
 .mg-knop-anker { order: 1; }
 .mg-knop-geluid { order: 2; }
+/* De tas staat boven de andere twee: hij wordt het minst gebruikt en mag dus
+   het verst van de duim liggen. Op een smal scherm schuift de hele kolom mee,
+   dus er gaat geen speelveld verloren. */
+.mg-knop-tas { order: 0; grid-column: 1 / -1; justify-self: end; }
+.mg-knop-tas.is-aan { border-color: #52fff3;
+  background: radial-gradient(circle at 40% 34%,
+    rgba(40, 118, 130, .95), rgba(10, 44, 52, .95)); }
 
 .mg-knop-teken { display: block; }
 /* NOOIT ALLEEN KLEUR (WCAG 1.4.1): de stand van het geluid staat er in letters

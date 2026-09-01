@@ -21,6 +21,8 @@ DRAAIEN:
     python tests/test_boot_scherm.py
 """
 
+import os
+import pathlib
 import sys
 
 # De uitvoer moet UTF-8 zijn, ook door een pipe heen. Windows zet
@@ -33,6 +35,27 @@ if hasattr(sys.stdout, "reconfigure"):
 from playwright.sync_api import sync_playwright
 
 BASIS = "http://127.0.0.1:8899"
+
+# BEELDEN UIT DEZELFDE RUN ALS DE TEST.
+#
+# Er stond een los previewscript naast deze test dat dezelfde route nog eens
+# aflegde. Dat liep steeds uit de pas: de test leerde op de meldingen van het
+# spel te sturen en de preview bleef afstanden afpassen, dus de preview vond het
+# huis niet meer terwijl de test hem wel vond. Twee scripts die hetzelfde doen
+# lopen altijd uit elkaar; het script dat het goed doet mag de beelden maken.
+#
+#     set OPENWATER_PREVIEW=<map>      (of export, op een unix-schil)
+PREVIEW = os.environ.get("OPENWATER_PREVIEW")
+
+
+def leg_vast(page, naam):
+    """Een beeld van het speelveld, als er om previews is gevraagd."""
+    if not PREVIEW:
+        return
+    pad = pathlib.Path(PREVIEW)
+    pad.mkdir(parents=True, exist_ok=True)
+    page.locator("#mg-boat").screenshot(path=str(pad / f"preview_{naam}.png"))
+    print(f"  beeld: preview_{naam}.png")
 
 
 def is_water(kleur):
@@ -290,6 +313,7 @@ def main():
             if "Moored at" in status:
                 aangemeerd = True
                 print(f"  {status.strip()}")
+                leg_vast(page, "aanmeren")
                 break
         page.wait_for_timeout(1200)
         if not aangemeerd:
@@ -327,6 +351,7 @@ def main():
                 mislukt.append("naar binnen")
             else:
                 print(f"  OK   {page.locator('#mg-boat-status').text_content().strip()}")
+                leg_vast(page, "interieur")
 
                 # Tegen een meubel aan lopen mag je niet erdoorheen zetten. Het
                 # bed ligt linksboven; twee seconden die kant op en je staat
@@ -340,14 +365,95 @@ def main():
                 else:
                     print("  OK   meubels houden hem tegen")
 
-                # En eruit: terug naar de deur, onderaan het midden.
+                # --- FASE 3: een kist openen -------------------------
+                #
+                # De kist in de hut staat linksonder. Zoeken gaat net als bij de
+                # deur: een kant op, proberen, en anders de volgende richting.
+                # De kamer is klein genoeg om af te lopen.
+                def kist_status():
+                    return page.locator("#mg-boat-status").text_content() or ""
+
+                # LANGS DE LINKERWAND VEGEN, net als bij de deur langs de
+                # onderwand. Losse richtingen proberen zette Bucky in de
+                # linkerbovenhoek klem; een muur volgen doet dat niet.
+                gevonden = False
+                for kant in [(-44, 0), (0, 44), (0, -44), (10, 44)]:
+                    for _ in range(7):
+                        stick(page, kant[0], kant[1], 450)
+                        page.locator(".mg-knop-anker").click()
+                        page.wait_for_timeout(700)
+                        if "Found:" in kist_status():
+                            gevonden = True
+                            break
+                    if gevonden:
+                        break
+
+                if not gevonden:
+                    print(f"  FOUT er kon geen kist worden geopend ({kist_status()!r})")
+                    mislukt.append("kist")
+                else:
+                    print(f"  OK   {kist_status().strip()}")
+                    leg_vast(page, "kist")
+
+                    # De inventory hoort te bewaren wat er gevonden is, en het
+                    # ook in TEKST te melden - een raster met gekleurde bolletjes
+                    # is voor een schermlezer niets.
+                    page.locator(".mg-knop-tas").click()
+                    page.wait_for_timeout(600)
+                    st = kist_status()
+                    if "Your finds:" not in st:
+                        print(f"  FOUT de tas meldt de inhoud niet ({st!r})")
+                        mislukt.append("tas")
+                    else:
+                        print(f"  OK   {st.strip()}")
+                        leg_vast(page, "inventory")
+
+                    # EN NIETS ERVAN VERLAAT DIT SPEL. De inventory staat in
+                    # localStorage onder een eigen sleutel; er hoort niets in te
+                    # staan dat naar shards of naar de bot verwijst, en er hoort
+                    # geen enkel verzoek naar de API over gedaan te zijn.
+                    opslag = page.evaluate("""() => {
+                      const uit = {};
+                      for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k && k.startsWith("openwater.")) uit[k] = localStorage.getItem(k);
+                      }
+                      return uit;
+                    }""")
+                    print(f"  opslag: {opslag}")
+                    if "openwater.inventory.v1" not in opslag:
+                        print("  FOUT de vondst wordt niet bewaard")
+                        mislukt.append("niet bewaard")
+                    elif any(w in str(opslag).lower()
+                             for w in ["shard", "coin", "xp", "reward"]):
+                        print("  FOUT er staat iets in de inventory dat naar de "
+                              "economie verwijst")
+                        mislukt.append("economie in de inventory")
+                    else:
+                        print("  OK   de vondst blijft in dit spel, in localStorage")
+
+                    page.locator(".mg-knop-tas").click()
+                    page.wait_for_timeout(400)
+
+                # NIET BIJ DE DEUR IS NIET NAAR BUITEN.
+                #
+                # Deze controle stond eerst vóór de kistfase en keek of het
+                # anker precies "Walk to the door" zei. Dat werd onjuist zodra
+                # het anker ook kisten opent: dezelfde knop doet nu het meest
+                # voor de hand liggende op de plek waar je staat, dus WELKE
+                # melding je krijgt hangt af van waar je bent.
+                #
+                # De eigenschap die er echt toe doet is smaller: ver van de deur
+                # kom je er niet uit. Wat je daar wél krijgt maakt niet uit.
+                stick(page, 0, -44, 1500)      # naar de bovenwand, weg van de deur
                 page.locator(".mg-knop-anker").click()
                 page.wait_for_timeout(900)
-                if "Walk to the door" not in (page.locator("#mg-boat-status").text_content() or ""):
+                if "Back outside" in (page.locator("#mg-boat-status").text_content() or ""):
                     print("  FOUT je kunt buiten de deur om naar buiten")
                     mislukt.append("deur omzeild")
                 else:
-                    print("  OK   naar buiten kan alleen bij de deur")
+                    print("  OK   ver van de deur kom je er niet uit")
+
                 # Naar de deur lopen gaat met dezelfde lus als het aanmeren:
                 # een stukje lopen, proberen, kijken wat het spel zegt. Een
                 # afgepaste loopafstand is net zo'n gok als een afgepaste

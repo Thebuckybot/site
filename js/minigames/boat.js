@@ -41,6 +41,10 @@ import {
 import {
     INTERIEURS, HUIZEN, HUIS_MAAT, magLopenBinnen, bijDeur, deurStart,
 } from "./boat/binnen.js";
+import {
+    SPULLEN, vraagInhoud, laadInventory, bewaarInventory,
+    laadGeopend, bewaarGeopend,
+} from "./boat/loot.js";
 
 const TAU = Math.PI * 2;
 
@@ -175,6 +179,17 @@ export function createBoat(canvas, options = {}) {
     const ZOOM = 1.75;
 
     const camera = { x: 0, y: 0 };
+    // WAT DE SPELER HEEFT GEVONDEN.
+    //
+    // Alles hierin blijft in dit spel: er zit niets in dat buiten Open Water
+    // waarde heeft. Zie de kop van boat/loot.js voor waarom dat een harde regel
+    // is en niet een keuze, en wat er zou moeten gebeuren voordat het anders
+    // mag.
+    const inventory = laadInventory();
+    const geopend = laadGeopend();
+    let inventoryOpen = false;
+    let laatsteVondst = null;   // wat er net is gevonden, om te tonen
+
     // Waar Bucky is als hij binnen staat. `kamer` is null zolang hij buiten is.
     const binnenIn = { kamer: null, huis: null, x: 0, y: 0 };
 
@@ -538,6 +553,19 @@ export function createBoat(canvas, options = {}) {
         maakKnop("mg-knop-anker", "Moor at the jetty, or step back aboard.", "⚓",
                  { klik: () => doeActie() });
 
+        const tasKnop = maakKnop("mg-knop-tas", "Open your finds.", "▤", {
+            klik: (knop) => {
+                inventoryOpen = !inventoryOpen;
+                knop.setAttribute("aria-pressed", inventoryOpen ? "true" : "false");
+                knop.classList.toggle("is-aan", inventoryOpen);
+                const n = Object.values(inventory).reduce((a, b) => a + b, 0);
+                zeg(inventoryOpen
+                    ? (n ? `Your finds: ${beschrijfInventory()}` : "You have not found anything yet.")
+                    : "Finds closed.");
+            },
+        });
+        tasKnop.setAttribute("aria-pressed", "false");
+
         const geluidKnop = maakKnop("mg-knop-geluid", "Sound off. Activate to turn sound on.",
                                     "♪", { klik: (b) => {
             const wil = !geluid.aan;
@@ -787,6 +815,13 @@ export function createBoat(canvas, options = {}) {
             geluid.piep(660);
             overgang(() => zetModus("aangemeerd"));
         } else if (staat.modus === "binnen") {
+            // EERST DE KIST. Sta je bij een kist, dan is dat wat het anker
+            // doet; sta je bij de deur, dan ga je naar buiten. Eén knop die het
+            // meest voor de hand liggende doet op de plek waar je staat, in
+            // plaats van een knop per handeling die je speelveld opeet.
+            const kist = kistBijSpeler();
+            if (kist) return void openKist(kist);
+
             // Naar buiten kan alleen BIJ DE DEUR. Anders is een huis geen kamer
             // met een deur maar een kamer met een knop, en dan had de deur ook
             // niet getekend hoeven worden.
@@ -895,6 +930,68 @@ export function createBoat(canvas, options = {}) {
         return landOnder(x, y, -marge) !== null;
     }
 
+    /**
+     * De kist waar Bucky binnen voor staat, of null.
+     *
+     * De id is `soort/meubelnaam`, dus stabiel over sessies heen en afleidbaar
+     * uit de plek. Dat is wat een server later nodig heeft om te zeggen "die
+     * heb je al gehad" - zie boat/loot.js.
+     */
+    function kistBijSpeler() {
+        if (staat.modus !== "binnen" || !binnenIn.kamer) return null;
+        for (const m of binnenIn.kamer.meubels) {
+            if (!m.kist) continue;
+            const cx = Math.max(m.x, Math.min(binnenIn.x, m.x + m.w));
+            const cy = Math.max(m.y, Math.min(binnenIn.y, m.y + m.h));
+            // RUIM GENOEG OM NAAST TE STAAN. Op 16 eenheden reikwijdte mist
+            // je de kast in de hut met twee eenheden als je langs de muur
+            // loopt - de kast staat tegen de wand en jij ook, maar er zit een
+            // meubel tussen. Dezelfde afweging als bij de huisdeur: een eis
+            // "sta precies daar" is op een joystick een eis die de speler
+            // verliest, en er valt hier niets te winnen met nauwkeurigheid.
+            if (Math.hypot(binnenIn.x - cx, binnenIn.y - cy) < speler.straal + 26) {
+                return { meubel: m, id: `${binnenIn.huis.soort}/${m.kist}` };
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Een kist openen.
+     *
+     * `vraagInhoud` geeft een promise terug, ook al rekent hij nu lokaal. Dat
+     * is met opzet: als de server dit later overneemt hoeft hier niets te
+     * veranderen, want er wordt al gewacht op een antwoord dat er niet meteen
+     * is. Zie de kop van boat/loot.js.
+     */
+    async function openKist(kist) {
+        if (geopend.has(kist.id)) {
+            return zeg("You have already emptied this one.");
+        }
+        const uit = await vraagInhoud(kist.id);
+        // PAS AFVINKEN ALS DE INHOUD ER IS.
+        //
+        // Eerst stond `geopend.add` hierboven, vóór het wachten. Toen de
+        // aanroep daarna stukliep (`vernietigd` bestaat in dit bestand niet -
+        // die naam kwam uit een ander spel) was de kist wél als leeg
+        // gemarkeerd en had de speler niets: een kist die je één keer kunt
+        // openen en die dan niets geeft, zonder dat er iets zichtbaar misgaat.
+        //
+        // Dat is precies wat er straks ook fout kan gaan als de server de
+        // inhoud bepaalt en het netwerk hapert. Eerst hebben, dan afvinken.
+        if (!draait) return;
+        geopend.add(kist.id);
+        bewaarGeopend(geopend);
+        const namen = [];
+        for (const sleutel of uit.spullen) {
+            inventory[sleutel] = (inventory[sleutel] || 0) + 1;
+            namen.push(SPULLEN[sleutel].naam);
+        }
+        bewaarInventory(inventory);
+        laatsteVondst = { spullen: uit.spullen, tijd: performance.now() };
+        zeg(`Found: ${namen.join(", ")}.`);
+    }
+
     /** Het huis waar Bucky voor staat, of null. */
     function dichtsteHuis() {
         if (speler.aanBoord) return null;
@@ -926,6 +1023,24 @@ export function createBoat(canvas, options = {}) {
         return beste;
     }
 
+    /**
+     * De inventory als zin.
+     *
+     * NIET ALLEEN EEN TEKENING. De vondsten staan straks als vakjes op het
+     * scherm, en vakjes met kleuren zijn voor een schermlezer niets. Deze zin
+     * gaat naar het aria-live-vak, dus wie het paneel niet kan zien krijgt
+     * dezelfde inhoud voorgelezen.
+     */
+    function beschrijfInventory() {
+        const regels = [];
+        for (const [sleutel, aantal] of Object.entries(inventory)) {
+            if (!SPULLEN[sleutel] || !aantal) continue;
+            regels.push(aantal > 1 ? `${SPULLEN[sleutel].naam} x${aantal}`
+                                   : SPULLEN[sleutel].naam);
+        }
+        return regels.length ? regels.join(", ") : "nothing yet";
+    }
+
     function zeg(tekst) { zegStatus(tekst); }
     function meld(naam, waarde) {
         for (const cb of luisteraars[naam] || []) cb(waarde);
@@ -954,6 +1069,8 @@ export function createBoat(canvas, options = {}) {
         if (staat.modus === "binnen") {
             tekenBinnen(b, h, tijd);
             tekenHud(b, h);
+            if (inventoryOpen) tekenInventory(b, h);
+            tekenVondst(b, h);
             if (staat.overgang > 0) tekenOvergang(b, h);
             if (document.activeElement === canvas) tekenFocus(b, h);
             return;
@@ -1016,6 +1133,8 @@ export function createBoat(canvas, options = {}) {
 
         tekenHud(b, h);
         if (staat.modus === "varen") tekenKompas(b, h);
+        if (inventoryOpen) tekenInventory(b, h);
+        tekenVondst(b, h);
         if (staat.overgang > 0) tekenOvergang(b, h);
         if (document.activeElement === canvas) tekenFocus(b, h);
     }
@@ -1627,6 +1746,10 @@ export function createBoat(canvas, options = {}) {
 
     function tekenMeubel(m) {
         const [donker, licht] = MEUBELKLEUR[m.soort] || ["#5a4b34", "#77664a"];
+        // Een kist die nog wat bevat krijgt een gloed. NOOIT ALLEEN KLEUR: er
+        // staat OPEN bij zodra je ernaast staat, en de statusregel zegt het ook.
+        const teOpenen = m.kist && !geopend.has(
+            binnenIn.huis ? `${binnenIn.huis.soort}/${m.kist}` : "");
         const hoogte = 7;
 
         // Schaduw op de vloer.
@@ -1647,6 +1770,22 @@ export function createBoat(canvas, options = {}) {
         ctx.beginPath();
         ctx.roundRect(m.x, m.y - 2, m.w, m.h, 3);
         ctx.fill();
+
+        if (teOpenen) {
+            ctx.strokeStyle = "rgba(255, 214, 120, .85)";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.roundRect(m.x - 2, m.y - 4, m.w + 4, m.h + 4, 4);
+            ctx.stroke();
+            const bij = kistBijSpeler();
+            if (bij && bij.meubel === m) {
+                ctx.fillStyle = KLEUR.accent;
+                ctx.font = "700 12px ui-sans-serif, system-ui, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("OPEN", m.x + m.w / 2, m.y - 10);
+                ctx.textAlign = "left";
+            }
+        }
 
         // Een paar kenmerken per soort, zodat een kist geen tafel is.
         ctx.strokeStyle = "rgba(0, 0, 0, .3)";
@@ -2105,6 +2244,124 @@ export function createBoat(canvas, options = {}) {
         ctx.fillText(`${Math.max(0, Math.round(doel.afstand / 10))} m`,
                      cx, cy + straal + 24);
         ctx.textAlign = "left";
+    }
+
+    function tekenInventory(b, h) {
+        const sleutels = Object.keys(inventory).filter((k) => SPULLEN[k] && inventory[k]);
+
+        const kolommen = 3;
+        const vak = 46, gat = 8;
+        const rijen = Math.max(1, Math.ceil(sleutels.length / kolommen));
+        const paneelB = kolommen * vak + (kolommen + 1) * gat;
+        const paneelH = rijen * vak + (rijen + 1) * gat + 26;
+        // IN HET MIDDEN, want alle vier de hoeken zijn bezet.
+        //
+        // Linksboven leek vrij, maar daar ligt op de arcade de vastgezette
+        // spelerskaart overheen - op de preview zag je van het paneel alleen
+        // nog een randje. Rechtsboven is het kompas, linksonder de stick,
+        // rechtsonder de knoppen. Het midden is wat overblijft, en dat is voor
+        // een paneel dat je bewust opent ook de juiste plek: je kijkt ernaar,
+        // je speelt er niet doorheen.
+        const px = (b - paneelB) / 2;
+        const py = Math.max(44, (h - paneelH) / 2 - 20);
+
+        ctx.fillStyle = "rgba(6, 14, 28, .92)";
+        ctx.beginPath();
+        ctx.roundRect(px, py, paneelB, paneelH, 10);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(130, 226, 255, .34)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(219, 231, 245, .9)";
+        ctx.font = "700 11px ui-monospace, monospace";
+        ctx.fillText("FINDS", px + gat, py + 18);
+
+        if (!sleutels.length) {
+            ctx.fillStyle = "rgba(219, 231, 245, .55)";
+            ctx.font = "600 11px ui-sans-serif, system-ui, sans-serif";
+            ctx.fillText("nothing yet", px + gat, py + 42);
+            return;
+        }
+
+        sleutels.forEach((sleutel, i) => {
+            const spul = SPULLEN[sleutel];
+            const kx = px + gat + (i % kolommen) * (vak + gat);
+            const ky = py + 26 + gat + Math.floor(i / kolommen) * (vak + gat);
+
+            ctx.fillStyle = "rgba(255, 255, 255, .06)";
+            ctx.beginPath(); ctx.roundRect(kx, ky, vak, vak, 6); ctx.fill();
+
+            // Het voorwerp als bolletje met een schaduw: dezelfde afspraak over
+            // het licht als in de rest van het spel, ook in een menu.
+            ctx.fillStyle = "rgba(0, 0, 0, .35)";
+            ctx.beginPath();
+            ctx.ellipse(kx + vak / 2 + 2, ky + vak / 2 + 9, 11, 4, 0, 0, TAU);
+            ctx.fill();
+            const bol = ctx.createRadialGradient(
+                kx + vak / 2 - 4, ky + vak / 2 - 5, 2,
+                kx + vak / 2, ky + vak / 2, 13);
+            bol.addColorStop(0, "#ffffff");
+            bol.addColorStop(0.35, spul.kleur);
+            bol.addColorStop(1, "rgba(0, 0, 0, .55)");
+            ctx.fillStyle = bol;
+            ctx.beginPath();
+            ctx.arc(kx + vak / 2, ky + vak / 2 - 2, 12, 0, TAU);
+            ctx.fill();
+
+            if (inventory[sleutel] > 1) {
+                ctx.fillStyle = "rgba(8, 16, 30, .9)";
+                ctx.beginPath();
+                ctx.roundRect(kx + vak - 20, ky + vak - 15, 18, 13, 4);
+                ctx.fill();
+                ctx.fillStyle = "#dbe7f5";
+                ctx.font = "700 10px ui-monospace, monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(`${inventory[sleutel]}`, kx + vak - 11, ky + vak - 5);
+                ctx.textAlign = "left";
+            }
+        });
+    }
+
+    function tekenVondst(b, h) {
+        // Wat je net gevonden hebt, een paar seconden groot in beeld. Zonder dit
+        // is een kist openen een regel tekst die je mist terwijl je kijkt waar
+        // je staat.
+        // Niet naast het inventarispaneel: dat staat in het midden en deze
+        // melding ook, en dan liggen ze over elkaar heen. Heb je de tas open,
+        // dan zie je de vondst daar al staan.
+        if (!laatsteVondst || inventoryOpen) return;
+        const leeftijd = (performance.now() - laatsteVondst.tijd) / 1000;
+        if (leeftijd > 2.8) { laatsteVondst = null; return; }
+        const alfa = leeftijd < 2.2 ? 1 : (2.8 - leeftijd) / 0.6;
+
+        const n = laatsteVondst.spullen.length;
+        const breedte = n * 52 + 24;
+        const x = (b - breedte) / 2, y = h * 0.18;
+
+        ctx.globalAlpha = alfa;
+        ctx.fillStyle = "rgba(6, 14, 28, .92)";
+        ctx.beginPath(); ctx.roundRect(x, y, breedte, 74, 10); ctx.fill();
+        ctx.strokeStyle = KLEUR.accent;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        laatsteVondst.spullen.forEach((sleutel, i) => {
+            const spul = SPULLEN[sleutel];
+            const cx = x + 12 + 26 + i * 52;
+            const bol = ctx.createRadialGradient(cx - 5, y + 24, 2, cx, y + 29, 15);
+            bol.addColorStop(0, "#ffffff");
+            bol.addColorStop(0.35, spul.kleur);
+            bol.addColorStop(1, "rgba(0, 0, 0, .55)");
+            ctx.fillStyle = bol;
+            ctx.beginPath(); ctx.arc(cx, y + 29, 14, 0, TAU); ctx.fill();
+        });
+        ctx.fillStyle = "#dbe7f5";
+        ctx.font = "700 11px ui-monospace, monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("FOUND", b / 2, y + 63);
+        ctx.textAlign = "left";
+        ctx.globalAlpha = 1;
     }
 
     function tekenHud(b, h) {

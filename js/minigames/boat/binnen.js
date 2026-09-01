@@ -38,7 +38,7 @@ export const INTERIEURS = {
             { x: 150, y: 130, w: 84, h: 54, soort: "tafel" },
             { x: 126, y: 142, w: 22, h: 26, soort: "kruk" },
             { x: 238, y: 142, w: 22, h: 26, soort: "kruk" },
-            { x: 40, y: 176, w: 54, h: 44, soort: "kast" },
+            { x: 40, y: 176, w: 54, h: 44, soort: "kast", kist: "hut-kast" },
         ],
         deur: { x: 168, y: 244, w: 48, h: 16 },
     },
@@ -51,10 +51,10 @@ export const INTERIEURS = {
         // Een pakhuis is gangen tussen stapels. De kisten staan in rijen zodat
         // er een route doorheen loopt en je niet zomaar overal langs kunt.
         meubels: [
-            { x: 46, y: 50, w: 70, h: 70, soort: "kist" },
+            { x: 46, y: 50, w: 70, h: 70, soort: "kist", kist: "pak-a" },
             { x: 46, y: 140, w: 70, h: 70, soort: "kist" },
             { x: 160, y: 50, w: 70, h: 70, soort: "kist" },
-            { x: 160, y: 140, w: 70, h: 70, soort: "kist" },
+            { x: 160, y: 140, w: 70, h: 70, soort: "kist", kist: "pak-b" },
             { x: 300, y: 50, w: 96, h: 44, soort: "rek" },
             { x: 300, y: 112, w: 96, h: 44, soort: "rek" },
             { x: 300, y: 174, w: 96, h: 44, soort: "rek" },
@@ -74,7 +74,7 @@ export const INTERIEURS = {
             { x: 0, y: 96, w: 132, h: 26, soort: "muurrest" },
             { x: 236, y: 40, w: 26, h: 130, soort: "muurrest" },
             { x: 92, y: 176, w: 78, h: 30, soort: "balk" },
-            { x: 292, y: 210, w: 58, h: 46, soort: "puin" },
+            { x: 292, y: 210, w: 58, h: 46, soort: "puin", kist: "ruine-puin" },
             { x: 44, y: 44, w: 44, h: 38, soort: "puin" },
             { x: 300, y: 96, w: 52, h: 40, soort: "puin" },
         ],
