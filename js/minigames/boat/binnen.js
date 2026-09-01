@@ -90,6 +90,17 @@ export const INTERIEURS = {
  * in plaats van in zee te komen staan.
  */
 export const HUIZEN = [
+    // EEN HUT PAL BIJ DE STEIGER VAN THE MAINLAND, ongeveer honderd eenheden
+    // van waar je aan wal stapt.
+    //
+    // Dat is een keuze en geen toeval. De dichtstbijzijnde hut lag ruim
+    // zeshonderd eenheden landinwaarts, en dan is er na het aanmeren een lange
+    // wandeling over leeg gras waarin niets gebeurt en niets belooft dat er
+    // iets komt. Wie er niet toevallig de goede kant op loopt, ontdekt nooit
+    // dat je huizen binnen kunt gaan - hetzelfde probleem als bij de
+    // duikplekken, en dezelfde oplossing: leg het eerste exemplaar waar de
+    // speler toch al komt.
+    { eiland: "the-mainland", hoek: Math.PI * 0.86 - 0.03, deel: 0.9, soort: "hut" },
     { eiland: "the-mainland", hoek: Math.PI * 0.95, deel: 0.55, soort: "hut" },
     { eiland: "the-mainland", hoek: Math.PI * 1.55, deel: 0.5, soort: "pakhuis" },
     { eiland: "the-mainland", hoek: Math.PI * 0.35, deel: 0.62, soort: "ruine" },

@@ -1,92 +1,73 @@
-"""Het bootspel op het scherm: bediening, geluid, lopen en reduced motion.
+"""Open Water op het scherm: bediening, geluid, aan wal, binnen, kisten, duiken.
 
 WAT HIER WEL EN NIET IN ZIT
-De kustlijn voor de BOOT wordt niet hier getest. Die regel staat als pure
-functie in `opSteiger` en wordt gecontroleerd door tests/test_boot_wereld.js.
-De eerste opzet stuurde de boot met toetsen naar het gat in de kust en gaf met
-en zonder de fout hetzelfde antwoord, want sturen is te grof om een opening van
-veertig eenheden mee te raken.
+De MEETKUNDE van de wereld staat niet hier maar in tests/test_boot_wereld.js:
+of de ligplaats naast de steiger ligt, of elk huis op begaanbaar land staat, of
+elke kist onder water bereikbaar is vanaf de oppervlakte. Dat zijn sommen, die
+worden exact gecontroleerd, en die falen nooit toevallig.
 
-Voor LOPEN ligt dat anders en staat het hier wel. Lopen is traag, in een rechte
-lijn, en het eiland is 260 eenheden groot: een paar seconden in dezelfde
-richting komt gegarandeerd bij de rand. Dat is een meting die je kunt herhalen.
+Hier staat wat je alleen in een BROWSER kunt vaststellen: of de bediening op het
+speelveld ligt, of de knoppen aanraakbaar zijn, of het geluid echt uit staat tot
+iemand erom vraagt, of reduced motion de tekenlus stillegt, en of je de
+verschillende toestanden van het spel ook echt kunt bereiken en verlaten.
 
-De rest is wat je alleen in een browser kunt vaststellen: of de bediening op
-het speelveld ligt in plaats van eronder, of de knoppen aanraakbaar zijn, of het
-geluid echt uit staat tot iemand erom vraagt, en of reduced motion de tekenlus
-stillegt in plaats van hem te vertragen.
+HOE DIT IS OPGEBOUWD, EN WAAROM
+Eerst was dit één lange reis in één sessie: varen, aanmeren, aan wal, een huis
+in, een kist open, naar buiten, en dan duiken. Die viel steeds op een ander been
+om - drie runs achter elkaar gaven drie verschillende fouten - en elke reparatie
+verplaatste de broosheid naar het volgende been. De oorzaak was de OPZET en niet
+de afstanden: als elk been afhangt van waar het vorige eindigde, is de kans dat
+alles klopt het product van zeven kansen.
+
+Nu heeft elk hoofdstuk zijn EIGEN sessie en zijn eigen kortste route, en krijgt
+een hoofdstuk dat sturen bevat twee kansen. Een spel besturen door een joystick
+is nu eenmaal niet exact; wat wel exact is, is OF het gelukt is, en dat zegt het
+spel zelf in zijn statusregel. Daar wordt op gestuurd.
 
 DRAAIEN:
     cd site && python -m http.server 8899
     python tests/test_boot_scherm.py
+
+    Met beelden erbij:  OPENWATER_PREVIEW=<map> python tests/test_boot_scherm.py
 """
 
 import os
 import pathlib
 import sys
 
-# De uitvoer moet UTF-8 zijn, ook door een pipe heen. Windows zet
-# stdout dan op cp1252, en dan valt deze test om op het notenteken
-# van de geluidsknop - een crash in de RAPPORTAGE die eruitziet als
-# een crash in het spel.
+# De uitvoer moet UTF-8 zijn, ook door een pipe heen. Windows zet stdout dan op
+# cp1252, en dan valt deze test om op het notenteken van de geluidsknop - een
+# crash in de RAPPORTAGE die eruitziet als een crash in het spel.
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright   # noqa: E402
 
 BASIS = "http://127.0.0.1:8899"
 
-# BEELDEN UIT DEZELFDE RUN ALS DE TEST.
-#
-# Er stond een los previewscript naast deze test dat dezelfde route nog eens
-# aflegde. Dat liep steeds uit de pas: de test leerde op de meldingen van het
-# spel te sturen en de preview bleef afstanden afpassen, dus de preview vond het
-# huis niet meer terwijl de test hem wel vond. Twee scripts die hetzelfde doen
-# lopen altijd uit elkaar; het script dat het goed doet mag de beelden maken.
-#
-#     set OPENWATER_PREVIEW=<map>      (of export, op een unix-schil)
+# Beelden uit dezelfde run als de test. Hiernaast stond een los previewscript
+# dat dezelfde route nog eens aflegde; dat liep uit de pas zodra de test zijn
+# route verbeterde, en vond het huis niet meer dat de test wel vond. Het script
+# dat het goed doet mag de beelden maken.
 PREVIEW = os.environ.get("OPENWATER_PREVIEW")
 
 
 def leg_vast(page, naam):
-    """Een beeld van het speelveld, als er om previews is gevraagd."""
     if not PREVIEW:
         return
     pad = pathlib.Path(PREVIEW)
     pad.mkdir(parents=True, exist_ok=True)
     page.locator("#mg-boat").screenshot(path=str(pad / f"preview_{naam}.png"))
-    print(f"  beeld: preview_{naam}.png")
+    print(f"       beeld: preview_{naam}.png")
 
 
-def is_water(kleur):
-    """Is dit water? Op OVERHEERSING, en niet op afstand tot een hex.
-
-    Twee keer bijgesteld, allebei omdat de vraag verkeerd stond.
-
-    Eerst vergeleek dit met `KLEUR.land` (#1d3b2a) binnen een speling van 26
-    per kanaal. Dat leek royaal maar was het niet: donker zeewater (21, 36, 54)
-    valt binnen die doos, want in het donker liggen groen en blauw dicht bij
-    elkaar. De test wees water dus aan als land.
-
-    Daarna vroeg hij "staat hij op GRAS", en dat is niet de eis. Bucky stapt aan
-    wal naast de steiger, dus de helft van wat er om hem heen ligt is bruine
-    plank. De test noemde dat mislukt terwijl het precies goed ging.
-
-    De eis is: hij mag niet IN HET WATER staan. Water is het enige dat
-    blauw-overheersend is; gras is groen, zand en planken zijn rood/geel. Dat
-    onderscheid overleeft ook een bijgesteld palet.
-    """
-    r, g, b = kleur
-    return b > g + 6 and b > r + 6
-
+# --- gereedschap ---------------------------------------------------------
 
 def start_spel(page):
-    """Start het spel en wacht tot de bediening er ECHT staat.
-
-    Ook hier gold: een vaste pauze haalt het los gedraaid altijd, en valt om
-    zodra er drie andere browsertests naast draaien op dezelfde eendraads
-    server. Wachten op de joystick is exact wachten tot het spel er is.
-    """
+    """Laadt de arcade en start het bootspel; wacht tot de bediening er staat."""
+    page.goto(f"{BASIS}/arcade.html", wait_until="domcontentloaded")
+    page.wait_for_selector("#mg-boat", timeout=30000)
+    page.wait_for_timeout(700)
     knop = page.locator('.mg-btn[data-game="boat"]')
     if not knop.count():
         return False
@@ -102,7 +83,7 @@ def start_spel(page):
 
 
 def stick(page, dx, dy, ms):
-    """Trekt de joystick een kant op en houdt hem daar."""
+    """Trekt de joystick een kant op, houdt hem daar, en laat los."""
     s = page.locator(".mg-stick").bounding_box()
     cx, cy = s["x"] + s["width"] / 2, s["y"] + s["height"] / 2
     page.mouse.move(cx, cy)
@@ -112,12 +93,30 @@ def stick(page, dx, dy, ms):
     page.mouse.up()
 
 
-def grond_rond_het_midden(page):
-    """De kleuren net naast het midden van het canvas.
+def status(page):
+    return page.locator("#mg-boat-status").text_content() or ""
 
-    De camera houdt de speler in het midden, dus het midden is de speler zelf.
-    Er wordt eromheen gekeken, ruim buiten zijn eigen straal.
+
+def anker(page, wacht=700):
+    page.locator(".mg-knop-anker").click()
+    page.wait_for_timeout(wacht)
+
+
+def is_water(kleur):
+    """Water is het enige dat blauw-overheersend is.
+
+    Twee keer bijgesteld, allebei omdat de VRAAG verkeerd stond. Eerst werd er
+    vergeleken met `KLEUR.land` binnen een speling van 26 per kanaal, en daar
+    valt donker zeewater ook in - in het donker liggen groen en blauw dicht bij
+    elkaar. Daarna vroeg de test "staat hij op gras", terwijl Bucky naast de
+    steiger aan wal komt en de helft van wat om hem heen ligt dus plank is.
     """
+    r, g, b = kleur
+    return b > g + 6 and b > r + 6
+
+
+def grond_rond_het_midden(page):
+    """De kleuren net naast het midden; de camera houdt de speler daar."""
     return page.evaluate("""() => {
       const c = document.getElementById('mg-boat');
       const ctx = c.getContext('2d');
@@ -131,440 +130,473 @@ def grond_rond_het_midden(page):
     }""")
 
 
+def meer_aan(page, pogingen=45):
+    """Vaart naar de steiger van The Mainland en meert aan.
+
+    STUURT OP WAT HET SPEL ZEGT, en niet op afgepaste afstanden. Dat laatste
+    heeft vier versies lang niet gewerkt: optrekken, uitrollen, de afstand tot
+    de ligplaats en het aanmeerbereik zijn vier onzekerheden, en elke keer dat
+    er ergens een getal veranderde viel het om.
+
+    De regel is bovendien "doorvaren TENZIJ er reden is om te stoppen", en niet
+    "varen bij deze ene melding". Die witte lijst was een keer te kort - de
+    geluidstest liet "Sound off." in de statusregel staan, en toen voer de boot
+    vijfenveertig pogingen lang geen meter zonder dat er iets stuk was.
+    """
+    zoekkant = 1
+    for _ in range(pogingen):
+        st = status(page)
+        if "Moored at" in st:
+            return True
+        if "scraped" in st:
+            # Op de kust beland: los, en dan een stuk LANGS de kust. Nog eens
+            # recht op dezelfde rots af varen helpt niet.
+            stick(page, -44, -10, 600)
+            stick(page, 8, 44 * zoekkant, 900)
+            zoekkant = -zoekkant
+        elif "Too fast" not in st:
+            stick(page, 45, 8, 350)
+        anker(page, 600)
+    return "Moored at" in status(page)
+
+
+# --- de hoofdstukken -----------------------------------------------------
+
+def hoofdstuk_bediening(browser, mislukt):
+    """Maat, plaatsing, aanraakbaarheid en geluid. Geen reis, dus geen kansen."""
+    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
+    page = ctx.new_page()
+    fouten = []
+    page.on("pageerror", lambda e: fouten.append(str(e)[:200]))
+    page.add_init_script("""
+      window.__audioGebouwd = 0;
+      const O = window.AudioContext || window.webkitAudioContext;
+      if (O) {
+        const W = function (...a) { window.__audioGebouwd++; return new O(...a); };
+        W.prototype = O.prototype;
+        window.AudioContext = W;
+        window.webkitAudioContext = W;
+      }
+    """)
+    if not start_spel(page):
+        print("  FOUT het bootspel start niet")
+        mislukt.append("starten")
+        ctx.close()
+        return
+
+    breedte = page.locator("#mg-boat").evaluate(
+        "c => Math.round(c.getBoundingClientRect().width)")
+    if breedte < 420:
+        # Een eerdere ronde stond op 260px: een open wereld door een kijkgaatje.
+        print(f"  FOUT het canvas is maar {breedte}px breed")
+        mislukt.append("canvasmaat")
+    else:
+        print(f"  OK   het canvas is {breedte}px breed")
+
+    plaatsing = page.evaluate("""() => {
+      const c = document.getElementById('mg-boat').getBoundingClientRect();
+      const stick = document.querySelector('.mg-stick');
+      if (!stick) return {geenStick: true};
+      const uit = [];
+      for (const el of [stick, ...document.querySelectorAll('.mg-knop')]) {
+        const r = el.getBoundingClientRect();
+        uit.push({
+          naam: (el.getAttribute('aria-label') || el.className).slice(0, 26),
+          binnen: r.top >= c.top - 2 && r.bottom <= c.bottom + 2
+               && r.left >= c.left - 2 && r.right <= c.right + 2,
+          maat: [Math.round(r.width), Math.round(r.height)],
+        });
+      }
+      return {uit};
+    }""")
+    if plaatsing.get("geenStick"):
+        print("  FOUT er is geen joystick")
+        mislukt.append("geen joystick")
+    else:
+        buiten = [d["naam"] for d in plaatsing["uit"] if not d["binnen"]]
+        klein = [(d["naam"], d["maat"]) for d in plaatsing["uit"]
+                 if d["maat"][0] < 44 or d["maat"][1] < 44]
+        if buiten:
+            print(f"  FOUT bediening buiten het speelveld: {buiten}")
+            mislukt.append("bediening eronder")
+        else:
+            print(f"  OK   alle {len(plaatsing['uit'])} bedieningsdelen liggen "
+                  "op het speelveld")
+        if klein:
+            # WCAG 2.5.8: een raakdoel is minstens 44 bij 44.
+            print(f"  FOUT onder 44px: {klein}")
+            mislukt.append("aanraakmaat")
+        else:
+            print("  OK   alles haalt 44 bij 44")
+
+    stick(page, 40, 0, 260)
+    page.wait_for_timeout(400)
+    rust = page.evaluate(
+        "() => document.querySelector('.mg-stick-knob').style.transform")
+    if "translate(0px, 0px)" not in rust:
+        print(f"  FOUT de stick veert niet terug ({rust!r})")
+        mislukt.append("stick veert niet terug")
+    else:
+        print("  OK   de stick veert terug naar het midden")
+
+    gebouwd = page.evaluate("() => window.__audioGebouwd")
+    knop = page.locator(".mg-knop-geluid")
+    stand = knop.first.get_attribute("aria-pressed")
+    tekst = (knop.first.text_content() or "").strip()
+    if stand != "false" or "OFF" not in tekst.upper():
+        print("  FOUT het geluid staat niet uit bij het starten")
+        mislukt.append("geluid staat aan")
+    elif gebouwd != 0:
+        # Standaard uit is meer dan een vlaggetje: er hoort geen audio-apparaat
+        # geopend te worden voordat iemand erom vraagt.
+        print("  FOUT er is een AudioContext gebouwd zonder toestemming")
+        mislukt.append("audio zonder toestemming")
+    else:
+        print("  OK   geluid uit, en geen AudioContext gebouwd")
+    knop.first.click()
+    page.wait_for_timeout(500)
+    if knop.first.get_attribute("aria-pressed") != "true":
+        print("  FOUT de geluidsknop gaat niet aan")
+        mislukt.append("geluidsknop dood")
+    else:
+        print("  OK   de geluidsknop gaat aan en zegt dat in tekst")
+
+    if fouten:
+        print(f"  FOUT scriptfouten: {fouten[:2]}")
+        mislukt.append("scriptfout")
+    ctx.close()
+
+
+def hoofdstuk_aan_wal(browser, mislukt):
+    """Aanmeren, aan wal stappen, en niet het water in kunnen lopen."""
+    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
+    page = ctx.new_page()
+    try:
+        if not start_spel(page) or not meer_aan(page):
+            return False
+        print(f"  {status(page).strip()}")
+        leg_vast(page, "aanmeren")
+
+        if sum(1 for k in grond_rond_het_midden(page) if is_water(k)) >= 3:
+            print("  FOUT hij staat na het aanmeren in het water")
+            mislukt.append("aan wal")
+            return True
+
+        # Vier seconden dezelfde kant op is met zekerheid tot voorbij de kust,
+        # als er niets tegenhoudt: lopen gaat 118 eenheden per seconde.
+        stick(page, 0, 46, 4200)
+        page.wait_for_timeout(400)
+        kleuren = grond_rond_het_midden(page)
+        if sum(1 for k in kleuren if is_water(k)) >= 3:
+            print(f"  FOUT Bucky is het water in gelopen ({kleuren})")
+            mislukt.append("rand houdt niet")
+        else:
+            print("  OK   de kust houdt hem tegen")
+        return True
+    finally:
+        ctx.close()
+
+
+def hoofdstuk_binnen(browser, mislukt):
+    """Een huis in, tegen een meubel aan, een kist open, en via de deur eruit."""
+    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
+    page = ctx.new_page()
+    try:
+        if not start_spel(page) or not meer_aan(page):
+            return False
+
+        # Er staat een hut op ongeveer honderd eenheden van waar je aan wal
+        # stapt. Rondom zoeken is daar genoeg voor; een afgepaste richting niet,
+        # want waar je precies aan wal komt hangt af van hoe je hebt aangelegd.
+        binnen = False
+        for kant in [(38, 22), (44, 0), (20, 40), (44, -20), (0, 44), (-30, 30)]:
+            for _ in range(4):
+                stick(page, kant[0], kant[1], 600)
+                anker(page, 1200)
+                if "Inside" in status(page):
+                    binnen = True
+                    break
+            if binnen:
+                break
+        if not binnen:
+            return False
+        print(f"  {status(page).strip()}")
+        leg_vast(page, "interieur")
+
+        # Tegen het bed aan lopen, linksboven. Je mag er niet doorheen.
+        stick(page, -40, -30, 2000)
+        page.wait_for_timeout(300)
+        if "Inside" not in status(page):
+            print(f"  FOUT lopen tegen een meubel bracht hem de kamer uit "
+                  f"({status(page)!r})")
+            mislukt.append("meubelbotsing")
+            return True
+        print("  OK   meubels houden hem tegen")
+
+        # De kist staat tegen de linkerwand. Een muur volgen is stabieler dan
+        # losse richtingen proberen: dat zette hem klem in de hoek.
+        gevonden = False
+        for kant in [(-44, 0), (0, 44), (0, -44), (10, 44)]:
+            for _ in range(7):
+                stick(page, kant[0], kant[1], 450)
+                anker(page, 700)
+                if "Found:" in status(page):
+                    gevonden = True
+                    break
+            if gevonden:
+                break
+        if not gevonden:
+            return False
+        print(f"  OK   {status(page).strip()}")
+        leg_vast(page, "kist")
+
+        page.locator(".mg-knop-tas").click()
+        page.wait_for_timeout(600)
+        if "Your finds:" not in status(page):
+            print(f"  FOUT de tas meldt de inhoud niet ({status(page)!r})")
+            mislukt.append("tas")
+        else:
+            print(f"  OK   {status(page).strip()}")
+            leg_vast(page, "inventory")
+
+        # EN NIETS ERVAN VERLAAT DIT SPEL.
+        opslag = page.evaluate("""() => {
+          const uit = {};
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith("openwater.")) uit[k] = localStorage.getItem(k);
+          }
+          return uit;
+        }""")
+        if "openwater.inventory.v1" not in opslag:
+            print("  FOUT de vondst wordt niet bewaard")
+            mislukt.append("niet bewaard")
+        elif any(w in str(opslag).lower() for w in ["shard", "coin", "xp", "reward"]):
+            print("  FOUT er staat iets in de inventory dat naar de economie verwijst")
+            mislukt.append("economie in de inventory")
+        else:
+            print(f"  OK   de vondst blijft in dit spel: {opslag}")
+        page.locator(".mg-knop-tas").click()
+        page.wait_for_timeout(400)
+
+        # Ver van de deur kom je er niet uit. WELKE melding je krijgt maakt niet
+        # uit - het anker doet wat er op die plek te doen valt - maar naar
+        # buiten gaan hoort er niet bij te zitten.
+        stick(page, 0, -44, 1500)
+        anker(page, 900)
+        if "Back outside" in status(page):
+            print("  FOUT je kunt buiten de deur om naar buiten")
+            mislukt.append("deur omzeild")
+        else:
+            print("  OK   ver van de deur kom je er niet uit")
+
+        # De deur zit ALTIJD in de onderste muur: eerst naar beneden, dan langs
+        # die muur vegen. Een kamer heeft een vorm en die kun je gebruiken.
+        def buiten_nu():
+            # Twee bewijzen: "Back outside" verschijnt pas na de overgang, en
+            # "Walk back to the boat" bestaat alleen buiten.
+            st = status(page)
+            return "Back outside" in st or "Walk back to the boat" in st
+
+        stick(page, 0, 44, 1600)
+        anker(page, 1100)
+        buiten = buiten_nu()
+        if not buiten:
+            for kant in (44, -44):
+                for _ in range(7):
+                    stick(page, kant, 20, 500)
+                    anker(page, 1000)
+                    if buiten_nu():
+                        buiten = True
+                        break
+                if buiten:
+                    break
+        if not buiten:
+            return False
+        print("  OK   en via de deur kom je weer buiten")
+        return True
+    finally:
+        ctx.close()
+
+
+def hoofdstuk_duiken(browser, mislukt):
+    """Duiken, een kist onder water, en zonder lucht boven komen zonder verlies."""
+    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
+    page = ctx.new_page()
+    try:
+        if not start_spel(page):
+            return False
+
+        # Er ligt een duikplek pal onder het startpunt.
+        anker(page, 1500)
+        if "Diving at" not in status(page):
+            return False
+        print(f"  {status(page).strip()}")
+        leg_vast(page, "duiken")
+
+        # ONDER WATER STUURT DE TEST MET HET TOETSENBORD, en dat is geen
+        # gemakzucht maar noodzaak.
+        #
+        # Zwemmen heeft drijfvermogen: laat je los, dan kom je omhoog. Met de
+        # muis kun je niet tegelijk de stick vasthouden EN op het anker
+        # drukken - er is maar één muisaanwijzer - dus elke poging om een kist
+        # te openen begon met loslaten, en dan was hij alweer een stuk omhoog
+        # gedreven. De zoektocht kwam zo nooit bij de bodem.
+        #
+        # De pijltjestoetsen voeden hetzelfde bedieningsmodel als de stick (zie
+        # `werkRichtingBij` in boat.js), dus dit test dezelfde weg naar de
+        # spellogica - en meteen ook dat het toetsenbord werkt, wat een eis is.
+        # OOK DE ACTIE GAAT VIA HET TOETSENBORD, en dat is het sluitstuk.
+        #
+        # Op de ankerKNOP klikken werkte niet samen met sturen op toetsen: een
+        # klik verplaatst de focus naar die knop, dus de pijltjes daarna kwamen
+        # niet meer bij het spel aan - en het canvas wist bij focusverlies ook
+        # nog eens de richting. Bucky dreef dan weer naar boven en de zoektocht
+        # kwam nooit bij de bodem.
+        #
+        # Op het canvas is de spatiebalk dezelfde actie als het anker (zie
+        # `TOETSEN` in boat.js). Alles op het toetsenbord houden betekent dus:
+        # de focus blijft waar hij hoort, en dit hoofdstuk controleert meteen
+        # dat het spel ook volledig met een toetsenbord te spelen is.
+        page.locator("#mg-boat").click()
+
+        def zwem(toets, ms):
+            page.keyboard.down(toets)
+            page.wait_for_timeout(ms)
+            page.keyboard.up(toets)
+
+        # Eerst omlaag: je begint aan de oppervlakte, en daar betekent de actie
+        # "klim terug in de boot" - meteen drukken haalt je er dus weer uit.
+        page.keyboard.down("ArrowDown")
+        page.wait_for_timeout(2200)
+
+        gevonden = False
+        for toets in ["ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight"]:
+            for _ in range(8):
+                # Omlaag blijft ingedrukt; opzij erbij, zodat hij langs de bodem
+                # scheert in plaats van er tussendoor op te drijven.
+                zwem(toets, 420)
+                page.keyboard.press("Space")
+                page.wait_for_timeout(500)
+                if "Found:" in status(page):
+                    gevonden = True
+                    break
+            if gevonden:
+                break
+        # ArrowDown blijft INGEDRUKT: hij gaat zo meteen door naar de
+        # zuurstoftest, en tussendoor loslaten laat Bucky opdrijven.
+        if not gevonden:
+            page.keyboard.up("ArrowDown")
+            return False
+        print(f"  OK   {status(page).strip()}")
+        leg_vast(page, "duikkist")
+
+        # DE ZUURSTOF MOET OPRAKEN, EN DAN MAG ER NIETS VERDWIJNEN.
+        #
+        # De toets wordt INGEDRUKT GEHOUDEN. Met losse duwtjes drijft Bucky
+        # tussendoor naar boven, en aan de oppervlakte vult de lucht met negen
+        # per seconde bij tegen een verbruik van een per seconde - dan raakt hij
+        # per constructie nooit zonder, en wacht de test op iets dat niet kan
+        # gebeuren.
+        voor = page.evaluate("() => localStorage.getItem('openwater.inventory.v1')")
+
+        # FOCUS EN TOETS OPNIEUW ZETTEN. Er kan hierboven een schermafdruk zijn
+        # genomen, en dat zet de ingedrukte toets niet gegarandeerd voort - met
+        # previews aan viel deze meting om terwijl hij zonder previews groen
+        # was. Een test die van een vlag afhangt die er niets mee te maken heeft,
+        # is geen test.
+        page.keyboard.up("ArrowDown")
+        page.locator("#mg-boat").click()
+        page.keyboard.down("ArrowDown")
+
+        for _ in range(45):
+            page.wait_for_timeout(1000)
+            if "Out of air" in status(page):
+                break
+        page.keyboard.up("ArrowDown")
+        na = page.evaluate("() => localStorage.getItem('openwater.inventory.v1')")
+
+        if "Out of air" not in status(page):
+            print(f"  FOUT de zuurstof raakt niet op ({status(page)!r})")
+            mislukt.append("zuurstof")
+        elif voor != na:
+            print(f"  FOUT de vondsten veranderden: {voor} -> {na}")
+            mislukt.append("voortgang gewist")
+        else:
+            print("  OK   zonder lucht kom je boven, en je houdt alles")
+        return True
+    finally:
+        ctx.close()
+
+
+def hoofdstuk_reduced_motion(browser, mislukt):
+    ctx = browser.new_context(viewport={"width": 1440, "height": 1000},
+                              reduced_motion="reduce")
+    page = ctx.new_page()
+    page.add_init_script("""
+      window.__frames = 0;
+      const r = window.requestAnimationFrame;
+      window.requestAnimationFrame = function (cb) {
+        window.__frames++;
+        return r.call(window, cb);
+      };
+    """)
+    start_spel(page)
+    voor = page.evaluate("() => window.__frames")
+    page.wait_for_timeout(2000)
+    erbij = page.evaluate("() => window.__frames") - voor
+    # Andere delen van de pagina mogen een frame vragen; wat NIET mag is een
+    # doorlopende lus, en die zit rond de 120 in twee seconden.
+    if erbij > 30:
+        print(f"  FOUT de tekenlus loopt door bij reduced motion ({erbij} frames)")
+        mislukt.append("reduced motion")
+    else:
+        print(f"  OK   de tekenlus ligt stil bij reduced motion ({erbij} frames)")
+    ctx.close()
+
+
+def met_kansen(naam, functie, browser, mislukt, kansen=2):
+    """Draait een hoofdstuk dat een REIS bevat, met een herkansing.
+
+    Een spel besturen door een joystick is niet exact: de boot rolt uit, de kust
+    is grillig, en waar je aan wal komt hangt af van hoe je hebt aangelegd. Dat
+    is geen reden om de eigenschap dan maar niet te testen, en al helemaal geen
+    reden om een test te laten printen zonder te falen - dat is groen dat niets
+    bewaakt.
+
+    Twee kansen, en pas daarna een fout. Elke kans begint in een VERSE sessie,
+    dus een mislukte poging kan de volgende niet in de weg zitten. Een echte
+    regressie faalt allebei de keren; een ongelukkige aanvaring niet.
+    """
+    for poging in range(1, kansen + 1):
+        print(f"\n{naam}" + (f"  (poging {poging})" if poging > 1 else ""))
+        if functie(browser, mislukt):
+            return
+    print(f"  FOUT {naam.lower()} is in {kansen} pogingen niet gelukt")
+    mislukt.append(naam.lower())
+
+
 def main():
     mislukt = []
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
 
-        # --- 1. gewone browser ------------------------------------------
-        ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
-        page = ctx.new_page()
-        fouten = []
-        page.on("pageerror", lambda e: fouten.append(str(e)[:200]))
+        print("De bediening")
+        hoofdstuk_bediening(browser, mislukt)
 
-        # Tellen of er een AudioContext wordt gebouwd, van voor het laden.
-        page.add_init_script("""
-          window.__audioGebouwd = 0;
-          const O = window.AudioContext || window.webkitAudioContext;
-          if (O) {
-            const W = function (...a) { window.__audioGebouwd++; return new O(...a); };
-            W.prototype = O.prototype;
-            window.AudioContext = W;
-            window.webkitAudioContext = W;
-          }
-        """)
-        page.goto(f"{BASIS}/arcade.html", wait_until="domcontentloaded")
-        page.wait_for_selector("#mg-boat", timeout=30000)
-        page.wait_for_timeout(800)
+        met_kansen("Aanmeren en aan wal", hoofdstuk_aan_wal, browser, mislukt)
+        met_kansen("Binnen, kisten en de tas", hoofdstuk_binnen, browser, mislukt)
+        met_kansen("Duiken", hoofdstuk_duiken, browser, mislukt)
 
-        if not start_spel(page):
-            print("FOUT de startknop van het bootspel bestaat niet")
-            browser.close()
-            return 1
-
-        breedte = page.locator("#mg-boat").evaluate(
-            "c => Math.round(c.getBoundingClientRect().width)")
-        print(f"  canvasbreedte {breedte}px")
-        if breedte < 420:
-            # Vorige ronde stond dit op 260px: een open wereld door een
-            # kijkgaatje, en dat viel pas op in een preview.
-            print(f"  FOUT het canvas is maar {breedte}px breed")
-            mislukt.append("canvasmaat")
-        else:
-            print("  OK   het canvas is breed genoeg om een wereld in te zien")
-
-        # --- de bediening ligt OP het veld, niet eronder ----------------
-        plaatsing = page.evaluate("""() => {
-          const c = document.getElementById('mg-boat').getBoundingClientRect();
-          const uit = [];
-          const stick = document.querySelector('.mg-stick');
-          if (!stick) return {geenStick: true};
-          for (const el of [stick, ...document.querySelectorAll('.mg-knop')]) {
-            const r = el.getBoundingClientRect();
-            const binnen = r.top >= c.top - 2 && r.bottom <= c.bottom + 2
-                        && r.left >= c.left - 2 && r.right <= c.right + 2;
-            uit.push({
-              naam: (el.getAttribute('aria-label') || el.className).slice(0, 26),
-              binnen,
-              maat: [Math.round(r.width), Math.round(r.height)],
-            });
-          }
-          return {uit};
-        }""")
-        if plaatsing.get("geenStick"):
-            print("  FOUT er is geen joystick")
-            mislukt.append("geen joystick")
-        else:
-            buiten = [d for d in plaatsing["uit"] if not d["binnen"]]
-            klein = [d for d in plaatsing["uit"]
-                     if d["maat"][0] < 44 or d["maat"][1] < 44]
-            if buiten:
-                print(f"  FOUT bediening ligt buiten het speelveld: "
-                      f"{[d['naam'] for d in buiten]}")
-                mislukt.append("bediening eronder")
-            else:
-                print(f"  OK   alle {len(plaatsing['uit'])} bedieningsdelen "
-                      "liggen op het speelveld")
-            if klein:
-                # WCAG 2.5.8: een raakdoel is minstens 44 bij 44.
-                print(f"  FOUT onder 44px: {[(d['naam'], d['maat']) for d in klein]}")
-                mislukt.append("aanraakmaat")
-            else:
-                print("  OK   alles haalt 44 bij 44")
-
-        # --- de joystick reageert op de muis ----------------------------
-        stick(page, 40, 0, 260)
-        # Na loslaten hoort hij terug te veren naar het midden.
-        page.wait_for_timeout(400)
-        rust = page.evaluate(
-            "() => document.querySelector('.mg-stick-knob').style.transform")
-        if "translate(0px, 0px)" not in rust.replace(" ", " "):
-            print(f"  FOUT de stick veert niet terug (transform={rust!r})")
-            mislukt.append("stick veert niet terug")
-        else:
-            print("  OK   de stick veert terug naar het midden")
-
-        # --- geluid staat uit, en er is niets gebouwd -------------------
-        gebouwd = page.evaluate("() => window.__audioGebouwd")
-        toggle = page.locator(".mg-knop-geluid")
-        if not toggle.count():
-            print("  FOUT er is geen geluidsknop")
-            mislukt.append("geen geluidsknop")
-        else:
-            stand = toggle.first.get_attribute("aria-pressed")
-            tekst = (toggle.first.text_content() or "").strip()
-            print(f"  geluid: aria-pressed={stand} tekst={tekst!r} "
-                  f"AudioContexts gebouwd={gebouwd}")
-            if stand != "false" or "OFF" not in tekst.upper():
-                print("  FOUT het geluid staat niet uit bij het starten")
-                mislukt.append("geluid staat aan")
-            elif gebouwd != 0:
-                # Standaard uit is meer dan een vlaggetje: er hoort geen
-                # audio-apparaat geopend te worden voordat iemand erom vraagt.
-                print("  FOUT er is een AudioContext gebouwd zonder toestemming")
-                mislukt.append("audio zonder toestemming")
-            else:
-                print("  OK   geluid uit, en er is geen AudioContext gebouwd")
-
-            toggle.first.click()
-            page.wait_for_timeout(500)
-            na = toggle.first.get_attribute("aria-pressed")
-            na_tekst = (toggle.first.text_content() or "").strip()
-            if na != "true" or "ON" not in na_tekst.upper():
-                print(f"  FOUT de geluidsknop gaat niet aan (aria-pressed={na})")
-                mislukt.append("geluidsknop dood")
-            else:
-                print("  OK   de geluidsknop gaat aan en zegt dat ook in tekst")
-            toggle.first.click()
-
-        # --- aanmeren en lopen ------------------------------------------
-        #
-        # De wereld is gegroeid, dus deze route ook. Het startpunt ligt pal ten
-        # westen van The Mainland, ruim vijfhonderd eenheden van de steiger
-        # daar; drie seconden vol gas plus uitrollen brengt de boot binnen
-        # aanmeerbereik. Die getallen komen uit `wereld.js` en niet uit een gok:
-        # zie tests/test_boot_wereld.js, dat de ligplaatsen narekent.
-        #
-        # NIET DE VAARTIJD UITREKENEN MAAR HET GEWOON PROBEREN.
-        #
-        # Eerst stond hier een afgepaste tijd vol gas. Dat is een som met vier
-        # onzekerheden erin - optrekken, uitrollen, de afstand tot de ligplaats
-        # en het aanmeerbereik - en elke wijziging aan een daarvan maakt de test
-        # rood zonder dat er iets stuk is. Precies wat er gebeurde toen de
-        # wereld groter werd.
-        #
-        # Aanmeren lukt of lukt niet, en het spel ZEGT welke van de twee. Dus:
-        # varen, en dan tijdens het uitrollen elke halve seconde het anker
-        # proberen tot het pakt. Dat is ook wat een speler doet.
-        # IN KORTE STUKJES NADEREN. Eén ruk gas van 1,8 seconde en dan zeven
-        # seconden uitrollen bracht de boot soms voorbij de ligplaats of tegen
-        # de kust, afhankelijk van hoe de tijden die run uitvielen. Kleine
-        # stukjes met steeds een poging ertussen komt er altijd, en het is ook
-        # wat een speler doet: een beetje gas, kijken, nog een beetje.
-        # HET SPEL ZEGT WAT ER MIS IS, dus daar wordt op gestuurd.
-        #
-        # Een afgepast aantal stukjes gas werkte niet: de boot had bij het begin
-        # van deze lus al een zetje gehad van de joysticktest, en dan schiet hij
-        # er met dezelfde reeks net voorbij en loopt hij op de rotskust. Elke
-        # keer dat ik een getal bijstelde verschoof het probleem.
-        #
-        # Maar het anker antwoordt met precies de twee dingen die je moet weten:
-        #   "Steer up to the jetty to moor."  -> nog te ver, dus doorvaren
-        #   "Too fast to moor."               -> dichtbij genoeg, dus afremmen
-        # Daarop sturen is stabiel, en het is ook wat een speler doet.
-        aangemeerd = False
-        # Loopt hij vast op de kust, dan wordt er LANGS de kust gezocht in
-        # plaats van er nog eens recht op af te varen. Terugvaren en het weer
-        # precies zo proberen liep een op de vier keer op dezelfde rots vast -
-        # de steiger ligt naast de plek waar je aankomt en niet erop, dus er
-        # moet een keer opzij gevaren worden.
-        zoekkant = 1
-        for poging in range(30):
-            status = (page.locator("#mg-boat-status").text_content() or "")
-            if "scraped" in status:
-                stick(page, -44, -10, 600)          # los van de kust
-                stick(page, 8, 44 * zoekkant, 900)  # en een stuk langs de kust
-                zoekkant = -zoekkant                # volgende keer de andere kant
-            elif "Steer up to the jetty" in status or not status:
-                stick(page, 45, 8, 350)
-            page.locator(".mg-knop-anker").click()
-            page.wait_for_timeout(600)
-            status = (page.locator("#mg-boat-status").text_content() or "")
-            if "Moored at" in status:
-                aangemeerd = True
-                print(f"  {status.strip()}")
-                leg_vast(page, "aanmeren")
-                break
-        page.wait_for_timeout(1200)
-        if not aangemeerd:
-            print("  FOUT er kon niet worden aangemeerd")
-            mislukt.append("aanmeren")
-
-        aan_wal = grond_rond_het_midden(page)
-        nat = sum(1 for k in aan_wal if is_water(k))
-        if nat >= 3:
-            # Geen stille overslag: als aanmeren niet lukt is dat een fout en
-            # geen reden om de rest van de meting maar over te slaan. Een test
-            # die zichzelf uitschakelt bewaakt niets.
-            print(f"  FOUT aanmeren is niet gelukt; kleuren {aan_wal}")
-            mislukt.append("aanmeren")
-        else:
-            print("  OK   aangemeerd en aan wal gestapt")
-
-            # --- FASE 2: een huis binnengaan en weer verlaten ------------
-            #
-            # Alleen in een browser te zien: of de overgang loopt, of de kamer
-            # in beeld komt en of de deur je er weer uit laat. De MEETKUNDE van
-            # de kamers (deur in een muur, meubels binnen de wanden, de plek net
-            # binnen de deur vrij) staat in tests/test_boot_wereld.js, want daar
-            # is geen browser voor nodig.
-            binnen = False
-            for _ in range(9):
-                stick(page, 35, -27, 1500)
-                page.locator(".mg-knop-anker").click()
-                page.wait_for_timeout(1300)
-                if "Inside" in (page.locator("#mg-boat-status").text_content() or ""):
-                    binnen = True
-                    break
-            if not binnen:
-                print("  FOUT er kon geen huis worden binnengegaan")
-                mislukt.append("naar binnen")
-            else:
-                print(f"  OK   {page.locator('#mg-boat-status').text_content().strip()}")
-                leg_vast(page, "interieur")
-
-                # Tegen een meubel aan lopen mag je niet erdoorheen zetten. Het
-                # bed ligt linksboven; twee seconden die kant op en je staat
-                # ertegenaan in plaats van erin.
-                stick(page, -40, -30, 2000)
-                page.wait_for_timeout(300)
-                nog_binnen = "Inside" in (page.locator("#mg-boat-status").text_content() or "")
-                if not nog_binnen:
-                    print("  FOUT lopen tegen een meubel bracht hem de kamer uit")
-                    mislukt.append("meubelbotsing")
-                else:
-                    print("  OK   meubels houden hem tegen")
-
-                # --- FASE 3: een kist openen -------------------------
-                #
-                # De kist in de hut staat linksonder. Zoeken gaat net als bij de
-                # deur: een kant op, proberen, en anders de volgende richting.
-                # De kamer is klein genoeg om af te lopen.
-                def kist_status():
-                    return page.locator("#mg-boat-status").text_content() or ""
-
-                # LANGS DE LINKERWAND VEGEN, net als bij de deur langs de
-                # onderwand. Losse richtingen proberen zette Bucky in de
-                # linkerbovenhoek klem; een muur volgen doet dat niet.
-                gevonden = False
-                for kant in [(-44, 0), (0, 44), (0, -44), (10, 44)]:
-                    for _ in range(7):
-                        stick(page, kant[0], kant[1], 450)
-                        page.locator(".mg-knop-anker").click()
-                        page.wait_for_timeout(700)
-                        if "Found:" in kist_status():
-                            gevonden = True
-                            break
-                    if gevonden:
-                        break
-
-                if not gevonden:
-                    print(f"  FOUT er kon geen kist worden geopend ({kist_status()!r})")
-                    mislukt.append("kist")
-                else:
-                    print(f"  OK   {kist_status().strip()}")
-                    leg_vast(page, "kist")
-
-                    # De inventory hoort te bewaren wat er gevonden is, en het
-                    # ook in TEKST te melden - een raster met gekleurde bolletjes
-                    # is voor een schermlezer niets.
-                    page.locator(".mg-knop-tas").click()
-                    page.wait_for_timeout(600)
-                    st = kist_status()
-                    if "Your finds:" not in st:
-                        print(f"  FOUT de tas meldt de inhoud niet ({st!r})")
-                        mislukt.append("tas")
-                    else:
-                        print(f"  OK   {st.strip()}")
-                        leg_vast(page, "inventory")
-
-                    # EN NIETS ERVAN VERLAAT DIT SPEL. De inventory staat in
-                    # localStorage onder een eigen sleutel; er hoort niets in te
-                    # staan dat naar shards of naar de bot verwijst, en er hoort
-                    # geen enkel verzoek naar de API over gedaan te zijn.
-                    opslag = page.evaluate("""() => {
-                      const uit = {};
-                      for (let i = 0; i < localStorage.length; i++) {
-                        const k = localStorage.key(i);
-                        if (k && k.startsWith("openwater.")) uit[k] = localStorage.getItem(k);
-                      }
-                      return uit;
-                    }""")
-                    print(f"  opslag: {opslag}")
-                    if "openwater.inventory.v1" not in opslag:
-                        print("  FOUT de vondst wordt niet bewaard")
-                        mislukt.append("niet bewaard")
-                    elif any(w in str(opslag).lower()
-                             for w in ["shard", "coin", "xp", "reward"]):
-                        print("  FOUT er staat iets in de inventory dat naar de "
-                              "economie verwijst")
-                        mislukt.append("economie in de inventory")
-                    else:
-                        print("  OK   de vondst blijft in dit spel, in localStorage")
-
-                    page.locator(".mg-knop-tas").click()
-                    page.wait_for_timeout(400)
-
-                # NIET BIJ DE DEUR IS NIET NAAR BUITEN.
-                #
-                # Deze controle stond eerst vóór de kistfase en keek of het
-                # anker precies "Walk to the door" zei. Dat werd onjuist zodra
-                # het anker ook kisten opent: dezelfde knop doet nu het meest
-                # voor de hand liggende op de plek waar je staat, dus WELKE
-                # melding je krijgt hangt af van waar je bent.
-                #
-                # De eigenschap die er echt toe doet is smaller: ver van de deur
-                # kom je er niet uit. Wat je daar wél krijgt maakt niet uit.
-                stick(page, 0, -44, 1500)      # naar de bovenwand, weg van de deur
-                page.locator(".mg-knop-anker").click()
-                page.wait_for_timeout(900)
-                if "Back outside" in (page.locator("#mg-boat-status").text_content() or ""):
-                    print("  FOUT je kunt buiten de deur om naar buiten")
-                    mislukt.append("deur omzeild")
-                else:
-                    print("  OK   ver van de deur kom je er niet uit")
-
-                # Naar de deur lopen gaat met dezelfde lus als het aanmeren:
-                # een stukje lopen, proberen, kijken wat het spel zegt. Een
-                # afgepaste loopafstand is net zo'n gok als een afgepaste
-                # vaartijd, en valt om zodra er iets aan de kamer verandert.
-                # LANGS DE ONDERWAND VEGEN, en niet in rondjes proberen.
-                #
-                # Een cyclus van vijf richtingen vond de deur meestal wel, maar
-                # zette Bucky een op de drie keer klem in een hoek: elke volgende
-                # richting duwde hem daar weer in. Een kamer heeft een vorm, en
-                # die kun je gebruiken.
-                #
-                # De deur zit ALTIJD in de onderste muur. Dus: eerst naar
-                # beneden tot je er tegenaan staat, en dan langs die muur naar
-                # rechts en zo nodig terug naar links. Zo kom je er langs, wat
-                # er ook tussen staat.
-                def buiten_nu():
-                    # TWEE BEWIJZEN, want er is er een die je kunt missen.
-                    #
-                    # "Back outside" verschijnt pas NA de overgang, en die duurt
-                    # ongeveer driekwart seconde. Keek de test daar te vroeg
-                    # naar, dan zag hij de oude tekst, drukte nog eens op het
-                    # anker en kreeg "Walk back to the boat to cast off" - een
-                    # melding die ALLEEN buiten bestaat. De test faalde dus op
-                    # het bewijs dat het gelukt was.
-                    st = page.locator("#mg-boat-status").text_content() or ""
-                    return "Back outside" in st or "Walk back to the boat" in st
-
-                def probeer():
-                    page.locator(".mg-knop-anker").click()
-                    page.wait_for_timeout(1100)
-                    return buiten_nu()
-
-                buiten = False
-                stick(page, 0, 44, 1600)          # naar de onderste muur
-                if probeer():
-                    buiten = True
-                else:
-                    for kant in (44, -44):        # eerst rechts, dan links
-                        for _ in range(7):
-                            stick(page, kant, 20, 500)
-                            if probeer():
-                                buiten = True
-                                break
-                        if buiten:
-                            break
-                if not buiten and buiten_nu():
-                    buiten = True     # hij was er al uit, alleen te laat gezien
-                if not buiten:
-                    print("  FOUT hij komt niet meer naar buiten "
-                          f"({page.locator('#mg-boat-status').text_content()!r})")
-                    mislukt.append("naar buiten")
-                else:
-                    print("  OK   en via de deur kom je weer buiten")
-
-            # Nu een paar seconden dezelfde kant op lopen, tegen de rand aan.
-            # Het eiland is 260 groot en lopen gaat 118 per seconde, dus vier
-            # seconden is met zekerheid tot voorbij de kust - als er niets
-            # tegenhoudt.
-            stick(page, 0, 46, 4200)
-            page.wait_for_timeout(400)
-            na_lopen = grond_rond_het_midden(page)
-            nat_na = sum(1 for k in na_lopen if is_water(k))
-            print(f"  kleuren rond de speler na het lopen: {na_lopen}")
-            if nat_na >= 3:
-                print("  FOUT Bucky is het water in gelopen; de rand houdt niet")
-                mislukt.append("rand houdt niet")
-            else:
-                print("  OK   Bucky blijft op het eiland; de rand houdt hem tegen")
-
-        ctx.close()
-
-        # --- 2. reduced motion ------------------------------------------
-        ctx2 = browser.new_context(viewport={"width": 1440, "height": 1000},
-                                   reduced_motion="reduce")
-        page2 = ctx2.new_page()
-        page2.add_init_script("""
-          window.__frames = 0;
-          const r = window.requestAnimationFrame;
-          window.requestAnimationFrame = function (cb) {
-            window.__frames++;
-            return r.call(window, cb);
-          };
-        """)
-        page2.goto(f"{BASIS}/arcade.html", wait_until="domcontentloaded")
-        page2.wait_for_selector("#mg-boat", timeout=30000)
-        page2.wait_for_timeout(800)
-        start_spel(page2)
-        voor = page2.evaluate("() => window.__frames")
-        page2.wait_for_timeout(2000)
-        na = page2.evaluate("() => window.__frames")
-        erbij = na - voor
-        print(f"  reduced motion: {erbij} rAF-aanvragen in 2 seconden")
-        # Andere delen van de pagina mogen een frame vragen; wat NIET mag is
-        # een doorlopende lus, en die zit rond de 120 in twee seconden.
-        if erbij > 30:
-            print("  FOUT de tekenlus loopt gewoon door bij reduced motion")
-            mislukt.append("reduced motion")
-        else:
-            print("  OK   de tekenlus ligt stil bij reduced motion")
-        ctx2.close()
+        print("\nReduced motion")
+        hoofdstuk_reduced_motion(browser, mislukt)
 
         browser.close()
-
-    if fouten:
-        print(f"\n  scriptfouten op de pagina: {fouten[:3]}")
-        mislukt.append("scriptfout")
 
     if mislukt:
         print(f"\nMislukt: {', '.join(mislukt)}")
         return 1
-    print("\nHet bootspel staat goed op het scherm.")
+    print("\nOpen Water staat goed op het scherm.")
     return 0
 
 

@@ -45,6 +45,10 @@ import {
     SPULLEN, vraagInhoud, laadInventory, bewaarInventory,
     laadGeopend, bewaarGeopend,
 } from "./boat/loot.js";
+import {
+    DUIKPLEKKEN, DUIKPLAATSEN, ZUURSTOF_MAX, magZwemmen,
+    aanDeOppervlakte,
+} from "./boat/duiken.js";
 
 const TAU = Math.PI * 2;
 
@@ -189,6 +193,16 @@ export function createBoat(canvas, options = {}) {
     const geopend = laadGeopend();
     let inventoryOpen = false;
     let laatsteVondst = null;   // wat er net is gevonden, om te tonen
+
+    // Waar Bucky is als hij duikt.
+    const duik = {
+        plek: null,        // de duikplek in de wereld
+        plaats: null,      // de onderwaterruimte
+        x: 0, y: 0,
+        vx: 0, vy: 0,
+        zuurstof: ZUURSTOF_MAX,
+        kijk: 1,           // 1 = naar rechts, -1 = naar links
+    };
 
     // Waar Bucky is als hij binnen staat. `kamer` is null zolang hij buiten is.
     const binnenIn = { kamer: null, huis: null, x: 0, y: 0 };
@@ -767,6 +781,66 @@ export function createBoat(canvas, options = {}) {
             },
         },
 
+        duiken: {
+            binnen() {
+                zeg(`Diving at ${duik.plek.naam}. Surface to breathe.`);
+            },
+            stap(dt) {
+                const p = duik.plaats;
+
+                // ZWEMMEN IS NIET LOPEN. Onder water heb je traagheid en een
+                // beetje drijfvermogen: laat je de stick los, dan kom je
+                // langzaam omhoog in plaats van stil te hangen. Dat maakt
+                // "boven komen" iets dat vanzelf gaat als je niets doet, en dat
+                // is precies de goede kant op voor een spel met zuurstof erin.
+                const versnelling = 340;
+                if (bediening.sterkte > 0) {
+                    duik.vx += bediening.richting.x * versnelling * bediening.sterkte * dt;
+                    duik.vy += bediening.richting.y * versnelling * bediening.sterkte * dt;
+                    if (Math.abs(bediening.richting.x) > 0.2) {
+                        duik.kijk = bediening.richting.x > 0 ? 1 : -1;
+                    }
+                }
+                duik.vy -= 34 * dt;                    // drijfvermogen
+                duik.vx *= Math.pow(0.12, dt);         // water remt
+                duik.vy *= Math.pow(0.12, dt);
+                const maxV = 190;
+                const v = Math.hypot(duik.vx, duik.vy);
+                if (v > maxV) { duik.vx *= maxV / v; duik.vy *= maxV / v; }
+
+                const nx = duik.x + duik.vx * dt;
+                const ny = duik.y + duik.vy * dt;
+                // Per as, zoals overal: langs een rots glijden in plaats van
+                // eraan plakken.
+                if (magZwemmen(p, nx, duik.y, speler.straal)) duik.x = nx;
+                else duik.vx = 0;
+                if (magZwemmen(p, duik.x, ny, speler.straal)) duik.y = ny;
+                else duik.vy = 0;
+                duik.y = Math.max(-14, duik.y);
+
+                // De lucht.
+                if (aanDeOppervlakte(duik.y)) {
+                    duik.zuurstof = Math.min(ZUURSTOF_MAX, duik.zuurstof + dt * 9);
+                } else {
+                    duik.zuurstof -= dt;
+                    if (duik.zuurstof <= 0) {
+                        // GEEN STRAF DIE VOORTGANG WIST. Je raakt buiten westen
+                        // en komt bij in je boot, met alles wat je gevonden
+                        // hebt. De spanning zit in of je het haalt, niet in wat
+                        // je kwijtraakt - en een spel waar je voor je plezier
+                        // in rondvaart hoort je niet af te straffen voor
+                        // nieuwsgierigheid.
+                        duik.zuurstof = 0;
+                        return overgang(() => {
+                            zetModus("varen");
+                            duik.plaats = null;
+                            zeg("Out of air. You surfaced, and kept everything.");
+                        });
+                    }
+                }
+            },
+        },
+
         binnen: {
             binnen() {
                 zeg(`Inside ${binnenIn.kamer.naam}. Walk to the door to leave.`);
@@ -807,6 +881,22 @@ export function createBoat(canvas, options = {}) {
         // het pakte, en het daardoor veertien keer opnieuw liet beginnen.
         if (staat.overgang > 0) return;
         if (staat.modus === "varen") {
+            // EERST DE DUIKPLEK. Lig je op een duikplek, dan duik je; anders
+            // gaat het anker over aanmeren. Dezelfde regel als aan land: één
+            // knop die doet wat er op die plek te doen is.
+            const plek = dichtsteDuikplek();
+            if (plek) {
+                return overgang(() => {
+                    duik.plek = plek;
+                    duik.plaats = DUIKPLAATSEN[plek.plek];
+                    duik.x = duik.plaats.breedte / 2;
+                    duik.y = 12;
+                    duik.vx = 0; duik.vy = 0;
+                    duik.zuurstof = ZUURSTOF_MAX;
+                    zetModus("duiken");
+                });
+            }
+
             const s = dichtsteSteiger();
             const dichtbij = s && afstandTot(s.ligplaats.x, s.ligplaats.y) < 150;
             const langzaam = Math.abs(boot.snelheid) < 95;
@@ -814,6 +904,17 @@ export function createBoat(canvas, options = {}) {
             if (!langzaam) return zeg("Too fast to moor. Ease off the throttle.");
             geluid.piep(660);
             overgang(() => zetModus("aangemeerd"));
+        } else if (staat.modus === "duiken") {
+            const kist = kistOnderWater();
+            if (kist) return void openKist(kist);
+            if (!aanDeOppervlakte(duik.y)) {
+                return zeg("Swim up to the surface to climb back aboard.");
+            }
+            overgang(() => {
+                zetModus("varen");
+                duik.plaats = null;
+                zeg("Back in the boat.");
+            });
         } else if (staat.modus === "binnen") {
             // EERST DE KIST. Sta je bij een kist, dan is dat wat het anker
             // doet; sta je bij de deur, dan ga je naar buiten. Eén knop die het
@@ -992,6 +1093,26 @@ export function createBoat(canvas, options = {}) {
         zeg(`Found: ${namen.join(", ")}.`);
     }
 
+    /** De duikplek waar de boot boven ligt, of null. */
+    function dichtsteDuikplek() {
+        if (!speler.aanBoord) return null;
+        for (const p of DUIKPLEKKEN) {
+            if (Math.hypot(boot.x - p.x, boot.y - p.y) < 90) return p;
+        }
+        return null;
+    }
+
+    /** De kist waar Bucky onder water naast zwemt, of null. */
+    function kistOnderWater() {
+        if (staat.modus !== "duiken" || !duik.plaats) return null;
+        for (const k of duik.plaats.kisten) {
+            if (Math.hypot(duik.x - k.x, duik.y - k.y) < speler.straal + 26) {
+                return { meubel: k, id: `dive/${duik.plek.id}/${k.id}` };
+            }
+        }
+        return null;
+    }
+
     /** Het huis waar Bucky voor staat, of null. */
     function dichtsteHuis() {
         if (speler.aanBoord) return null;
@@ -1066,6 +1187,17 @@ export function createBoat(canvas, options = {}) {
         // kompas: één kamer die helemaal in beeld past. De HUD en de overgang
         // komen er wel overheen, want die horen bij het spel en niet bij de
         // plek waar je staat.
+        if (staat.modus === "duiken") {
+            tekenDuik(b, h, tijd);
+            tekenHud(b, h);
+            tekenZuurstof(b, h);
+            if (inventoryOpen) tekenInventory(b, h);
+            tekenVondst(b, h);
+            if (staat.overgang > 0) tekenOvergang(b, h);
+            if (document.activeElement === canvas) tekenFocus(b, h);
+            return;
+        }
+
         if (staat.modus === "binnen") {
             tekenBinnen(b, h, tijd);
             tekenHud(b, h);
@@ -2244,6 +2376,166 @@ export function createBoat(canvas, options = {}) {
         ctx.fillText(`${Math.max(0, Math.round(doel.afstand / 10))} m`,
                      cx, cy + straal + 24);
         ctx.textAlign = "left";
+    }
+
+    /**
+     * De onderwaterwereld, van OPZIJ.
+     *
+     * Net als binnenshuis past de hele ruimte in beeld en volgt de camera niet
+     * mee: je moet kunnen zien waar de oppervlakte is, want daar gaat de hele
+     * duik over. Een camera die meeschuift zou dat juist wegnemen.
+     */
+    function tekenDuik(b, h, tijd) {
+        const p = duik.plaats;
+        if (!p) return;
+
+        const marge = 12;
+        const boven = 34;
+        const bruikbaarB = b - marge * 2;
+        const bruikbaarH = h - boven - 92;
+        const schaal = Math.min(bruikbaarB / p.breedte, bruikbaarH / (p.diepte + 60));
+        const ox = (b - p.breedte * schaal) / 2;
+        const oy = boven + 40;
+
+        // De lucht boven het water.
+        ctx.fillStyle = "#0d1f38";
+        ctx.fillRect(0, 0, b, h);
+
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.scale(schaal, schaal);
+
+        // 1. Het water, donkerder naar de diepte. Dat is de goedkoopste manier
+        //    om diepte te laten VOELEN in een zijaanzicht.
+        const kolom = ctx.createLinearGradient(0, 0, 0, p.diepte);
+        kolom.addColorStop(0, "#1d5f86");
+        kolom.addColorStop(0.5, "#0e3b5c");
+        kolom.addColorStop(1, "#061c30");
+        ctx.fillStyle = kolom;
+        ctx.fillRect(0, 0, p.breedte, p.diepte);
+
+        // 2. Lichtbundels van boven, alleen als er beweging mag zijn.
+        if (!minderBeweging) {
+            const t = tijd * 0.0004;
+            ctx.fillStyle = "rgba(150, 220, 255, .06)";
+            for (let i = 0; i < 5; i++) {
+                const x = ((i * 197 + Math.sin(t + i) * 40) % p.breedte);
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x + 60, 0);
+                ctx.lineTo(x + 150, p.diepte);
+                ctx.lineTo(x + 40, p.diepte);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        // 3. De waterlijn, met golfjes. Hier haal je adem, dus hij moet opvallen.
+        ctx.fillStyle = "rgba(190, 235, 255, .5)";
+        ctx.fillRect(0, -2, p.breedte, 4);
+        ctx.strokeStyle = "rgba(220, 245, 255, .7)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        const golf = minderBeweging ? 0 : tijd * 0.003;
+        for (let x = 0; x <= p.breedte; x += 20) {
+            const y = Math.sin(x * 0.03 + golf) * 4;
+            if (x) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+        }
+        ctx.stroke();
+
+        // 4. De rotsen. Zelfde afspraak over het licht als boven water: een
+        //    lichte bovenkant, een donkere zijkant, en een schaduw.
+        for (const r of p.rots) {
+            ctx.fillStyle = "rgba(2, 10, 20, .45)";
+            ctx.beginPath();
+            ctx.roundRect(r.x + 7, r.y + 9, r.w, r.h, 8);
+            ctx.fill();
+            ctx.fillStyle = "#243544";
+            ctx.beginPath();
+            ctx.roundRect(r.x, r.y, r.w, r.h, 8);
+            ctx.fill();
+            ctx.fillStyle = "#3a5164";
+            ctx.beginPath();
+            ctx.roundRect(r.x, r.y, r.w, Math.min(16, r.h * 0.3), 8);
+            ctx.fill();
+        }
+
+        // 5. De kisten. Een gloed zolang er nog iets in zit, en OPEN zodra je
+        //    ernaast zwemt - nooit alleen een kleur.
+        for (const k of p.kisten) {
+            const id = `dive/${duik.plek.id}/${k.id}`;
+            const leeg = geopend.has(id);
+            ctx.fillStyle = "rgba(2, 10, 20, .5)";
+            ctx.beginPath(); ctx.ellipse(k.x + 4, k.y + 16, 20, 6, 0, 0, TAU); ctx.fill();
+            ctx.fillStyle = leeg ? "#4a3a28" : "#6b4a2f";
+            ctx.beginPath(); ctx.roundRect(k.x - 18, k.y - 13, 36, 28, 4); ctx.fill();
+            ctx.fillStyle = leeg ? "#5d4a34" : "#8a6340";
+            ctx.beginPath(); ctx.roundRect(k.x - 18, k.y - 15, 36, 13, 4); ctx.fill();
+            if (!leeg) {
+                ctx.strokeStyle = "rgba(255, 214, 120, .85)";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath(); ctx.roundRect(k.x - 21, k.y - 18, 42, 34, 5); ctx.stroke();
+            }
+            const bij = kistOnderWater();
+            if (bij && bij.meubel === k && !leeg) {
+                ctx.fillStyle = KLEUR.accent;
+                ctx.font = "700 13px ui-sans-serif, system-ui, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("OPEN", k.x, k.y - 26);
+                ctx.textAlign = "left";
+            }
+        }
+
+        // 6. Bucky, met luchtbelletjes zodat je ziet dat hij ademt - en dat hij
+        //    dat onder water niet kan blijven doen.
+        tekenBuckyOp(duik.x, duik.y);
+        if (!minderBeweging && !aanDeOppervlakte(duik.y)) {
+            const t = tijd * 0.002;
+            ctx.fillStyle = "rgba(220, 245, 255, .5)";
+            for (let i = 0; i < 3; i++) {
+                const f = (t + i * 0.37) % 1;
+                ctx.beginPath();
+                ctx.arc(duik.x + duik.kijk * 6 + Math.sin(f * 6 + i) * 4,
+                        duik.y - 12 - f * 60, 2.5 - f * 1.4, 0, TAU);
+                ctx.fill();
+            }
+        }
+
+        ctx.restore();
+    }
+
+    function tekenZuurstof(b, h) {
+        // RECHTSBOVEN, en groot genoeg om in je ooghoek te zien. Dit is het
+        // enige getal waar een duik om draait.
+        const breedte = 108, hoogte = 14;
+        const x = b - breedte - 14, y = 40;
+        const deel = Math.max(0, duik.zuurstof / ZUURSTOF_MAX);
+
+        ctx.fillStyle = "rgba(4, 10, 22, .72)";
+        ctx.beginPath(); ctx.roundRect(x - 4, y - 4, breedte + 8, hoogte + 8, 6); ctx.fill();
+        ctx.fillStyle = "rgba(255, 255, 255, .12)";
+        ctx.beginPath(); ctx.roundRect(x, y, breedte, hoogte, 4); ctx.fill();
+
+        // NOOIT ALLEEN KLEUR: er staat AIR bij met de seconden, dus wie het
+        // verschil tussen blauw en rood niet ziet leest het gewoon.
+        ctx.fillStyle = deel > 0.3 ? "#52d6ff" : "#ff7a6b";
+        ctx.beginPath();
+        ctx.roundRect(x, y, Math.max(2, breedte * deel), hoogte, 4);
+        ctx.fill();
+
+        ctx.fillStyle = "#dbe7f5";
+        ctx.font = "700 10px ui-monospace, monospace";
+        ctx.textAlign = "right";
+        ctx.fillText(`AIR ${Math.ceil(duik.zuurstof)}s`, x + breedte, y + hoogte + 14);
+        ctx.textAlign = "left";
+
+        if (deel <= 0.3) {
+            ctx.fillStyle = "#ff7a6b";
+            ctx.font = "700 11px ui-sans-serif, system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("SURFACE", b / 2, 54);
+            ctx.textAlign = "left";
+        }
     }
 
     function tekenInventory(b, h) {

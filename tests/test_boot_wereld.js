@@ -21,6 +21,9 @@ import {
 import {
     INTERIEURS, HUIZEN, HUIS_MAAT, magLopenBinnen, bijDeur, deurStart,
 } from "../js/minigames/boat/binnen.js";
+import {
+    DUIKPLEKKEN, DUIKPLAATSEN, magZwemmen, aanDeOppervlakte, ZUURSTOF_MAX,
+} from "../js/minigames/boat/duiken.js";
 
 let mislukt = 0;
 
@@ -181,6 +184,66 @@ for (const [soort, kamer] of Object.entries(INTERIEURS)) {
     // En er moet ergens iets STAAN, anders is het geen kamer maar een vloer.
     eisWaar(`${soort}: er staan meubels`, kamer.meubels.length >= 4);
 }
+
+// --- de duikplekken ------------------------------------------------------
+console.log("\nDe duikplekken:");
+for (const plek of DUIKPLEKKEN) {
+    // EEN DUIKPLEK OP HET LAND IS NIET TE BEREIKEN, en dat zie je aan de
+    // getallen niet - net als bij het huis dat in het binnenmeer stond.
+    eisWaar(`${plek.naam}: ligt op open water`,
+            landOnder(plek.x, plek.y, 60) === null);
+    eisWaar(`${plek.naam}: ligt binnen de wereld`,
+            plek.x > 0 && plek.x < WERELD.w && plek.y > 0 && plek.y < WERELD.h);
+    eisWaar(`${plek.naam}: heeft een onderwaterplaats`, !!DUIKPLAATSEN[plek.plek]);
+}
+
+console.log("\nDe onderwaterplaatsen:");
+for (const [soort, plaats] of Object.entries(DUIKPLAATSEN)) {
+    // WAAR JE TE WATER GAAT MOET VRIJ ZIJN. Kom je neer in de rots, dan zit je
+    // vast op het moment dat je begint - en dat is precies zo'n fout die je
+    // pas merkt als je het speelt.
+    eisWaar(`${soort}: de plek waar je begint is vrij`,
+            magZwemmen(plaats, plaats.breedte / 2, 12, 11));
+    eisWaar(`${soort}: en daar kun je ademhalen`, aanDeOppervlakte(12));
+
+    // ELKE KIST MOET BEREIKBAAR ZIJN. Een kist in de rots is een kist die
+    // niemand ooit vindt.
+    for (const k of plaats.kisten) {
+        eisWaar(`${soort}/${k.id}: ligt in het water en niet in de rots`,
+                magZwemmen(plaats, k.x, k.y, 11));
+        eisWaar(`${soort}/${k.id}: ligt binnen de ruimte`,
+                k.x > 0 && k.x < plaats.breedte && k.y > 0 && k.y < plaats.diepte);
+    }
+
+    // EN JE MOET ER TERUG UIT KUNNEN. Een grot waar de weg naar boven dicht
+    // zit is geen uitdaging maar een val. Dit loopt een grof rooster af en
+    // kijkt of er vanaf elke kist een aaneengesloten weg naar de oppervlakte
+    // is - een vlakvulling, want dat is de enige manier om het echt te weten.
+    const stap = 12;
+    const bezocht = new Set();
+    const rij = [[Math.round(plaats.breedte / 2), 12]];
+    const sleutel = (x, y) => `${Math.round(x / stap)},${Math.round(y / stap)}`;
+    bezocht.add(sleutel(plaats.breedte / 2, 12));
+    while (rij.length) {
+        const [x, y] = rij.shift();
+        for (const [dx, dy] of [[stap, 0], [-stap, 0], [0, stap], [0, -stap]]) {
+            const nx = x + dx, ny = y + dy;
+            if (ny < -10 || ny > plaats.diepte || nx < 0 || nx > plaats.breedte) continue;
+            const k = sleutel(nx, ny);
+            if (bezocht.has(k)) continue;
+            if (!magZwemmen(plaats, nx, ny, 11)) continue;
+            bezocht.add(k);
+            rij.push([nx, ny]);
+        }
+    }
+    for (const k of plaats.kisten) {
+        eisWaar(`${soort}/${k.id}: is bereikbaar vanaf de oppervlakte`,
+                bezocht.has(sleutel(k.x, k.y)));
+    }
+}
+
+eisWaar(`je hebt ${ZUURSTOF_MAX} seconden lucht, genoeg om iets te doen`,
+        ZUURSTOF_MAX >= 15 && ZUURSTOF_MAX <= 60);
 
 // --- het kompas ----------------------------------------------------------
 console.log("\nHet kompas:");
