@@ -36,6 +36,13 @@ import pathlib
 import re
 import sys
 
+# De uitvoer moet UTF-8 zijn, ook door een pipe heen. Windows zet
+# stdout dan op cp1252, en dan valt deze test om op het notenteken
+# van de geluidsknop - een crash in de RAPPORTAGE die eruitziet als
+# een crash in het spel.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 SITE = pathlib.Path(__file__).resolve().parent.parent
 EXTENSIES = {".js", ".py", ".css", ".html", ".md", ".json", ".txt", ".svg"}
 OVERSLAAN = {"node_modules", ".git", "__pycache__", "venv", ".venv"}

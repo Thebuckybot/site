@@ -28,6 +28,13 @@ afhankelijkheden, en dit hoort daar niet als eerste een te introduceren.
 
 import sys
 
+# De uitvoer moet UTF-8 zijn, ook door een pipe heen. Windows zet
+# stdout dan op cp1252, en dan valt deze test om op het notenteken
+# van de geluidsknop - een crash in de RAPPORTAGE die eruitziet als
+# een crash in het spel.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 from playwright.sync_api import sync_playwright
 
 BASIS = "http://127.0.0.1:8899"
