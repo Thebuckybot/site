@@ -270,7 +270,23 @@ function initArcadeScrollEffects() {
 
     const update = () => {
         const scrollY = window.scrollY || 0;
-        const vast = scrollY > 260;
+        // DE VM WINT VAN DE HERO, EN ALLEEN DE VM.
+        //
+        // De vastgezette kaart hangt onder `<body>` en staat daarmee boven
+        // alles wat in `#arcade-world` zit - dat was precies de bedoeling van
+        // de vorige reparatie. Maar de VM zit daar ook in, dus toen de kaart
+        // eenmaal boven de pagina stond, stond hij ook boven het scherm waar
+        // je de VM mee verlaat.
+        //
+        // Een lager getal lost dat niet op: de kaart staat op `<body>` en de VM
+        // vier lagen diep in een context op z-index 0, dus geen enkel getal
+        // brengt de VM erboven. Wat wel kan is de kaart niet vastzetten zolang
+        // de VM het scherm heeft. Hij gaat dan terug naar de hero, waar hij
+        // achter het VM-scherm valt, en zodra je de VM verlaat pint hij weer
+        // op grond van de scrollpositie. Boven de rest van de pagina blijft
+        // hij dus staan; alleen de VM gaat voor.
+        const vmHeeftHetScherm = document.body.classList.contains("vm-focus-active");
+        const vast = scrollY > 260 && !vmHeeftHetScherm;
         document.body.classList.toggle("arcade-profile-pinned", vast);
         zetVast(vast);
 
@@ -295,6 +311,14 @@ function initArcadeScrollEffects() {
 
     // Draaien van een tablet wisselt de kant van die grens, dus opnieuw kijken.
     magVastzetten.addEventListener("change", update);
+
+    // De VM zet `vm-focus-active` op `<body>` bij het openen en haalt hem er
+    // bij het sluiten weer af. Dat gebeurt zonder scrollen, dus zonder deze
+    // waarnemer zou de kaart pas verdwijnen bij de eerstvolgende scroll - en
+    // juist op dat moment kun je niet scrollen, want de VM vult het scherm.
+    new MutationObserver(update).observe(document.body, {
+        attributes: true, attributeFilter: ["class"],
+    });
 
     update();
 }
