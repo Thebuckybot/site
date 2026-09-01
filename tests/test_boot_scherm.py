@@ -253,11 +253,39 @@ def main():
         # Aanmeren lukt of lukt niet, en het spel ZEGT welke van de twee. Dus:
         # varen, en dan tijdens het uitrollen elke halve seconde het anker
         # proberen tot het pakt. Dat is ook wat een speler doet.
-        stick(page, 46, 0, 1800)
+        # IN KORTE STUKJES NADEREN. Eén ruk gas van 1,8 seconde en dan zeven
+        # seconden uitrollen bracht de boot soms voorbij de ligplaats of tegen
+        # de kust, afhankelijk van hoe de tijden die run uitvielen. Kleine
+        # stukjes met steeds een poging ertussen komt er altijd, en het is ook
+        # wat een speler doet: een beetje gas, kijken, nog een beetje.
+        # HET SPEL ZEGT WAT ER MIS IS, dus daar wordt op gestuurd.
+        #
+        # Een afgepast aantal stukjes gas werkte niet: de boot had bij het begin
+        # van deze lus al een zetje gehad van de joysticktest, en dan schiet hij
+        # er met dezelfde reeks net voorbij en loopt hij op de rotskust. Elke
+        # keer dat ik een getal bijstelde verschoof het probleem.
+        #
+        # Maar het anker antwoordt met precies de twee dingen die je moet weten:
+        #   "Steer up to the jetty to moor."  -> nog te ver, dus doorvaren
+        #   "Too fast to moor."               -> dichtbij genoeg, dus afremmen
+        # Daarop sturen is stabiel, en het is ook wat een speler doet.
         aangemeerd = False
-        for _ in range(14):
+        # Loopt hij vast op de kust, dan wordt er LANGS de kust gezocht in
+        # plaats van er nog eens recht op af te varen. Terugvaren en het weer
+        # precies zo proberen liep een op de vier keer op dezelfde rots vast -
+        # de steiger ligt naast de plek waar je aankomt en niet erop, dus er
+        # moet een keer opzij gevaren worden.
+        zoekkant = 1
+        for poging in range(30):
+            status = (page.locator("#mg-boat-status").text_content() or "")
+            if "scraped" in status:
+                stick(page, -44, -10, 600)          # los van de kust
+                stick(page, 8, 44 * zoekkant, 900)  # en een stuk langs de kust
+                zoekkant = -zoekkant                # volgende keer de andere kant
+            elif "Steer up to the jetty" in status or not status:
+                stick(page, 45, 8, 350)
             page.locator(".mg-knop-anker").click()
-            page.wait_for_timeout(500)
+            page.wait_for_timeout(600)
             status = (page.locator("#mg-boat-status").text_content() or "")
             if "Moored at" in status:
                 aangemeerd = True
@@ -265,7 +293,7 @@ def main():
                 break
         page.wait_for_timeout(1200)
         if not aangemeerd:
-            print("  FOUT er kon in veertien pogingen niet worden aangemeerd")
+            print("  FOUT er kon niet worden aangemeerd")
             mislukt.append("aanmeren")
 
         aan_wal = grond_rond_het_midden(page)
@@ -278,6 +306,101 @@ def main():
             mislukt.append("aanmeren")
         else:
             print("  OK   aangemeerd en aan wal gestapt")
+
+            # --- FASE 2: een huis binnengaan en weer verlaten ------------
+            #
+            # Alleen in een browser te zien: of de overgang loopt, of de kamer
+            # in beeld komt en of de deur je er weer uit laat. De MEETKUNDE van
+            # de kamers (deur in een muur, meubels binnen de wanden, de plek net
+            # binnen de deur vrij) staat in tests/test_boot_wereld.js, want daar
+            # is geen browser voor nodig.
+            binnen = False
+            for _ in range(9):
+                stick(page, 35, -27, 1500)
+                page.locator(".mg-knop-anker").click()
+                page.wait_for_timeout(1300)
+                if "Inside" in (page.locator("#mg-boat-status").text_content() or ""):
+                    binnen = True
+                    break
+            if not binnen:
+                print("  FOUT er kon geen huis worden binnengegaan")
+                mislukt.append("naar binnen")
+            else:
+                print(f"  OK   {page.locator('#mg-boat-status').text_content().strip()}")
+
+                # Tegen een meubel aan lopen mag je niet erdoorheen zetten. Het
+                # bed ligt linksboven; twee seconden die kant op en je staat
+                # ertegenaan in plaats van erin.
+                stick(page, -40, -30, 2000)
+                page.wait_for_timeout(300)
+                nog_binnen = "Inside" in (page.locator("#mg-boat-status").text_content() or "")
+                if not nog_binnen:
+                    print("  FOUT lopen tegen een meubel bracht hem de kamer uit")
+                    mislukt.append("meubelbotsing")
+                else:
+                    print("  OK   meubels houden hem tegen")
+
+                # En eruit: terug naar de deur, onderaan het midden.
+                page.locator(".mg-knop-anker").click()
+                page.wait_for_timeout(900)
+                if "Walk to the door" not in (page.locator("#mg-boat-status").text_content() or ""):
+                    print("  FOUT je kunt buiten de deur om naar buiten")
+                    mislukt.append("deur omzeild")
+                else:
+                    print("  OK   naar buiten kan alleen bij de deur")
+                # Naar de deur lopen gaat met dezelfde lus als het aanmeren:
+                # een stukje lopen, proberen, kijken wat het spel zegt. Een
+                # afgepaste loopafstand is net zo'n gok als een afgepaste
+                # vaartijd, en valt om zodra er iets aan de kamer verandert.
+                # LANGS DE ONDERWAND VEGEN, en niet in rondjes proberen.
+                #
+                # Een cyclus van vijf richtingen vond de deur meestal wel, maar
+                # zette Bucky een op de drie keer klem in een hoek: elke volgende
+                # richting duwde hem daar weer in. Een kamer heeft een vorm, en
+                # die kun je gebruiken.
+                #
+                # De deur zit ALTIJD in de onderste muur. Dus: eerst naar
+                # beneden tot je er tegenaan staat, en dan langs die muur naar
+                # rechts en zo nodig terug naar links. Zo kom je er langs, wat
+                # er ook tussen staat.
+                def buiten_nu():
+                    # TWEE BEWIJZEN, want er is er een die je kunt missen.
+                    #
+                    # "Back outside" verschijnt pas NA de overgang, en die duurt
+                    # ongeveer driekwart seconde. Keek de test daar te vroeg
+                    # naar, dan zag hij de oude tekst, drukte nog eens op het
+                    # anker en kreeg "Walk back to the boat to cast off" - een
+                    # melding die ALLEEN buiten bestaat. De test faalde dus op
+                    # het bewijs dat het gelukt was.
+                    st = page.locator("#mg-boat-status").text_content() or ""
+                    return "Back outside" in st or "Walk back to the boat" in st
+
+                def probeer():
+                    page.locator(".mg-knop-anker").click()
+                    page.wait_for_timeout(1100)
+                    return buiten_nu()
+
+                buiten = False
+                stick(page, 0, 44, 1600)          # naar de onderste muur
+                if probeer():
+                    buiten = True
+                else:
+                    for kant in (44, -44):        # eerst rechts, dan links
+                        for _ in range(7):
+                            stick(page, kant, 20, 500)
+                            if probeer():
+                                buiten = True
+                                break
+                        if buiten:
+                            break
+                if not buiten and buiten_nu():
+                    buiten = True     # hij was er al uit, alleen te laat gezien
+                if not buiten:
+                    print("  FOUT hij komt niet meer naar buiten "
+                          f"({page.locator('#mg-boat-status').text_content()!r})")
+                    mislukt.append("naar buiten")
+                else:
+                    print("  OK   en via de deur kom je weer buiten")
 
             # Nu een paar seconden dezelfde kant op lopen, tegen de rand aan.
             # Het eiland is 260 groot en lopen gaat 118 per seconde, dus vier

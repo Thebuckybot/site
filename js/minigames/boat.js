@@ -36,8 +36,11 @@
 
 import {
     WERELD, START, EILANDEN, STEIGERS, eilandOp, straalOp, opLand, landOnder,
-    kustSoort, steigerMaten, opSteiger, dichtstbijzijndeLand,
+    kustSoort, steigerMaten, opSteiger, dichtstbijzijndeLand, huisMaten,
 } from "./boat/wereld.js";
+import {
+    INTERIEURS, HUIZEN, HUIS_MAAT, magLopenBinnen, bijDeur, deurStart,
+} from "./boat/binnen.js";
 
 const TAU = Math.PI * 2;
 
@@ -112,6 +115,7 @@ export function createBoat(canvas, options = {}) {
     // en de vogels. Die horen niet in de wereldbeschrijving omdat ze geen
     // meetkunde hebben waar iets op botst.
     const steigerlijst = STEIGERS.map(steigerMaten).filter(Boolean);
+    const huizenlijst = HUIZEN.map(huisMaten).filter(Boolean);
 
     const wereld = {
         // Boeien, rotsen en de vuurtoren: ankers voor het oog. Je vaart er
@@ -171,6 +175,9 @@ export function createBoat(canvas, options = {}) {
     const ZOOM = 1.75;
 
     const camera = { x: 0, y: 0 };
+    // Waar Bucky is als hij binnen staat. `kamer` is null zolang hij buiten is.
+    const binnenIn = { kamer: null, huis: null, x: 0, y: 0 };
+
     const speler = {
         aanBoord: true,
         x: 0, y: 0,       // alleen gebruikt als hij uitgestapt is
@@ -731,6 +738,26 @@ export function createBoat(canvas, options = {}) {
                 if (magLopen(speler.x, ny)) speler.y = ny;
             },
         },
+
+        binnen: {
+            binnen() {
+                zeg(`Inside ${binnenIn.kamer.naam}. Walk to the door to leave.`);
+            },
+            stap(dt) {
+                if (bediening.sterkte <= 0) return;
+                const rx = bediening.richting.x, ry = bediening.richting.y;
+                speler.kijk = Math.atan2(ry, rx);
+                const stap = speler.snelheid * bediening.sterkte * dt;
+                const nx = binnenIn.x + rx * stap;
+                const ny = binnenIn.y + ry * stap;
+                // PER AS, net als buiten. Bij een botsing helemaal stoppen laat
+                // je vastplakken tegen een tafel zodra je er schuin tegenaan
+                // loopt; los proberen laat je erlangs glijden.
+                const r = speler.straal;
+                if (magLopenBinnen(binnenIn.kamer, nx, binnenIn.y, r)) binnenIn.x = nx;
+                if (magLopenBinnen(binnenIn.kamer, binnenIn.x, ny, r)) binnenIn.y = ny;
+            },
+        },
     };
 
     function zetModus(naam) {
@@ -759,7 +786,47 @@ export function createBoat(canvas, options = {}) {
             if (!langzaam) return zeg("Too fast to moor. Ease off the throttle.");
             geluid.piep(660);
             overgang(() => zetModus("aangemeerd"));
+        } else if (staat.modus === "binnen") {
+            // Naar buiten kan alleen BIJ DE DEUR. Anders is een huis geen kamer
+            // met een deur maar een kamer met een knop, en dan had de deur ook
+            // niet getekend hoeven worden.
+            if (!bijDeur(binnenIn.kamer, binnenIn.x, binnenIn.y)) {
+                return zeg("Walk to the door to step outside.");
+            }
+            overgang(() => {
+                // Net BUITEN het huis neerzetten, onder de deur, zodat je niet
+                // meteen weer naar binnen loopt.
+                speler.x = binnenIn.huis.x;
+                speler.y = binnenIn.huis.y + HUIS_MAAT.h * 1.1;
+                speler.kijk = Math.PI / 2;
+                binnenIn.kamer = null;
+                binnenIn.huis = null;
+                zetModus("aangemeerd");
+                zeg("Back outside.");
+            });
         } else if (staat.modus === "aangemeerd") {
+            // EERST DE DEUR, DAN DE BOOT. Sta je voor een huis, dan doet het
+            // anker het enige dat daar logisch is: naar binnen. Zo is er één
+            // actieknop voor alles wat er te doen valt, en komt er geen tweede
+            // knop bij die negen van de tien keer niets doet - op een telefoon
+            // is elke knop die je erbij zet een stuk speelveld dat je kwijt bent.
+            const huis = dichtsteHuis();
+            if (huis) {
+                const kamer = INTERIEURS[huis.soort];
+                return overgang(() => {
+                    binnenIn.kamer = kamer;
+                    binnenIn.huis = huis;
+                    // Net BINNEN de deur, zodat je niet meteen weer buiten
+                    // staat - maar wel binnen het deurbereik, anders moet je
+                    // eerst een stapje terug om weer naar buiten te kunnen.
+                    const start = deurStart(kamer);
+                    binnenIn.x = start.x;
+                    binnenIn.y = start.y;
+                    speler.kijk = -Math.PI / 2;
+                    zetModus("binnen");
+                });
+            }
+
             // Alleen aan boord als je bij de boot staat. Anders kun je van het
             // andere eind van het eiland teleporteren, en dan is een steiger
             // geen plek meer maar een knop.
@@ -828,6 +895,28 @@ export function createBoat(canvas, options = {}) {
         return landOnder(x, y, -marge) !== null;
     }
 
+    /** Het huis waar Bucky voor staat, of null. */
+    function dichtsteHuis() {
+        if (speler.aanBoord) return null;
+        // BIJ HET HUIS STAAN IS GENOEG; niet PRECIES voor de deur.
+        //
+        // Eerst moest je onder het huisje staan, binnen een strook zo breed als
+        // de deur. Dat is te nauwkeurig voor een duim op een joystick: je loopt
+        // er drie keer langs en denkt dat er niets te doen is. Op een telefoon
+        // is elke eis "sta precies daar" een eis die de speler verliest.
+        //
+        // Een cirkel om het huis heen is ruimhartig genoeg om te vinden en nog
+        // steeds klein genoeg om niet per ongeluk te openen. De deur blijft
+        // getekend waar hij hoort - hij zegt waar het huis zijn voorkant heeft,
+        // en dat is een ander soort informatie dan een botsingsregel.
+        let beste = null, best = Infinity;
+        for (const h of huizenlijst) {
+            const d = Math.hypot(speler.x - h.x, speler.y - h.y);
+            if (d < HUIS_MAAT.w * 0.95 && d < best) { best = d; beste = h; }
+        }
+        return beste;
+    }
+
     function dichtsteSteiger() {
         let beste = null, best = Infinity;
         for (const m of steigerlijst) {
@@ -857,6 +946,18 @@ export function createBoat(canvas, options = {}) {
 
     function teken(tijd) {
         const { b, h } = maatVoeren();
+
+        // BINNEN IS EEN ANDERE WERELD. Geen water, geen camera die volgt, geen
+        // kompas: één kamer die helemaal in beeld past. De HUD en de overgang
+        // komen er wel overheen, want die horen bij het spel en niet bij de
+        // plek waar je staat.
+        if (staat.modus === "binnen") {
+            tekenBinnen(b, h, tijd);
+            tekenHud(b, h);
+            if (staat.overgang > 0) tekenOvergang(b, h);
+            if (document.activeElement === canvas) tekenFocus(b, h);
+            return;
+        }
 
         // ZOOM. De wereld werd op 1:1 getekend, en op een canvas van 800 breed
         // is een boot van 46 eenheden dan een stipje: je ziet dat er iets vaart
@@ -903,6 +1004,9 @@ export function createBoat(canvas, options = {}) {
         }
         for (const m of steigerlijst) {
             if (inBeeld(m.kust.x, m.kust.y, m.lengte + 120)) tekenSteiger(m);
+        }
+        for (const h of huizenlijst) {
+            if (inBeeld(h.x, h.y, 120)) tekenHuis(h, tijd);
         }
         tekenBoot(tijd);
         if (!speler.aanBoord) tekenBucky();
@@ -1429,6 +1533,226 @@ export function createBoat(canvas, options = {}) {
         return false;
     }
 
+    /**
+     * Een binnenruimte, altijd HELEMAAL in beeld.
+     *
+     * Buiten volgt de camera de speler, want de wereld is groter dan het
+     * scherm. Binnen is dat juist verkeerd: een kamer past in één blik, en een
+     * camera die dan meeschuift maakt hem onnodig verwarrend en kost op een
+     * telefoon de helft van je overzicht. De schaal wordt dus uit de kamer
+     * berekend in plaats van vastgezet, zodat elke kamer past - ook een pakhuis
+     * dat groter is dan een hut.
+     */
+    function tekenBinnen(b, h, tijd) {
+        const kamer = binnenIn.kamer;
+        if (!kamer) return;
+
+        // Ruimte vrijhouden voor de HUD boven en de bediening onder.
+        const marge = 18;
+        const bovenkant = 34;
+        const bruikbaarB = b - marge * 2;
+        const bruikbaarH = h - bovenkant - 96;
+        const schaal = Math.min(bruikbaarB / kamer.breedte, bruikbaarH / kamer.hoogte);
+        const ox = (b - kamer.breedte * schaal) / 2;
+        const oy = bovenkant + (bruikbaarH - kamer.hoogte * schaal) / 2;
+
+        // Buiten de kamer is donker, zodat de kamer een kamer is en geen vlak.
+        ctx.fillStyle = "#05080f";
+        ctx.fillRect(0, 0, b, h);
+
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.scale(schaal, schaal);
+
+        const K = kamer;
+
+        // 1. De muren: een rand om de vloer heen, met dikte.
+        ctx.fillStyle = K.muur;
+        ctx.beginPath();
+        ctx.roundRect(-16, -16, K.breedte + 32, K.hoogte + 32, 8);
+        ctx.fill();
+
+        // 2. De vloer, met planken zodat er richting in zit.
+        ctx.fillStyle = K.vloer;
+        ctx.fillRect(0, 0, K.breedte, K.hoogte);
+        ctx.strokeStyle = "rgba(0, 0, 0, .16)";
+        ctx.lineWidth = 1.5;
+        for (let y = 26; y < K.hoogte; y += 26) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(K.breedte, y); ctx.stroke();
+        }
+
+        // 3. Schaduw langs de muren, want licht komt door de deur en de ramen.
+        //    Zonder dit is de vloer een egaal vlak en voelt de kamer plat.
+        const rand = ctx.createLinearGradient(0, 0, 0, K.hoogte);
+        rand.addColorStop(0, "rgba(0, 0, 0, .34)");
+        rand.addColorStop(0.35, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = rand;
+        ctx.fillRect(0, 0, K.breedte, K.hoogte);
+
+        // 4. De deur, als opening in de muur.
+        ctx.fillStyle = "#1b1509";
+        ctx.fillRect(K.deur.x, K.deur.y, K.deur.w, K.deur.h + 16);
+        ctx.fillStyle = "rgba(255, 226, 150, .28)";
+        ctx.fillRect(K.deur.x + 3, K.deur.y - 26, K.deur.w - 6, 26);
+        ctx.fillStyle = KLEUR.accent;
+        ctx.font = "700 11px ui-sans-serif, system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("EXIT", K.deur.x + K.deur.w / 2, K.deur.y + 13);
+        ctx.textAlign = "left";
+
+        // 5. De meubels. Elk krijgt een schaduw en een lichte bovenkant, zodat
+        //    ze op de vloer STAAN in plaats van erop geplakt te zijn - dezelfde
+        //    afspraak over het licht als buiten.
+        for (const m of K.meubels) tekenMeubel(m);
+
+        // 6. Bucky.
+        tekenBuckyOp(binnenIn.x, binnenIn.y);
+
+        ctx.restore();
+    }
+
+    const MEUBELKLEUR = {
+        bed: ["#7a5c3e", "#c9b48c"],
+        kachel: ["#2f3338", "#4a5058"],
+        tafel: ["#6b4a2f", "#8a6340"],
+        kruk: ["#5a3f28", "#7a5636"],
+        kast: ["#5f4227", "#7d5a35"],
+        kist: ["#6b4a2f", "#8a6340"],
+        rek: ["#4a4038", "#6a5c50"],
+        vat: ["#3f4a52", "#5a6a74"],
+        muurrest: ["#4a473f", "#66625a"],
+        balk: ["#5a4b34", "#77664a"],
+        puin: ["#4d4a44", "#6a665e"],
+    };
+
+    function tekenMeubel(m) {
+        const [donker, licht] = MEUBELKLEUR[m.soort] || ["#5a4b34", "#77664a"];
+        const hoogte = 7;
+
+        // Schaduw op de vloer.
+        ctx.fillStyle = "rgba(0, 0, 0, .34)";
+        ctx.beginPath();
+        ctx.roundRect(m.x + 5, m.y + 7, m.w, m.h, 3);
+        ctx.fill();
+
+        // De zijkant: hetzelfde vlak op grondhoogte. Wat eronder uitsteekt is
+        // de hoogte - dezelfde truc als bij het dek van de steiger.
+        ctx.fillStyle = donker;
+        ctx.beginPath();
+        ctx.roundRect(m.x, m.y, m.w, m.h + hoogte, 3);
+        ctx.fill();
+
+        // Het bovenvlak.
+        ctx.fillStyle = licht;
+        ctx.beginPath();
+        ctx.roundRect(m.x, m.y - 2, m.w, m.h, 3);
+        ctx.fill();
+
+        // Een paar kenmerken per soort, zodat een kist geen tafel is.
+        ctx.strokeStyle = "rgba(0, 0, 0, .3)";
+        ctx.lineWidth = 1.5;
+        if (m.soort === "bed") {
+            ctx.fillStyle = "#e6e0d0";
+            ctx.beginPath();
+            ctx.roundRect(m.x + 5, m.y + 2, m.w - 10, m.h * 0.42, 3);
+            ctx.fill();
+        } else if (m.soort === "kist" || m.soort === "kast") {
+            ctx.beginPath();
+            ctx.moveTo(m.x, m.y + m.h / 2 - 2);
+            ctx.lineTo(m.x + m.w, m.y + m.h / 2 - 2);
+            ctx.stroke();
+            ctx.fillStyle = "#c9a martial".slice(0, 7);
+            ctx.fillStyle = "#c9a24a";
+            ctx.fillRect(m.x + m.w / 2 - 4, m.y + m.h / 2 - 6, 8, 8);
+        } else if (m.soort === "kachel") {
+            ctx.fillStyle = "rgba(255, 150, 60, .85)";
+            ctx.fillRect(m.x + m.w * 0.3, m.y + m.h * 0.4, m.w * 0.4, m.h * 0.4);
+        } else if (m.soort === "rek") {
+            for (let i = 1; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(m.x + (m.w / 3) * i, m.y - 2);
+                ctx.lineTo(m.x + (m.w / 3) * i, m.y + m.h - 2);
+                ctx.stroke();
+            }
+        } else if (m.soort === "vat") {
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(m.x + 20 + i * 40, m.y + m.h / 2 - 2, m.h * 0.42, 0, TAU);
+                ctx.stroke();
+            }
+        }
+    }
+
+    function tekenHuis(h, tijd) {
+        const W = HUIS_MAAT.w, H = HUIS_MAAT.h;
+        const x = h.x - W / 2, y = h.y - H / 2;
+
+        // Slagschaduw op het gras, in dezelfde richting als al het andere.
+        ctx.fillStyle = "rgba(6, 20, 12, .4)";
+        ctx.beginPath();
+        ctx.roundRect(x + LICHT.SCHADUW_X, y + LICHT.SCHADUW_Y + 6, W, H, 5);
+        ctx.fill();
+
+        const stijl = {
+            hut: { muur: "#8a6a45", dak: "#7a3a2c", dakLicht: "#a35442" },
+            pakhuis: { muur: "#7a7f88", dak: "#4a5560", dakLicht: "#66727e" },
+            ruine: { muur: "#6d6a60", dak: "#4a463d", dakLicht: "#5d584d" },
+        }[h.soort] || { muur: "#8a6a45", dak: "#7a3a2c", dakLicht: "#a35442" };
+
+        // De muur: het stuk dat je van opzij ziet, onderaan.
+        ctx.fillStyle = stijl.muur;
+        ctx.beginPath();
+        ctx.roundRect(x, y + H * 0.42, W, H * 0.58, 4);
+        ctx.fill();
+
+        // Het dak, iets over de muur heen. Het licht komt van linksboven, dus
+        // de linkerhelft is de lichte kant - net als bij het talud en de boot.
+        ctx.fillStyle = stijl.dak;
+        ctx.beginPath();
+        ctx.moveTo(x - 5, y + H * 0.5);
+        ctx.lineTo(x + W / 2, y - 4);
+        ctx.lineTo(x + W + 5, y + H * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = stijl.dakLicht;
+        ctx.beginPath();
+        ctx.moveTo(x - 5, y + H * 0.5);
+        ctx.lineTo(x + W / 2, y - 4);
+        ctx.lineTo(x + W / 2, y + H * 0.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // De deur, aan de onderkant. Dit is niet decoratie: `dichtsteHuis`
+        // kijkt of je eronder staat, dus wat je ziet is waar je moet zijn.
+        ctx.fillStyle = "#3a2a1c";
+        ctx.beginPath();
+        ctx.roundRect(x + W / 2 - 10, y + H * 0.62, 20, H * 0.38, 2);
+        ctx.fill();
+
+        if (h.soort === "ruine") {
+            // Een gat in het dak, zodat je van buiten al ziet dat het vervallen
+            // is - anders is het verschil pas binnen te zien.
+            ctx.fillStyle = "rgba(12, 14, 16, .8)";
+            ctx.beginPath();
+            ctx.ellipse(x + W * 0.62, y + H * 0.28, 11, 7, 0.3, 0, TAU);
+            ctx.fill();
+        } else {
+            // Een raampje dat licht geeft; op een ruine brandt niets.
+            ctx.fillStyle = "rgba(255, 226, 150, .85)";
+            ctx.fillRect(x + W * 0.16, y + H * 0.56, 12, 10);
+        }
+
+        // ENTER staat erbij als je ervoor staat. Nooit alleen een vorm: er komt
+        // een woord bij, net als bij MOOR aan de steiger.
+        if (staat.modus === "aangemeerd" && dichtsteHuis() === h) {
+            ctx.fillStyle = KLEUR.accent;
+            ctx.font = "700 12px ui-sans-serif, system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("ENTER", h.x, y - 12);
+            ctx.textAlign = "left";
+        }
+    }
+
     function tekenSteiger(m) {
         // De steiger loopt nu SCHUIN: van de kust naar buiten, in de richting
         // van zijn eigen hoek. Alles hieronder wordt in de assen van de steiger
@@ -1661,13 +1985,17 @@ export function createBoat(canvas, options = {}) {
     }
 
     function tekenBucky() {
+        tekenBuckyOp(speler.x, speler.y);
+    }
+
+    function tekenBuckyOp(px, py) {
         // EEN BOL, GEEN SCHIJF. Bucky was een cirkel met twee stipjes: plat,
         // en daardoor lag hij niet OP het eiland maar ertegenaan geplakt. Wat
         // volume geeft is niet meer detail maar drie dingen die samenwerken:
         // een schaduw eronder die zegt waar de grond is, een verloop met het
         // licht linksboven, en een randlicht aan diezelfde kant.
         const r = 11;
-        const x = speler.x, y = speler.y;
+        const x = px, y = py;
 
         // 1. De schaduw op de grond, plat en breder dan hoog.
         ctx.fillStyle = "rgba(6, 20, 12, .42)";

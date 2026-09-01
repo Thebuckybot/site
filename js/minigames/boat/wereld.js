@@ -285,6 +285,26 @@ export function opSteiger(x, y, maten) {
 }
 
 /**
+ * Waar een huis staat, afgeleid uit zijn eiland.
+ *
+ * Net als bij de steigers: een huis wordt beschreven met een hoek en hoe ver
+ * naar binnen, niet met een x en een y. Verandert de vorm van het eiland, dan
+ * schuift het huis mee in plaats van in zee te komen staan.
+ */
+export function huisMaten(huis) {
+    const eiland = eilandOp(huis.eiland);
+    if (!eiland) return null;
+    const straal = straalOp(eiland, huis.hoek);
+    const d = straal * huis.deel;
+    return {
+        eiland,
+        x: eiland.x + Math.cos(huis.hoek) * d,
+        y: eiland.y + Math.sin(huis.hoek) * d,
+        soort: huis.soort,
+    };
+}
+
+/**
  * Het dichtstbijzijnde land, voor het kompas.
  *
  * Geeft de richting en de afstand tot de KUST (niet tot het middelpunt), want

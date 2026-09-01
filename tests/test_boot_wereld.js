@@ -16,8 +16,11 @@
 
 import {
     EILANDEN, STEIGERS, eilandOp, straalOp, opLand, landOnder, kustSoort,
-    steigerMaten, opSteiger, dichtstbijzijndeLand, START, WERELD,
+    steigerMaten, opSteiger, dichtstbijzijndeLand, huisMaten, START, WERELD,
 } from "../js/minigames/boat/wereld.js";
+import {
+    INTERIEURS, HUIZEN, HUIS_MAAT, magLopenBinnen, bijDeur, deurStart,
+} from "../js/minigames/boat/binnen.js";
 
 let mislukt = 0;
 
@@ -128,6 +131,55 @@ for (const st of STEIGERS) {
     eisWaar(`${naam}: een plankbreedte opzij telt NIET meer`,
             !opSteiger(midX + m.dwars.x * (m.breedte + 4),
                        midY + m.dwars.y * (m.breedte + 4), m));
+}
+
+// --- de huizen -----------------------------------------------------------
+console.log("\nDe huizen:");
+for (const huis of HUIZEN) {
+    const h = huisMaten(huis);
+    const naam = `${h.eiland.naam} / ${huis.soort}`;
+
+    // EEN HUIS IN HET WATER IS NIET AAN DE GETALLEN TE ZIEN. Er stond er een op
+    // Low Hollow die precies in het binnenmeer viel: een hoek en een percentage
+    // die er allebei redelijk uitzien, met een uitkomst die dat niet is. Dit is
+    // de controle die dat vangt, en de reden dat het een berekende positie is en
+    // geen ingetypte.
+    eisWaar(`${naam}: staat op begaanbaar land`,
+            landOnder(h.x, h.y, HUIS_MAAT.h) !== null);
+
+    // En je moet er ook nog voor kunnen staan: de deur zit aan de onderkant.
+    eisWaar(`${naam}: de plek voor de deur is begaanbaar`,
+            landOnder(h.x, h.y + HUIS_MAAT.h, 8) !== null);
+
+    eisWaar(`${naam}: er hoort een interieur bij`, !!INTERIEURS[huis.soort]);
+}
+
+console.log("\nDe binnenruimtes:");
+for (const [soort, kamer] of Object.entries(INTERIEURS)) {
+    // De deur moet in een muur liggen, niet ergens in het midden zweven.
+    eisWaar(`${soort}: de deur ligt in de onderste muur`,
+            Math.abs(kamer.deur.y + kamer.deur.h - kamer.hoogte) < 2);
+    eisWaar(`${soort}: de deur past binnen de breedte`,
+            kamer.deur.x > 0 && kamer.deur.x + kamer.deur.w < kamer.breedte);
+
+    // WAAR JE BINNENKOMT MOET BEGAANBAAR ZIJN. Zet iemand een kast voor de deur,
+    // dan sta je bij het betreden vast in het meubel en kun je geen kant op -
+    // en dat merk je pas als je het speelt.
+    const { x: startX, y: startY } = deurStart(kamer);
+    eisWaar(`${soort}: de plek net binnen de deur is vrij`,
+            magLopenBinnen(kamer, startX, startY, 11));
+    eisWaar(`${soort}: en daar sta je bij de deur`, bijDeur(kamer, startX, startY));
+
+    // Elk meubel moet binnen de kamer liggen; een tafel die half door de muur
+    // steekt is een botsing waar je niet omheen kunt.
+    for (const m of kamer.meubels) {
+        eisWaar(`${soort}: meubel ${m.soort} ligt binnen de kamer`,
+                m.x >= 0 && m.y >= 0
+                && m.x + m.w <= kamer.breedte && m.y + m.h <= kamer.hoogte);
+    }
+
+    // En er moet ergens iets STAAN, anders is het geen kamer maar een vloer.
+    eisWaar(`${soort}: er staan meubels`, kamer.meubels.length >= 4);
 }
 
 // --- het kompas ----------------------------------------------------------
