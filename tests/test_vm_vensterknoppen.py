@@ -28,19 +28,73 @@ BASIS = "http://127.0.0.1:8899"
 
 
 def meet(page):
+    """De TOEGEPASTE geometrie van het venster, uit zijn eigen inline stijl.
+
+    DERDE OPZET, EN DE EERSTE TWEE VERLOREN VAN DE ANIMATIE.
+
+    1. `getBoundingClientRect()`: die geeft de maat NA alle transforms, en de
+       VM-schil kantelt bij het openen met een `matrix3d` van ongeveer een
+       graad. Een venster van 400px hoog meet dan 396 zolang die animatie loopt
+       en 400 daarna, dus twee metingen uit verschillende momenten van dezelfde
+       animatie leken een verschil dat er niet was.
+    2. `offsetWidth`/`offsetHeight`: die negeren transforms wel, maar het
+       venster heeft een CSS-overgang OP zijn breedte en hoogte. De layoutmaat
+       loopt dus alsnog op, en een poller die op vier gelijke metingen wacht
+       komt er op een vlak stuk van de versoepeling te vroeg uit. Drie van de
+       zes keer las de test de maat van halverwege.
+
+    Twee verschillende trucs, twee keer dezelfde uitkomst: ik probeerde een
+    bewegend beeld op te meten en verloor van de klok. Uitzoomen dus - want de
+    vraag is helemaal niet hoe groot het venster op dit moment IS.
+
+    De vraag is wat maximaliseren heeft TOEGEPAST, en dat staat in de inline
+    stijl die `syncWindows` erop zet. Die springt in één keer naar zijn nieuwe
+    waarde en animeert niet; de overgang is puur wat de browser er daarna
+    visueel van maakt. Er valt hier dus niets meer te racen.
+    """
     return page.evaluate("""() => {
       const w = document.querySelector('.vm-window');
       if (!w) return null;
-      const r = w.getBoundingClientRect();
-      const bay = document.querySelector('.arcade-vm-bay');
-      const bb = bay ? bay.getBoundingClientRect() : {width: 0, height: 0};
+      const laag = document.querySelector('.vm-window-layer');
+      // GEEN REGEX OVER HET STYLE-ATTRIBUUT. Dat stond er eerst, en het ging
+      // stuk op iets doms: de browser schrijft `width:620px` zonder spatie bij
+      // het openen en `width: 751px` MET spatie na het maximaliseren, en de
+      // backslash in `\s*` overleefde de reis door drie lagen aanhalings-
+      // tekens niet. Het patroon werd `widths*:s*` en matchte alleen de vorm
+      // zonder spaties - dus precies de beginmaat wel en de nieuwe niet.
+      //
+      // `w.style.width` laat de browser zijn eigen stijl ontleden. Die kan er
+      // niet naast zitten, en er valt niets aan te ontsnappen.
+      const getal = (naam) => {
+        const v = w.style[naam];
+        return v && v.endsWith('px') ? Math.round(parseFloat(v)) : null;
+      };
       return {
-        breedte: Math.round(r.width), hoogte: Math.round(r.height),
-        vakBreedte: Math.round(bb.width), vakHoogte: Math.round(bb.height),
+        breedte: getal('width'), hoogte: getal('height'),
+        x: getal('left'), y: getal('top'),
+        vakBreedte: laag ? laag.clientWidth : 0,
+        vakHoogte: laag ? laag.clientHeight : 0,
         zichtbaar: parseFloat(getComputedStyle(w).opacity) > 0.05,
         klassen: w.className,
+        aantal: document.querySelectorAll('.vm-window').length,
       };
     }""")
+
+
+def wacht_op_maat(page, anders_dan, pogingen=40):
+    """Wacht tot de toegepaste breedte iets ANDERS is dan `anders_dan`.
+
+    Als maximaliseren werkt, staat de nieuwe waarde er binnen een paar frames.
+    Als het niet werkt, loopt dit af en meldt de test dat - wat precies de
+    bedoeling is. Er wordt niet op een minimum gewacht, alleen op verandering:
+    hoe groot het moet worden beoordeelt de test zelf.
+    """
+    for _ in range(pogingen):
+        nu = meet(page)
+        if nu and nu["breedte"] != anders_dan:
+            return nu
+        page.wait_for_timeout(80)
+    return meet(page)
 
 
 def main():
@@ -48,27 +102,45 @@ def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         page = browser.new_context(viewport={"width": 1440, "height": 1000}).new_page()
+        # WACHTEN OP EEN SIGNAAL, NIET OP DE KLOK.
+        #
+        # Hier stonden vaste pauzes: 4200ms voor de pagina, 3500ms voor de VM,
+        # 1400ms voor het venster. Los gedraaid haalt dat het altijd. Maar toen
+        # deze test in een rij met drie andere browsertests op dezelfde
+        # eendraads http.server draaide, was de VM een keer nog niet klaar en
+        # meldde hij "maximaliseren pakt 0% van de vrije ruimte" - een fout die
+        # er niet was.
+        #
+        # Dat is erger dan geen test: een test die van de machinebelasting
+        # afhangt leert je zijn uitslag te negeren, en dan mis je de keer dat
+        # hij gelijk heeft. Elke stap wacht nu op iets dat er moet ZIJN.
         page.goto(f"{BASIS}/arcade.html", wait_until="domcontentloaded")
-        page.wait_for_timeout(4200)
+        page.wait_for_selector("#the-vm", timeout=30000)
         page.evaluate("""() => { const v = document.querySelector('#the-vm');
                                  if (v) window.scrollTo(0, v.offsetTop); }""")
-        page.wait_for_timeout(500)
 
         instap = page.locator("button:has-text('ENTER SYSTEM')")
-        if not instap.count():
+        try:
+            instap.first.wait_for(state="visible", timeout=30000)
+        except Exception:
             print("FOUT er is geen ENTER SYSTEM-knop; de VM start niet")
             browser.close()
             return 1
         instap.first.click()
-        page.wait_for_timeout(3500)
 
         iconen = page.locator(".vm-desktop-icon")
-        if not iconen.count():
+        try:
+            iconen.first.wait_for(state="visible", timeout=40000)
+        except Exception:
             print("FOUT geen bureaubladiconen; er valt geen venster te openen")
             browser.close()
             return 1
+        # Even laten bedaren: de iconen verschijnen met een animatie, en een
+        # dubbelklik midden in het intekenen komt soms niet aan.
+        page.wait_for_timeout(600)
         iconen.first.dblclick()
-        page.wait_for_timeout(1400)
+        page.wait_for_selector(".vm-window", timeout=20000)
+        page.wait_for_timeout(400)
 
         begin = meet(page)
         if not begin:
@@ -76,7 +148,8 @@ def main():
             browser.close()
             return 1
         print(f"  venster bij openen: {begin['breedte']}x{begin['hoogte']} "
-              f"in een vak van {begin['vakBreedte']}x{begin['vakHoogte']}")
+              f"in een vak van {begin['vakBreedte']}x{begin['vakHoogte']} "
+              f"| vensters={begin['aantal']}")
 
         # --- maximaliseren ------------------------------------------------
         knop = page.locator(".vm-window [data-window-action='maximize']")
@@ -85,8 +158,8 @@ def main():
             mislukt.append("knop ontbreekt")
         else:
             knop.first.click()
-            page.wait_for_timeout(900)
-            groot = meet(page)
+            page.wait_for_selector(".vm-window.is-maximized", timeout=15000)
+            groot = wacht_op_maat(page, begin["breedte"])
             print(f"  na maximaliseren  : {groot['breedte']}x{groot['hoogte']}")
 
             # De ruimte die er te winnen viel, en hoeveel daarvan is gepakt.
@@ -109,8 +182,8 @@ def main():
 
             # --- en weer terug --------------------------------------------
             knop.first.click()
-            page.wait_for_timeout(800)
-            terug = meet(page)
+            page.wait_for_selector(".vm-window:not(.is-maximized)", timeout=15000)
+            terug = wacht_op_maat(page, groot["breedte"])
             if (terug["breedte"], terug["hoogte"]) != (begin["breedte"], begin["hoogte"]):
                 print(f"  FOUT herstellen geeft {terug['breedte']}x{terug['hoogte']}, "
                       f"verwacht {begin['breedte']}x{begin['hoogte']}")
@@ -125,7 +198,11 @@ def main():
             mislukt.append("knop ontbreekt")
         else:
             knop_min.first.click()
-            page.wait_for_timeout(900)
+            page.wait_for_selector(".vm-window.is-minimized", timeout=15000)
+            # Minimaliseren vervaagt; de MAAT staat dan al stil terwijl de
+            # dekking nog loopt. Hier is een korte pauze wel het juiste
+            # gereedschap, want er is niets dat op nul springt om op te wachten.
+            page.wait_for_timeout(700)
             klein = meet(page)
             # Onzichtbaar is de eis, niet "kleiner": minimaliseren laat het
             # venster wegvallen naar de taakbalk en verandert de maat nauwelijks.

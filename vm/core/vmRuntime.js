@@ -624,11 +624,26 @@ export class BuckyVMRuntime {
     }
 
     getDesktopBounds() {
-        const layerRect = this.root.querySelector(".vm-window-layer")?.getBoundingClientRect();
-        const vmRect = this.root.querySelector(".bucky-vm")?.getBoundingClientRect();
+        // LAYOUTMAAT, NIET DE ZICHTBARE MAAT.
+        //
+        // Hier stond `getBoundingClientRect()`, en dat geeft de maat NA alle
+        // transforms van alle voorouders. De VM schaalt bij het openen, dus wie
+        // in die paar honderd milliseconde op maximaliseren drukt, meet een
+        // bureaublad dat kleiner is dan het wordt - en die te kleine maat wordt
+        // vastgezet. Gemeten: 644 breed in plaats van 775, waarna
+        // maximaliseren het venster op zijn eigen 620 liet staan.
+        //
+        // Dat verklaart ook waarom "de knop doet niets" niet altijd te
+        // reproduceren was: wachtte je even, dan klopte het wel.
+        //
+        // `clientWidth` en `clientHeight` geven de LAYOUT-maat en trekken zich
+        // niets aan van transforms. Dat is precies wat je hier wilt weten: hoe
+        // groot is het bureaublad, niet hoe groot ziet het er nu uit.
+        const laag = this.root.querySelector(".vm-window-layer");
+        const vm = this.root.querySelector(".bucky-vm");
         return {
-            width: layerRect?.width || vmRect?.width || 900,
-            height: layerRect?.height || Math.max(360, (vmRect?.height || 520) - 54)
+            width: laag?.clientWidth || vm?.clientWidth || 900,
+            height: laag?.clientHeight || Math.max(360, (vm?.clientHeight || 520) - 54)
         };
     }
 
