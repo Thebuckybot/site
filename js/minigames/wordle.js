@@ -27,6 +27,10 @@ export function createWordle(root, options = {}) {
     let invoer = "";        // wat de speler nu typt
     let bezig = false;      // een verzoek loopt
     let vernietigd = false;
+    // ALLEEN IN DEZE SESSIE. Niet opgeslagen, niet naar de server, geen
+    // beloning. Sluit je het tabblad, dan is hij weg - en dat hoort ook, want
+    // een streak die de browser bijhoudt kan de server niet controleren.
+    let streak = 0;
 
     // --- opbouw ------------------------------------------------------------
     const bord = document.createElement("div");
@@ -46,7 +50,22 @@ export function createWordle(root, options = {}) {
     knop.className = "mg-btn wordle-start";
     knop.textContent = "Start a round";
 
-    root.append(melding, bord, toetsen, knop);
+    // HET WINMOMENT. Een regel tekst die verandert is te makkelijk te missen -
+    // je kijkt naar het bord, niet naar de melding eronder. Dit legt een paneel
+    // OVER het bord met het woord, het bedrag en een knop om door te gaan.
+    //
+    // Het is geen `alert` en geen ding dat vanzelf wegvalt: je sluit het zelf,
+    // zodat je het bedrag kunt lezen en, als je wilt, eerst nog even naar je
+    // eigen oplossing kunt kijken.
+    const viering = document.createElement("div");
+    viering.className = "wordle-win";
+    viering.hidden = true;
+
+    const bordhoes = document.createElement("div");
+    bordhoes.className = "wordle-boardwrap";
+    bordhoes.append(bord, viering);
+
+    root.append(melding, bordhoes, toetsen, knop);
 
     // --- tekenen -----------------------------------------------------------
     function tekenBord() {
@@ -232,6 +251,7 @@ export function createWordle(root, options = {}) {
         }
         staat = body;
         invoer = "";
+        viering.hidden = true;
         zeg(`Guess the ${staat.length} letter word.`);
         tekenBord();
         tekenToetsen();
@@ -259,18 +279,73 @@ export function createWordle(root, options = {}) {
         tekenToetsen();
 
         if (staat.status === "won") {
+            streak += 1;
             // De tekst komt van de server, want die weet of er echt betaald is.
             zeg((body.reward && body.reward.message) || "Solved.");
+            toonWinst(body.reward, staat);
             knop.textContent = "Play again";
             knop.disabled = false;
         } else if (staat.status === "lost") {
-            zeg(`Out of guesses. The word was ${String(staat.answer || "").toUpperCase()}.`);
+            const had = streak;
+            streak = 0;
+            zeg(`Out of guesses. The word was ${String(staat.answer || "").toUpperCase()}.`
+                + (had > 1 ? ` That ends a run of ${had}.` : ""));
             knop.textContent = "Play again";
             knop.disabled = false;
         } else {
             const over = staat.max_guesses - staat.guesses.length;
             zeg(`${over} ${over === 1 ? "guess" : "guesses"} left.`);
         }
+    }
+
+    /**
+     * Het winpaneel opbouwen. Alles met textContent: het bedrag en de tekst
+     * komen van de server en horen als tekst behandeld te worden, niet als
+     * markup.
+     */
+    function toonWinst(beloning, huidig) {
+        viering.textContent = "";
+
+        const kop = document.createElement("p");
+        kop.className = "wordle-win-kop";
+        kop.textContent = streak > 1 ? `Solved  ·  ${streak} in a row` : "Solved";
+
+        const woord = document.createElement("p");
+        woord.className = "wordle-win-woord";
+        woord.textContent = String(huidig.answer || "").toUpperCase();
+
+        const pogingen = document.createElement("p");
+        pogingen.className = "wordle-win-regel";
+        const n = huidig.guesses.length;
+        pogingen.textContent = `In ${n} ${n === 1 ? "guess" : "guesses"}.`;
+
+        const prijs = document.createElement("p");
+        prijs.className = "wordle-win-prijs";
+        const betaald = beloning && beloning.paid;
+        if (betaald) {
+            prijs.textContent = `+${Number(betaald).toLocaleString("en-GB")} pixel shards`;
+        } else {
+            // Ook zonder uitbetaling is winnen een moment. Alleen eerlijk zijn
+            // over waarom er niets bij komt.
+            prijs.classList.add("is-none");
+            prijs.textContent = (beloning && beloning.message)
+                || "No shards this time.";
+        }
+
+        const sluit = document.createElement("button");
+        sluit.type = "button";
+        sluit.className = "mg-btn wordle-win-sluit";
+        sluit.textContent = "Nice";
+        sluit.addEventListener("click", () => {
+            viering.hidden = true;
+            knop.focus();
+        });
+
+        viering.append(kop, woord, pogingen, prijs, sluit);
+        viering.hidden = false;
+        // De focus verplaatsen zodat een toetsenbordgebruiker in het paneel
+        // staat en niet achter een onzichtbaar bord blijft typen.
+        sluit.focus();
     }
 
     // --- aanhaken ----------------------------------------------------------
