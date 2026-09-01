@@ -62,7 +62,13 @@ export default {
         infoTitle("Data Retention", settingDesc("retention"), "div", "sec-page-title"),
         el("p", { class: "sec-muted", text: "Incidents, audit logs and analytics older than this window are removed automatically." }),
         el("div", { class: "sec-settings-row" }, [el("div", { class: "k" }, [el("div", { text: "Keep security data for" })]), sel]),
-        el("p", { class: "sec-muted", text: "Longer retention windows are available on Bucky Premium." }),
+        // GEEN BELOFTE MEER OVER PREMIUM. Hier stond "Longer retention windows
+        // are available on Bucky Premium", en dat was niet waar: RETENTION_SELECTABLE
+        // in de backend bevat alleen 14, en plan_for_guild() leest helemaal geen
+        // entitlement. Er is dus geen aankoop die dit ontgrendelt. Een betaalde
+        // functie noemen die niet bestaat is precies het soort belofte waar de
+        // rest van deze ronde is opgeruimd.
+        el("p", { class: "sec-muted", text: "Every server keeps security data for 14 days." }),
       ]));
     } catch (err) { errorState(root, err, () => this.render(root)); }
   },

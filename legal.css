@@ -38,3 +38,18 @@
   .legal-toc { display: none; }
   .contact-grid { grid-template-columns: 1fr; }
 }
+
+/* ===========================================================================
+   .sr-only - tekst die alleen een schermlezer krijgt.
+   ===========================================================================
+   Op contact.html sprong de koppenstructuur van <h1> naar <h3>: vier kaarten
+   met een h3 en geen h2 ertussen. Een schermlezer leest die overslag voor als
+   een gat in de indeling (WCAG 2.1 AA, 1.3.1). Er is visueel geen kop nodig -
+   het raster spreekt voor zich - dus staat hij er wel en is hij niet te zien.
+
+   `clip-path` in plaats van `display:none` of `visibility:hidden`, want die
+   twee halen het element ook bij de schermlezer weg en dan is het gat er nog
+   steeds. De 1px-doos met overflow hidden is het patroon dat overal werkt.
+   ======================================================================== */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
