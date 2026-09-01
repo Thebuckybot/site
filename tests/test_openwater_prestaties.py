@@ -45,12 +45,28 @@ BASIS = "http://127.0.0.1:8899"
 # JavaScript, en dat is op elke machine hetzelfde werk. Zo is ook gevonden dat
 # de kustbanden en de andere lagen als volle schijven werden getekend: het
 # eiland kostte 45% van de frametijd en na de reparatie 39%.
-MAX_KOSTEN_EILAND = 0.55   # het eiland mag hooguit dit deel van de frametijd kosten
-
-# Een heel ruime bodem, alleen om een totale instorting te vangen (een lus die
-# op hol slaat, een laag die per frame duizend paden tekent). Niet bedoeld om
-# de framerate mee te bewaken - daar is de verhouding hierboven voor.
-ABSOLUTE_BODEM_FPS = 5.0
+# WAT HIER BEWAAKT WORDT, EN WAAROM HET NIET DE KUST IS.
+#
+# Er stond hier eerst een vergelijking tussen "open water" en "stil langs de
+# kust van The Mainland". Die kust bleek geen SCENE maar een uitkomst: de test
+# vaart drie seconden en wacht dan tot de boot uitrolt, en hoe ver hij komt
+# hangt af van de framerate zelf. Wordt het zwaar, dan legt de boot in dezelfde
+# wandkloktijd minder speelwereld af, dus staat er iets anders in beeld, dus
+# meet je iets anders. Dat is een terugkoppellus in een meting, en de uitslagen
+# waren dan ook 6,9 - 4,5 - 4,1 - 5,3 fps voor dezelfde code.
+#
+# Er worden nu twee scenes gemeten die WEL bepaald zijn:
+#   - open water op het startpunt: geen invoer, dus altijd hetzelfde beeld;
+#   - de duikplek onder het startpunt: één druk op het anker, een vaste indeling.
+# Allebei zijn ze zwaar op hun eigen manier (het water met zijn lagen, de duik
+# met zijn verlopen en rotsen), en allebei zijn ze herhaalbaar.
+#
+# De kosten van het grootste eiland zijn met de hand gemeten en staan in de
+# commit: 45% van de frametijd toen elke laag een volle schijf was, 39% als
+# ringen, en daarna nog eens een derde eraf door de omtrek eenmalig uit te
+# rekenen in plaats van per frame.
+ABSOLUTE_BODEM_FPS = 8.0
+MAX_KOSTEN_DUIK = 0.55
 
 
 def stick(page, dx, dy, ms):
@@ -90,31 +106,35 @@ def main():
         print("  (opwarmen)")
         page.wait_for_timeout(6000)
 
-        open_water = meet(page, "open water, geen eiland in beeld")
+        open_water = meet(page, "open water op het startpunt")
 
-        # Naar het grote land varen en daar stil gaan liggen. De kust ligt
-        # ruim vijfhonderd eenheden pal oost, en de boot haalt 210 per seconde;
-        # drie seconden gas plus uitrollen brengt hem er precies.
-        stick(page, 40, 0, 3000)
-        page.wait_for_timeout(3000)
-        kust = meet(page, "stil langs de kust van The Mainland")
+        # De duikplek ligt pal onder het startpunt: één druk, geen navigatie.
+        page.locator(".mg-knop-anker").click()
+        page.wait_for_timeout(2000)
+        st = page.locator("#mg-boat-status").text_content() or ""
+        if "Diving at" not in st:
+            print(f"  FOUT de duikplek is niet bereikt ({st!r})")
+            mislukt.append("duiken")
+            duik = open_water
+        else:
+            duik = meet(page, "onder water, de hele plaats in beeld")
 
         print()
-        if open_water < ABSOLUTE_BODEM_FPS or kust < ABSOLUTE_BODEM_FPS:
-            print(f"  FOUT er is iets ingestort: {open_water:.1f} / {kust:.1f} fps")
+        if open_water < ABSOLUTE_BODEM_FPS or duik < ABSOLUTE_BODEM_FPS:
+            print(f"  FOUT er is iets ingestort: {open_water:.1f} / {duik:.1f} fps")
             mislukt.append("ingestort")
         else:
-            print(f"  OK   niets ingestort ({open_water:.1f} / {kust:.1f} fps in "
-                  "een software-rasterisatie op een vertraagde processor)")
+            print(f"  OK   niets ingestort ({open_water:.1f} / {duik:.1f} fps in "
+                  "software-rasterisatie op een vertraagde processor)")
 
-        kosten = (1 - kust / open_water) if open_water else 1
-        if kosten > MAX_KOSTEN_EILAND:
-            print(f"  FOUT het grootste eiland kost {kosten * 100:.0f}% van de "
-                  f"frametijd, meer dan de {MAX_KOSTEN_EILAND * 100:.0f}% die "
-                  "we accepteren")
-            mislukt.append("eiland te duur")
+        kosten = (1 - duik / open_water) if open_water else 1
+        if kosten > MAX_KOSTEN_DUIK:
+            print(f"  FOUT de duikplaats kost {kosten * 100:.0f}% van de "
+                  f"frametijd, meer dan de {MAX_KOSTEN_DUIK * 100:.0f}% die we "
+                  "accepteren")
+            mislukt.append("duiken te duur")
         else:
-            print(f"  OK   het grootste eiland kost {kosten * 100:.0f}% van de "
+            print(f"  OK   de duikplaats kost {max(0, kosten) * 100:.0f}% van de "
                   "frametijd")
 
         ctx.close()

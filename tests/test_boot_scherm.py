@@ -229,15 +229,34 @@ def hoofdstuk_bediening(browser, mislukt):
         else:
             print("  OK   alles haalt 44 bij 44")
 
-    stick(page, 40, 0, 260)
-    page.wait_for_timeout(400)
-    rust = page.evaluate(
-        "() => document.querySelector('.mg-stick-knob').style.transform")
-    if "translate(0px, 0px)" not in rust:
-        print(f"  FOUT de stick veert niet terug ({rust!r})")
-        mislukt.append("stick veert niet terug")
+    # EERST BEWEGEN, DAN TERUGVEREN. Twee stappen, want anders zegt een lege
+    # transform hetzelfde als een teruggeveerde: een knop die nooit is
+    # aangeraakt staat ook in het midden. Deze test meldde een keer "veert niet
+    # terug" terwijl de sleep helemaal niet was aangekomen.
+    knob = "() => document.querySelector('.mg-stick-knob').style.transform"
+    doos = page.locator(".mg-stick").bounding_box()
+    cx, cy = doos["x"] + doos["width"] / 2, doos["y"] + doos["height"] / 2
+    bewogen = ""
+    for _ in range(3):
+        page.mouse.move(cx, cy)
+        page.mouse.down()
+        page.mouse.move(cx + 40, cy, steps=4)
+        page.wait_for_timeout(260)
+        bewogen = page.evaluate(knob)
+        page.mouse.up()
+        page.wait_for_timeout(400)
+        if bewogen and "translate(0px, 0px)" not in bewogen:
+            break
+    if not bewogen or "translate(0px, 0px)" in bewogen:
+        print(f"  FOUT de stick beweegt niet bij slepen ({bewogen!r})")
+        mislukt.append("stick beweegt niet")
     else:
-        print("  OK   de stick veert terug naar het midden")
+        rust = page.evaluate(knob)
+        if "translate(0px, 0px)" not in rust:
+            print(f"  FOUT de stick veert niet terug ({rust!r})")
+            mislukt.append("stick veert niet terug")
+        else:
+            print(f"  OK   de stick beweegt ({bewogen}) en veert terug")
 
     gebouwd = page.evaluate("() => window.__audioGebouwd")
     knop = page.locator(".mg-knop-geluid")
@@ -505,14 +524,24 @@ def hoofdstuk_duiken(browser, mislukt):
         # previews aan viel deze meting om terwijl hij zonder previews groen
         # was. Een test die van een vlag afhangt die er niets mee te maken heeft,
         # is geen test.
-        page.keyboard.up("ArrowDown")
-        page.locator("#mg-boat").click()
-        page.keyboard.down("ArrowDown")
-
-        for _ in range(45):
-            page.wait_for_timeout(1000)
+        # DE TOETS WORDT ELKE RONDE OPNIEUW OPGEGEVEN.
+        #
+        # Eén keer indrukken en dan vijfenveertig seconden wachten werkte
+        # meestal, maar niet altijd: er kan tussendoor een schermafdruk zijn
+        # genomen of iets anders de focus hebben aangeraakt, en dan staat de
+        # toets niet meer aan zonder dat er iets zichtbaar misgaat. Bucky drijft
+        # dan omhoog, vult aan de oppervlakte met negen per seconde bij, en de
+        # test wacht op iets dat niet meer kan gebeuren.
+        #
+        # Opnieuw indrukken is onschadelijk als hij al ingedrukt is, en herstelt
+        # het als dat niet zo is.
+        for _ in range(20):
+            page.locator("#mg-boat").click()
+            page.keyboard.down("ArrowDown")
+            page.wait_for_timeout(2500)
             if "Out of air" in status(page):
                 break
+            page.keyboard.up("ArrowDown")
         page.keyboard.up("ArrowDown")
         na = page.evaluate("() => localStorage.getItem('openwater.inventory.v1')")
 

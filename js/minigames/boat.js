@@ -1580,6 +1580,37 @@ export function createBoat(canvas, options = {}) {
     }
 
     /**
+     * De omtrek van een eiland, ÉÉN KEER uitgerekend.
+     *
+     * De vorm van een eiland verandert nooit, maar hij werd wel elk frame
+     * opnieuw uitgerekend: vijf paden van 128 punten, elk met een `straalOp`
+     * die drie cosinussen optelt. Dat is ruim drieduizend keer `Math.cos` per
+     * eiland per beeld, voor een antwoord dat altijd hetzelfde is.
+     *
+     * De tabel bevat de straal en de eenheidsrichting per hoek, want die
+     * sinus en cosinus zijn precies zo constant. Het scheelt vrijwel alle
+     * trigonometrie in de tekenlus.
+     */
+    const OMTREK_PUNTEN = 128;
+    const omtrekTabellen = new Map();
+
+    function omtrekTabel(eiland) {
+        let t = omtrekTabellen.get(eiland.id);
+        if (t) return t;
+        const n = OMTREK_PUNTEN;
+        t = { r: new Float64Array(n + 1), cx: new Float64Array(n + 1),
+              sy: new Float64Array(n + 1) };
+        for (let i = 0; i <= n; i++) {
+            const a = (i / n) * TAU;
+            t.r[i] = straalOp(eiland, a);
+            t.cx[i] = Math.cos(a);
+            t.sy[i] = Math.sin(a);
+        }
+        omtrekTabellen.set(eiland.id, t);
+        return t;
+    }
+
+    /**
      * Een RING langs de omtrek, tussen twee opslagen op de straal.
      *
      * DIT IS DEZELFDE LES ALS BIJ DE KUSTBANDEN, en ik had hem maar half
@@ -1592,30 +1623,31 @@ export function createBoat(canvas, options = {}) {
      * Buitenrand heen, binnenrand terug. Het gat in het midden wordt nooit
      * aangeraakt.
      */
-    function ringPad(eiland, binnen, buiten, punten = 128) {
+    function ringPad(eiland, binnen, buiten) {
+        const t = omtrekTabel(eiland);
+        const n = OMTREK_PUNTEN;
         ctx.beginPath();
-        for (let i = 0; i <= punten; i++) {
-            const a = (i / punten) * TAU;
-            const r = straalOp(eiland, a) + buiten;
-            const x = eiland.x + Math.cos(a) * r, y = eiland.y + Math.sin(a) * r;
+        for (let i = 0; i <= n; i++) {
+            const r = t.r[i] + buiten;
+            const x = eiland.x + t.cx[i] * r, y = eiland.y + t.sy[i] * r;
             if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
         }
-        for (let i = punten; i >= 0; i--) {
-            const a = (i / punten) * TAU;
-            const r = straalOp(eiland, a) + binnen;
-            ctx.lineTo(eiland.x + Math.cos(a) * r, eiland.y + Math.sin(a) * r);
+        for (let i = n; i >= 0; i--) {
+            const r = t.r[i] + binnen;
+            ctx.lineTo(eiland.x + t.cx[i] * r, eiland.y + t.sy[i] * r);
         }
         ctx.closePath();
     }
 
     /** Een pad langs de omtrek, met een opslag `extra` op de straal. */
-    function omtrekPad(eiland, extra, punten = 128) {
+    function omtrekPad(eiland, extra) {
+        const t = omtrekTabel(eiland);
+        const n = OMTREK_PUNTEN;
         ctx.beginPath();
-        for (let i = 0; i <= punten; i++) {
-            const a = (i / punten) * TAU;
-            const r = straalOp(eiland, a) + extra;
-            const x = eiland.x + Math.cos(a) * r;
-            const y = eiland.y + Math.sin(a) * r;
+        for (let i = 0; i <= n; i++) {
+            const r = t.r[i] + extra;
+            const x = eiland.x + t.cx[i] * r;
+            const y = eiland.y + t.sy[i] * r;
             if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
         }
         ctx.closePath();
