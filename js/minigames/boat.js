@@ -62,13 +62,47 @@ export function opSteiger(x, y, s) {
     return Math.abs(x - s.x) < s.w / 2 && Math.abs(y - s.y) < s.h / 2;
 }
 
+/**
+ * DIEPTE IN EEN PLATTE TEKENING.
+ *
+ * Alles hier is 2D en blijft 2D: er is geen perspectief, geen horizon en geen
+ * camera met een hoek. Wat er wel is, is een AFSPRAAK over waar het licht
+ * vandaan komt, en die afspraak staat op één plek zodat elk voorwerp hem
+ * volgt. Zodra twee dingen een schaduw de andere kant op werpen, valt het hele
+ * effect uit elkaar en ziet het er goedkoop uit.
+ *
+ * Het licht komt van linksboven. Daaruit volgt alles:
+ *   - slagschaduwen vallen naar rechtsonder (SCHADUW_X, SCHADUW_Y)
+ *   - de bovenkant van iets dat uitsteekt schuift naar linksboven (HOOGTE)
+ *   - de lichte rand ligt linksboven, de donkere zijkant rechtsonder
+ *
+ * Hoogte tekenen we door een voorwerp TWEE KEER te zetten: eerst de zijkant op
+ * de grondpositie, dan het bovenvlak een paar pixels naar linksboven. Het
+ * randje zijkant dat daaronder uitsteekt IS de hoogte. Meer is het niet, en
+ * meer is er ook niet nodig.
+ */
+const LICHT = {
+    // Waar de slagschaduw heen valt, in wereldeenheden.
+    SCHADUW_X: 9,
+    SCHADUW_Y: 13,
+};
+
 const KLEUR = {
     diep: "#071426",
     ondiep: "#0d2c47",
     golf: "rgba(130, 210, 255, .10)",
-    land: "#1d3b2a",
-    strand: "#3f5a3a",
+    // Het eiland in lagen, van onder naar boven: natte rand, zand, het talud
+    // (de zijkant van de verhoging) en het gras erbovenop. Het talud is
+    // donkerder dan allebei zijn buren, want dat is de kant waar geen licht op
+    // valt - daar komt de hoogte vandaan.
+    land: "#2c5a3d",        // gras, bovenvlak
+    landLicht: "#3d7350",   // de belichte rand linksboven
+    talud: "#1a3524",       // de zijkant onder het gras
+    strand: "#c8b183",      // zand, en dat is nu echt zandkleur
+    strandNat: "#9d8760",   // de natte rand waar het water tegenaan komt
     steiger: "#6b4a2f",
+    steigerLicht: "#8a6340",
+    steigerDonker: "#3f2a1a",
     steigerRand: "#8a6340",
     boot: "#c1304a",
     bootLicht: "#e8637c",
@@ -173,6 +207,9 @@ export function createBoat(canvas, options = {}) {
     const speler = {
         aanBoord: true,
         x: 0, y: 0,       // alleen gebruikt als hij uitgestapt is
+        kijk: 0,          // radialen; waar hij naartoe kijkt
+        snelheid: 118,    // eenheden per seconde, lopend
+        straal: 11,       // even groot als hoe hij getekend wordt
     };
 
     const staat = {
@@ -190,28 +227,82 @@ export function createBoat(canvas, options = {}) {
     // allemaal dezelfde vlaggen; niets in de spelcode weet waar een druk
     // vandaan komt. Dat is de reden dat de telefoonbediening geen tweede
     // codepad is.
-    const knoppen = { links: false, rechts: false, gas: false, actie: false };
+    // DE BEDIENINGSSTAAT, één model achter joystick, toetsenbord en muis.
+    // `richting` is een vector van -1 tot 1 (x naar rechts, y naar beneden) en
+    // `sterkte` hoe ver de stick is uitgeslagen. De spellogica kijkt alleen
+    // hiernaar en weet niet waar het vandaan komt.
+    const bediening = { richting: { x: 0, y: 0 }, sterkte: 0, gas: false };
     const TOETSEN = {
+        // DE PIJLEN GEVEN EEN RICHTING, net als de joystick, en niet meer
+        // links/rechts/gas. ArrowUp betekende gas geven; nu betekent het
+        // noord. Wie een pijl vasthoudt vaart die kant op, want een volle
+        // uitslag zet het gas vanzelf aan (zie de vaarstap). Shift is er voor
+        // wie het gas los wil kunnen bedienen.
         ArrowLeft: "links", KeyA: "links",
         ArrowRight: "rechts", KeyD: "rechts",
-        ArrowUp: "gas", KeyW: "gas",
+        ArrowUp: "omhoog", KeyW: "omhoog",
+        ArrowDown: "omlaag", KeyS: "omlaag",
+        ShiftLeft: "gas", ShiftRight: "gas",
         Space: "actie", Enter: "actie",
     };
+
+    // Welke pijltjes op dit moment ingedrukt zijn. Het toetsenbord levert een
+    // RICHTING aan, net als de joystick, in plaats van losse links/rechts-
+    // vlaggen. Zo is er maar één pad naar de spellogica en gedraagt varen met
+    // toetsen zich precies als varen met een duim.
+    const ingedrukt = new Set();
+
+    function werkRichtingBij() {
+        let x = 0, y = 0;
+        if (ingedrukt.has("links")) x -= 1;
+        if (ingedrukt.has("rechts")) x += 1;
+        if (ingedrukt.has("omhoog")) y -= 1;
+        if (ingedrukt.has("omlaag")) y += 1;
+        const lengte = Math.hypot(x, y);
+        if (lengte === 0) {
+            bediening.richting.x = 0;
+            bediening.richting.y = 0;
+            bediening.sterkte = 0;
+        } else {
+            // Genormaliseerd, anders is schuin sneller dan recht - de klassieke
+            // fout waarbij diagonaal lopen 1,41 keer zo hard gaat.
+            bediening.richting.x = x / lengte;
+            bediening.richting.y = y / lengte;
+            bediening.sterkte = 1;
+        }
+    }
 
     function opToets(e, aan) {
         const naam = TOETSEN[e.code];
         if (!naam) return;
         e.preventDefault();
-        if (naam === "actie" && aan && !e.repeat) doeActie();
-        knoppen[naam] = aan;
+        if (naam === "actie") {
+            if (aan && !e.repeat) doeActie();
+            return;
+        }
+        if (naam === "gas") {
+            bediening.gas = aan;
+            return;
+        }
+        if (aan) ingedrukt.add(naam); else ingedrukt.delete(naam);
+        werkRichtingBij();
     }
     const keydown = (e) => opToets(e, true);
     const keyup = (e) => opToets(e, false);
-    const blur = () => { for (const k in knoppen) knoppen[k] = false; };
+    const blur = () => {
+        // Focus kwijt betekent: alles los. Anders blijft de boot varen omdat
+        // de browser de keyup nooit meer levert - dat is hoe je met een
+        // alt-tab terugkomt bij een schip dat tegen de kust ligt te duwen.
+        ingedrukt.clear();
+        bediening.richting.x = 0;
+        bediening.richting.y = 0;
+        bediening.sterkte = 0;
+        bediening.gas = false;
+    };
 
     // De schermknoppen. Ze staan in de DOM naast het canvas en niet erin
     // getekend, want een getekende knop is niet focusbaar en niet voorleesbaar.
-    const bedieningen = maakBediening();
+    const bedieningen = maakHud();
 
     // --- geluid ------------------------------------------------------------
     // STANDAARD UIT, en dat is geen instelling maar de enige juiste stand:
@@ -313,62 +404,201 @@ export function createBoat(canvas, options = {}) {
         },
     };
 
-    function maakBediening() {
-        const balk = document.createElement("div");
-        balk.className = "mg-touch";
-        const maak = (naam, label, tekst) => {
+    /**
+     * DE BEDIENING LIGT OP HET SPEL, NIET ERONDER.
+     *
+     * Hier stond een rij knoppen onder het canvas. Dat werkt op een muis en
+     * verder eigenlijk niet: op een telefoon staat je duim dan onder het beeld
+     * in plaats van erop, je moet kijken waar je drukt, en sturen is aan- en
+     * uitzetten in plaats van sturen. Een spel bedien je zonder ernaar te
+     * hoeven kijken.
+     *
+     * Nu: een joystick linksonder voor de richting, drie knoppen rechtsonder
+     * voor gas, anker en geluid, allebei OVER het speelveld. Dat is de plek
+     * waar je duimen al liggen als je een telefoon met twee handen vasthoudt.
+     *
+     * DE JOYSTICK GEEFT EEN RICHTING, GEEN LINKS-OF-RECHTS. Dat is nodig voor
+     * fase 2: aan land loopt Bucky gewoon de kant op die je aangeeft, en op het
+     * water stuurt de boot naar die richting toe. Eén bedieningsmodel voor
+     * twee spelvormen, in plaats van twee sets knoppen die elkaar afwisselen.
+     */
+    function maakHud() {
+        const hoes = document.createElement("div");
+        hoes.className = "mg-hud";
+
+        // --- de joystick ---------------------------------------------------
+        const stick = document.createElement("div");
+        stick.className = "mg-stick";
+        // Een joystick is bedienbaar met het toetsenbord, dus hij is een knop
+        // en geen div met een muisluisteraar. Zonder tabindex en rol is dit
+        // voor een schermlezer een decoratief vlak.
+        stick.tabIndex = 0;
+        stick.setAttribute("role", "application");
+        stick.setAttribute("aria-label",
+            "Steering stick. Drag it, or use the arrow keys, to steer.");
+        const knop = document.createElement("div");
+        knop.className = "mg-stick-knob";
+        stick.appendChild(knop);
+
+        const STRAAL = 44;   // hoe ver de knop uit het midden mag
+        let stickId = null;  // welke vinger de stick vasthoudt
+
+        const zetKnop = (x, y) => {
+            knop.style.transform = `translate(${x}px, ${y}px)`;
+        };
+
+        const stuurUit = (x, y) => {
+            // Buiten de straal wordt de uitslag geknepen, niet afgekapt: de
+            // richting blijft kloppen ook als je verder trekt dan de ring.
+            const lengte = Math.hypot(x, y);
+            const f = lengte > STRAAL ? STRAAL / lengte : 1;
+            const kx = x * f, ky = y * f;
+            zetKnop(kx, ky);
+            // DODE ZONE. Zonder deze drempel stuurt een duim die stil ligt nog
+            // steeds een klein beetje, en dan dobbert de boot uit zichzelf weg.
+            const sterkte = Math.hypot(kx, ky) / STRAAL;
+            if (sterkte < 0.18) {
+                bediening.richting.x = 0;
+                bediening.richting.y = 0;
+                bediening.sterkte = 0;
+            } else {
+                bediening.richting.x = kx / STRAAL;
+                bediening.richting.y = ky / STRAAL;
+                bediening.sterkte = Math.min(1, sterkte);
+            }
+        };
+
+        const losLaten = () => {
+            stickId = null;
+            zetKnop(0, 0);
+            bediening.richting.x = 0;
+            bediening.richting.y = 0;
+            bediening.sterkte = 0;
+            stick.classList.remove("is-actief");
+        };
+
+        stick.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            stickId = e.pointerId;
+            stick.setPointerCapture(e.pointerId);
+            stick.classList.add("is-actief");
+            const r = stick.getBoundingClientRect();
+            stuurUit(e.clientX - (r.left + r.width / 2),
+                     e.clientY - (r.top + r.height / 2));
+        });
+        stick.addEventListener("pointermove", (e) => {
+            if (e.pointerId !== stickId) return;
+            e.preventDefault();
+            const r = stick.getBoundingClientRect();
+            stuurUit(e.clientX - (r.left + r.width / 2),
+                     e.clientY - (r.top + r.height / 2));
+        });
+        for (const soort of ["pointerup", "pointercancel", "lostpointercapture"]) {
+            stick.addEventListener(soort, (e) => {
+                if (e.pointerId !== stickId) return;
+                losLaten();
+            });
+        }
+        // Het toetsenbord stuurt dezelfde waarden als de duim, zodat er maar
+        // één pad naar de spellogica is.
+        stick.addEventListener("keydown", (e) => {
+            const kaart = {
+                ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+                ArrowUp: [0, -1], ArrowDown: [0, 1],
+                a: [-1, 0], d: [1, 0], w: [0, -1], s: [0, 1],
+            };
+            const v = kaart[e.key] || kaart[e.key.toLowerCase()];
+            if (!v) return;
+            e.preventDefault();
+            stuurUit(v[0] * STRAAL, v[1] * STRAAL);
+        });
+        stick.addEventListener("keyup", (e) => {
+            if (e.key.startsWith("Arrow") || "wasd".includes(e.key.toLowerCase())) {
+                losLaten();
+            }
+        });
+        stick.addEventListener("blur", losLaten);
+
+        // --- de knoppen rechts ---------------------------------------------
+        const rechts = document.createElement("div");
+        rechts.className = "mg-knoppen";
+
+        const maakKnop = (klasse, label, tekst, opties = {}) => {
             const b = document.createElement("button");
             b.type = "button";
-            b.className = "mg-touch-btn";
-            b.textContent = tekst;
+            b.className = `mg-knop ${klasse}`;
             b.setAttribute("aria-label", label);
-            const aan = (e) => { e.preventDefault(); knoppen[naam] = true; };
-            const uit = (e) => { e.preventDefault(); knoppen[naam] = false; };
-            b.addEventListener("pointerdown", aan);
-            b.addEventListener("pointerup", uit);
-            b.addEventListener("pointerleave", uit);
-            b.addEventListener("pointercancel", uit);
-            // Toetsenbord: een druk op de knop is een losse actie, geen houden.
-            b.addEventListener("click", (e) => {
-                e.preventDefault();
-                if (naam === "actie") doeActie();
-            });
-            balk.appendChild(b);
+            const span = document.createElement("span");
+            span.className = "mg-knop-teken";
+            span.textContent = tekst;
+            b.appendChild(span);
+            if (opties.vasthouden) {
+                // Gas is een knop die je INDRUKT EN VASTHOUDT. Een click-
+                // luisteraar zou hem een tik maken, en dan kun je niet varen.
+                const aan = (e) => { e.preventDefault(); bediening.gas = true;
+                                     b.classList.add("is-in"); };
+                const uit = (e) => { e.preventDefault(); bediening.gas = false;
+                                     b.classList.remove("is-in"); };
+                b.addEventListener("pointerdown", aan);
+                for (const soort of ["pointerup", "pointerleave", "pointercancel"]) {
+                    b.addEventListener(soort, uit);
+                }
+                // En met het toetsenbord: spatie of enter ingedrukt houden.
+                b.addEventListener("keydown", (e) => {
+                    if (e.key === " " || e.key === "Enter") { e.preventDefault(); aan(e); }
+                });
+                b.addEventListener("keyup", (e) => {
+                    if (e.key === " " || e.key === "Enter") { e.preventDefault(); uit(e); }
+                });
+                b.addEventListener("blur", () => { bediening.gas = false;
+                                                   b.classList.remove("is-in"); });
+            } else if (opties.klik) {
+                b.addEventListener("click", (e) => { e.preventDefault(); opties.klik(b); });
+            }
+            rechts.appendChild(b);
             return b;
         };
-        maak("links", "Steer left", "â—€");
-        maak("gas", "Throttle forward", "â–²");
-        maak("rechts", "Steer right", "â–¶");
-        maak("actie", "Moor or step aboard", "âš“");
 
-        // De geluidsknop is geen stuurknop, dus hij gaat niet door `maak`: die
-        // zet een knop ingedrukt zolang je hem vasthoudt, en dat is hier
-        // precies verkeerd. Een schakelaar hoort `aria-pressed` te dragen, en
-        // de tekst verandert mee zodat de stand niet alleen aan een pictogram
-        // hangt - iemand die het icoon niet kan duiden leest gewoon SOUND OFF.
-        const geluidKnop = document.createElement("button");
-        geluidKnop.type = "button";
-        geluidKnop.className = "mg-touch-btn mg-touch-toggle";
-        geluidKnop.textContent = "â™ª OFF";
-        geluidKnop.setAttribute("aria-pressed", "false");
-        geluidKnop.setAttribute("aria-label", "Sound off. Activate to turn sound on.");
-        geluidKnop.addEventListener("click", (e) => {
-            e.preventDefault();
+        maakKnop("mg-knop-gas", "Throttle. Hold to sail forward.", "▲",
+                 { vasthouden: true });
+        maakKnop("mg-knop-anker", "Moor at the jetty, or step back aboard.", "⚓",
+                 { klik: () => doeActie() });
+
+        const geluidKnop = maakKnop("mg-knop-geluid", "Sound off. Activate to turn sound on.",
+                                    "♪", { klik: (b) => {
             const wil = !geluid.aan;
             const gelukt = geluid.zet(wil);
             const nu = gelukt && wil;
-            geluidKnop.setAttribute("aria-pressed", nu ? "true" : "false");
-            geluidKnop.textContent = nu ? "â™ª ON" : "â™ª OFF";
-            geluidKnop.setAttribute("aria-label", nu
+            b.setAttribute("aria-pressed", nu ? "true" : "false");
+            b.classList.toggle("is-aan", nu);
+            // NOOIT ALLEEN KLEUR: het opschrift onder het notenteken zegt de
+            // stand, en het aria-label zegt hem ook.
+            b.querySelector(".mg-knop-stand").textContent = nu ? "ON" : "OFF";
+            b.setAttribute("aria-label", nu
                 ? "Sound on. Activate to turn sound off."
                 : "Sound off. Activate to turn sound on.");
             zeg(nu ? "Sound on." : "Sound off.");
             if (!gelukt && wil) zeg("This browser blocked audio.");
-        });
-        balk.appendChild(geluidKnop);
+        } });
+        geluidKnop.setAttribute("aria-pressed", "false");
+        const stand = document.createElement("span");
+        stand.className = "mg-knop-stand";
+        stand.textContent = "OFF";
+        geluidKnop.appendChild(stand);
 
-        canvas.insertAdjacentElement("afterend", balk);
-        return balk;
+        hoes.append(stick, rechts);
+        // In de hoes om het canvas, zodat de bediening er OVERHEEN ligt.
+        const veld = canvas.parentElement.classList.contains("mg-veld")
+            ? canvas.parentElement
+            : (() => {
+                const v = document.createElement("div");
+                v.className = "mg-veld";
+                canvas.parentNode.insertBefore(v, canvas);
+                v.appendChild(canvas);
+                return v;
+            })();
+        veld.appendChild(hoes);
+        return hoes;
     }
 
     // --- de modi -----------------------------------------------------------
@@ -376,8 +606,29 @@ export function createBoat(canvas, options = {}) {
     const MODI = {
         varen: {
             stap(dt) {
-                const stuur = (knoppen.rechts ? 1 : 0) - (knoppen.links ? 1 : 0);
-                if (stuur) boot.hoek += stuur * boot.draaiSnelheid * dt;
+                // STUREN NAAR EEN RICHTING, niet links-of-rechts.
+                //
+                // De joystick zegt welke kant je op wilt; de boot draait
+                // daarnaartoe over de KORTSTE weg. Dat is wat een stick
+                // intuïtief maakt: je wijst waar je heen wilt en het schip
+                // komt daar. Met alleen links/rechts moet je zelf uitrekenen
+                // welke kant het dichtst is, en dat voelt als besturen van een
+                // machine in plaats van varen.
+                //
+                // De uitslag van de stick begrenst hoe hard er gedraaid wordt,
+                // dus een klein duwtje geeft een flauwe correctie en een volle
+                // uitslag het roer helemaal om.
+                let stuur = 0;
+                if (bediening.sterkte > 0) {
+                    const doelhoek = Math.atan2(bediening.richting.y, bediening.richting.x);
+                    // Verschil netjes terugbrengen naar het bereik -PI..PI,
+                    // anders draait hij de lange kant om bij de overgang.
+                    let verschil = doelhoek - boot.hoek;
+                    while (verschil > Math.PI) verschil -= TAU;
+                    while (verschil < -Math.PI) verschil += TAU;
+                    stuur = klem(verschil * 2.2, -1, 1) * bediening.sterkte;
+                    boot.hoek += stuur * boot.draaiSnelheid * dt;
+                }
 
                 // SLAGZIJ. De helling loopt ACHTER de stuurinvoer aan in plaats
                 // van hem te volgen. Daardoor helt de boot in een bocht over en
@@ -400,7 +651,10 @@ export function createBoat(canvas, options = {}) {
                 // seconde op snelheid; uitrollen op 0.6 glijdt ruim driehonderd
                 // eenheden door. Dat maakt afremmen voor de steiger een keuze
                 // in plaats van een formaliteit - je moet op tijd gas loslaten.
-                const gas = knoppen.gas;
+                // Gas komt van de knop, of van de stick zelf zodra je hem
+                // ver genoeg uitslaat. Met één duim varen moet kunnen; wie
+                // liever apart gas geeft houdt de knop rechts.
+                const gas = bediening.gas || bediening.sterkte > 0.6;
                 const doel = gas ? boot.maxSnelheid : 0;
                 const traagheid = gas ? 3.0 : 0.6;
                 boot.snelheid += (doel - boot.snelheid) * Math.min(1, dt * traagheid);
@@ -448,8 +702,27 @@ export function createBoat(canvas, options = {}) {
                 staat.aangemeerd = true;
                 speler.aanBoord = false;
                 const s = dichtsteSteiger();
-                speler.x = s.x - 30;
-                speler.y = s.y;
+                // WAAR STAPT HIJ AAN WAL? Aan de LANDkant van de steiger, en op
+                // veilige afstand van de boot.
+                //
+                // Eerst stond hij dertig eenheden naar links; bij deze steiger
+                // is dat de kant van het open water, dus hij stapte het water
+                // in. Daarna zette ik hem aan het eind van de plank, en toen
+                // stond hij bovenop de boot - want de boot ligt precies daar
+                // waar je hem naartoe hebt gevaren, en dat is meestal het eind
+                // van de steiger. Nu wordt de boot ontweken: hij stapt het
+                // eiland op, ruim voorbij waar het schip kan liggen.
+                const naarLand = s.x < wereld.landen[s.eiland].x ? 1 : -1;
+                let px = s.x + naarLand * (s.w / 2 + 26);
+                let py = s.y;
+                // Mocht die plek niet begaanbaar zijn, schuif dan op tot het
+                // wel kan. Anders sta je vast op de eerste stap.
+                for (let poging = 0; poging < 12 && !magLopen(px, py); poging++) {
+                    px += naarLand * 12;
+                }
+                speler.x = px;
+                speler.y = py;
+                speler.kijk = naarLand > 0 ? 0 : Math.PI;
                 staat.streak += staat.schoon ? 1 : 0;
                 meld("streak", staat.streak);
                 zeg(staat.schoon
@@ -457,11 +730,33 @@ export function createBoat(canvas, options = {}) {
                     : `Moored at ${wereld.landen[s.eiland].naam}. Streak reset by the scrape.`);
                 if (!staat.schoon) { staat.streak = 0; meld("streak", 0); }
             },
-            stap() {
-                // FASE 1 STOPT HIER. Rondlopen op het eiland is fase 2; nu kun
-                // je alleen weer aan boord. De modus bestaat al zodat die fase
-                // alleen zijn eigen `stap` hoeft in te vullen.
+            stap(dt) {
                 boot.snelheid = 0;
+
+                // FASE 2: LOPEN OVER HET EILAND, met dezelfde joystick.
+                //
+                // Dit is precies waarom de bediening een RICHTING geeft en geen
+                // links/rechts. Aan land is er niets te sturen - je loopt de
+                // kant op die je aanwijst - en op het water stuur je naartoe.
+                // Eén stick, twee betekenissen, geen tweede set knoppen.
+                if (bediening.sterkte <= 0) return;
+
+                const rx = bediening.richting.x;
+                const ry = bediening.richting.y;
+                speler.kijk = Math.atan2(ry, rx);
+
+                const stap = speler.snelheid * bediening.sterkte * dt;
+                const nx = speler.x + rx * stap;
+                const ny = speler.y + ry * stap;
+
+                // BOTSING MET DE RAND, en wel per as. Bij een botsing helemaal
+                // stoppen laat je vastplakken zodra je schuin tegen de kust
+                // aanloopt: je staat stil terwijl er een richting is waarin je
+                // best kunt. Door x en y los te proberen glijd je langs de rand
+                // in plaats van erin te blijven hangen, en dat is wat lopen
+                // langs een kustlijn hoort te doen.
+                if (magLopen(nx, speler.y)) speler.x = nx;
+                if (magLopen(speler.x, ny)) speler.y = ny;
             },
         },
     };
@@ -508,6 +803,29 @@ export function createBoat(canvas, options = {}) {
     // --- hulpjes -----------------------------------------------------------
     const klem = (v, a, b) => Math.max(a, Math.min(b, v));
     const afstandTot = (x, y) => Math.hypot(boot.x - x, boot.y - y);
+
+    /**
+     * Mag Bucky op (x, y) staan?
+     *
+     * Het spiegelbeeld van `raaktLand`: de boot mag NIET op het land komen en
+     * Bucky mag er niet AF. Het gaat om dezelfde cirkel, dus het hoort ook
+     * dezelfde som te zijn - anders lopen die twee op den duur uit elkaar en
+     * ontstaat er een rand waar de een wel komt en de ander niet.
+     *
+     * Hij mag tot aan het droge zand (`l.r + 13`, dezelfde waarde als waar
+     * `tekenEiland` het strand tekent) en niet in de natte rand. De steiger
+     * telt mee, want daar stapt hij aan wal.
+     */
+    function magLopen(x, y) {
+        for (const s of wereld.steigers) {
+            if (opSteiger(x, y, s)) return true;
+        }
+        for (const l of wereld.landen) {
+            const strandRand = l.r + 13 - speler.straal;
+            if (Math.hypot(x - l.x, y - l.y) < strandRand) return true;
+        }
+        return false;
+    }
 
     function raaktLand(x, y, marge) {
         for (const l of wereld.landen) {
@@ -572,8 +890,13 @@ export function createBoat(canvas, options = {}) {
         // rekenen en niet in schermpixels. Vandaar zb en zh hieronder.
         const zb = b / ZOOM;
         const zh = h / ZOOM;
-        camera.x = klem(boot.x - zb / 2, 0, Math.max(0, WERELD.w - zb));
-        camera.y = klem(boot.y - zh / 2, 0, Math.max(0, WERELD.h - zh));
+        // DE CAMERA VOLGT WIE ER SPEELT. Aan land is dat Bucky en niet de boot;
+        // die ligt dan aan de steiger en gaat nergens heen. Zonder dit loop je
+        // zo het beeld uit en zie je jezelf niet meer.
+        const volgX = speler.aanBoord ? boot.x : speler.x;
+        const volgY = speler.aanBoord ? boot.y : speler.y;
+        camera.x = klem(volgX - zb / 2, 0, Math.max(0, WERELD.w - zb));
+        camera.y = klem(volgY - zh / 2, 0, Math.max(0, WERELD.h - zh));
 
         ctx.fillStyle = KLEUR.diep;
         ctx.fillRect(0, 0, b, h);
@@ -841,26 +1164,206 @@ export function createBoat(canvas, options = {}) {
     }
 
     function tekenEiland(l) {
+        // HET EILAND STEEKT BOVEN HET WATER UIT, EN DAT MOET JE OVERAL ZIEN.
+        //
+        // Eerste poging was het bovenvlak een stukje naar linksboven schuiven,
+        // zodat er onderaan een randje zijkant bleef staan. Dat werkt voor een
+        // klein voorwerp, maar niet voor een eiland van 260 straal: je ziet er
+        // altijd maar een stukje van, en aan de LINKERkant is die verschuiving
+        // vrijwel tangentieel - dus daar is er niets van te zien. Op de preview
+        // liep het gras naadloos in het zand over en was er geen hoogte.
+        //
+        // Wat wel klopt voor een rond eiland is een TALUD RONDOM: een ring
+        // tussen zand en gras die overal even breed is, en waarvan de tint
+        // afhangt van de hoek ten opzichte van het licht. Aan de kant waar het
+        // licht op valt is het talud licht, aan de andere kant donker, en
+        // daartussen loopt het vloeiend over. Dat leest van elke kant als een
+        // helling, ook als je er maar een sliver van in beeld hebt.
+        const TALUD = 17;   // hoe breed de helling is
+        const TOP = l.r - TALUD;
+
+        // 1. De slagschaduw OP HET WATER. Zonder deze laag zweeft het eiland.
+        const sch = ctx.createRadialGradient(
+            l.x + LICHT.SCHADUW_X, l.y + LICHT.SCHADUW_Y, l.r * 0.7,
+            l.x + LICHT.SCHADUW_X, l.y + LICHT.SCHADUW_Y, l.r + 34);
+        sch.addColorStop(0, "rgba(2, 10, 22, .52)");
+        sch.addColorStop(0.55, "rgba(2, 10, 22, .3)");
+        sch.addColorStop(1, "rgba(2, 10, 22, 0)");
+        ctx.fillStyle = sch;
+        ctx.beginPath();
+        ctx.arc(l.x + LICHT.SCHADUW_X, l.y + LICHT.SCHADUW_Y, l.r + 34, 0, TAU);
+        ctx.fill();
+
+        // 2. Ondiep water: de zandbank die je door het water heen ziet.
         ctx.fillStyle = KLEUR.ondiep;
         ctx.beginPath(); ctx.arc(l.x, l.y, l.r + 46, 0, TAU); ctx.fill();
-        ctx.fillStyle = KLEUR.strand;
-        ctx.beginPath(); ctx.arc(l.x, l.y, l.r + 12, 0, TAU); ctx.fill();
-        ctx.fillStyle = KLEUR.land;
-        ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, TAU); ctx.fill();
 
-        ctx.fillStyle = "rgba(219, 231, 245, .82)";
+        // 3. De natte rand, waar het water tegen het zand komt.
+        ctx.fillStyle = KLEUR.strandNat;
+        ctx.beginPath(); ctx.arc(l.x, l.y, l.r + 22, 0, TAU); ctx.fill();
+
+        // 4. Het droge strand.
+        ctx.fillStyle = KLEUR.strand;
+        ctx.beginPath(); ctx.arc(l.x, l.y, l.r + 13, 0, TAU); ctx.fill();
+
+        // 5 EN 7. HET TALUD EN DE GRASKANT, elk als EEN GEVULDE RING MET EEN
+        //         VERLOOP - en dat is de derde opzet.
+        //
+        // De eerste twee tekenden de rand als een REEKS STREKEN, en dat ging
+        // twee keer op een andere manier mis. Met een boog per zijde zag je de
+        // platte lijnkappen als een kras dwars op de rand. Met tweeënzeventig
+        // segmentjes met doorzichtigheid stapelden de overlappingen op, en dan
+        // krijg je een streepjespatroon over de hele ring.
+        //
+        // Twee verschillende fouten, maar dezelfde oorzaak: ik tekende een
+        // OPPERVLAK als een verzameling lijnen. Een helling die van licht naar
+        // donker loopt is geen reeks streken maar één vlak met een verloop, en
+        // dan is er niets om naden of stapeling in te krijgen. Een lineair
+        // verloop langs de lichtas doet precies wat de cosinus per segment
+        // deed, in één keer en zonder randen.
+        const LICHTHOEK = -Math.PI * 0.75;   // linksboven
+        const lx = Math.cos(LICHTHOEK), ly = Math.sin(LICHTHOEK);
+
+        const langsLicht = (straal, van, tot) => {
+            const g = ctx.createLinearGradient(
+                l.x + lx * straal, l.y + ly * straal,
+                l.x - lx * straal, l.y - ly * straal);
+            g.addColorStop(0, van);
+            g.addColorStop(1, tot);
+            return g;
+        };
+
+        // De ring tussen het gras en het zand: de helling zelf.
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(l.x, l.y, l.r, 0, TAU);
+        ctx.arc(l.x, l.y, TOP, 0, TAU, true);
+        ctx.clip();
+        ctx.fillStyle = langsLicht(l.r, "#5f9a6f", "#12281b");
+        ctx.fillRect(l.x - l.r - 2, l.y - l.r - 2, l.r * 2 + 4, l.r * 2 + 4);
+        ctx.restore();
+
+        // 6. Het gras erbovenop, tot waar het talud begint.
+        ctx.fillStyle = KLEUR.land;
+        ctx.beginPath(); ctx.arc(l.x, l.y, TOP, 0, TAU); ctx.fill();
+
+        // En de kant van het gras: licht waar het licht op valt, met een
+        // schaduw aan de andere kant zodat de rand over de helling hangt in
+        // plaats van er plat tegenaan te liggen.
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(l.x, l.y, TOP, 0, TAU);
+        ctx.arc(l.x, l.y, TOP - 9, 0, TAU, true);
+        ctx.clip();
+        ctx.fillStyle = langsLicht(TOP, "rgba(122, 186, 140, .75)", "rgba(8, 22, 14, .6)");
+        ctx.fillRect(l.x - TOP - 2, l.y - TOP - 2, TOP * 2 + 4, TOP * 2 + 4);
+        ctx.restore();
+
+        // 9. Struiken, met hun eigen schaduw in dezelfde richting als de rest.
+        //    Vaste plaatsen uit de index: een eiland dat per ronde anders
+        //    begroeid is leest als ruis en niet als een plek.
+        for (let i = 0; i < 11; i++) {
+            const a = (i / 11) * TAU + 0.4;
+            const d = TOP * (0.22 + ((i * 29) % 15) / 24);
+            const bx = l.x + Math.cos(a) * d, by = l.y + Math.sin(a) * d;
+            const rr = 10 + ((i * 17) % 9);
+            ctx.fillStyle = "rgba(10, 28, 18, .45)";
+            ctx.beginPath();
+            ctx.ellipse(bx + LICHT.SCHADUW_X * 0.45, by + LICHT.SCHADUW_Y * 0.4,
+                        rr * 1.05, rr * 0.6, 0, 0, TAU);
+            ctx.fill();
+            const bol = ctx.createRadialGradient(
+                bx - rr * 0.35, by - rr * 0.4, rr * 0.1, bx, by, rr);
+            bol.addColorStop(0, "#4a8a5c");
+            bol.addColorStop(1, "#1e4530");
+            ctx.fillStyle = bol;
+            ctx.beginPath(); ctx.arc(bx, by, rr, 0, TAU); ctx.fill();
+        }
+
+        ctx.fillStyle = "rgba(233, 243, 252, .9)";
         ctx.font = "600 15px ui-sans-serif, system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(l.naam, l.x, l.y - l.r - 22);
+        ctx.fillText(l.naam, l.x, l.y - l.r - 20);
         ctx.textAlign = "left";
     }
 
     function tekenSteiger(s) {
+        // EEN DOCK, GEEN RECHTHOEK. Er stond een bruin vlak met een lijn
+        // eromheen, en dat leest als een deurmat op het water. Wat een steiger
+        // een steiger maakt is dat hij ERGENS OP STAAT: palen in het water,
+        // met schaduw eronder, en een dek dat dikte heeft.
+        const halfB = s.w / 2, halfH = s.h / 2;
+        const DIKTE = 7;
+
+        // 1. De schaduw van het hele dek op het water.
+        ctx.fillStyle = "rgba(3, 12, 24, .38)";
+        ctx.beginPath();
+        ctx.roundRect(s.x - halfB + LICHT.SCHADUW_X, s.y - halfH + LICHT.SCHADUW_Y,
+                      s.w, s.h + DIKTE, 4);
+        ctx.fill();
+
+        // 2. De palen. Ze staan onder het dek uit, dus ze worden EERST
+        //    getekend; wat je ervan ziet is het stukje dat aan de onderkant
+        //    uitsteekt. Elk met een eigen schaduwvlek op het water eronder.
+        // Palen staan in het WATER, niet op het gras. Ze waren ook veel te
+        // lang: van bovenaf zie je van een paal alleen het stukje dat onder de
+        // plank uitsteekt, en in de eerste versie hingen er tafelpoten onder
+        // het dek die tot over het eiland doorliepen.
+        const PAAL = 13;
+        for (let px = s.x - halfB + 16; px <= s.x + halfB - 12; px += 44) {
+            if (raaktLand(px, s.y + halfH + PAAL, 0)) continue;  // daar is land
+            const py = s.y + halfH - 3;
+            ctx.fillStyle = "rgba(3, 12, 24, .34)";
+            ctx.beginPath();
+            ctx.ellipse(px + LICHT.SCHADUW_X * 0.5, py + PAAL + 3, 8, 3.5, 0, 0, TAU);
+            ctx.fill();
+            ctx.fillStyle = KLEUR.steigerDonker;
+            ctx.fillRect(px - 4.5, py, 9, PAAL);
+            ctx.fillStyle = "#54371f";
+            ctx.fillRect(px - 4.5, py, 3, PAAL);
+        }
+
+        // 3. De zijkant van het dek: hetzelfde vlak, op grondhoogte. Het dek
+        //    komt er straks bovenop maar verschoven, en wat hier onderuit
+        //    steekt is de dikte van de planken.
+        ctx.fillStyle = KLEUR.steigerDonker;
+        ctx.beginPath();
+        ctx.roundRect(s.x - halfB, s.y - halfH, s.w, s.h + DIKTE, 3);
+        ctx.fill();
+
+        // 4. Het dek zelf, met losse planken. Planken lopen in de LENGTE van
+        //    de steiger, want zo timmert niemand het en zo ziet het er ook uit
+        //    als je het andersom doet.
+        const dy = s.y - halfH - 2;
         ctx.fillStyle = KLEUR.steiger;
-        ctx.fillRect(s.x - s.w / 2, s.y - s.h / 2, s.w, s.h);
-        ctx.strokeStyle = KLEUR.steigerRand;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(s.x - s.w / 2, s.y - s.h / 2, s.w, s.h);
+        ctx.beginPath();
+        ctx.roundRect(s.x - halfB, dy, s.w, s.h, 3);
+        ctx.fill();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(s.x - halfB, dy, s.w, s.h, 3);
+        ctx.clip();
+        const plankH = s.h / 4;
+        for (let i = 0; i < 4; i++) {
+            const py = dy + i * plankH;
+            // Om en om iets lichter, zodat je losse planken ziet en niet een
+            // vlak met streepjes.
+            ctx.fillStyle = i % 2 ? "rgba(138, 99, 64, .38)" : "rgba(63, 42, 26, .22)";
+            ctx.fillRect(s.x - halfB, py, s.w, plankH - 1.5);
+            ctx.fillStyle = "rgba(30, 18, 10, .55)";
+            ctx.fillRect(s.x - halfB, py + plankH - 1.5, s.w, 1.5);
+        }
+        // De belichte bovenrand, linksboven zoals overal.
+        ctx.fillStyle = "rgba(214, 180, 138, .5)";
+        ctx.fillRect(s.x - halfB, dy, s.w, 2);
+        ctx.restore();
+
+        ctx.strokeStyle = "rgba(30, 18, 10, .6)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(s.x - halfB, dy, s.w, s.h, 3);
+        ctx.stroke();
 
         // Aanlegmarkering: nooit alleen kleur, er staat ook een woord.
         const dichtbij = afstandTot(s.x, s.y) < 140;
@@ -868,7 +1371,7 @@ export function createBoat(canvas, options = {}) {
             ctx.fillStyle = KLEUR.accent;
             ctx.font = "700 13px ui-sans-serif, system-ui, sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("MOOR", s.x, s.y - 30);
+            ctx.fillText("MOOR", s.x, s.y - halfH - 18);
             ctx.textAlign = "left";
         }
     }
@@ -1001,11 +1504,62 @@ export function createBoat(canvas, options = {}) {
     }
 
     function tekenBucky() {
-        ctx.fillStyle = KLEUR.bucky;
-        ctx.beginPath(); ctx.arc(speler.x, speler.y, 9, 0, TAU); ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.beginPath(); ctx.arc(speler.x - 3, speler.y - 2, 2, 0, TAU); ctx.fill();
-        ctx.beginPath(); ctx.arc(speler.x + 3, speler.y - 2, 2, 0, TAU); ctx.fill();
+        // EEN BOL, GEEN SCHIJF. Bucky was een cirkel met twee stipjes: plat,
+        // en daardoor lag hij niet OP het eiland maar ertegenaan geplakt. Wat
+        // volume geeft is niet meer detail maar drie dingen die samenwerken:
+        // een schaduw eronder die zegt waar de grond is, een verloop met het
+        // licht linksboven, en een randlicht aan diezelfde kant.
+        const r = 11;
+        const x = speler.x, y = speler.y;
+
+        // 1. De schaduw op de grond, plat en breder dan hoog.
+        ctx.fillStyle = "rgba(6, 20, 12, .42)";
+        ctx.beginPath();
+        ctx.ellipse(x + LICHT.SCHADUW_X * 0.35, y + r * 0.85,
+                    r * 1.05, r * 0.4, 0, 0, TAU);
+        ctx.fill();
+
+        // 2. De bol. Het lichtpunt zit linksboven, dus het verloop begint daar
+        //    en niet in het midden - dat is het verschil tussen een bal en een
+        //    cirkel met een gloed.
+        const bol = ctx.createRadialGradient(
+            x - r * 0.36, y - r * 0.44, r * 0.12,
+            x, y, r * 1.06);
+        bol.addColorStop(0, "#ff8ea1");
+        bol.addColorStop(0.45, KLEUR.bucky);
+        bol.addColorStop(1, "#8e1f33");
+        ctx.fillStyle = bol;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+
+        // 3. Randlicht linksboven: een dunne sikkel net binnen de rand.
+        ctx.save();
+        ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.clip();
+        ctx.strokeStyle = "rgba(255, 214, 224, .55)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x + 1, y + 1, r - 1, Math.PI * 0.8, Math.PI * 1.75);
+        ctx.stroke();
+        ctx.restore();
+
+        // 4. Een glansplekje, klein en hoog. Zonder dit blijft het een bal van
+        //    klei; met dit is het een bal met een oppervlak.
+        ctx.fillStyle = "rgba(255, 250, 252, .75)";
+        ctx.beginPath();
+        ctx.ellipse(x - r * 0.34, y - r * 0.46, r * 0.22, r * 0.16, -0.6, 0, TAU);
+        ctx.fill();
+
+        // 5. De ogen kijken de kant op die hij loopt, zodat je ziet dat hij
+        //    ergens heen gaat in plaats van dat hij staat.
+        const kijk = speler.kijk || 0;
+        const ox = Math.cos(kijk) * 2.2, oy = Math.sin(kijk) * 2.2;
+        for (const zijde of [-1, 1]) {
+            const ex = x + zijde * 3.4 + ox * 0.5;
+            const ey = y - 1.6 + oy * 0.5;
+            ctx.fillStyle = "#fff";
+            ctx.beginPath(); ctx.arc(ex, ey, 2.4, 0, TAU); ctx.fill();
+            ctx.fillStyle = "#1b1f2a";
+            ctx.beginPath(); ctx.arc(ex + ox * 0.6, ey + oy * 0.6, 1.2, 0, TAU); ctx.fill();
+        }
     }
 
     function tekenHud(b, h) {
@@ -1020,10 +1574,16 @@ export function createBoat(canvas, options = {}) {
         ctx.fillText(staat.schoon ? "CLEAN" : "SCRAPED", 240, 20);
 
         if (staat.modus === "aangemeerd") {
+            // BOVENIN EN NIET ONDERIN. Deze regel stond onderaan het beeld, en
+            // daar ligt sinds de joystick de bediening. De tekst liep dwars
+            // door de stick heen en was op een telefoon half door een duim
+            // bedekt. Boven is de enige rand die vrij is.
+            const tekst = "Ashore. Walk with the stick; the anchor takes you back aboard.";
             ctx.fillStyle = "rgba(4, 8, 18, .72)";
-            ctx.fillRect(0, h - 30, b, 30);
+            ctx.fillRect(0, 30, b, 26);
             ctx.fillStyle = KLEUR.hud;
-            ctx.fillText("Ashore. Press the anchor to get back aboard.", 10, h - 11);
+            ctx.font = "600 12px ui-monospace, monospace";
+            ctx.fillText(tekst, 10, 47);
         }
     }
 
