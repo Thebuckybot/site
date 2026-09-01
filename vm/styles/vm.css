@@ -518,13 +518,28 @@ body.vm-focus-active .arcade-vm-bay {
     bottom: 64px;
     z-index: 18;
     display: grid;
+    /* HIER STOND `grid-auto-flow: column` ZONDER EXPLICIETE RIJEN, en dat is
+       precies één rij: elk icoon kreeg een eigen kolom. Tien snelkoppelingen
+       werden zo één rechte lijn van 850px in een vak van 250px, waarvan zeven
+       achter de rand van het scherm verdwenen - onbereikbaar, want .bucky-vm
+       snijdt af. Rijen die vanzelf doorlopen wikkelen wél mee met de breedte. */
     grid-template-columns: repeat(auto-fill, 76px);
     grid-auto-rows: 78px;
-    grid-auto-flow: column;
     align-content: start;
     justify-content: start;
     gap: 12px 10px;
-    max-width: min(250px, 34%);
+    /* Breed genoeg voor vijf kolommen op elke VM die niet door het mobiele slot
+       wordt tegengehouden, zodat het gezaaide bureaublad in twee rijen past en
+       er geen schuifbalk nodig is. Het is een max-width en geen breedte: het
+       raster neemt alleen de kolommen die het vult, dus dit verschuift niets. */
+    max-width: min(500px, 60%);
+    /* Het vangnet: wie zelf tientallen bestanden op het bureaublad zet, krijgt
+       een schuifbalk in plaats van iconen die buiten beeld vallen. */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* Ruimte voor de hover-lift en de gloed, die anders tegen de rand van de
+       scrollcontainer worden afgesneden. */
+    padding: 6px;
     pointer-events: auto;
 }
 
@@ -7492,3 +7507,71 @@ body.vm-focus-active .arcade-vm-bay {
     color: rgba(214, 230, 245, .5);
 }
 .vm-apps-foot { flex: 0 0 auto; }
+
+/* ===================================================================
+ * Rijen die niet mogen weglopen
+ *
+ * Drie plekken in de VM leggen items op één regel naast elkaar: de
+ * bureaubladiconen, de taakbalkstrip en de titelbalk van een venster.
+ * Overloopt zo'n rij, dan snijdt de VM af (.bucky-vm en .vm-window
+ * hebben allebei overflow:hidden) en is wat erbuiten valt niet alleen
+ * onzichtbaar maar ook onklikbaar. De iconen zijn hierboven opgelost;
+ * hieronder de twee andere rijen, plus de zichtbare focusring die bij
+ * een schuifstrip hoort - anders is toetsenbordnavigatie een gok.
+ * =================================================================== */
+
+/* De taakbalkstrip blijft een schuifstrip (dat hoort bij een dock), maar
+   de knoppen erin houden hun eigen tabstop. De schuifmarge zorgt dat een
+   knop die net buiten beeld staat compleet in beeld schuift bij focus,
+   en niet half tegen de rand blijft plakken. */
+.vm-task-app {
+    scroll-margin-inline: 12px;
+}
+
+/* ACTIEF IS NIET ALLEEN EEN KLEUR. De streep onder elke taakbalkknop was
+   voor actief en inactief even dik en verschilde alleen van tint; nu is
+   het actieve venster ook aan de dikte en de breedte van de streep te
+   zien, zodat kleurenblindheid of een monochroom scherm niets kost. */
+.vm-task-app.is-active::after {
+    left: 6px;
+    right: 6px;
+    height: 3px;
+}
+
+/* Zichtbare focus op alles wat je in de VM kunt aanwijzen. De hover- en
+   focusregels hierboven zetten `outline: none` en lieten alleen een
+   achtergrondtint over - te weinig om een tabstop aan te herkennen. */
+.vm-desktop-icon:focus-visible,
+.vm-task-app:focus-visible,
+.vm-apps-tile:focus-visible {
+    outline: 2px solid var(--vm-cyan);
+    outline-offset: 2px;
+}
+
+/* Een lange titel (een bestandsnaam uit BuckyCode, een paginatitel uit de
+   browser) duwde de vensterknoppen voorbij de rand van het venster, waar
+   overflow:hidden ze afsneed: het kruisje was dan onbereikbaar. De titel
+   krimpt nu en eindigt op een ellips; de knoppen krimpen nooit.
+
+   `min-width: 0` op de balk zelf is het stuk dat het werk doet: .vm-window is
+   een grid, en een gridcel met zichtbare overflow mag niet kleiner worden dan
+   de min-content van zijn inhoud. Eén lange bestandsnaam rekte daarmee de hele
+   kolom op, dus ook het venster, tot voorbij de eigen breedte. */
+.vm-window-titlebar {
+    min-width: 0;
+}
+
+.vm-window-title {
+    min-width: 0;
+}
+
+.vm-window-title strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vm-window-controls {
+    flex: 0 0 auto;
+}
