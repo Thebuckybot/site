@@ -37,6 +37,7 @@
 import {
     WERELD, START, EILANDEN, STEIGERS, eilandOp, straalOp, opLand, landOnder,
     kustSoort, steigerMaten, opSteiger, dichtstbijzijndeLand, huisMaten,
+    aanloopRem, AANLOOP_STRAAL,
 } from "./boat/wereld.js";
 import {
     INTERIEURS, HUIZEN, HUIS_MAAT, magLopenBinnen, bijDeur, deurStart,
@@ -177,6 +178,8 @@ export function createBoat(canvas, options = {}) {
         helling: 0,
         // Het kielzog: een spoor van punten achter de boot dat vervaagt.
         kielzog: [],
+        // Hoe sterk de aanloopzone op dit moment knijpt, 0 tot 1.
+        rem: 0,
     };
     const KIELZOG_MAX = 26;
     // Vaste vergroting van de wereld. Zie de toelichting in `teken`.
@@ -671,8 +674,27 @@ export function createBoat(canvas, options = {}) {
                 // ver genoeg uitslaat. Met één duim varen moet kunnen; wie
                 // liever apart gas geeft houdt de knop rechts.
                 const gas = bediening.gas || bediening.sterkte > 0.6;
-                const doel = gas ? boot.maxSnelheid : 0;
-                const traagheid = gas ? 3.0 : 0.6;
+
+                // DE AANLOOPZONE. Binnen driehonderd eenheden van een ligplaats
+                // remt de boot vanzelf af, kwadratisch sterker naarmate je
+                // dichterbij komt. Aanmeren vroeg hiervoor dat je zelf precies
+                // genoeg gas terugnam - te weinig en je schoot voorbij, te veel
+                // en je kwam er niet - en dat is doseren met een duim op een
+                // joystick. Geen leuke vaardigheid, wel een lastige.
+                //
+                // Hij is onzichtbaar maar voelbaar: je MERKT dat de boot
+                // inhoudt. Er wordt geen cirkel getekend, want een harde rand
+                // maakt van een soepele hulp een grens waar je op gaat mikken.
+                boot.rem = 0;
+                for (const m of steigerlijst) {
+                    const r = aanloopRem(m, boot.x, boot.y);
+                    if (r > boot.rem) boot.rem = r;
+                }
+
+                const doel = gas ? boot.maxSnelheid * (1 - boot.rem * 0.72) : 0;
+                // In de zone rolt hij ook sneller uit, zodat loslaten daar echt
+                // iets doet in plaats van driehonderd eenheden door te glijden.
+                const traagheid = gas ? 3.0 : 0.6 + boot.rem * 2.6;
                 boot.snelheid += (doel - boot.snelheid) * Math.min(1, dt * traagheid);
 
                 const nx = boot.x + Math.cos(boot.hoek) * boot.snelheid * dt;
@@ -2150,13 +2172,30 @@ export function createBoat(canvas, options = {}) {
         ctx.restore();
 
         // Aanlegmarkering: nooit alleen kleur, er staat ook een woord.
-        if (staat.modus === "varen"
-            && afstandTot(m.ligplaats.x, m.ligplaats.y) < 150) {
-            ctx.fillStyle = KLEUR.accent;
-            ctx.font = "700 13px ui-sans-serif, system-ui, sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("MOOR", m.ligplaats.x, m.ligplaats.y - 26);
-            ctx.textAlign = "left";
+        //
+        // Er staat nu al iets zodra je de AANLOOPZONE binnenvaart, en niet pas
+        // als aanmeren mag. Anders is de eerste helft van de zone iets dat je
+        // wel voelt maar nergens aan kunt zien, en dat is verwarrend in plaats
+        // van behulpzaam. Dichtbij wordt het MOOR; daarbuiten alleen een pijl
+        // die zegt: hier is het.
+        if (staat.modus === "varen") {
+            const d = afstandTot(m.ligplaats.x, m.ligplaats.y);
+            if (d < 150) {
+                ctx.fillStyle = KLEUR.accent;
+                ctx.font = "700 13px ui-sans-serif, system-ui, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("MOOR", m.ligplaats.x, m.ligplaats.y - 26);
+                ctx.textAlign = "left";
+            } else if (d < AANLOOP_STRAAL) {
+                const flauw = 1 - (d - 150) / (AANLOOP_STRAAL - 150);
+                ctx.fillStyle = `rgba(82, 255, 243, ${0.2 + flauw * 0.5})`;
+                ctx.beginPath();
+                ctx.moveTo(m.ligplaats.x, m.ligplaats.y - 20);
+                ctx.lineTo(m.ligplaats.x - 6, m.ligplaats.y - 30);
+                ctx.lineTo(m.ligplaats.x + 6, m.ligplaats.y - 30);
+                ctx.closePath();
+                ctx.fill();
+            }
         }
     }
 
@@ -2246,6 +2285,36 @@ export function createBoat(canvas, options = {}) {
         ctx.moveTo(20, 0); ctx.lineTo(11, -4.5); ctx.lineTo(11, 4.5);
         ctx.closePath(); ctx.fill();
         ctx.restore();
+
+        // HET TEKEN DAT JE IN DE AANLOOPZONE BENT.
+        //
+        // De zone hoort onzichtbaar te zijn maar wel voelbaar. Een cirkel op
+        // het water tekenen zou hem juist zichtbaar maken, en dan ga je op die
+        // rand mikken in plaats van gewoon te varen.
+        //
+        // Dit is wat een boot ECHT doet als hij vaart mindert: het water aan de
+        // boeg gaat liggen en er komt een rimpeling langszij. Twee dunne
+        // strepen naast de romp, die met de rem meegroeien. Je ziet niet WAAR
+        // de zone ophoudt, je ziet dat de boot inhoudt - en dat is precies het
+        // verschil dat gevraagd werd.
+        if (boot.rem > 0.06 && !minderBeweging) {
+            const kracht = Math.min(1, boot.rem * 1.3);
+            ctx.strokeStyle = `rgba(198, 236, 255, ${kracht * 0.34})`;
+            ctx.lineWidth = 1.4;
+            ctx.lineCap = "round";
+            for (const zijde of [-1, 1]) {
+                for (let i = 0; i < 3; i++) {
+                    const d = 6 - i * 9;
+                    const uit = (13 + i * 3) * zijde;
+                    const golf = Math.sin(t * 5 + i * 1.6 + zijde) * kracht * 1.6;
+                    ctx.beginPath();
+                    ctx.moveTo(d - 5, uit + golf);
+                    ctx.lineTo(d + 5, uit + golf);
+                    ctx.stroke();
+                }
+            }
+            ctx.lineCap = "butt";
+        }
 
         // Boeggolf: twee schuimstrepen die met de vaart meegroeien.
         if (vaart > 0.12) {
