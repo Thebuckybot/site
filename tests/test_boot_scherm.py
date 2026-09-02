@@ -558,6 +558,54 @@ def hoofdstuk_duiken(browser, mislukt):
         ctx.close()
 
 
+def hoofdstuk_duikpak(browser, mislukt):
+    """Het duikpak verlengt de lucht, en dat wordt aan het GEDRAG gemeten.
+
+    Niet aan de meter: die staat op het canvas en is dus alleen als pixels te
+    lezen. Wat wel te meten is, is wat het pak DOET - zonder pak ben je na
+    zesentwintig seconden onder water zonder lucht, met pak niet. Dertig
+    seconden onderdompelen is dus het hele bewijs.
+
+    De inventory wordt vooraf in localStorage gezet in plaats van het pak eerst
+    te gaan zoeken. Dat het pak in de goede kist zit, controleert de wereldtest
+    exact; hier gaat het om het gevolg.
+    """
+    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
+    page = ctx.new_page()
+    try:
+        page.add_init_script("""
+          try {
+            localStorage.setItem("openwater.inventory.v1",
+                                 JSON.stringify({duikpak: 1}));
+          } catch (e) { /* privémodus: dan meet deze test niets en faalt hij */ }
+        """)
+        if not start_spel(page):
+            return False
+        anker(page, 1500)
+        if "Diving at" not in status(page):
+            return False
+
+        page.locator("#mg-boat").click()
+        page.keyboard.down("ArrowDown")
+        opgeraakt_na = None
+        for sec in range(1, 33):
+            page.wait_for_timeout(1000)
+            if "Out of air" in status(page):
+                opgeraakt_na = sec
+                break
+        page.keyboard.up("ArrowDown")
+
+        if opgeraakt_na is not None:
+            print(f"  FOUT met duikpak was de lucht al na {opgeraakt_na}s op; "
+                  "zonder pak is dat 26s, dus het pak doet niets")
+            mislukt.append("duikpak werkt niet")
+        else:
+            print("  OK   met duikpak houdt hij het langer dan 32s onder water uit")
+        return True
+    finally:
+        ctx.close()
+
+
 def hoofdstuk_reduced_motion(browser, mislukt):
     ctx = browser.new_context(viewport={"width": 1440, "height": 1000},
                               reduced_motion="reduce")
@@ -616,6 +664,7 @@ def main():
         met_kansen("Aanmeren en aan wal", hoofdstuk_aan_wal, browser, mislukt)
         met_kansen("Binnen, kisten en de tas", hoofdstuk_binnen, browser, mislukt)
         met_kansen("Duiken", hoofdstuk_duiken, browser, mislukt)
+        met_kansen("Het duikpak", hoofdstuk_duikpak, browser, mislukt)
 
         print("\nReduced motion")
         hoofdstuk_reduced_motion(browser, mislukt)

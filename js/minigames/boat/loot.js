@@ -67,6 +67,18 @@ export const SPULLEN = {
     sleutel: { naam: "Rusted Key", kleur: "#a56b42", zeldzaam: 2 },
     parel: { naam: "Black Pearl", kleur: "#5b5f7a", zeldzaam: 2 },
     fluit: { naam: "Bone Whistle", kleur: "#e2ddcd", zeldzaam: 2 },
+
+    // HET DUIKPAK IS HET ENIGE VOORWERP DAT IETS DOET.
+    //
+    // De rest is om te vinden en te bekijken; dit verdubbelt je lucht, en
+    // daarmee gaan plekken open die eerst niet te halen waren. Dat is het
+    // verschil tussen spullen verzamelen en ergens VOOR terugkomen.
+    //
+    // Het blijft binnen dit spel - het verlengt een timer in Open Water en
+    // verder niets. Zie de kop van dit bestand: er zit niets in deze kisten dat
+    // buiten het spel waarde heeft, en een duikpak dat alleen hier bestaat
+    // verandert daar niets aan.
+    duikpak: { naam: "Diving Suit", kleur: "#5fd4a8", zeldzaam: 3, werkt: true },
 };
 
 /**
@@ -80,7 +92,10 @@ export const SPULLEN = {
 function inhoudVan(id) {
     let h = 0;
     for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-    const sleutels = Object.keys(SPULLEN);
+    // Het duikpak doet NIET mee in de trekking: dat ligt op één afgesproken
+    // plek (zie `PAK_KIST` in duiken.js). Een voorwerp dat iets doet en dat
+    // overal kan opduiken maakt de rest van de wereld afhankelijk van geluk.
+    const sleutels = Object.keys(SPULLEN).filter((k) => !SPULLEN[k].werkt);
     const aantal = 1 + (h % 2);
     const uit = [];
     for (let i = 0; i < aantal; i++) {
@@ -97,8 +112,14 @@ function inhoudVan(id) {
  * bestand: dit is de vorm die een serveraanroep straks nodig heeft, en de
  * aanroepende kant hoort er nu al op te wachten.
  */
-export function vraagInhoud(kistId) {
-    return Promise.resolve({ id: kistId, spullen: inhoudVan(kistId) });
+export function vraagInhoud(kistId, extras = []) {
+    // `extras` is wat er op deze plek VAST in zit, boven op de trekking - nu
+    // alleen het duikpak. Als de server dit later overneemt is dit precies het
+    // soort ding dat hij zelf bepaalt; de vorm van de aanroep verandert niet.
+    return Promise.resolve({
+        id: kistId,
+        spullen: [...extras, ...inhoudVan(kistId)],
+    });
 }
 
 // --- de inventory --------------------------------------------------------

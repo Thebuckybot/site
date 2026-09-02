@@ -47,8 +47,8 @@ import {
     laadGeopend, bewaarGeopend,
 } from "./boat/loot.js";
 import {
-    DUIKPLEKKEN, DUIKPLAATSEN, ZUURSTOF_MAX, magZwemmen,
-    aanDeOppervlakte,
+    DUIKPLEKKEN, DUIKPLAATSEN, ZUURSTOF_MAX, ZUURSTOF_MET_PAK, PAK_KIST,
+    zuurstofVoorraad, magZwemmen, aanDeOppervlakte, instappunt,
 } from "./boat/duiken.js";
 
 const TAU = Math.PI * 2;
@@ -204,6 +204,7 @@ export function createBoat(canvas, options = {}) {
         x: 0, y: 0,
         vx: 0, vy: 0,
         zuurstof: ZUURSTOF_MAX,
+        voorraad: ZUURSTOF_MAX,   // hangt af van het duikpak
         kijk: 1,           // 1 = naar rechts, -1 = naar links
     };
 
@@ -893,7 +894,7 @@ export function createBoat(canvas, options = {}) {
 
                 // De lucht.
                 if (aanDeOppervlakte(duik.y)) {
-                    duik.zuurstof = Math.min(ZUURSTOF_MAX, duik.zuurstof + dt * 9);
+                    duik.zuurstof = Math.min(duik.voorraad, duik.zuurstof + dt * 9);
                 } else {
                     duik.zuurstof -= dt;
                     if (duik.zuurstof <= 0) {
@@ -978,10 +979,15 @@ export function createBoat(canvas, options = {}) {
                 return overgang(() => {
                     duik.plek = plek;
                     duik.plaats = DUIKPLAATSEN[plek.plek];
-                    duik.x = duik.plaats.breedte / 2;
-                    duik.y = 12;
+                    const instap = instappunt(duik.plaats);
+                    duik.x = instap.x;
+                    duik.y = instap.y;
                     duik.vx = 0; duik.vy = 0;
-                    duik.zuurstof = ZUURSTOF_MAX;
+                    // De voorraad hangt af van wat je bij je hebt, en wordt bij
+                    // ELKE duik opnieuw bepaald - vind je het pak halverwege een
+                    // sessie, dan geldt het meteen bij de volgende duik.
+                    duik.voorraad = zuurstofVoorraad(!!inventory.duikpak);
+                    duik.zuurstof = duik.voorraad;
                     zetModus("duiken");
                 });
             }
@@ -1158,7 +1164,23 @@ export function createBoat(canvas, options = {}) {
         if (geopend.has(kist.id)) {
             return zeg("You have already emptied this one.");
         }
-        const uit = await vraagInhoud(kist.id);
+        // Het duikpak ligt op één afgesproken plek en niet in de trekking:
+        // een voorwerp dat iets DOET hoort niet van geluk af te hangen. En het
+        // ligt in het ondiepe rif, want anders is het een deur waarvan de
+        // sleutel achter diezelfde deur ligt.
+        //
+        // LET OP DE VORM VAN DE ID. Een kist onder water heet in het spel
+        // `dive/<duikplek>/<kist>`, want die moet uniek zijn over de hele
+        // wereld. `PAK_KIST` beschrijft een plek in een PLAATS - `rif/rif-2` -
+        // want dezelfde onderwaterplaats kan door meer dan een duikplek worden
+        // gebruikt. Die twee vergelijken gaf nooit een treffer, en dus zat het
+        // duikpak nergens in: het spel deed niets fout, het vond alleen nooit
+        // wat het zocht.
+        const plaatsId = kist.meubel && kist.meubel.id
+            ? `${duik.plek.plek}/${kist.meubel.id}` : "";
+        const extras = (plaatsId === PAK_KIST && !inventory.duikpak)
+            ? ["duikpak"] : [];
+        const uit = await vraagInhoud(kist.id, extras);
         // PAS AFVINKEN ALS DE INHOUD ER IS.
         //
         // Eerst stond `geopend.add` hierboven, vóór het wachten. Toen de
@@ -1186,7 +1208,11 @@ export function createBoat(canvas, options = {}) {
     function dichtsteDuikplek() {
         if (!speler.aanBoord) return null;
         for (const p of DUIKPLEKKEN) {
-            if (Math.hypot(boot.x - p.x, boot.y - p.y) < 90) return p;
+            // Hetzelfde bereik als waarbinnen de plek zichtbaar oplicht, zodat
+            // "ik zie hem" en "ik kan hier duiken" hetzelfde betekenen. Op 90
+            // was het doel bovendien zo klein dat je er met een halve seconde
+            // gas overheen schiet.
+            if (Math.hypot(boot.x - p.x, boot.y - p.y) < DUIK_BEREIK) return p;
         }
         return null;
     }
@@ -1334,6 +1360,11 @@ export function createBoat(canvas, options = {}) {
             x > camera.x - rand && x < camera.x + zb + rand
             && y > camera.y - rand && y < camera.y + zh + rand;
 
+        // De duikplekken liggen ONDER alles: het is het water zelf dat er
+        // anders uitziet, en een boei of een boot hoort er gewoon overheen.
+        for (const plek of DUIKPLEKKEN) {
+            if (inBeeld(plek.x, plek.y, 180)) tekenDuikplek(plek, tijd);
+        }
         for (const d of wereld.dingen) {
             if (inBeeld(d.x, d.y, 120)) tekenDing(d, tijd);
         }
@@ -2100,6 +2131,74 @@ export function createBoat(canvas, options = {}) {
         }
     }
 
+    /** Hoe dichtbij je moet zijn om te kunnen duiken. */
+    const DUIK_BEREIK = 130;
+
+    function tekenDuikplek(plek, tijd) {
+        // DUIKPLEKKEN WAREN ONZICHTBAAR, EN DAT WAS EEN GAT.
+        //
+        // Ze werkten wel - varen, drukken, duiken - maar er stond niets op het
+        // water. Een duikplek is dan een stukje zee dat er precies zo uitziet
+        // als al het andere, en je vindt hem alleen door er toevallig overheen
+        // te varen met de actieknop in je hand. De enige die ooit werd gevonden
+        // was die bij het startpunt, en dat was omdat hij daar met opzet lag.
+        //
+        // Dit is wat een duikplek op het water ECHT verraadt: het water is er
+        // rustiger en helderder, en er komen belletjes op. Geen ring, geen
+        // pictogram - een plek in plaats van een knop.
+        const t = minderBeweging ? 0 : tijd * 0.001;
+        const R = DUIK_BEREIK;
+
+        // Kalmer, lichter water. DRIE VLAKKE RINGEN en geen verloop.
+        //
+        // Een radiaal verloop zag er iets zachter uit, maar het is een
+        // berekening PER PIXEL, en deze vlek is ruim tweehonderd schermpixels
+        // breed. Gemeten kostte dat de helft van de framerate op open water:
+        // van twintig naar zeven fps, en met het verloop bewaard nog altijd
+        // maar negen. Drie cirkels met aflopende dekking kosten vrijwel niets
+        // en zien er op deze maat hetzelfde uit - de randen lopen door de
+        // doorzichtigheid heen toch in elkaar over.
+        // Zeven ringen in plaats van drie: met drie zie je de randen als
+        // stappen staan, met zeven lopen ze in elkaar over. Het kost zeven
+        // cirkelvullingen, en dat is nog altijd bijna niets vergeleken met een
+        // berekening per pixel.
+        ctx.fillStyle = "rgba(120, 210, 255, .028)";
+        for (let i = 7; i >= 1; i--) {
+            ctx.beginPath();
+            ctx.arc(plek.x, plek.y, R * (i / 7), 0, TAU);
+            ctx.fill();
+        }
+
+        // Belletjes die opkomen. Vaste plaatsen uit de index, want een plek die
+        // per ronde anders borrelt is geen herkenningspunt.
+        if (!minderBeweging) {
+            for (let i = 0; i < 7; i++) {
+                const f = ((t * 0.5) + i * 0.143) % 1;
+                const bx = plek.x + Math.sin(i * 2.4) * R * 0.45
+                         + Math.sin(f * 5 + i) * 4;
+                const by = plek.y + R * 0.45 - f * R * 0.9;
+                ctx.fillStyle = `rgba(214, 240, 255, ${(1 - f) * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(bx, by, 2.4 - f * 1.2, 0, TAU);
+                ctx.fill();
+            }
+        }
+
+        // En de naam zodra je erbij bent. NOOIT ALLEEN EEN BEELD: er staat een
+        // woord bij, net als MOOR aan de steiger.
+        if (staat.modus === "varen"
+            && Math.hypot(boot.x - plek.x, boot.y - plek.y) < DUIK_BEREIK) {
+            ctx.fillStyle = KLEUR.accent;
+            ctx.font = "700 12px ui-sans-serif, system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("DIVE", plek.x, plek.y - R * 0.35);
+            ctx.font = "600 10px ui-monospace, monospace";
+            ctx.fillStyle = "rgba(219, 231, 245, .8)";
+            ctx.fillText(plek.naam.toUpperCase(), plek.x, plek.y - R * 0.35 + 13);
+            ctx.textAlign = "left";
+        }
+    }
+
     function tekenHuis(h, tijd) {
         const W = HUIS_MAAT.w, H = HUIS_MAAT.h;
         const x = h.x - W / 2, y = h.y - H / 2;
@@ -2728,7 +2827,7 @@ export function createBoat(canvas, options = {}) {
         // enige getal waar een duik om draait.
         const breedte = 108, hoogte = 14;
         const x = b - breedte - 14, y = 40;
-        const deel = Math.max(0, duik.zuurstof / ZUURSTOF_MAX);
+        const deel = Math.max(0, duik.zuurstof / duik.voorraad);
 
         ctx.fillStyle = "rgba(4, 10, 22, .72)";
         ctx.beginPath(); ctx.roundRect(x - 4, y - 4, breedte + 8, hoogte + 8, 6); ctx.fill();
