@@ -216,6 +216,22 @@ export function createBoat(canvas, options = {}) {
         kijk: 0,          // radialen; waar hij naartoe kijkt
         snelheid: 118,    // eenheden per seconde, lopend
         straal: 11,       // even groot als hoe hij getekend wordt
+
+        // HET LOOPGEVOEL. Bucky bewoog als een bal die je over een tafel duwt:
+        // meteen op snelheid, meteen stil, en verder niets. Drie dingen samen
+        // maken er lopen van, en geen ervan gaat over de VORM - het blijft een
+        // rode bol, dus het moet uit de beweging komen.
+        //
+        //   `vaart`  loopt op en af in plaats van te springen: een aanzet en
+        //            een afremming. Dit is wat "glijden" wegneemt.
+        //   `pas`    telt door zolang hij loopt en stuurt de op-en-neer. Hij
+        //            telt op de AFGELEGDE AFSTAND en niet op de tijd, want
+        //            anders blijft hij wiebelen als je tegen een muur duwt.
+        //   `veer`   is het kort indrukken bij starten en stoppen. Een korte
+        //            impuls die vanzelf uitdempt.
+        vaart: 0,
+        pas: 0,
+        veer: 0,
     };
 
     const staat = {
@@ -691,11 +707,25 @@ export function createBoat(canvas, options = {}) {
                     if (r > boot.rem) boot.rem = r;
                 }
 
-                const doel = gas ? boot.maxSnelheid * (1 - boot.rem * 0.72) : 0;
+                const doel = gas ? boot.maxSnelheid * (1 - boot.rem * 0.94) : 0;
                 // In de zone rolt hij ook sneller uit, zodat loslaten daar echt
                 // iets doet in plaats van driehonderd eenheden door te glijden.
-                const traagheid = gas ? 3.0 : 0.6 + boot.rem * 2.6;
+                const traagheid = gas ? 3.0 : 0.6 + boot.rem * 4.5;
                 boot.snelheid += (doel - boot.snelheid) * Math.min(1, dt * traagheid);
+
+                // EN EEN HARDE BOVENGRENS, want anders draagt de vaart die je
+                // AL had je er dwars doorheen. Alleen het gasdoel verlagen liet
+                // de boot met zijn opgebouwde snelheid de zone in schieten en
+                // er aan de andere kant weer uit; gemeten haalde hij het in
+                // zesentwintig seconden geen enkele keer.
+                //
+                // Vlak bij de ligplaats blijft er ongeveer een tiende van de
+                // topsnelheid over: genoeg om te manoeuvreren, te weinig om
+                // eroverheen te schieten.
+                const plafond = boot.maxSnelheid * (1 - boot.rem * 0.9);
+                if (boot.snelheid > plafond) {
+                    boot.snelheid += (plafond - boot.snelheid) * Math.min(1, dt * 6);
+                }
 
                 const nx = boot.x + Math.cos(boot.hoek) * boot.snelheid * dt;
                 const ny = boot.y + Math.sin(boot.hoek) * boot.snelheid * dt;
@@ -782,13 +812,29 @@ export function createBoat(canvas, options = {}) {
                 // links/rechts. Aan land is er niets te sturen - je loopt de
                 // kant op die je aanwijst - en op het water stuur je naartoe.
                 // Eén stick, twee betekenissen, geen tweede set knoppen.
-                if (bediening.sterkte <= 0) return;
+                // AANZET EN AFREMMING. De snelheid loopt naar zijn doel toe in
+                // plaats van er meteen te staan. Optrekken mag sneller dan
+                // afremmen: dat leest als iemand die op gang komt en daarna
+                // nog even doorloopt, en niet als een schakelaar.
+                const doel = bediening.sterkte;
+                const traag = doel > speler.vaart ? 9 : 7;
+                const vorige = speler.vaart;
+                speler.vaart += (doel - speler.vaart) * Math.min(1, dt * traag);
+                if (speler.vaart < 0.02) speler.vaart = 0;
 
-                const rx = bediening.richting.x;
-                const ry = bediening.richting.y;
-                speler.kijk = Math.atan2(ry, rx);
+                // KORT INDRUKKEN bij het starten en bij het stoppen. Een
+                // verandering in vaart is de impuls; hij dempt vanzelf uit.
+                speler.veer += Math.abs(speler.vaart - vorige) * 2.6;
+                speler.veer *= Math.pow(0.02, dt);
 
-                const stap = speler.snelheid * bediening.sterkte * dt;
+                if (bediening.sterkte > 0) {
+                    speler.kijk = Math.atan2(bediening.richting.y,
+                                             bediening.richting.x);
+                }
+                if (speler.vaart <= 0) return;
+
+                const rx = Math.cos(speler.kijk), ry = Math.sin(speler.kijk);
+                const stap = speler.snelheid * speler.vaart * dt;
                 const nx = speler.x + rx * stap;
                 const ny = speler.y + ry * stap;
 
@@ -798,8 +844,13 @@ export function createBoat(canvas, options = {}) {
                 // best kunt. Door x en y los te proberen glijd je langs de rand
                 // in plaats van erin te blijven hangen, en dat is wat lopen
                 // langs een kustlijn hoort te doen.
+                const voorX = speler.x, voorY = speler.y;
                 if (magLopen(nx, speler.y)) speler.x = nx;
                 if (magLopen(speler.x, ny)) speler.y = ny;
+                // DE PAS TELT OP AFGELEGDE AFSTAND. Op tijd tellen laat hem
+                // doorwiebelen terwijl hij tegen een kust of een muur staat te
+                // duwen, en dan loopt hij ter plaatse.
+                speler.pas += Math.hypot(speler.x - voorX, speler.y - voorY) * 0.14;
             },
         },
 
@@ -868,18 +919,34 @@ export function createBoat(canvas, options = {}) {
                 zeg(`Inside ${binnenIn.kamer.naam}. Walk to the door to leave.`);
             },
             stap(dt) {
-                if (bediening.sterkte <= 0) return;
-                const rx = bediening.richting.x, ry = bediening.richting.y;
-                speler.kijk = Math.atan2(ry, rx);
-                const stap = speler.snelheid * bediening.sterkte * dt;
+                // Zelfde loopgevoel als buiten: aanzet, afremming, pas en veer
+                // staan op `speler` en niet op de modus, juist zodat lopen
+                // overal hetzelfde aanvoelt.
+                const doel = bediening.sterkte;
+                const traag = doel > speler.vaart ? 9 : 7;
+                const vorige = speler.vaart;
+                speler.vaart += (doel - speler.vaart) * Math.min(1, dt * traag);
+                if (speler.vaart < 0.02) speler.vaart = 0;
+                speler.veer += Math.abs(speler.vaart - vorige) * 2.6;
+                speler.veer *= Math.pow(0.02, dt);
+                if (bediening.sterkte > 0) {
+                    speler.kijk = Math.atan2(bediening.richting.y,
+                                             bediening.richting.x);
+                }
+                if (speler.vaart <= 0) return;
+                const rx = Math.cos(speler.kijk), ry = Math.sin(speler.kijk);
+                const stap = speler.snelheid * speler.vaart * dt;
                 const nx = binnenIn.x + rx * stap;
                 const ny = binnenIn.y + ry * stap;
                 // PER AS, net als buiten. Bij een botsing helemaal stoppen laat
                 // je vastplakken tegen een tafel zodra je er schuin tegenaan
                 // loopt; los proberen laat je erlangs glijden.
                 const r = speler.straal;
+                const voorX = binnenIn.x, voorY = binnenIn.y;
                 if (magLopenBinnen(binnenIn.kamer, nx, binnenIn.y, r)) binnenIn.x = nx;
                 if (magLopenBinnen(binnenIn.kamer, binnenIn.x, ny, r)) binnenIn.y = ny;
+                speler.pas += Math.hypot(binnenIn.x - voorX,
+                                         binnenIn.y - voorY) * 0.14;
             },
         },
     };
@@ -1460,8 +1527,7 @@ export function createBoat(canvas, options = {}) {
         if (d.soort === "boei") {
             // Dobbert. Een boei die stilstaat op bewegend water valt op als fout.
             const bob = Math.sin(t * 1.9 + d.x * 0.01) * 3;
-            ctx.fillStyle = "rgba(10, 22, 40, .35)";
-            ctx.beginPath(); ctx.ellipse(d.x, d.y + 8, 13, 5, 0, 0, TAU); ctx.fill();
+            grondSchaduw(d.x, d.y + 8, 24, 22, 0.35);
             // Een KEGEL OP EEN BOL, en niet alleen een driehoek: met een vlakke
             // voet leest een boei als een pylon die op het water staat in
             // plaats van als iets dat erin drijft. De bol steekt half door de
@@ -1550,6 +1616,37 @@ export function createBoat(canvas, options = {}) {
             ctx.stroke();
         }
         ctx.lineCap = "butt";
+    }
+
+    /**
+     * DE SCHADUW VAN IETS DAT OP DE GROND STAAT.
+     *
+     * Eén functie voor alles wat ergens op staat, want er waren er drie en dat
+     * is te zien. De struiken en Bucky kregen een platte ellips op hun voet -
+     * dat werkt - maar het huisje kreeg een RECHTHOEK ZO GROOT ALS ZICHZELF,
+     * inclusief het dak, verschoven naar rechtsonder. Een dak raakt de grond
+     * niet, dus die schaduw lag achter het huis in plaats van eronder, en dan
+     * zweeft het.
+     *
+     * Wat een voorwerp op de grond zet is niet de richting van de schaduw maar
+     * WAAR HIJ VANDAAN KOMT: het contactvlak. Een schaduw hoort dus:
+     *   - plat te zijn (breder dan hoog), want hij ligt op de grond;
+     *   - te beginnen bij de VOET en niet bij het midden van het silhouet;
+     *   - mee te schuiven in de lichtrichting, maar niet verder dan zijn hoogte.
+     *
+     * `voetX`/`voetY` is waar het voorwerp de grond raakt, `breedte` hoe breed
+     * het daar is, en `hoogte` hoe hoog het uitsteekt - dat laatste bepaalt hoe
+     * ver de schaduw wegvalt. Alles gebruikt dit nu: huisjes, struiken, Bucky,
+     * boeien, meubels en de kisten onder water.
+     */
+    function grondSchaduw(voetX, voetY, breedte, hoogte, alfa = 0.4) {
+        const ver = Math.min(1, hoogte / 60);
+        ctx.fillStyle = `rgba(6, 16, 26, ${alfa})`;
+        ctx.beginPath();
+        ctx.ellipse(voetX + LICHT.SCHADUW_X * ver * 0.8,
+                    voetY + LICHT.SCHADUW_Y * ver * 0.28,
+                    breedte * 0.56, breedte * 0.2, 0, 0, TAU);
+        ctx.fill();
     }
 
     // --- eilanden ----------------------------------------------------------
@@ -1802,11 +1899,7 @@ export function createBoat(canvas, options = {}) {
             }
             if (inMeer) continue;
             const rr = 10 + ((i * 17) % 11);
-            ctx.fillStyle = "rgba(10, 28, 18, .45)";
-            ctx.beginPath();
-            ctx.ellipse(bx + LICHT.SCHADUW_X * 0.45, by + LICHT.SCHADUW_Y * 0.4,
-                        rr * 1.05, rr * 0.6, 0, 0, TAU);
-            ctx.fill();
+            grondSchaduw(bx, by + rr * 0.55, rr * 2, rr * 1.6, 0.42);
             const bol = ctx.createRadialGradient(bx - rr * 0.35, by - rr * 0.4,
                                                  rr * 0.1, bx, by, rr);
             bol.addColorStop(0, "#4a8a5c");
@@ -1938,11 +2031,10 @@ export function createBoat(canvas, options = {}) {
             binnenIn.huis ? `${binnenIn.huis.soort}/${m.kist}` : "");
         const hoogte = 7;
 
-        // Schaduw op de vloer.
-        ctx.fillStyle = "rgba(0, 0, 0, .34)";
-        ctx.beginPath();
-        ctx.roundRect(m.x + 5, m.y + 7, m.w, m.h, 3);
-        ctx.fill();
+        // Schaduw op de vloer, op de voet van het meubel. Een meubel is laag,
+        // dus de schaduw valt maar een klein stukje weg - dat is precies wat
+        // `grondSchaduw` met de hoogte doet.
+        grondSchaduw(m.x + m.w / 2, m.y + m.h + 1, m.w * 1.1, hoogte * 2, 0.36);
 
         // De zijkant: hetzelfde vlak op grondhoogte. Wat eronder uitsteekt is
         // de hoogte - dezelfde truc als bij het dek van de steiger.
@@ -2012,11 +2104,10 @@ export function createBoat(canvas, options = {}) {
         const W = HUIS_MAAT.w, H = HUIS_MAAT.h;
         const x = h.x - W / 2, y = h.y - H / 2;
 
-        // Slagschaduw op het gras, in dezelfde richting als al het andere.
-        ctx.fillStyle = "rgba(6, 20, 12, .4)";
-        ctx.beginPath();
-        ctx.roundRect(x + LICHT.SCHADUW_X, y + LICHT.SCHADUW_Y + 6, W, H, 5);
-        ctx.fill();
+        // De schaduw ligt op de VOET van het huis, niet achter het silhouet.
+        // Hier stond een rechthoek zo groot als het hele huisje, dak en al, en
+        // daardoor hing hij erboven te zweven.
+        grondSchaduw(h.x, y + H - 4, W * 1.06, H, 0.42);
 
         const stijl = {
             hut: { muur: "#8a6a45", dak: "#7a3a2c", dakLicht: "#a35442" },
@@ -2361,62 +2452,90 @@ export function createBoat(canvas, options = {}) {
     }
 
     function tekenBuckyOp(px, py) {
-        // EEN BOL, GEEN SCHIJF. Bucky was een cirkel met twee stipjes: plat,
-        // en daardoor lag hij niet OP het eiland maar ertegenaan geplakt. Wat
-        // volume geeft is niet meer detail maar drie dingen die samenwerken:
-        // een schaduw eronder die zegt waar de grond is, een verloop met het
-        // licht linksboven, en een randlicht aan diezelfde kant.
+        // EEN BOL DIE LOOPT, en dat moet helemaal uit de BEWEGING komen - de
+        // vorm blijft een rode bol. Drie dingen samen doen het:
+        //
+        //   1. Op-en-neer op de pas. Een lopend poppetje wipt; een bal die je
+        //      over een tafel duwt niet. Dat verschil is bijna alles.
+        //   2. Indrukken bij het starten en stoppen (`veer`). Een lichaam dat
+        //      op gang komt zakt even door, en een dat stilvalt ook.
+        //   3. De schaduw doet mee: hoe hoger hij wipt, hoe kleiner en lichter
+        //      zijn schaduw. Zonder dat lijkt de wip een tekenfoutje in plaats
+        //      van hoogte.
+        //
+        // Bij reduced motion staat de wip stil: dan is het weer een bol die
+        // verplaatst, en dat is precies wat daar hoort te gebeuren.
         const r = 11;
-        const x = px, y = py;
+        const loopt = speler.vaart > 0.05 && !minderBeweging;
 
-        // 1. De schaduw op de grond, plat en breder dan hoog.
-        ctx.fillStyle = "rgba(6, 20, 12, .42)";
-        ctx.beginPath();
-        ctx.ellipse(x + LICHT.SCHADUW_X * 0.35, y + r * 0.85,
-                    r * 1.05, r * 0.4, 0, 0, TAU);
-        ctx.fill();
+        // De wip. `pas` telt op afgelegde afstand, dus staan-en-duwen wipt niet.
+        const wip = loopt ? Math.abs(Math.sin(speler.pas)) : 0;
+        const hoog = wip * 3.4 * Math.min(1, speler.vaart);
+
+        // Indrukken: bij het starten en stoppen even platter en breder. Volume
+        // blijft ongeveer gelijk, want dat is wat indrukken doet.
+        const veer = minderBeweging ? 0 : Math.min(0.34, speler.veer);
+        const knijp = veer * 0.5 + wip * 0.06 * Math.min(1, speler.vaart);
+        const breed = 1 + knijp * 0.55;
+        const plat = 1 - knijp * 0.55;
+
+        const x = px, y = py - hoog;
+
+        // 1. De schaduw blijft op de GROND liggen, ook als hij wipt - dat is
+        //    wat de wip zichtbaar maakt als hoogte. Hij wordt kleiner en
+        //    lichter naarmate hij hoger is.
+        const schaduwBreed = (1 - wip * 0.22) * breed;
+        grondSchaduw(px, py + r * 0.85, r * 2 * schaduwBreed, r * 1.6,
+                     0.44 - wip * 0.14);
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(breed, plat);
 
         // 2. De bol. Het lichtpunt zit linksboven, dus het verloop begint daar
         //    en niet in het midden - dat is het verschil tussen een bal en een
         //    cirkel met een gloed.
         const bol = ctx.createRadialGradient(
-            x - r * 0.36, y - r * 0.44, r * 0.12,
-            x, y, r * 1.06);
+            -r * 0.36, -r * 0.44, r * 0.12, 0, 0, r * 1.06);
         bol.addColorStop(0, "#ff8ea1");
         bol.addColorStop(0.45, KLEUR.bucky);
         bol.addColorStop(1, "#8e1f33");
         ctx.fillStyle = bol;
-        ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
 
         // 3. Randlicht linksboven: een dunne sikkel net binnen de rand.
         ctx.save();
-        ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.clip();
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.clip();
         ctx.strokeStyle = "rgba(255, 214, 224, .55)";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(x + 1, y + 1, r - 1, Math.PI * 0.8, Math.PI * 1.75);
+        ctx.arc(1, 1, r - 1, Math.PI * 0.8, Math.PI * 1.75);
         ctx.stroke();
         ctx.restore();
 
-        // 4. Een glansplekje, klein en hoog. Zonder dit blijft het een bal van
-        //    klei; met dit is het een bal met een oppervlak.
+        // 4. Een glansplekje, klein en hoog.
         ctx.fillStyle = "rgba(255, 250, 252, .75)";
         ctx.beginPath();
-        ctx.ellipse(x - r * 0.34, y - r * 0.46, r * 0.22, r * 0.16, -0.6, 0, TAU);
+        ctx.ellipse(-r * 0.34, -r * 0.46, r * 0.22, r * 0.16, -0.6, 0, TAU);
         ctx.fill();
 
-        // 5. De ogen kijken de kant op die hij loopt, zodat je ziet dat hij
-        //    ergens heen gaat in plaats van dat hij staat.
+        // 5. De ogen kijken de kant op die hij loopt, en ze WIEGEN mee met de
+        //    pas. Dat laatste is klein maar het is precies wat een bol een
+        //    poppetje maakt: er zit iets in dat meebeweegt.
         const kijk = speler.kijk || 0;
         const ox = Math.cos(kijk) * 2.2, oy = Math.sin(kijk) * 2.2;
+        const wieg = loopt ? Math.sin(speler.pas * 2) * 0.6 : 0;
         for (const zijde of [-1, 1]) {
-            const ex = x + zijde * 3.4 + ox * 0.5;
-            const ey = y - 1.6 + oy * 0.5;
+            const ex = zijde * 3.4 + ox * 0.5 + wieg * 0.4;
+            const ey = -1.6 + oy * 0.5;
             ctx.fillStyle = "#fff";
             ctx.beginPath(); ctx.arc(ex, ey, 2.4, 0, TAU); ctx.fill();
             ctx.fillStyle = "#1b1f2a";
-            ctx.beginPath(); ctx.arc(ex + ox * 0.6, ey + oy * 0.6, 1.2, 0, TAU); ctx.fill();
+            ctx.beginPath();
+            ctx.arc(ex + ox * 0.6, ey + oy * 0.6, 1.2, 0, TAU);
+            ctx.fill();
         }
+        ctx.restore();
     }
 
     function tekenKompas(b, h) {
@@ -2566,8 +2685,7 @@ export function createBoat(canvas, options = {}) {
         for (const k of p.kisten) {
             const id = `dive/${duik.plek.id}/${k.id}`;
             const leeg = geopend.has(id);
-            ctx.fillStyle = "rgba(2, 10, 20, .5)";
-            ctx.beginPath(); ctx.ellipse(k.x + 4, k.y + 16, 20, 6, 0, 0, TAU); ctx.fill();
+            grondSchaduw(k.x, k.y + 15, 40, 28, 0.45);
             ctx.fillStyle = leeg ? "#4a3a28" : "#6b4a2f";
             ctx.beginPath(); ctx.roundRect(k.x - 18, k.y - 13, 36, 28, 4); ctx.fill();
             ctx.fillStyle = leeg ? "#5d4a34" : "#8a6340";
