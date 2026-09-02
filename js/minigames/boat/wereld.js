@@ -301,39 +301,6 @@ export function aanloopRem(maten, x, y) {
 }
 
 /**
- * De straal van de AANLOOPZONE rond een ligplaats.
- *
- * Binnen deze afstand remt de boot vanzelf af, en hoe dichterbij hoe sterker.
- * Aanmeren vroeg daarvoor dat je zelf precies genoeg gas terugnam: te weinig en
- * je schoot voorbij, te veel en je kwam er niet. Dat is doseren op een joystick
- * met een duim, en dat is geen leuke vaardigheid maar een lastige.
- *
- * De zone is ONZICHTBAAR maar wel voelbaar - je merkt dat de boot inhoudt. Er
- * wordt geen cirkel getekend: een harde rand maakt van een soepele hulp een
- * regel waar je overheen kunt, en dan zit je weer te mikken.
- *
- * Hij hangt aan de LIGPLAATS en niet aan de steiger als geheel, want dat is de
- * plek waar je heen wilt. En omdat hij hier staat, geldt hij vanzelf voor elke
- * steiger die erbij komt - net als de ligplaats zelf.
- */
-export const AANLOOP_STRAAL = 300;
-
-/**
- * Hoe hard de boot wordt afgeremd op (x, y), van 0 (niets) tot 1 (maximaal).
- *
- * Kwadratisch, niet lineair: aan de rand van de zone merk je bijna niets, en
- * vlak bij de ligplaats knijpt hij stevig. Lineair voelt als een muur waar je
- * tegenaan loopt; kwadratisch voelt als water dat dikker wordt.
- */
-export function aanloopRem(maten, x, y) {
-    if (!maten) return 0;
-    const d = Math.hypot(x - maten.ligplaats.x, y - maten.ligplaats.y);
-    if (d >= AANLOOP_STRAAL) return 0;
-    const nabij = 1 - d / AANLOOP_STRAAL;
-    return nabij * nabij;
-}
-
-/**
  * Ligt (x, y) op de planken van deze steiger?
  *
  * De rechthoek staat schuin, dus het punt wordt eerst naar de assen van de

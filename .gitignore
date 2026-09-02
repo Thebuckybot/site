@@ -2,3 +2,4 @@
 # Testharnas voor de ORG-app. Lokaal nodig om schermen te schieten, mag NOOIT
 # mee de site op: het mount de app met een nepgebruiker en zonder sessie.
 __harness.html
+__pycache__/
