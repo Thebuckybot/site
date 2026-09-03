@@ -10,6 +10,7 @@
 <script type="module" src="js/arcade.js"></script>
 <script type="module" src="js/minigames/mount.js"></script>
 
+<script type="module" src="js/features.js"></script>
 </head>
 <body>
 
@@ -198,7 +199,8 @@
             een speler die een uur oversteekt en dan een lege balans ziet is
             terecht boos. Zie backend/api/minigames.py voor de onderbouwing.
         -->
-        <section class="arcade-minigames" id="minigames" aria-label="Minigames">
+        <section class="arcade-minigames" id="minigames" aria-label="Minigames"
+                 data-feature="minigames">
             <div class="arcade-section-kicker">CABINET 03 // SIDE GAMES</div>
             <h2>Three machines by the door.</h2>
             <p class="mg-intro">
@@ -210,7 +212,7 @@
 
             <div class="mg-grid">
 
-                <article class="mg-card mg-card-wide">
+                <article data-feature="wordle" class="mg-card mg-card-wide">
                     <header class="mg-head">
                         <h3>Word Break</h3>
                         <span class="mg-tag is-paid">Pays pixel shards</span>
@@ -219,7 +221,7 @@
                     <div id="wordle-root" class="wordle-root"></div>
                 </article>
 
-                <article class="mg-card">
+                <article data-feature="crossing" class="mg-card">
                     <header class="mg-head">
                         <h3>Grid Crossing</h3>
                         <span class="mg-tag">For fun only</span>
@@ -232,7 +234,7 @@
                     <button type="button" class="mg-btn" data-game="crossing">Start</button>
                 </article>
 
-                <article class="mg-card mg-card-wide">
+                <article data-feature="open_water" class="mg-card mg-card-wide">
                     <header class="mg-head">
                         <h3>Open Water</h3>
                         <span class="mg-tag">For fun only</span>

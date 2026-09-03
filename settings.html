@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Server Settings</title>
   <link rel="stylesheet" href="settings.css" />
+<script type="module" src="js/features.js"></script>
 </head>
 <body>
   <!-- DEPRECATED PAGE. The new Security v2 Center (security.html) is the active
@@ -12,7 +13,7 @@
        and is no longer linked from the main dashboard. Remove at GA cutover. -->
   <div id="v2-deprecation" style="background:#141a2b;border-bottom:2px solid #5865f2;color:#e6e9f2;padding:10px 16px;font-family:system-ui,sans-serif;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap">
     <span>You're on the legacy Security page. The new <strong>Security Center</strong> is now available.</span>
-    <a id="v2-open" href="security.html" style="background:#5865f2;color:#fff;padding:6px 12px;border-radius:8px;text-decoration:none;font-weight:600">Open Security v2 →</a>
+    <a data-feature="security_center" id="v2-open" href="security.html" style="background:#5865f2;color:#fff;padding:6px 12px;border-radius:8px;text-decoration:none;font-weight:600">Open Security v2 →</a>
   </div>
   <script>
     (function () {
@@ -25,7 +26,7 @@
       <img id="guild-icon" alt="Guild Icon" />
       <h1 id="guild-name"></h1>
     </div>
-    <a href="dashboard.html" class="back-button">← Dashboard</a>
+    <a data-feature="dashboard" href="dashboard.html" class="back-button">← Dashboard</a>
     <a id="soc-link" class="soc-button back-button">SOC Dashboard</a>
   </header>
 

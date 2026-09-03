@@ -40,6 +40,7 @@
   <link rel="stylesheet" href="index.css" />
 
   <script src="js/nav-auth.js" type="module"></script>
+<script type="module" src="js/features.js"></script>
 </head>
 <body>
 
@@ -119,7 +120,7 @@
                 <li data-rv>Full audit trail &amp; emergency lockdown</li>
               </ul>
               <div class="hero-cta" style="justify-content:flex-start" data-rv>
-                <a class="btn btn-primary" href="dashboard.html">Open Security Dashboard →</a>
+                <a data-feature="dashboard" class="btn btn-primary" href="dashboard.html">Open Security Dashboard →</a>
                 <span class="showcase-step">Keep scrolling to tour it →</span>
               </div>
             </div>
@@ -184,7 +185,7 @@
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Item rarity, drops &amp; collectibles</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Leaderboards &amp; progression</li>
         </ul>
-        <a class="btn btn-primary" href="dashboard.html">Manage economy →</a>
+        <a data-feature="dashboard" class="btn btn-primary" href="dashboard.html">Manage economy →</a>
       </div>
       <div class="product-media">
         <div class="coin-stage">
@@ -288,7 +289,7 @@
       <p>Security. Economy. Story. Arcade. One bot, one dashboard, endless configuration.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="https://discord.com/oauth2/authorize?client_id=907664862493167680&scope=bot%20applications.commands&permissions=8">Invite Bucky</a>
-        <a class="btn btn-ghost" href="dashboard.html">Open dashboard</a>
+        <a data-feature="dashboard" class="btn btn-ghost" href="dashboard.html">Open dashboard</a>
       </div>
     </div>
   </section>
