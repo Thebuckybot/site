@@ -22,9 +22,9 @@ import {
     INTERIEURS, HUIZEN, HUIS_MAAT, magLopenBinnen, bijDeur, deurStart,
 } from "../js/minigames/boat/binnen.js";
 import {
-    DUIKPLEKKEN, DUIKPLAATSEN, magZwemmen, aanDeOppervlakte, ZUURSTOF_MAX,
-    ZUURSTOF_MET_PAK, PAK_KIST, zuurstofVoorraad, afstandVanafDeLucht,
-    instappunt,
+    DUIKPLEKKEN, KAMERS, GANGEN, DIEPTE_KISTEN, DIEPTE_WERELD, kamerOp,
+    kistPositie, magZwemmen, aanDeOppervlakte, ZUURSTOF_MAX, ZUURSTOF_MET_PAK,
+    PAK_KIST, zuurstofVoorraad, afstandVanafDeLucht, instappunt,
 } from "../js/minigames/boat/duiken.js";
 
 let mislukt = 0;
@@ -196,92 +196,127 @@ for (const plek of DUIKPLEKKEN) {
             landOnder(plek.x, plek.y, 60) === null);
     eisWaar(`${plek.naam}: ligt binnen de wereld`,
             plek.x > 0 && plek.x < WERELD.w && plek.y > 0 && plek.y < WERELD.h);
-    eisWaar(`${plek.naam}: heeft een onderwaterplaats`, !!DUIKPLAATSEN[plek.plek]);
-}
-
-console.log("\nDe onderwaterplaatsen:");
-
-// HOE SNEL BUCKY ONGEVEER ZWEMT, en met opzet aan de LAGE kant.
-//
-// Onder water heeft hij versnelling en waterweerstand, dus zijn werkelijke
-// snelheid hangt af van hoe recht je zwemt en hoeveel bochten er in een gang
-// zitten. Honderd eenheden per seconde is voorzichtiger dan hij op een recht
-// stuk haalt, en dat is de goede kant om in te zitten: een kist die volgens
-// deze test net haalbaar is, is het in het spel ruim.
-const ZWEMSNELHEID = 100;
-
-for (const [soort, plaats] of Object.entries(DUIKPLAATSEN)) {
-    // WAAR JE TE WATER GAAT MOET VRIJ ZIJN. Kom je neer in de rots, dan zit je
-    // vast op het moment dat je begint.
-    const instap = instappunt(plaats);
-    eisWaar(`${soort}: de plek waar je begint is vrij`,
-            magZwemmen(plaats, instap.x, instap.y, 11));
-    eisWaar(`${soort}: en daar kun je ademhalen`, aanDeOppervlakte(instap.y));
-
-    const totLucht = afstandVanafDeLucht(plaats);
-
-    for (const k of plaats.kisten) {
-        const naam = `${soort}/${k.id}`;
-        eisWaar(`${naam}: ligt in het water en niet in de rots`,
-                magZwemmen(plaats, k.x, k.y, 11));
-        eisWaar(`${naam}: ligt binnen de ruimte`,
-                k.x > 0 && k.x < plaats.breedte && k.y > 0 && k.y < plaats.diepte);
-
-        // EN JE MOET ER HEEN EN WEER KUNNEN BINNEN JE LUCHT.
-        //
-        // Bereikbaar zijn is niet genoeg: een grot waar je wel IN komt maar niet
-        // meer UIT is geen uitdaging maar een val, en aan de coördinaten zie je
-        // dat niet. Dit rekent de kortste zwemweg vanaf de oppervlakte uit en
-        // vergelijkt de tijd heen en terug met je voorraad.
-        const weg = totLucht(k.x, k.y);
-        eisWaar(`${naam}: is bereikbaar vanaf de oppervlakte`, weg < Infinity);
-        if (weg === Infinity) continue;
-
-        const heenEnWeer = (weg * 2) / ZWEMSNELHEID;
-        const zonder = zuurstofVoorraad(false);
-        const met = zuurstofVoorraad(true);
-        const secs = heenEnWeer.toFixed(1);
-
-        if (k.pak) {
-            // Een kist die om het pak vraagt moet ook ECHT te ver zijn zonder.
-            // Anders is het pak een versiering en geen sleutel.
-            eisWaar(`${naam}: is zonder pak te ver (${secs}s heen en weer, `
-                    + `${zonder}s lucht)`, heenEnWeer > zonder * 0.92);
-            eisWaar(`${naam}: is MET pak wel te halen`, heenEnWeer < met * 0.88);
-        } else {
-            eisWaar(`${naam}: is zonder pak te halen (${secs}s heen en weer, `
-                    + `${zonder}s lucht)`, heenEnWeer < zonder * 0.85);
-        }
+    // Elke duikplek hoort een ingang onder water te hebben, anders is het een
+    // knop die je in het niets laat vallen.
+    const kamer = KAMERS.find((k) => k.ingang === plek.id);
+    eisWaar(`${plek.naam}: heeft een ingang onder water`, !!kamer);
+    if (kamer) {
+        const instap = instappunt(plek.id);
+        eisWaar(`${plek.naam}: je komt neer in open water`,
+                magZwemmen(instap.x, instap.y, 11));
+        eisWaar(`${plek.naam}: en daar kun je ademhalen`,
+                aanDeOppervlakte(instap.y));
     }
 }
 
-// HET DUIKPAK MOET TE VINDEN ZIJN ZONDER PAK. Anders is het een deur waarvan de
-// sleutel achter diezelfde deur ligt.
+// --- de onderwaterwereld -------------------------------------------------
+console.log("\nDe onderwaterwereld:");
+
+// DE SAMENHANG IS EEN EIGENSCHAP DIE JE OPSCHRIJFT, EN DUS OOK KUNT NAREKENEN.
+//
+// De oude opzet beschreef de ROTS, dus of er een weg was moest je achteraf
+// ontdekken - en drie keer bleek er geen. Nu beschrijft `GANGEN` letterlijk wat
+// waarmee verbonden is, dus loopt deze test die graaf af vanaf de ingangen.
+{
+    const buren = new Map(KAMERS.map((k) => [k.id, []]));
+    let losseGang = false;
+    for (const g of GANGEN) {
+        if (!kamerOp(g.van) || !kamerOp(g.naar)) {
+            console.log(`  FOUT gang ${g.van} -> ${g.naar} wijst naar een kamer `
+                        + "die niet bestaat");
+            mislukt++;
+            losseGang = true;
+            continue;
+        }
+        buren.get(g.van).push(g.naar);
+        buren.get(g.naar).push(g.van);
+    }
+    eisWaar("elke gang verbindt twee bestaande kamers", !losseGang);
+
+    const gezien = new Set();
+    const rij = KAMERS.filter((k) => k.ingang).map((k) => k.id);
+    for (const id of rij) gezien.add(id);
+    eisWaar(`er zijn ${rij.length} ingangen aan de oppervlakte`, rij.length >= 2);
+    while (rij.length) {
+        for (const b of buren.get(rij.shift()) || []) {
+            if (!gezien.has(b)) { gezien.add(b); rij.push(b); }
+        }
+    }
+    for (const k of KAMERS) {
+        eisWaar(`${k.id}: is via de gangen vanaf een ingang te bereiken`,
+                gezien.has(k.id));
+    }
+
+    // En een kamer die aan niets vastzit is een kamer die niemand ooit ziet.
+    for (const k of KAMERS) {
+        eisWaar(`${k.id}: heeft minstens één gang`, (buren.get(k.id) || []).length > 0);
+    }
+}
+
+// --- de kisten -----------------------------------------------------------
+console.log("\nDe kisten onder water:");
+
+// HOE SNEL BUCKY ONGEVEER ZWEMT, met opzet aan de LAGE kant. Zijn werkelijke
+// snelheid hangt af van hoe recht je zwemt; honderd per seconde is voorzichtiger
+// dan hij op een recht stuk haalt. Dat is de goede kant om in te zitten: een
+// kist die volgens deze test net haalbaar is, is het in het spel ruim.
+const ZWEMSNELHEID = 100;
+const totLucht = afstandVanafDeLucht();
+
+for (const k of DIEPTE_KISTEN) {
+    const pos = kistPositie(k);
+    eisWaar(`${k.id}: hoort bij een bestaande kamer`, !!pos);
+    if (!pos) continue;
+
+    eisWaar(`${k.id}: ligt in open water`, magZwemmen(pos.x, pos.y, 11));
+
+    // EN JE MOET ER HEEN EN WEER KUNNEN BINNEN JE LUCHT.
+    //
+    // Bereikbaar zijn is niet genoeg: een grot waar je wel in komt maar niet
+    // meer uit is geen uitdaging maar een val.
+    const weg = totLucht(pos.x, pos.y);
+    eisWaar(`${k.id}: is bereikbaar vanaf de oppervlakte`, weg < Infinity);
+    if (weg === Infinity) continue;
+
+    const heenEnWeer = (weg * 2) / ZWEMSNELHEID;
+    const zonder = zuurstofVoorraad(false);
+    const met = zuurstofVoorraad(true);
+    const secs = heenEnWeer.toFixed(1);
+
+    if (k.diep) {
+        // Een kist die om het pak vraagt moet ECHT te ver zijn zonder. Anders
+        // is het pak versiering en geen sleutel.
+        eisWaar(`${k.id}: is zonder pak te ver (${secs}s heen en weer, `
+                + `${zonder}s lucht)`, heenEnWeer > zonder * 0.92);
+        eisWaar(`${k.id}: is MET pak wel te halen (${met}s lucht)`,
+                heenEnWeer < met * 0.9);
+    } else {
+        eisWaar(`${k.id}: is zonder pak te halen (${secs}s heen en weer)`,
+                heenEnWeer < zonder * 0.88);
+    }
+}
+
+// --- het duikpak ---------------------------------------------------------
 console.log("\nHet duikpak:");
 {
-    const [soort, kistId] = PAK_KIST.split("/");
-    const plaats = DUIKPLAATSEN[soort];
-    eisWaar(`het pak ligt in een bestaande plaats (${soort})`, !!plaats);
-    if (plaats) {
-        const kist = plaats.kisten.find((k) => k.id === kistId);
-        eisWaar(`het pak ligt in een bestaande kist (${kistId})`, !!kist);
-        if (kist) {
-            eisWaar("en die kist vraagt zelf NIET om het pak", !kist.pak);
-            const weg = afstandVanafDeLucht(plaats)(kist.x, kist.y);
-            eisWaar(`en is zonder pak te halen `
-                    + `(${((weg * 2) / ZWEMSNELHEID).toFixed(1)}s)`,
-                    (weg * 2) / ZWEMSNELHEID < ZUURSTOF_MAX * 0.85);
-        }
+    const kist = DIEPTE_KISTEN.find((k) => k.id === PAK_KIST);
+    eisWaar(`het pak ligt in een bestaande kist (${PAK_KIST})`, !!kist);
+    if (kist) {
+        eisWaar("en die kist ligt zelf NIET in de diepte", !kist.diep);
+        const pos = kistPositie(kist);
+        const weg = totLucht(pos.x, pos.y);
+        eisWaar(`en is zonder pak te halen `
+                + `(${((weg * 2) / ZWEMSNELHEID).toFixed(1)}s)`,
+                (weg * 2) / ZWEMSNELHEID < ZUURSTOF_MAX * 0.88);
     }
     eisWaar("met pak heb je meer lucht dan zonder", ZUURSTOF_MET_PAK > ZUURSTOF_MAX);
-    // Er moet ergens iets zijn dat het pak nodig heeft, anders doet het niets.
-    const diepe = Object.values(DUIKPLAATSEN)
-        .flatMap((pl) => pl.kisten).filter((k) => k.pak).length;
+    const diepe = DIEPTE_KISTEN.filter((k) => k.diep).length;
     eisWaar(`er zijn ${diepe} kisten die het pak nodig hebben`, diepe >= 2);
 }
 
 eisWaar(`je hebt ${ZUURSTOF_MAX} seconden lucht, genoeg om iets te doen`,
         ZUURSTOF_MAX >= 15 && ZUURSTOF_MAX <= 60);
+
 
 // --- het kompas ----------------------------------------------------------
 console.log("\nHet kompas:");

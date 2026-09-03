@@ -47,8 +47,9 @@ import {
     laadGeopend, bewaarGeopend,
 } from "./boat/loot.js";
 import {
-    DUIKPLEKKEN, DUIKPLAATSEN, ZUURSTOF_MAX, ZUURSTOF_MET_PAK, PAK_KIST,
-    zuurstofVoorraad, magZwemmen, aanDeOppervlakte, instappunt,
+    DUIKPLEKKEN, DIEPTE_WERELD, KAMERS, DIEPTE_KISTEN, ZUURSTOF_MAX,
+    ZUURSTOF_MET_PAK, PAK_KIST, zuurstofVoorraad, magZwemmen, aanDeOppervlakte,
+    instappunt, alleGangDelen, kistPositie,
 } from "./boat/duiken.js";
 
 const TAU = Math.PI * 2;
@@ -199,8 +200,8 @@ export function createBoat(canvas, options = {}) {
 
     // Waar Bucky is als hij duikt.
     const duik = {
-        plek: null,        // de duikplek in de wereld
-        plaats: null,      // de onderwaterruimte
+        plek: null,        // de duikplek boven water waar je te water ging
+        actief: false,     // duik je?
         x: 0, y: 0,
         vx: 0, vy: 0,
         zuurstof: ZUURSTOF_MAX,
@@ -860,7 +861,6 @@ export function createBoat(canvas, options = {}) {
                 zeg(`Diving at ${duik.plek.naam}. Surface to breathe.`);
             },
             stap(dt) {
-                const p = duik.plaats;
 
                 // ZWEMMEN IS NIET LOPEN. Onder water heb je traagheid en een
                 // beetje drijfvermogen: laat je de stick los, dan kom je
@@ -886,11 +886,11 @@ export function createBoat(canvas, options = {}) {
                 const ny = duik.y + duik.vy * dt;
                 // Per as, zoals overal: langs een rots glijden in plaats van
                 // eraan plakken.
-                if (magZwemmen(p, nx, duik.y, speler.straal)) duik.x = nx;
+                if (magZwemmen(nx, duik.y, speler.straal)) duik.x = nx;
                 else duik.vx = 0;
-                if (magZwemmen(p, duik.x, ny, speler.straal)) duik.y = ny;
+                if (magZwemmen(duik.x, ny, speler.straal)) duik.y = ny;
                 else duik.vy = 0;
-                duik.y = Math.max(-14, duik.y);
+                duik.y = Math.max(-30, duik.y);
 
                 // De lucht.
                 if (aanDeOppervlakte(duik.y)) {
@@ -907,7 +907,7 @@ export function createBoat(canvas, options = {}) {
                         duik.zuurstof = 0;
                         return overgang(() => {
                             zetModus("varen");
-                            duik.plaats = null;
+                            duik.actief = false;
                             zeg("Out of air. You surfaced, and kept everything.");
                         });
                     }
@@ -978,8 +978,8 @@ export function createBoat(canvas, options = {}) {
             if (plek) {
                 return overgang(() => {
                     duik.plek = plek;
-                    duik.plaats = DUIKPLAATSEN[plek.plek];
-                    const instap = instappunt(duik.plaats);
+                    duik.actief = true;
+                    const instap = instappunt(plek.id);
                     duik.x = instap.x;
                     duik.y = instap.y;
                     duik.vx = 0; duik.vy = 0;
@@ -1007,7 +1007,7 @@ export function createBoat(canvas, options = {}) {
             }
             overgang(() => {
                 zetModus("varen");
-                duik.plaats = null;
+                duik.actief = false;
                 zeg("Back in the boat.");
             });
         } else if (staat.modus === "binnen") {
@@ -1176,10 +1176,8 @@ export function createBoat(canvas, options = {}) {
         // gebruikt. Die twee vergelijken gaf nooit een treffer, en dus zat het
         // duikpak nergens in: het spel deed niets fout, het vond alleen nooit
         // wat het zocht.
-        const plaatsId = kist.meubel && kist.meubel.id
-            ? `${duik.plek.plek}/${kist.meubel.id}` : "";
-        const extras = (plaatsId === PAK_KIST && !inventory.duikpak)
-            ? ["duikpak"] : [];
+        const extras = (kist.meubel && kist.meubel.id === PAK_KIST
+                        && !inventory.duikpak) ? ["duikpak"] : [];
         const uit = await vraagInhoud(kist.id, extras);
         // PAS AFVINKEN ALS DE INHOUD ER IS.
         //
@@ -1219,10 +1217,15 @@ export function createBoat(canvas, options = {}) {
 
     /** De kist waar Bucky onder water naast zwemt, of null. */
     function kistOnderWater() {
-        if (staat.modus !== "duiken" || !duik.plaats) return null;
-        for (const k of duik.plaats.kisten) {
-            if (Math.hypot(duik.x - k.x, duik.y - k.y) < speler.straal + 26) {
-                return { meubel: k, id: `dive/${duik.plek.id}/${k.id}` };
+        if (staat.modus !== "duiken") return null;
+        for (const k of DIEPTE_KISTEN) {
+            const pos = kistPositie(k);
+            if (!pos) continue;
+            if (Math.hypot(duik.x - pos.x, duik.y - pos.y) < speler.straal + 26) {
+                // De id hangt aan de KIST en niet aan de duikplek waar je te
+                // water ging: het is één wereld, dus dezelfde kist is dezelfde
+                // kist, ook als je via een andere ingang binnenkomt.
+                return { meubel: k, pos, id: `dive/${k.id}` };
             }
         }
         return null;
@@ -1306,6 +1309,7 @@ export function createBoat(canvas, options = {}) {
             tekenDuik(b, h, tijd);
             tekenHud(b, h);
             tekenZuurstof(b, h);
+            tekenDiepte(b, h);
             if (inventoryOpen) tekenInventory(b, h);
             tekenVondst(b, h);
             if (staat.overgang > 0) tekenOvergang(b, h);
@@ -2704,107 +2708,186 @@ export function createBoat(canvas, options = {}) {
      * mee: je moet kunnen zien waar de oppervlakte is, want daar gaat de hele
      * duik over. Een camera die meeschuift zou dat juist wegnemen.
      */
+    /**
+     * HOEVEEL DIEPTE JE ONDER WATER IN BEELD HEBT.
+     *
+     * Hier paste eerst de HELE duikplek in beeld, met de schaal berekend uit
+     * zijn maten. Voor een kamer van 900 bij 500 gaat dat nog; voor een kloof
+     * van 1400 diep werd de schaal 0,33 en was alles een postzegel - "je ziet
+     * te weinig", en terecht.
+     *
+     * Nu is er een vaste hoeveelheid wereld in beeld en volgt de camera je,
+     * net als boven water. Zeshonderd eenheden hoogte is ongeveer twee kamers
+     * plus de gang ertussen: genoeg om te zien waar je heen zwemt en waar je
+     * vandaan kwam.
+     *
+     * DE VERHOUDING BLIJFT STAAND OP EEN TELEFOON, en dat is een keuze.
+     * Varen is een spel van richting en dan wil je breedte; duiken is een spel
+     * van DIEPTE. Elke eenheid naar beneden is een eenheid verder van de lucht,
+     * en het enige dat je echt moet kunnen inschatten is de weg terug naar
+     * boven. Breder maken zou meer grot laten zien en minder van die weg. Het
+     * canvas wisselt bovendien niet van vorm als je duikt: een speelveld dat
+     * onder je handen van maat verandert is op een telefoon oriëntatieverlies.
+     */
+    const DUIK_ZICHT_HOOGTE = 600;
+
     function tekenDuik(b, h, tijd) {
-        const p = duik.plaats;
-        if (!p) return;
-
-        const marge = 12;
         const boven = 34;
-        const bruikbaarB = b - marge * 2;
-        const bruikbaarH = h - boven - 92;
-        const schaal = Math.min(bruikbaarB / p.breedte, bruikbaarH / (p.diepte + 60));
-        const ox = (b - p.breedte * schaal) / 2;
-        const oy = boven + 40;
+        const zicht = h - boven;
+        const schaal = zicht / DUIK_ZICHT_HOOGTE;
+        const zb = b / schaal;
+        const zh = zicht / schaal;
 
-        // De lucht boven het water.
-        ctx.fillStyle = "#0d1f38";
+        // De camera volgt Bucky en klemt op de wereld, net als boven water.
+        // Bovenaan mag hij iets voorbij de waterlijn, zodat je de lucht ziet.
+        const cx = klem(duik.x - zb / 2, 0, Math.max(0, DIEPTE_WERELD.breedte - zb));
+        const cy = klem(duik.y - zh / 2, -70,
+                        Math.max(-70, DIEPTE_WERELD.diepte - zh));
+
+        // 1. Alles is ROTS tot het tegendeel blijkt. Dat is de kern van het
+        //    model: we beschrijven waar water is, dus alles daarbuiten is steen.
+        ctx.fillStyle = "#1b2735";
         ctx.fillRect(0, 0, b, h);
 
         ctx.save();
-        ctx.translate(ox, oy);
+        ctx.translate(0, boven);
+        ctx.beginPath();
+        ctx.rect(0, 0, b, zicht);
+        ctx.clip();
         ctx.scale(schaal, schaal);
+        ctx.translate(-cx, -cy);
 
-        // 1. Het water, donkerder naar de diepte. Dat is de goedkoopste manier
-        //    om diepte te laten VOELEN in een zijaanzicht.
-        const kolom = ctx.createLinearGradient(0, 0, 0, p.diepte);
-        kolom.addColorStop(0, "#1d5f86");
-        kolom.addColorStop(0.5, "#0e3b5c");
-        kolom.addColorStop(1, "#061c30");
-        ctx.fillStyle = kolom;
-        ctx.fillRect(0, 0, p.breedte, p.diepte);
+        const inBeeld = (x, y, w, hh) =>
+            x < cx + zb && x + w > cx && y < cy + zh && y + hh > cy;
 
-        // 2. Lichtbundels van boven, alleen als er beweging mag zijn.
-        if (!minderBeweging) {
+        // 2. De lucht boven de waterlijn.
+        if (cy < 0) {
+            ctx.fillStyle = "#0d1f38";
+            ctx.fillRect(cx - 10, cy - 10, zb + 20, -cy + 10);
+        }
+
+        // 3. Het water: elke kamer en elke gang, met een kleur die met de
+        //    DIEPTE donkerder wordt. Zo zie je aan de tint hoe diep je zit,
+        //    ook als de oppervlakte allang uit beeld is.
+        const waterKleur = (y) => {
+            const t = klem(y / DIEPTE_WERELD.diepte, 0, 1);
+            const r = Math.round(29 - t * 23);
+            const g = Math.round(95 - t * 73);
+            const bl = Math.round(134 - t * 86);
+            return `rgb(${r}, ${g}, ${bl})`;
+        };
+
+        const ruimtes = [];
+        for (const k of KAMERS) {
+            if (inBeeld(k.x, k.y, k.w, k.h)) ruimtes.push(k);
+        }
+        for (const d of alleGangDelen()) {
+            if (inBeeld(d.x, d.y, d.w, d.h)) ruimtes.push(d);
+        }
+
+        for (const r of ruimtes) {
+            ctx.fillStyle = waterKleur(r.y + r.h / 2);
+            ctx.beginPath();
+            ctx.roundRect(r.x, r.y, r.w, r.h, 14);
+            ctx.fill();
+        }
+
+        // 4. Een randje licht langs de bovenkant van elke ruimte: dat is waar
+        //    het licht van boven op de rots valt, en het maakt van vlakken een
+        //    grot. Zelfde afspraak over het licht als overal: van linksboven.
+        ctx.strokeStyle = "rgba(150, 200, 235, .16)";
+        ctx.lineWidth = 3;
+        for (const r of ruimtes) {
+            ctx.beginPath();
+            ctx.moveTo(r.x + 12, r.y + 1.5);
+            ctx.lineTo(r.x + r.w - 12, r.y + 1.5);
+            ctx.stroke();
+        }
+
+        // 5. De waterlijn, met golfjes. Hier haal je adem, dus hij moet opvallen.
+        if (cy < 40) {
+            ctx.strokeStyle = "rgba(220, 245, 255, .7)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            const golf = minderBeweging ? 0 : tijd * 0.003;
+            for (let x = cx - 20; x <= cx + zb + 20; x += 22) {
+                const y = Math.sin(x * 0.03 + golf) * 4;
+                if (x === cx - 20) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        // 6. Lichtbundels van boven, GEKNIPT OP HET WATER.
+        //
+        // Zonder die knip liepen ze dwars over de rots heen, en dan is het geen
+        // licht dat door water valt maar een streep over het beeld. Licht komt
+        // alleen daar waar water is, en dat is precies de vorm die we hierboven
+        // al hebben getekend.
+        //
+        // Dieper dan negenhonderd komt er niets meer door; daar is het donker,
+        // en dat hoort ook zo.
+        if (!minderBeweging && cy < 900) {
+            ctx.save();
+            ctx.beginPath();
+            for (const r of ruimtes) ctx.rect(r.x, r.y, r.w, r.h);
+            ctx.clip();
             const t = tijd * 0.0004;
             ctx.fillStyle = "rgba(150, 220, 255, .06)";
             for (let i = 0; i < 5; i++) {
-                const x = ((i * 197 + Math.sin(t + i) * 40) % p.breedte);
+                const x = cx + ((i * 397 + Math.sin(t + i) * 60) % zb);
                 ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x + 60, 0);
-                ctx.lineTo(x + 150, p.diepte);
-                ctx.lineTo(x + 40, p.diepte);
+                ctx.moveTo(x, Math.max(0, cy));
+                ctx.lineTo(x + 70, Math.max(0, cy));
+                ctx.lineTo(x + 190, 900);
+                ctx.lineTo(x + 60, 900);
                 ctx.closePath();
                 ctx.fill();
             }
+            ctx.restore();
         }
 
-        // 3. De waterlijn, met golfjes. Hier haal je adem, dus hij moet opvallen.
-        ctx.fillStyle = "rgba(190, 235, 255, .5)";
-        ctx.fillRect(0, -2, p.breedte, 4);
-        ctx.strokeStyle = "rgba(220, 245, 255, .7)";
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        const golf = minderBeweging ? 0 : tijd * 0.003;
-        for (let x = 0; x <= p.breedte; x += 20) {
-            const y = Math.sin(x * 0.03 + golf) * 4;
-            if (x) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-        }
-        ctx.stroke();
-
-        // 4. De rotsen. Zelfde afspraak over het licht als boven water: een
-        //    lichte bovenkant, een donkere zijkant, en een schaduw.
-        for (const r of p.rots) {
-            ctx.fillStyle = "rgba(2, 10, 20, .45)";
-            ctx.beginPath();
-            ctx.roundRect(r.x + 7, r.y + 9, r.w, r.h, 8);
-            ctx.fill();
-            ctx.fillStyle = "#243544";
-            ctx.beginPath();
-            ctx.roundRect(r.x, r.y, r.w, r.h, 8);
-            ctx.fill();
-            ctx.fillStyle = "#3a5164";
-            ctx.beginPath();
-            ctx.roundRect(r.x, r.y, r.w, Math.min(16, r.h * 0.3), 8);
-            ctx.fill();
-        }
-
-        // 5. De kisten. Een gloed zolang er nog iets in zit, en OPEN zodra je
+        // 7. De kisten. Een gloed zolang er nog iets in zit, en OPEN zodra je
         //    ernaast zwemt - nooit alleen een kleur.
-        for (const k of p.kisten) {
-            const id = `dive/${duik.plek.id}/${k.id}`;
-            const leeg = geopend.has(id);
-            grondSchaduw(k.x, k.y + 15, 40, 28, 0.45);
+        const bij = kistOnderWater();
+        for (const k of DIEPTE_KISTEN) {
+            const pos = kistPositie(k);
+            if (!pos || !inBeeld(pos.x - 24, pos.y - 20, 48, 44)) continue;
+            const leeg = geopend.has(`dive/${k.id}`);
+            grondSchaduw(pos.x, pos.y + 15, 40, 28, 0.45);
             ctx.fillStyle = leeg ? "#4a3a28" : "#6b4a2f";
-            ctx.beginPath(); ctx.roundRect(k.x - 18, k.y - 13, 36, 28, 4); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(pos.x - 18, pos.y - 13, 36, 28, 4); ctx.fill();
             ctx.fillStyle = leeg ? "#5d4a34" : "#8a6340";
-            ctx.beginPath(); ctx.roundRect(k.x - 18, k.y - 15, 36, 13, 4); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(pos.x - 18, pos.y - 15, 36, 13, 4); ctx.fill();
             if (!leeg) {
                 ctx.strokeStyle = "rgba(255, 214, 120, .85)";
                 ctx.lineWidth = 2.5;
-                ctx.beginPath(); ctx.roundRect(k.x - 21, k.y - 18, 42, 34, 5); ctx.stroke();
+                ctx.beginPath();
+                ctx.roundRect(pos.x - 21, pos.y - 18, 42, 34, 5);
+                ctx.stroke();
             }
-            const bij = kistOnderWater();
             if (bij && bij.meubel === k && !leeg) {
                 ctx.fillStyle = KLEUR.accent;
                 ctx.font = "700 13px ui-sans-serif, system-ui, sans-serif";
                 ctx.textAlign = "center";
-                ctx.fillText("OPEN", k.x, k.y - 26);
+                ctx.fillText("OPEN", pos.x, pos.y - 26);
                 ctx.textAlign = "left";
             }
         }
 
-        // 6. Bucky, met luchtbelletjes zodat je ziet dat hij ademt - en dat hij
+        // 8. De naam van de kamer waar je in zit, groot en vaag op de achtergrond.
+        //    Zo weet je waar je bent zonder een kaart te hoeven openen.
+        for (const k of KAMERS) {
+            if (!k.naam) continue;
+            if (duik.x < k.x || duik.x > k.x + k.w
+                || duik.y < k.y || duik.y > k.y + k.h) continue;
+            ctx.fillStyle = "rgba(190, 225, 250, .13)";
+            ctx.font = "700 34px ui-sans-serif, system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(k.naam, k.x + k.w / 2, k.y + 46);
+            ctx.textAlign = "left";
+        }
+
+        // 9. Bucky, met luchtbelletjes zodat je ziet dat hij ademt - en dat hij
         //    dat onder water niet kan blijven doen.
         tekenBuckyOp(duik.x, duik.y);
         if (!minderBeweging && !aanDeOppervlakte(duik.y)) {
@@ -2820,6 +2903,28 @@ export function createBoat(canvas, options = {}) {
         }
 
         ctx.restore();
+    }
+
+    function tekenDiepte(b, h) {
+        // HOE DIEP JE ZIT, IN CIJFERS.
+        //
+        // De camera volgt je nu, dus de oppervlakte is meestal niet in beeld -
+        // en dan is "hoe ver moet ik terug" iets dat je niet kunt zien. Eén
+        // getal linksboven lost dat op zonder een kaart.
+        // RECHTSBOVEN, ONDER DE LUCHTMETER. Linksboven leek vrij, maar daar ligt
+        // op de arcade de vastgezette spelerskaart overheen - dezelfde plek waar
+        // het inventarispaneel eerder al achter verdween. De twee getallen die
+        // een duik bepalen horen bovendien bij elkaar te staan: hoeveel lucht
+        // heb ik nog, en hoe ver moet ik terug.
+        const diep = Math.max(0, Math.round(duik.y / 10));
+        const bx = b - 108 - 14;
+        ctx.fillStyle = "rgba(4, 10, 22, .72)";
+        ctx.beginPath(); ctx.roundRect(bx - 4, 76, 112, 20, 6); ctx.fill();
+        ctx.fillStyle = "rgba(219, 231, 245, .92)";
+        ctx.font = "700 11px ui-monospace, monospace";
+        ctx.textAlign = "right";
+        ctx.fillText(`DEPTH ${diep} m`, bx + 100, 90);
+        ctx.textAlign = "left";
     }
 
     function tekenZuurstof(b, h) {
