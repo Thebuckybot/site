@@ -132,32 +132,60 @@ export const GANGEN = [
 /**
  * De kisten, per kamer.
  *
- * `dx`/`dy` is de plek BINNEN de kamer, van 0 tot 1. Zo schuift een kist mee
- * als een kamer van maat verandert en kan hij nooit per ongeluk in de rots
- * belanden - dezelfde reden waarom huizen en steigers uit hun eiland worden
- * afgeleid in plaats van ingetypt.
+ * `dx` is de plek BINNEN de kamer, van 0 tot 1. Zo schuift een kist mee als een
+ * kamer van maat verandert en kan hij nooit per ongeluk in de rots belanden -
+ * dezelfde reden waarom huizen en steigers uit hun eiland worden afgeleid in
+ * plaats van ingetypt.
+ *
+ * ER IS GEEN `dy`, EN DAT IS EEN REPARATIE. Elke kist stond op een breuk van de
+ * kamerhoogte, tussen 0,6 en 0,74, en dat is midden in het water. Een kist die
+ * daar hangt is niet alleen raar om te zien; hij is bijna niet te pakken. Je
+ * grijpt binnen 37 eenheden van het midden van de kist, drijfvermogen duwt je
+ * omhoog zodra je loslaat, en de plek waar je vanzelf uitkomt als je omlaag
+ * zwemt is de BODEM. Met een kist op 0,7 van een kamer van 240 hoog zit die
+ * bodem er 61 onder: buiten bereik, terwijl je er recht onder ligt.
+ *
+ * Een kist ligt dus op de grond, net als op het land, en dat leidt hij af uit
+ * zijn kamer. Alleen `dx` is nog een keuze.
  */
 export const DIEPTE_KISTEN = [
-    { id: "reef-1", kamer: "reef", dx: 0.25, dy: 0.7 },
+    { id: "reef-1", kamer: "reef", dx: 0.25 },
     // Het duikpak. Ondiep en bij de eerste ingang, want een pak achter de
     // plekken die het opent is een deur waarvan de sleutel erachter ligt.
-    { id: "reef-2", kamer: "reef", dx: 0.75, dy: 0.6, pak: true },
-    { id: "arch-1", kamer: "arch-hall", dx: 0.3, dy: 0.65 },
-    { id: "arch-2", kamer: "arch-hall", dx: 0.78, dy: 0.72 },
-    { id: "hold-1", kamer: "hold", dx: 0.35, dy: 0.7 },
-    { id: "mouth-1", kamer: "cut-mouth", dx: 0.6, dy: 0.66 },
+    { id: "reef-2", kamer: "reef", dx: 0.75, pak: true },
+    { id: "arch-1", kamer: "arch-hall", dx: 0.3 },
+    { id: "arch-2", kamer: "arch-hall", dx: 0.78 },
+    { id: "hold-1", kamer: "hold", dx: 0.35 },
+    { id: "mouth-1", kamer: "cut-mouth", dx: 0.6 },
 
-    { id: "gallery-1", kamer: "gallery", dx: 0.18, dy: 0.62 },
-    { id: "gallery-2", kamer: "gallery", dx: 0.82, dy: 0.7 },
-    { id: "crossing-1", kamer: "crossing", dx: 0.5, dy: 0.68 },
-    { id: "vault-1", kamer: "vault", dx: 0.7, dy: 0.64 },
+    { id: "gallery-1", kamer: "gallery", dx: 0.18 },
+    { id: "gallery-2", kamer: "gallery", dx: 0.82 },
+    { id: "crossing-1", kamer: "crossing", dx: 0.5 },
+    { id: "vault-1", kamer: "vault", dx: 0.7 },
 
     // De diepte: zonder duikpak kom je hier niet heen en weer.
-    { id: "sump-1", kamer: "sump", dx: 0.3, dy: 0.66, diep: true },
-    { id: "black-1", kamer: "black", dx: 0.5, dy: 0.7, diep: true },
-    { id: "black-2", kamer: "black", dx: 0.85, dy: 0.6, diep: true },
-    { id: "throat-1", kamer: "throat", dx: 0.5, dy: 0.74, diep: true },
+    { id: "sump-1", kamer: "sump", dx: 0.3, diep: true },
+    { id: "black-1", kamer: "black", dx: 0.5, diep: true },
+    { id: "black-2", kamer: "black", dx: 0.85, diep: true },
+    { id: "throat-1", kamer: "throat", dx: 0.5, diep: true },
 ];
+
+/**
+ * Hoe hoog het midden van een kist boven de bodem van zijn kamer ligt.
+ *
+ * De kist wordt getekend van `y - 15` tot `y + 15`, dus dit is precies de halve
+ * hoogte: de onderkant raakt de bodem en niets steekt erdoorheen.
+ */
+export const KIST_HALVE_HOOGTE = 15;
+
+/**
+ * Hoe dicht het MIDDEN van Bucky bij het midden van een kist moet zijn om hem
+ * te kunnen openen. Staat hier en niet in `boat.js`, zodat de wereldtest met
+ * hetzelfde getal kan rekenen als het spel: een kist die je in theorie kunt
+ * bereiken maar in de praktijk niet kunt pakken is nog steeds onbereikbaar, en
+ * dat verschil was precies wat de vorige versie niet kon zien.
+ */
+export const GRIJP_AFSTAND = 37;
 
 /** Welke kist het duikpak bevat. */
 export const PAK_KIST = DIEPTE_KISTEN.find((k) => k.pak).id;
@@ -263,13 +291,13 @@ export function alleGangDelen() {
     return gangCache;
 }
 
-/** De wereldpositie van een kist. */
+/** De wereldpositie van een kist: op `dx` in zijn kamer, op de BODEM. */
 export function kistPositie(kist) {
     const kamer = kamerOp(kist.kamer);
     if (!kamer) return null;
     return {
         x: kamer.x + kamer.w * kist.dx,
-        y: kamer.y + kamer.h * kist.dy,
+        y: kamer.y + kamer.h - KIST_HALVE_HOOGTE,
         kamer,
     };
 }

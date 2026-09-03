@@ -654,22 +654,46 @@ def met_kansen(naam, functie, browser, mislukt, kansen=2):
 
 
 def main():
+    """Elk hoofdstuk in een EIGEN browser, die erna dichtgaat.
+
+    LEES DIT VOORDAT JE EEN "Page crashed" ALS REGRESSIE BEHANDELT.
+
+    Op een machine met weinig vrij geheugen valt deze suite halverwege om met
+    `Page.wait_for_timeout: Page crashed`, en de plek WISSELT: de ene run het
+    duiken, de andere het huisje. Gemeten op 3 september 2026, met ongeveer 2 GB
+    vrij naast een draaiende bot, backend, Discord en een browser: elk hoofdstuk
+    slaagt LOS (het huisje twee keer op rij, het duiken ook), en de volle run
+    haalt het niet.
+
+    Een crash die van plek wisselt is geen regressie in het spel maar
+    geheugengebrek in de omgeving, en het is het vervelendste soort rood: het
+    wijst elke keer een andere onschuldige aan. Faalt deze suite, draai dan
+    eerst het hoofdstuk waar hij op viel apart, zoals hierboven beschreven; is
+    dat groen, dan is het de machine.
+
+    Een browser per hoofdstuk verlaagt de piek en is dus een verbetering, maar
+    hij LOST HET NIET OP - dat is gemeten en niet aangenomen. De echte oplossing
+    is geheugen vrijmaken voordat je hem draait.
+    """
     mislukt = []
     with sync_playwright() as pw:
-        browser = pw.chromium.launch()
+        def alleen(naam, functie, kansen=1):
+            browser = pw.chromium.launch()
+            try:
+                if kansen == 1:
+                    print(f"\n{naam}")
+                    functie(browser, mislukt)
+                else:
+                    met_kansen(naam, functie, browser, mislukt)
+            finally:
+                browser.close()
 
-        print("De bediening")
-        hoofdstuk_bediening(browser, mislukt)
-
-        met_kansen("Aanmeren en aan wal", hoofdstuk_aan_wal, browser, mislukt)
-        met_kansen("Binnen, kisten en de tas", hoofdstuk_binnen, browser, mislukt)
-        met_kansen("Duiken", hoofdstuk_duiken, browser, mislukt)
-        met_kansen("Het duikpak", hoofdstuk_duikpak, browser, mislukt)
-
-        print("\nReduced motion")
-        hoofdstuk_reduced_motion(browser, mislukt)
-
-        browser.close()
+        alleen("De bediening", hoofdstuk_bediening)
+        alleen("Aanmeren en aan wal", hoofdstuk_aan_wal, kansen=2)
+        alleen("Binnen, kisten en de tas", hoofdstuk_binnen, kansen=2)
+        alleen("Duiken", hoofdstuk_duiken, kansen=2)
+        alleen("Het duikpak", hoofdstuk_duikpak, kansen=2)
+        alleen("Reduced motion", hoofdstuk_reduced_motion)
 
     if mislukt:
         print(f"\nMislukt: {', '.join(mislukt)}")

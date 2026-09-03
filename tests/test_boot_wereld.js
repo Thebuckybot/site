@@ -24,7 +24,7 @@ import {
 import {
     DUIKPLEKKEN, KAMERS, GANGEN, DIEPTE_KISTEN, DIEPTE_WERELD, kamerOp,
     kistPositie, magZwemmen, aanDeOppervlakte, ZUURSTOF_MAX, ZUURSTOF_MET_PAK,
-    PAK_KIST, zuurstofVoorraad, afstandVanafDeLucht, instappunt,
+    PAK_KIST, zuurstofVoorraad, afstandVanafDeLucht, instappunt, GRIJP_AFSTAND,
 } from "../js/minigames/boat/duiken.js";
 
 let mislukt = 0;
@@ -269,6 +269,21 @@ for (const k of DIEPTE_KISTEN) {
     if (!pos) continue;
 
     eisWaar(`${k.id}: ligt in open water`, magZwemmen(pos.x, pos.y, 11));
+
+    // EN JE MOET HEM OOK KUNNEN PAKKEN, en dat is iets anders dan bereiken.
+    //
+    // Dit is het gat waar de vorige versie doorheen viel. Elke kist stond op
+    // een breuk van de kamerhoogte en hing dus midden in het water. De test
+    // hieronder zei "bereikbaar", en dat was ook zo - alleen: drijfvermogen
+    // duwt je omhoog zodra je loslaat, dus de plek waar je vanzelf uitkomt is
+    // de BODEM, en vanaf die bodem lag de kist 61 eenheden hoger terwijl je
+    // binnen 37 moet zijn. Je kon er recht onder liggen en er niet bij.
+    //
+    // Dus meten we vanaf de laagste plek waar Bucky kan zwemmen in die kamer,
+    // met dezelfde grijpafstand die het spel zelf gebruikt.
+    const vloer = pos.kamer.y + pos.kamer.h - 11;
+    eisWaar(`${k.id}: is vanaf de bodem te pakken`,
+            Math.hypot(pos.x - pos.x, vloer - pos.y) < GRIJP_AFSTAND);
 
     // EN JE MOET ER HEEN EN WEER KUNNEN BINNEN JE LUCHT.
     //

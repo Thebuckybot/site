@@ -49,7 +49,7 @@ import {
 import {
     DUIKPLEKKEN, DIEPTE_WERELD, KAMERS, DIEPTE_KISTEN, ZUURSTOF_MAX,
     ZUURSTOF_MET_PAK, PAK_KIST, zuurstofVoorraad, magZwemmen, aanDeOppervlakte,
-    instappunt, alleGangDelen, kistPositie,
+    instappunt, alleGangDelen, kistPositie, GRIJP_AFSTAND,
 } from "./boat/duiken.js";
 
 const TAU = Math.PI * 2;
@@ -1221,7 +1221,7 @@ export function createBoat(canvas, options = {}) {
         for (const k of DIEPTE_KISTEN) {
             const pos = kistPositie(k);
             if (!pos) continue;
-            if (Math.hypot(duik.x - pos.x, duik.y - pos.y) < speler.straal + 26) {
+            if (Math.hypot(duik.x - pos.x, duik.y - pos.y) < GRIJP_AFSTAND) {
                 // De id hangt aan de KIST en niet aan de duikplek waar je te
                 // water ging: het is één wereld, dus dezelfde kist is dezelfde
                 // kist, ook als je via een andere ingang binnenkomt.
