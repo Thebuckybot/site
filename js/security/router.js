@@ -49,8 +49,31 @@ for (const entry of NAV) {
   }
 }
 
+// Secties die uit staan (zie site_features.json, omgezet met +ownerconfig).
+//
+// DIT KAN NIET MET `data-feature` IN DE HTML, en dat is de reden dat het hier
+// staat: de zijbalk wordt door dit bestand getekend en bestaat op het moment
+// dat de pagina laadt nog niet. Een attribuut op iets wat er nog niet is, doet
+// niets. De vlaggen komen dus bij de router binnen voordat hij tekent.
+const VERBORGEN = new Set();
+
+export function verbergSecties(keys) {
+  VERBORGEN.clear();
+  for (const k of keys || []) VERBORGEN.add(k);
+}
+
+export function isVerborgen(key) { return VERBORGEN.has(key); }
+
 export function sectionLabel(key) { return LABEL[key] || key; }
-export function isInternal(key) { return INTERNAL.has(key); }
+
+/** Bestaat deze sectie EN staat hij aan?
+ *
+ * Allebei in één vraag, want elke aanroeper wil hetzelfde weten: mag ik hier
+ * naartoe. Zo valt een `#soc` in de adresbalk terug op de overzichtspagina in
+ * plaats van een workspace te openen die uit staat - verbergen in de zijbalk
+ * alleen zou een link zijn die je nog steeds kunt intypen.
+ */
+export function isInternal(key) { return INTERNAL.has(key) && !VERBORGEN.has(key); }
 export function groupOf(key) { return GROUP_OF[key]; }
 
 function navButton(item, onNavigate) {
@@ -64,10 +87,16 @@ export function buildSidebar(navEl, onNavigate) {
   clear(navEl);
   for (const entry of NAV) {
     if (entry.type === "item") {
+      if (VERBORGEN.has(entry.key)) continue;
       navEl.appendChild(navButton(entry, onNavigate));
       continue;
     }
-    const items = el("div", { class: "sec-group-items" }, entry.items.map((it) => navButton(it, onNavigate)));
+    const zichtbaar = entry.items.filter((it) => !VERBORGEN.has(it.key));
+    // Een groep zonder overgebleven items is een kop naar niets. Blijft er één
+    // over, dan blijft de groep staan - de indeling is geen gevolg van hoeveel
+    // er toevallig aan staat.
+    if (!zichtbaar.length) continue;
+    const items = el("div", { class: "sec-group-items" }, zichtbaar.map((it) => navButton(it, onNavigate)));
     const head = el("button", { class: "sec-group-head", type: "button" }, [
       el("span", { class: "ic", html: icon(entry.key) }),
       el("span", { text: entry.label }),

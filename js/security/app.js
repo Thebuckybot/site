@@ -4,7 +4,8 @@
 // it never leaves the Security Center.
 import { guildId, api } from "./api.js";
 import { el, clear } from "./ui.js";
-import { buildSidebar, setActive, sectionLabel, isInternal } from "./router.js";
+import { buildSidebar, setActive, sectionLabel, isInternal, verbergSecties } from "./router.js";
+import { haalFeatures } from "../features.js";
 
 // One place renders the read-only INDICATOR, driven by the server's /me tier. It
 // adds the `sec-readonly` body class (which drives the write-hiding safety net) and
@@ -118,4 +119,30 @@ function boot() {
   loadSection(currentKey());
 }
 
-boot();
+/**
+ * De vlaggen EERST, en pas dan de zijbalk.
+ *
+ * De volgorde is het hele punt. Tekent de zijbalk voordat de stand binnen is,
+ * dan staat er een SOC-knop die een tel later verdwijnt, en wie snel klikt zit
+ * al in een workspace die uit hoort te staan. Bij een netwerkfout wordt er
+ * niets verborgen - dezelfde afspraak als in features.js: de server weigert dan
+ * nog steeds, dus het ergste geval is een pagina die niet werkt in plaats van
+ * een halve Security Center die verdwijnt omdat het even hikte.
+ */
+async function start() {
+  try {
+    const stand = await haalFeatures();
+    const uit = [];
+    if (stand.soc === false) uit.push("soc", "rules", "liveevents");
+    // De Rule Builder heeft een EIGEN vlag naast die van het SOC, want hij is
+    // nieuw en de rest niet. `soc` uit haalt hem sowieso mee: hij bouwt regels
+    // die zonder SOC nergens heen gaan.
+    if (stand.soc === false || stand.rule_builder === false) uit.push("rulebuilder");
+    verbergSecties(uit);
+  } catch {
+    /* niets verbergen; zie hierboven */
+  }
+  boot();
+}
+
+start();
