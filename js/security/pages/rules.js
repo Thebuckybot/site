@@ -29,12 +29,14 @@ export default {
 
     const premiumCard = () => {
       if (!usage || !usage.at_limit) return null;
-      const ladder = (usage.premium || []).map((p) =>
-        el("li", { text: `${p.tier.replace("_", " ")}: ${p.soc_rules == null ? "Unlimited" : p.soc_rules + " rules"}` }));
+      // Two states, no tier ladder: the cap is this server's own number, and
+      // the only way up is a Security Boost. A boosted server at its cap just
+      // hears that it is at its cap.
+      const line = usage.boosted
+        ? `This server is using all ${usage.limit} of its rules. Disable or delete one to add another.`
+        : `You are using all ${usage.limit} rules this server may hold. A Security Boost raises the cap.`;
       return alertBox({ kind: "premium", title: "Maximum rules reached", icon: el("span", { text: "★" }), message: el("div", {}, [
-        el("p", { class: "sec-muted", style: "margin:0 0 8px", text: `You are using all ${usage.limit} rules on the Free plan. Upgrade to Bucky Premium to unlock more:` }),
-        el("ul", { class: "sec-premium-list", style: "margin:0 0 8px" }, ladder),
-        el("span", { class: "sec-badge muted", text: "Premium - coming soon" }),
+        el("p", { class: "sec-muted", style: "margin:0 0 8px", text: line }),
       ]) });
     };
 

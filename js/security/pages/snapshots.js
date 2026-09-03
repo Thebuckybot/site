@@ -48,11 +48,17 @@ export default {
     let hasUsable = false;
     let caps = {};
     let currentId = null;
+    // The two retention numbers come from the server's own row (10 / 14 free,
+    // 25 / 365 boosted); the page never hardcodes them again.
+    let keepN = 10;
+    let retDays = 14;
     if (payload && Array.isArray(payload.snapshots)) {
       snaps = payload.snapshots;
       hasUsable = !!payload.has_usable;
       caps = payload.capabilities || {};
       currentId = payload.current_snapshot_id != null ? Number(payload.current_snapshot_id) : null;
+      if (payload.keep != null) keepN = Number(payload.keep);
+      if (payload.retention_days != null) retDays = Number(payload.retention_days);
     } else if (Array.isArray(payload)) {
       snaps = payload;                                  // tolerate a bare array
     } else {
@@ -306,7 +312,7 @@ export default {
 
     root.appendChild(el("div", { class: "sec-card", style: "margin-top:10px" }, [
       el("div", { class: "sec-page-title", text: "Coverage & retention" }),
-      el("p", { class: "sec-muted", text: `Retention keeps the newest 10 snapshots per guild; when an 11th is created the oldest is removed. The newest usable baseline, the pinned Current Snapshot, and snapshots referenced by an active recovery job are never pruned.` }),
+      el("p", { class: "sec-muted", text: `This server keeps its newest ${keepN} snapshots, and none older than ${retDays} days. One exception: the Current Snapshot (pinned, or the newest usable one) is kept however old it is. A snapshot a running recovery job needs is held until that job finishes.` }),
       caps.captured ? el("p", { class: "sec-muted", text: "Captured: " + caps.captured.join(", ") + "." })
         : el("p", { class: "sec-muted", text: "Captured: guild security settings, roles, categories/channels, permission overwrites." }),
       caps.not_captured ? el("p", { class: "sec-muted", text: "Not captured: " + caps.not_captured.join(", ") + "." })

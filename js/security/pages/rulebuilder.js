@@ -15,12 +15,13 @@ function usageBadge(u) {
   return badge(`${u.used} / ${u.limit} rules used`, kind);
 }
 function premiumNotice(u) {
-  const ladder = (u.premium || []).map((p) =>
-    el("li", { text: `${p.tier.replace("_", " ")}: ${p.soc_rules == null ? "Unlimited" : p.soc_rules + " rules"}` }));
+  // Two states, no tier ladder (see rules.js): the cap is this server's own
+  // number and a Security Boost is the only way up.
+  const line = u.boosted
+    ? `This server is using all ${u.limit} of its rules. Disable or delete one to add another.`
+    : `You are using all ${u.limit} rules this server may hold. A Security Boost raises the cap.`;
   return alertBox({ kind: "premium", title: "Maximum rules reached", icon: el("span", { text: "★" }), message: el("div", {}, [
-    el("p", { class: "sec-muted", style: "margin:0 0 8px", text: `You are using all ${u.limit} rules on the Free plan. Upgrade to Bucky Premium to unlock more:` }),
-    el("ul", { class: "sec-premium-list", style: "margin:0 0 8px" }, ladder),
-    el("span", { class: "sec-badge muted", text: "Premium — coming soon" }),
+    el("p", { class: "sec-muted", style: "margin:0 0 8px", text: line }),
   ]) });
 }
 

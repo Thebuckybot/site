@@ -45,15 +45,21 @@ export default {
       root.appendChild(chanCard);
 
       // ---- Retention -----------------------------------------------------
-      const tiers = (s.retention && s.retention.selectable) || [14];
-      const premium = ((s.retention && s.retention.tiers && s.retention.tiers.premium) || []);
+      // One ladder (`options`), and per server the rungs it may pick
+      // (`selectable`, everything up to its `retention_max_days`). The rungs
+      // above the ceiling are shown disabled with the thing that lifts the
+      // ceiling. There is no "Unlimited" any more and no tier list: two states.
+      const ret = s.retention || {};
+      const selectable = ret.selectable || [14];
+      const options = ret.options || selectable;
       const sel = el("select", { class: "sec-select", disabled: !canEdit });
-      tiers.forEach((d) => {
-        const o = el("option", { value: d, text: `${d === 0 ? "Unlimited" : d + " days"} (Free)` });
+      options.forEach((d) => {
+        const allowed = selectable.includes(d);
+        const o = el("option", { value: d, text: `${d} days${allowed ? "" : " (needs a Security Boost)"}` });
+        if (!allowed) o.disabled = true;
         if (d === s.retention_days) o.selected = true;
         sel.appendChild(o);
       });
-      premium.forEach((d) => sel.appendChild(el("option", { value: d, disabled: true, text: `${d === 0 ? "Unlimited" : d + " days"} (Premium)` })));
       sel.addEventListener("change", async () => {
         try { await api.post("/settings/retention", { retention_days: Number(sel.value) }); toast("Retention updated."); }
         catch (e) { toast(e.message, "err"); sel.value = String(s.retention_days); }
