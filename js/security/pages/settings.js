@@ -70,7 +70,7 @@ export default {
         try { await api.post("/settings/retention", { retention_days: Number(sel.value) }); toast("Retention updated."); }
         catch (e) { toast(e.message, "err"); sel.value = String(s.retention_days); }
       });
-      root.appendChild(el("div", { class: "sec-card", style: "margin-top:16px" }, [
+      root.appendChild(el("div", { class: "sec-card", id: "sec-retention-card", style: "margin-top:16px" }, [
         infoTitle("Data Retention", settingDesc("retention"), "div", "sec-page-title"),
         el("p", { class: "sec-muted", text: "Incidents, audit logs and analytics older than this window are removed automatically." }),
         el("div", { class: "sec-settings-row" }, [el("div", { class: "k" }, [el("div", { text: "Keep security data for" })]), sel]),
@@ -148,14 +148,16 @@ function provisionRow({ label, descKey, value, emptyMsg, field, kind, canEdit, r
  */
 export function boostCard(boost, limits) {
   const l = limits || {};
-  const card = el("div", { class: "sec-card", style: "margin-top:16px" }, [
+  const card = el("div", { class: "sec-card", id: "sec-boost-card", style: "margin-top:16px" }, [
     el("div", { class: "sec-page-title" }, ["Security Boost ", badge(
       boost && boost.state === "active" ? "Active" : (boost && boost.state === "grace" ? "Ending" : "None"),
       boost && boost.state === "active" ? "ok" : (boost && boost.state === "grace" ? "warn" : "muted"))]),
   ]);
   const lines = [];
   if (boost && boost.state === "active") {
-    lines.push(`Given by <@${boost.user_id}> on ${fmtTime(boost.assigned_at)}, until ${fmtTime(boost.expires_at)}.`);
+    // the giver's display name, written by the bot at assignment (0071); the
+    // id is the fallback for rows from before that column existed
+    lines.push(`Given by ${boost.user_name || `<@${boost.user_id}>`} on ${fmtTime(boost.assigned_at)}, until ${fmtTime(boost.expires_at)}.`);
     lines.push(`While boosted: logs kept up to ${l.retention_days} days, ${l.soc_rules} detection rules, ${l.snapshots} snapshots.`);
   } else if (boost && boost.state === "grace") {
     lines.push(`The last boost has ended. This server keeps its extended limits until ${fmtTime(boost.grace_until)}.`);
