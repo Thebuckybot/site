@@ -106,7 +106,10 @@ export default {
             : "None - no usable baseline yet"),
           kv("Current Snapshot", pinned ? `${displayName(pinned)} (#${pinned.id})` : "Not pinned - using newest usable"),
           kv("Automatic snapshots", "at most one every 6 hours (on structural change)"),
-          kv("Stored snapshots", `${counts.total} of 10 · ${counts.usable} usable · ${counts.incident} incident · ${counts.legacy} legacy${counts.bad ? ` · ${counts.bad} invalid` : ""}`),
+          // `keepN` comes from the server's own row (payload.keep): 10 free, 25
+          // boosted. This line said "of 10" for every server, so a boosted
+          // server's page contradicted what the boost had actually written.
+          kv("Stored snapshots", `${counts.total} of ${keepN} · ${counts.usable} usable · ${counts.incident} incident · ${counts.legacy} legacy${counts.bad ? ` · ${counts.bad} invalid` : ""}`),
         ]),
       ]));
     };
