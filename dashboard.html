@@ -8,12 +8,13 @@
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="public.css" />
   <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="css/tour.css" />
 
   <script src="js/dashboard.js" type="module"></script>
   <script src="js/nav-auth.js" type="module"></script>
 <script type="module" src="js/features.js"></script>
 </head>
-<body>
+<body data-tour="dashboard">
 
   <nav class="site-nav" id="site-nav">
     <div class="nav-inner">
@@ -75,5 +76,6 @@
       menu.addEventListener('click', function (e) { if (e.target.closest('a')) { hb.classList.remove('open'); menu.classList.remove('open'); hb.setAttribute('aria-expanded', 'false'); } });
     })();
   </script>
+  <script type="module" src="js/tour.js"></script>
 </body>
 </html>

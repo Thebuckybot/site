@@ -1,0 +1,110 @@
+/* De onboarding-tour: een tekstballon bij een onderdeel, met Back / Next / Skip.
+   Zie js/tour.js. Op een telefoon is de ballon een onderbalk, zodat hij het
+   onderdeel niet bedekt; op een breed scherm staat hij ernaast. Beweging alleen
+   voor wie dat niet heeft uitgezet. */
+
+.tour-balloon {
+  position: absolute;
+  z-index: 9999;
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 24px));
+  padding: 14px 16px 12px;
+  border-radius: 12px;
+  background: var(--bk-panel, #151b28);
+  color: var(--bk-text, #e8ecf3);
+  border: 1px solid var(--bk-border-strong, rgba(255, 255, 255, 0.18));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font: 14px/1.45 var(--bk-font, "Manrope", system-ui, sans-serif);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.tour-balloon.tour-in {
+  opacity: 1;
+  transform: none;
+}
+.tour-balloon.tour-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  border-radius: 14px 14px 0 0;
+  border-bottom: 0;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateY(8px);
+}
+.tour-balloon.tour-sheet.tour-in {
+  transform: none;
+}
+
+.tour-step {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bk-muted, #9aa4b8);
+}
+.tour-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+}
+/* De titel krijgt bij elke stap programmatisch de focus zodat een schermlezer de
+   ballon voorleest; de ballon zelf is de zichtbare focusplek (rand + schaduw),
+   dus de kop hoeft geen tweede kader. Knoppen houden hun eigen focusring. */
+.tour-title:focus { outline: none; }
+.tour-text {
+  margin: 0 0 12px;
+}
+.tour-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.tour-btn {
+  appearance: none;
+  border: 1px solid var(--bk-border-strong, rgba(255, 255, 255, 0.18));
+  background: transparent;
+  color: inherit;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 36px;
+}
+.tour-btn-primary {
+  background: var(--bk-accent, #5b7cfa);
+  border-color: var(--bk-accent, #5b7cfa);
+  color: #fff;
+}
+.tour-btn-skip {
+  margin-left: auto;
+  border-color: transparent;
+  color: var(--bk-muted, #9aa4b8);
+}
+.tour-btn:focus-visible,
+.tour-balloon:focus-visible {
+  outline: 3px solid var(--bk-focus, #ffd166);
+  outline-offset: 2px;
+}
+
+/* Het onderdeel waar de ballon over gaat. Een rand en geen donkere overlay: de
+   pagina blijft leesbaar en bedienbaar, en een overlay is precies wat op een
+   telefoon het onderdeel zou bedekken. */
+.tour-target {
+  outline: 3px solid var(--bk-accent, #5b7cfa);
+  outline-offset: 3px;
+  border-radius: 6px;
+  position: relative;
+  z-index: 9998;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-balloon,
+  .tour-balloon.tour-sheet {
+    transition: none;
+    transform: none;
+  }
+}
