@@ -119,14 +119,16 @@ export function toggle(checked, onChange) {
   return el("label", { class: "sec-switch" }, [input, el("span", { class: "track" })]);
 }
 
-export function table(columns, rows) {
+// `rowAttrs(row)` may return attributes for the <tr> (e.g. a data-rule-id), so
+// something outside the table - the onboarding tour - can point at one row.
+export function table(columns, rows, rowAttrs = null) {
   const thead = el("thead", {}, [el("tr", {}, columns.map((c) => el("th", { text: c.label })))]);
   const tbody = el("tbody", {});
   if (!rows.length) {
     tbody.appendChild(el("tr", {}, [el("td", { colspan: columns.length }, [el("div", { class: "sec-empty", text: "No records." })])]));
   } else {
     for (const r of rows) {
-      tbody.appendChild(el("tr", {}, columns.map((c) => {
+      tbody.appendChild(el("tr", (rowAttrs && rowAttrs(r)) || {}, columns.map((c) => {
         // el() coerces strings/numbers/booleans to text and passes Nodes through,
         // so a render() returning any primitive is safe (never crashes appendChild).
         const cell = c.render ? c.render(r) : (r[c.key] ?? "-");

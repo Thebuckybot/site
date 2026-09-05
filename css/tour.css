@@ -121,3 +121,13 @@
   padding-top: max(12px, env(safe-area-inset-top));
   padding-bottom: 14px;
 }
+
+/* Keuzeknoppen (houden / verwijderen) in plaats van Next bij een doe-stap. */
+.tour-choices { display: contents; }
+.tour-choices:empty { display: none; }
+.tour-btn-choice { font-weight: 600; }
+
+/* Zolang de pagina een eigen dialoog open heeft (aria-modal) wijkt de ballon:
+   onzichtbaar en niet klikbaar, zodat hij nooit over de knoppen van die dialoog
+   ligt. Zodra de dialoog dicht is komt hij terug. */
+.tour-balloon.tour-yield { opacity: 0; pointer-events: none; }

@@ -48,6 +48,11 @@ export default {
       else if (canCreate) headKids.push(el("a", { class: "sec-btn sec-btn-primary", href: "#rulebuilder", text: "Open Rule Builder" }));
       else headKids.push(el("button", { class: "sec-btn", disabled: true, text: "Rule limit reached" }));
       head.replaceChildren(el("div", { class: "sec-actions", style: "align-items:center;gap:12px" }, headKids));
+      // The tour reads these BEFORE it offers to create a rule: no rights or a
+      // full limit means it says so and skips, instead of failing in the form.
+      head.dataset.canEdit = canEdit ? "1" : "0";
+      head.dataset.atLimit = usage && usage.at_limit ? "1" : "0";
+      head.dataset.canCreate = canCreate ? "1" : "0";
       const body = root.querySelector("#soc-rules");
       const pc = premiumCard();
       if (!rules.length) {
@@ -67,7 +72,7 @@ export default {
           catch (e) { toast(e.message, "err"); draw(); }
         }) : badge(r.enabled ? "On" : "Off", r.enabled ? "ok" : "muted") },
         { label: "", render: (r) => canEdit ? el("button", { class: "sec-btn sec-btn-sm sec-btn-danger", text: "Delete", onclick: () => del(r) }) : el("span", { class: "sec-muted", text: "-" }) },
-      ], rules);
+      ], rules, (r) => ({ "data-rule-id": String(r.id) }));
       body.replaceChildren(...(pc ? [pc, tbl] : [tbl]));
     };
 

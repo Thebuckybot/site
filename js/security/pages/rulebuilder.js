@@ -90,7 +90,42 @@ export default {
       removeBtn.addEventListener("click", () => block.remove());
       container.appendChild(block);
       block.scrollIntoView({ behavior: "smooth", block: "center" });
+      return block;
     };
+
+    // ---- a template from outside (the onboarding tour) ----------------------
+    // The tour fills in a harmless rule and lets the visitor press Create Rule
+    // themselves. Same code path as typing it by hand: blocks are added through
+    // addBlock, selects fire change so their fields render, values land in the
+    // same inputs collect() reads.
+    const fillTemplate = (t) => {
+      if (!t || !root.isConnected) return;
+      const nameInput = root.querySelector("#sec-rb-name");
+      const eventSelect = root.querySelector("#sec-rb-event");
+      if (!nameInput || !eventSelect) return;
+      nameInput.value = t.name || "";
+      if (t.event_type) { eventSelect.value = t.event_type; eventSelect.dispatchEvent(new Event("change")); }
+      const place = (mode, items, keyName) => {
+        for (const item of items || []) {
+          const block = addBlock(mode);
+          if (!block) return;
+          const select = block.querySelector("select");
+          select.value = item[keyName] || "";
+          select.dispatchEvent(new Event("change"));
+          block.querySelectorAll("[data-field]").forEach((field) => {
+            if (item[field.dataset.field] !== undefined) field.value = String(item[field.dataset.field]);
+          });
+        }
+      };
+      place("condition", t.conditions, "type");
+      place("action", t.actions, "action");
+      const sev = root.querySelector("#sec-rb-severity");
+      if (sev && t.severity) sev.value = String(t.severity);
+      nameInput.scrollIntoView({ block: "center" });
+    };
+    if (document.__rbTemplate) document.removeEventListener("bucky:rulebuilder-template", document.__rbTemplate);
+    document.__rbTemplate = (e) => fillTemplate(e.detail);
+    document.addEventListener("bucky:rulebuilder-template", document.__rbTemplate);
 
     // ---- collect payload from the DOM (placeholder fallback + int coercion) --
     const collect = (selector, keyName) => {
@@ -117,13 +152,19 @@ export default {
       const conditions = collect(".sec-rb-item.cond", "type");
       const actions = collect(".sec-rb-item.act", "action");
       try {
-        await soc.post("/rules", { name, event_type: eventType, conditions, actions, severity });
+        const result = await soc.post("/rules", { name, event_type: eventType, conditions, actions, severity });
         toast("Rule created.");
         root.querySelector("#sec-rb-name").value = "";
         clear(root.querySelector("#sec-rb-conditions"));
         clear(root.querySelector("#sec-rb-actions"));
         await loadRules();
         drawRules();
+        // Tell whoever is listening (the onboarding tour) which rule this became:
+        // the id from the backend, or the newest rule with this name.
+        let created = result && result.id ? rules.find((r) => Number(r.id) === Number(result.id)) : null;
+        if (!created) created = rules.filter((r) => r.name === name).sort((a, b) => Number(b.id) - Number(a.id))[0];
+        const id = created ? created.id : (result && result.id) || null;
+        if (id != null) document.dispatchEvent(new CustomEvent("bucky:soc-rule-created", { detail: { id, name } }));
       } catch (e) {
         toast(e.message || "Failed to create rule", "err");
       }
@@ -170,7 +211,7 @@ export default {
           try { await soc.patch(`/rules/${rule.id}/toggle`); rule.enabled = enabledToggle.checked; toast("Rule updated."); }
           catch (err) { toast(err.message, "err"); enabledToggle.checked = !enabledToggle.checked; }
         });
-        const card = el("div", { class: "sec-card sec-rb-rule" }, [
+        const card = el("div", { class: "sec-card sec-rb-rule", "data-rule-id": String(rule.id) }, [
           el("div", { class: "sec-rb-rule-main" }, [
             el("div", { class: "sec-rb-rule-title", text: rule.name }),
             el("div", { class: "sec-muted", text: `${rule.event_type} • Severity ${rule.severity}` }),

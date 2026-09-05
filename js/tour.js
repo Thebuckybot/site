@@ -1,6 +1,5 @@
-// tour.js - de onboarding-tour: een rondleiding die het werk doet. Bij Next opent
-// de tour zelf het juiste tabblad, klapt een lade uit als het onderdeel daarin
-// zit, scrolt ernaartoe en wacht tot het er staat. De bezoeker klikt alleen Next.
+// tour.js - de onboarding-tour: een rondleiding die het werk doet, en op één
+// plek de bezoeker zelf iets laat doen (een SOC-regel maken en weer weghalen).
 //
 // DE STAPPEN KOMEN VAN /api/site/tour, en dat is de hele reden dat dit bestand
 // geen tekst kent. De teksten staan in de bot-boom (site_tour.json), waar
@@ -8,36 +7,46 @@
 // wijzigen is dus geen deploy. Welke pagina dit is staat op <body data-tour>.
 //
 // EEN STAP HEEFT: selector, title, text, placement, en optioneel
-//   route    - een hash (#settings): de tour navigeert daarheen vóór hij wijst;
-//   reveal   - een selector (#sec-burger): als het onderdeel onzichtbaar is, wordt
-//              dit aangeklikt om het te tonen (de lade op een telefoon), en bij
-//              een volgende stap of het sluiten weer om het te verbergen;
-//   optional - het onderdeel is er niet altijd (een zoekveld bij weinig servers):
-//              kort wachten en anders overslaan. Zonder `optional` wacht de tour
-//              tot het onderdeel geladen is in plaats van naar niets te wijzen.
+//   route     - een hash (#settings): de tour navigeert daarheen vóór hij wijst;
+//   reveal    - een selector (#sec-burger): als het onderdeel onzichtbaar is, wordt
+//               dit aangeklikt om het te tonen (de lade op een telefoon), en bij
+//               een volgende stap of het sluiten weer om het te verbergen;
+//   optional  - het onderdeel is er niet altijd: kort wachten en anders overslaan;
+//   id        - een naam waar `next` en `choice.goto` naar kunnen springen;
+//   requires  - een selector die op de HUIDIGE pagina moet bestaan, anders wordt de
+//               stap meteen overgeslagen (SOC niet aanwezig, geen rechten, limiet
+//               vol) - gecontroleerd vóór de stap, niet erin;
+//   next      - het id van de stap na deze (om een blok over te slaan);
+//   emit      - {event, detail}: een DOM-event dat de tour afvuurt zodra het
+//               onderdeel er staat (de Rule Builder vult daarmee het formulier);
+//   done_when - de stap is pas klaar als de bezoeker iets deed: {event, as, undo}
+//               wacht op een DOM-event en bewaart e.detail.id als artefact `as`
+//               (met een undo-pad, zie onder); {gone, release} wacht tot een
+//               selector uit de pagina verdwijnt en geeft het artefact vrij;
+//   choice    - [{label, goto, release}]: knoppen in plaats van Next.
+// In selectors mag `{naam}` staan: het id van een artefact. Een stap die naar een
+// artefact verwijst dat er niet is, wordt overgeslagen.
 //
-// TERUG IS OOK TERUG: Back navigeert naar de route van de vorige stap. SLUITEN
-// LAAT GEEN HALVE STAAT ACHTER: de lade gaat dicht als de tour hem opende en de
-// pagina keert terug naar het tabblad waar de tour begon - ook na Done, want een
-// rondleiding eindigt bij de ingang.
+// GEEN HALVE STAAT, OOK NIET MET EEN ARTEFACT. Sluit de bezoeker de tour terwijl
+// een gemaakte regel nog niet is "gehouden" of verwijderd, dan voert de tour het
+// undo-pad uit (`soc:/rules/{rule}` = DELETE via de SOC-API). Een open bevestiging
+// van de pagina krijgt Escape eerst; de tour pas bij de tweede.
 //
-// ALLEEN VOOR DEZE SESSIE ONTHOUDEN (sessionStorage): opnieuw inloggen, een
-// andere browser of een nieuwe sessie laat hem opnieuw beginnen.
+// TERUG IS OOK TERUG: Back volgt de geschiedenis van getoonde stappen en slaat
+// doe-stappen over (die kun je niet nog eens doen). Escape en Done sluiten de lade
+// die de tour opende en keren terug naar het tabblad waar de tour begon.
 //
-// TOEGANKELIJK: role="dialog" met titel en beschrijving; de focus gaat bij elke
-// stap naar de ballon en komt aan het eind terug; Tab blijft in de ballon, Enter
-// en pijl-rechts gaan verder, pijl-links terug, Escape sluit; op een telefoon is
-// de ballon een balk onder- of bovenaan, aan de kant waar het onderdeel niet is,
-// en prefers-reduced-motion zet animatie en zacht scrollen uit.
+// ALLEEN VOOR DEZE SESSIE ONTHOUDEN (sessionStorage); toetsenbord compleet;
+// prefers-reduced-motion zet animatie en zacht scrollen uit; op een telefoon is de
+// ballon een balk aan de kant waar het onderdeel niet is.
 
 import { API_URL } from "./config.js";
+import { api, soc } from "./security/api.js";
 
 const PAGE = document.body ? document.body.dataset.tour : null;
 const KEY = `bucky_tour_seen_${PAGE}`;
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const isMobile = () => window.matchMedia("(max-width: 640px)").matches;
-// De eerste stap en elke stap na een route mogen op de pagina wachten: die laadt
-// haar inhoud na een fetch. Een optionele stap krijgt een korte blik.
 const WAIT_LOAD_MS = 8000;
 const WAIT_OPTIONAL_MS = 600;
 const WAIT_REVEAL_MS = 2500;
@@ -68,19 +77,19 @@ function visible(elm) {
   if (r.width <= 0 && r.height <= 0) return false;
   const cs = getComputedStyle(elm);
   if (cs.visibility === "hidden" || cs.opacity === "0") return false;
-  // een zijbalk die op een telefoon buiten beeld is geschoven heeft wel een
-  // maat maar staat links of rechts van het venster: niet zichtbaar
   const vw = document.documentElement.clientWidth;
   return r.right > 0 && r.left < vw;
 }
 
-// Een selector mag meerdere kandidaten noemen ("#sec-nav, #sec-burger"): de eerste
-// ZICHTBARE wint. `undefined` betekent: ongeldige selector.
 function find(selector) {
   let all;
   try { all = document.querySelectorAll(selector); } catch (_) { return undefined; }
   for (const elm of all) if (visible(elm)) return elm;
   return null;
+}
+
+function exists(selector) {
+  try { return !!document.querySelector(selector); } catch (_) { return false; }
 }
 
 function waitFor(selector, ms) {
@@ -104,6 +113,8 @@ function el(tag, className, text) {
   return n;
 }
 
+const PLACEHOLDER = /\{(\w+)\}/g;
+
 class Tour {
   constructor(steps) {
     this.steps = steps;
@@ -112,7 +123,10 @@ class Tour {
     this.previousFocus = document.activeElement;
     this.startHash = window.location.hash;
     this.navigated = false;
-    this.revealed = null;              // { toggle, target } als de tour een lade opende
+    this.revealed = null;
+    this.artifacts = {};               // naam -> { id, undo }
+    this.history = [];                 // getoonde stappen, voor Back
+    this.pending = null;               // opruimer van een lopende done_when
     this.balloon = el("div", "tour-balloon");
     this.balloon.setAttribute("role", "dialog");
     this.balloon.setAttribute("aria-live", "polite");
@@ -129,16 +143,15 @@ class Tour {
     this.next = el("button", "tour-btn tour-btn-primary", "Next");
     this.skip = el("button", "tour-btn tour-btn-skip", "Skip tour");
     this.back.type = this.next.type = this.skip.type = "button";
+    this.choices = el("div", "tour-choices");
     const actions = el("div", "tour-actions");
-    actions.append(this.back, this.next, this.skip);
+    actions.append(this.back, this.next, this.choices, this.skip);
     this.balloon.append(this.step, this.title, this.text, actions);
-    this.back.addEventListener("click", () => this.show(this.i - 1, -1));
-    this.next.addEventListener("click", () => this.show(this.i + 1, +1));
+    this.back.addEventListener("click", () => this.goBack());
+    this.next.addEventListener("click", () => this.show(this.nextIndex(this.i), +1));
     this.skip.addEventListener("click", () => this.stop());
     this.onKey = (e) => this.key(e);
     this.onLayout = () => this.place();
-    // Pagina's zetten na hun eigen fetch de focus op de sectiekop. Deed de
-    // bezoeker sindsdien niets, dan hoort de focus terug bij de ballon.
     this.interacted = false;
     this.onInteract = () => { this.interacted = true; };
     this.settle = null;
@@ -152,28 +165,75 @@ class Tour {
     document.addEventListener("keydown", this.onInteract, true);
     window.addEventListener("resize", this.onLayout);
     window.addEventListener("scroll", this.onLayout, { passive: true });
+    // Een bevestiging van de pagina (aria-modal) krijgt voorrang: de ballon wijkt
+    // zolang die open staat, anders ligt hij over de knoppen van de dialoog.
+    this.observer = new MutationObserver(() => this.yieldToModal());
+    this.observer.observe(document.body, { childList: true, subtree: true });
     await this.show(0, +1);
   }
 
-  // Doe het werk voor een stap: navigeren, wachten tot het onderdeel er is, en
-  // een lade openen als het daarin zit. Geeft het onderdeel of null.
+  yieldToModal() {
+    if (!this.balloon.isConnected) return;
+    const open = !!document.querySelector('[aria-modal="true"]');
+    this.balloon.classList.toggle("tour-yield", open);
+  }
+
+  // -- artefacten en sprongen ------------------------------------------------
+  fill(text) {
+    return String(text).replace(PLACEHOLDER, (m, naam) => (this.artifacts[naam] ? this.artifacts[naam].id : m));
+  }
+
+  refersToMissing(text) {
+    if (!text) return false;
+    let missing = false;
+    String(text).replace(PLACEHOLDER, (m, naam) => { if (!this.artifacts[naam]) missing = true; return m; });
+    return missing;
+  }
+
+  indexOf(id) {
+    const at = this.steps.findIndex((s) => s.id === id);
+    return at >= 0 ? at : this.steps.length;
+  }
+
+  nextIndex(i) {
+    const s = this.steps[i];
+    return s && s.next ? this.indexOf(s.next) : i + 1;
+  }
+
+  isTask(s) {
+    return !!(s && (s.done_when || s.choice || s.emit));
+  }
+
+  goBack() {
+    // de huidige eraf, dan terug tot een stap die geen doe-stap is
+    this.history.pop();
+    while (this.history.length && this.isTask(this.steps[this.history[this.history.length - 1]])) this.history.pop();
+    if (!this.history.length) return;
+    const prev = this.history.pop();
+    this.show(prev, -1);
+  }
+
+  release(naam) {
+    if (naam && this.artifacts[naam]) this.artifacts[naam].released = true;
+  }
+
+  // -- een stap bereiken -------------------------------------------------------
   async reach(step) {
+    const selector = this.fill(step.selector);
     if (step.route && window.location.hash !== step.route) {
       window.location.hash = step.route;
       this.navigated = true;
     }
-    // een lade die de tour opende gaat dicht als het volgende onderdeel er
-    // niet in zit; zit het er wel in, dan blijft hij open
-    if (this.revealed && !find(step.selector)) this.unreveal();
+    if (this.revealed && !find(selector)) this.unreveal();
     const wait = step.optional ? WAIT_OPTIONAL_MS : WAIT_LOAD_MS;
-    let target = await waitFor(step.selector, step.reveal ? Math.min(wait, WAIT_REVEAL_MS) : wait);
+    let target = await waitFor(selector, step.reveal ? Math.min(wait, WAIT_REVEAL_MS) : wait);
     if (!target && step.reveal) {
       const toggle = find(step.reveal);
       if (toggle) {
         toggle.click();
-        target = await waitFor(step.selector, WAIT_REVEAL_MS);
+        target = await waitFor(selector, WAIT_REVEAL_MS);
         if (target) this.revealed = { toggle, target };
-        else toggle.click();               // het hielp niet: laat het zoals het was
+        else toggle.click();
       }
     }
     return target;
@@ -183,19 +243,28 @@ class Tour {
     if (!this.revealed) return;
     const { toggle, target } = this.revealed;
     this.revealed = null;
-    // alleen sluiten als het nog open staat (de pagina kan het zelf al hebben gesloten)
     if (visible(target) && toggle.isConnected) toggle.click();
   }
 
   async show(index, direction) {
-    if (this.busy) return;                 // één overgang tegelijk
+    if (this.busy) return;
     this.busy = true;
+    this.clearPending();
     try {
       while (index >= 0 && index < this.steps.length) {
-        const target = await this.reach(this.steps[index]);
-        if (!this.balloon.isConnected) return;       // ondertussen gesloten
-        if (target) { this.render(index, target); return; }
-        index += direction || 1;             // stap zonder onderdeel: overslaan
+        const step = this.steps[index];
+        // vóór de stap: verwijst hij naar iets dat er niet is, of is niet voldaan
+        // aan wat hij vereist, dan wordt hij overgeslagen zonder te wachten
+        const skip = this.refersToMissing(step.selector) || this.refersToMissing(step.requires)
+          || (step.requires && !exists(this.fill(step.requires)));
+        if (!skip) {
+          const target = await this.reach(step);
+          if (!this.balloon.isConnected) return;
+          if (target) { this.render(index, target); return; }
+        }
+        // een OVERGESLAGEN stap springt niet: zijn `next` geldt alleen als hij
+        // getoond is en de bezoeker op Next drukt
+        index = direction < 0 ? index - 1 : index + 1;
       }
       if (index >= this.steps.length) this.stop(true);
     } finally {
@@ -207,17 +276,35 @@ class Tour {
     if (this.target) this.target.classList.remove("tour-target");
     this.i = index;
     this.target = target;
+    if (this.history[this.history.length - 1] !== index) this.history.push(index);
     target.classList.add("tour-target");
     const s = this.steps[index];
     this.step.textContent = `Step ${index + 1} of ${this.steps.length}`;
     this.title.textContent = s.title;
-    this.text.textContent = s.text;
-    this.back.hidden = index === 0;
-    this.next.textContent = index === this.steps.length - 1 ? "Done" : "Next";
+    this.text.textContent = this.fill(s.text);
+    this.back.hidden = this.history.length <= 1;
+    this.next.hidden = !!(s.done_when || s.choice);
+    this.next.textContent = this.nextIndex(index) >= this.steps.length ? "Done" : "Next";
+    this.choices.replaceChildren();
+    if (s.choice) {
+      for (const c of s.choice) {
+        const b = el("button", "tour-btn tour-btn-choice", c.label);
+        b.type = "button";
+        b.addEventListener("click", () => {
+          this.release(c.release);
+          this.show(c.goto ? this.indexOf(c.goto) : index + 1, +1);
+        });
+        this.choices.appendChild(b);
+      }
+    }
     this.balloon.classList.remove("tour-in");
+    // op een telefoon bij een doe-stap: meteen scrollen (geen animatie), zodat
+    // place() daarna met de echte positie kan meten waar de balk mag staan
+    const direct = REDUCED || (isMobile() && this.isTask(s));
     try {
-      target.scrollIntoView({ block: isMobile() ? "start" : "center", behavior: REDUCED ? "auto" : "smooth" });
+      target.scrollIntoView({ block: isMobile() ? "start" : "center", behavior: direct ? "auto" : "smooth" });
     } catch (_) { target.scrollIntoView(); }
+    this.adjust = true;
     this.interacted = false;
     clearTimeout(this.settle);
     requestAnimationFrame(() => {
@@ -230,20 +317,68 @@ class Tour {
         }
       }, 600);
     });
+    if (s.emit && s.emit.event) {
+      document.dispatchEvent(new CustomEvent(s.emit.event, { detail: s.emit.detail || {} }));
+    }
+    if (s.done_when) this.arm(index, s.done_when);
   }
 
+  // -- wachten tot de bezoeker iets deed --------------------------------------
+  arm(index, done) {
+    const advance = () => {
+      this.clearPending();
+      if (!this.balloon.isConnected || this.i !== index) return;
+      this.show(this.nextIndex(index), +1);
+    };
+    if (done.event) {
+      const handler = (e) => {
+        const detail = e && e.detail;
+        const id = detail && typeof detail === "object" ? detail.id : detail;
+        if (done.as) this.artifacts[done.as] = { id, undo: done.undo || null, released: false };
+        advance();
+      };
+      document.addEventListener(done.event, handler);
+      this.pending = () => document.removeEventListener(done.event, handler);
+      return;
+    }
+    if (done.gone) {
+      const selector = this.fill(done.gone);
+      const timer = setInterval(() => {
+        if (!exists(selector)) {
+          this.release(done.release);
+          advance();
+        }
+      }, 300);
+      this.pending = () => clearInterval(timer);
+    }
+  }
+
+  clearPending() {
+    if (this.pending) { this.pending(); this.pending = null; }
+  }
+
+  // -- plaatsen ------------------------------------------------------------------
   place() {
     if (!this.target || !this.balloon.isConnected) return;
     const b = this.balloon;
     const r = this.target.getBoundingClientRect();
     if (isMobile()) {
-      // een balk aan de kant waar het onderdeel NIET is: onder als het
-      // onderdeel boven het midden staat, boven als het eronder staat
       b.style.left = b.style.top = "";
       const midden = window.innerHeight / 2;
       const onderdeelOnder = (r.top + r.height / 2) > midden;
+      // bij een doe-stap staat de balk BOVEN: het formulier eronder blijft
+      // bereikbaar en scrolbaar tot en met de knop die de bezoeker moet drukken
+      const boven = this.isTask(this.steps[this.i]) || onderdeelOnder;
       b.classList.add("tour-sheet");
-      b.classList.toggle("tour-sheet-top", onderdeelOnder);
+      b.classList.toggle("tour-sheet-top", boven);
+      if (this.adjust) {
+        // één keer na het tonen: het onderdeel niet onder de balk laten liggen
+        this.adjust = false;
+        const sheet = b.getBoundingClientRect();
+        const marge = 8;
+        if (boven && r.top < sheet.bottom + marge) window.scrollBy(0, r.top - (sheet.bottom + marge));
+        else if (!boven && r.bottom > sheet.top - marge) window.scrollBy(0, r.bottom - (sheet.top - marge));
+      }
       return;
     }
     b.classList.remove("tour-sheet", "tour-sheet-top");
@@ -272,34 +407,54 @@ class Tour {
 
   key(e) {
     if (!this.balloon.isConnected) return;
+    // een open bevestiging van de pagina krijgt de toetsen eerst
+    if (document.querySelector('[aria-modal="true"]')) return;
     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); this.stop(); return; }
-    if (e.key === "ArrowRight" || (e.key === "Enter" && !e.target.closest("button, a, input, select, textarea"))) {
-      e.preventDefault(); this.show(this.i + 1, +1); return;
+    const s = this.steps[this.i];
+    const waiting = !!(s && (s.done_when || s.choice));
+    if (!waiting && (e.key === "ArrowRight" || (e.key === "Enter" && !e.target.closest("button, a, input, select, textarea")))) {
+      e.preventDefault(); this.show(this.nextIndex(this.i), +1); return;
     }
-    if (e.key === "ArrowLeft") { e.preventDefault(); if (this.i > 0) this.show(this.i - 1, -1); return; }
+    if (e.key === "ArrowLeft" && !e.target.closest("input, select, textarea")) { e.preventDefault(); this.goBack(); return; }
     if (e.key === "Tab") {
       const focusables = [...this.balloon.querySelectorAll("button:not([hidden])")];
       if (!focusables.length) return;
       const first = focusables[0], last = focusables[focusables.length - 1];
-      if (!this.balloon.contains(document.activeElement)) { e.preventDefault(); first.focus(); return; }
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      // bij een doe-stap mag de focus de ballon uit, naar het formulier
+      if (!this.balloon.contains(document.activeElement)) { if (waiting) return; e.preventDefault(); first.focus(); return; }
+      if (e.shiftKey && document.activeElement === first) { if (waiting) return; e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { if (waiting) return; e.preventDefault(); first.focus(); }
+    }
+  }
+
+  // -- opruimen van wat de bezoeker niet wilde houden --------------------------
+  async undo() {
+    for (const [naam, a] of Object.entries(this.artifacts)) {
+      if (a.released || !a.undo || a.id == null) continue;
+      const path = this.fill(a.undo);
+      try {
+        if (path.startsWith("soc:")) await soc.del(path.slice(4));
+        else if (path.startsWith("api:")) await api.del(path.slice(4));
+      } catch (_) { /* de pagina toont het zelf; hier is niets meer te doen */ }
+      a.released = true;
+      document.dispatchEvent(new CustomEvent("bucky:tour-undone", { detail: { name: naam, id: a.id } }));
     }
   }
 
   stop(finished = false) {
     markSeen();
     clearTimeout(this.settle);
+    this.clearPending();
     document.removeEventListener("keydown", this.onKey, true);
     document.removeEventListener("pointerdown", this.onInteract, true);
     document.removeEventListener("keydown", this.onInteract, true);
     window.removeEventListener("resize", this.onLayout);
     window.removeEventListener("scroll", this.onLayout);
+    if (this.observer) this.observer.disconnect();
     if (this.target) this.target.classList.remove("tour-target");
     this.balloon.remove();
-    // geen halve staat: de lade dicht die de tour opende, en terug naar het
-    // tabblad waar de bezoeker was toen de tour begon
     this.unreveal();
+    const cleanup = this.undo();
     if (this.navigated && window.location.hash !== this.startHash) {
       window.location.hash = this.startHash || "";
     }
@@ -308,6 +463,7 @@ class Tour {
     if (back && typeof back.focus === "function" && back.isConnected) {
       try { back.focus({ preventScroll: true }); } catch (_) { /* niets */ }
     }
+    return cleanup;
   }
 }
 
@@ -316,13 +472,12 @@ async function main() {
   const steps = await loadSteps();
   if (!steps.length) return;
   const tour = new Tour(steps);
-  window.buckyTour = tour;          // voor tests en voor wie hem opnieuw wil starten
+  window.buckyTour = tour;
   await tour.start();
 }
 
 main();
 
-// Opnieuw starten (bijvoorbeeld vanuit een helpknop): vergeet de sessie en begin.
 export async function restartTour() {
   try { sessionStorage.removeItem(KEY); } catch (_) { /* niets */ }
   const steps = await loadSteps();
