@@ -21,7 +21,8 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from playwright.sync_api import sync_playwright   # noqa: E402
 
-BASIS = "http://127.0.0.1:8899"
+# tegen productie: TOUR_BASIS=https://buckybot.app (de API wordt ook dan nagespeeld)
+BASIS = os.environ.get("TOUR_BASIS", "http://127.0.0.1:8899")
 GID = "1392872457475592243"
 SCHERM = sys.argv[1] if len(sys.argv) > 1 else None
 # de echte stappen, voor de preview-schermafbeeldingen
