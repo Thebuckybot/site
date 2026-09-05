@@ -1,37 +1,40 @@
-"""De onboarding-tour zoals een bezoeker hem meemaakt, op het Security Center.
+"""De onboarding-tour als RONDLEIDING, op het Security Center.
 
-Speelt de backend na (stappen uit /api/site/tour) en controleert: de ballon
-verschijnt bij het eerste onderdeel, Next en pijl-rechts gaan verder, Escape
-sluit, de sessie onthoudt hem (herladen: geen ballon; nieuwe browsercontext:
-wel), Tab blijft in de ballon, de focus staat op de ballon, en op een telefoon
-is hij een onderbalk die het onderdeel niet bedekt. Maakt twee schermafbeeldingen
-voor de preview.
+Speelt de backend na (stappen uit /api/site/tour) en controleert dat de tour het
+werk doet: bij Next navigeert hij zelf naar de sectie van de stap, wacht tot het
+onderdeel er staat, slaat een optionele stap snel over; Back navigeert terug;
+Escape of Done laat geen halve staat achter (lade dicht, terug naar het tabblad
+waar hij begon). Op een telefoon opent de tour de lade voor de zijbalk en zet de
+balk aan de kant waar het onderdeel niet is. Toetsenbord, sessie-geheugen en
+reduced motion blijven zoals ze waren. Maakt de previewplaten.
 
 DRAAIEN:
     cd site && python -m http.server 8899
     python tests/test_tour.py [map-voor-schermafbeeldingen]
+    TOUR_BASIS=https://buckybot.app python tests/test_tour.py   # tegen productie
 """
 
 import json
 import os
 import sys
+import time
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from playwright.sync_api import sync_playwright   # noqa: E402
 
-# tegen productie: TOUR_BASIS=https://buckybot.app (de API wordt ook dan nagespeeld)
 BASIS = os.environ.get("TOUR_BASIS", "http://127.0.0.1:8899")
 GID = "1392872457475592243"
 SCHERM = sys.argv[1] if len(sys.argv) > 1 else None
-# de echte stappen, voor de preview-schermafbeeldingen
-ECHT = os.path.join(os.path.dirname(__file__), "..", "..", "bucky1.0", "cogs", "data", "currency", "datacurrency", "site_tour.json")
+ECHT = os.path.join(os.path.dirname(__file__), "..", "..", "bucky1.0", "cogs", "data", "currency",
+                    "datacurrency", "site_tour.json")
 
 STAPPEN = {"enabled": True, "pages": {"security": [
-    {"selector": "#sec-nav, #sec-burger", "title": "The sections", "text": "Everything about protection lives here.", "placement": "right"},
-    {"selector": "#sec-nav [data-key=\"snapshots\"]", "title": "Snapshots", "text": "Structural backups.", "placement": "right"},
-    {"selector": "#does-not-exist", "title": "Ghost", "text": "This step has no element and is skipped.", "placement": "below"},
+    {"selector": "#sec-nav", "reveal": "#sec-burger", "title": "The sections", "text": "Everything lives here.", "placement": "right"},
+    {"selector": "#snap-health", "route": "#snapshots", "title": "Snapshots", "text": "Structural backups.", "placement": "below"},
+    {"selector": "#does-not-exist", "optional": True, "title": "Ghost", "text": "Not on this page; skipped fast.", "placement": "below"},
+    {"selector": "#sec-boost-card", "route": "#settings", "title": "Security Boost", "text": "Who gave it, until when.", "placement": "below"},
     {"selector": "#sec-refresh", "title": "Refresh", "text": "Reload the section.", "placement": "below"},
 ]}}
 
@@ -49,13 +52,38 @@ def stub(page, *, tour=STAPPEN):
     page.route(f"**/api/security/{GID}/snapshots", lambda r: r.fulfill(**ok({
         "snapshots": [], "current_snapshot_id": None, "has_usable": False, "capabilities": {},
         "keep": 10, "retention_days": 14})))
+    page.route(f"**/api/security/{GID}/settings", lambda r: r.fulfill(**ok({
+        "boost": None, "limits": {"retention_days": 14, "soc_rules": 10, "snapshots": 10, "plan": "free"},
+        "retention": {"options": [7, 14], "selectable": [7, 14], "max": 14, "current": 14}})))
 
 
-def open_security(ctx, *, mobile=False, tour=STAPPEN):
+def open_security(ctx, *, tour=STAPPEN, start="#overview"):
     page = ctx.new_page()
     stub(page, tour=tour)
-    page.goto(f"{BASIS}/security.html?guild_id={GID}#snapshots", wait_until="domcontentloaded")
+    page.goto(f"{BASIS}/security.html?guild_id={GID}{start}", wait_until="domcontentloaded")
     return page
+
+
+def hash_van(page):
+    return page.evaluate("location.hash")
+
+
+def lade_open(page):
+    return page.evaluate("document.getElementById('sec-app').classList.contains('nav-open')")
+
+
+def titel(page):
+    return page.locator("#bucky-tour-title").inner_text()
+
+
+def wacht_titel(page, tekst, timeout=10000):
+    page.wait_for_function("t => document.querySelector('#bucky-tour-title') && "
+                           "document.querySelector('#bucky-tour-title').textContent === t", arg=tekst, timeout=timeout)
+
+
+def snijdt(a, c):
+    return (a["x"] < c["x"] + c["width"] and c["x"] < a["x"] + a["width"]
+            and a["y"] < c["y"] + c["height"] and c["y"] < a["y"] + a["height"])
 
 
 def main():
@@ -69,55 +97,75 @@ def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
 
-        # ---- desktop -------------------------------------------------------
+        # ---- desktop: de rondleiding ------------------------------------------
         ctx = browser.new_context(viewport={"width": 1280, "height": 800})
         page = open_security(ctx)
         page.wait_for_selector("#bucky-tour.tour-in", timeout=15000)
-        ballon = page.locator("#bucky-tour")
-        check(ballon.get_attribute("role") == "dialog", "de ballon is een dialoog")
-        check(page.locator("#bucky-tour-title").inner_text() == "The sections", "stap 1 staat bij de secties")
-        check("Step 1 of 4" in ballon.text_content(), "de teller telt alle geconfigureerde stappen")
-        # de pagina zet na haar eigen fetch de focus op de sectiekop; de tour haalt hem terug
+        check(titel(page) == "The sections" and hash_van(page) == "#overview", "stap 1 wijst naar de zijbalk, op het tabblad waar de bezoeker begon")
+        check("Step 1 of 5" in page.locator("#bucky-tour").text_content(), "de teller telt alle stappen")
         try:
             page.wait_for_function("document.activeElement && document.activeElement.id === 'bucky-tour-title'", timeout=3000)
             check(True, "de focus staat op de ballon")
         except Exception:
             check(False, "de focus staat op de ballon")
-        check(page.locator("#sec-nav").evaluate("e => e.classList.contains('tour-target')"), "het onderdeel is gemarkeerd")
-        check(page.locator("#bucky-tour .tour-btn:not([hidden])").first.inner_text() == "Next", "zonder Back op stap 1")
         if SCHERM:
             page.screenshot(path=os.path.join(SCHERM, "tour_desktop.png"))
+
         page.locator("#bucky-tour .tour-btn-primary").click()
-        page.wait_for_function("document.querySelector('#bucky-tour-title').textContent === 'Snapshots'")
-        check(True, "Next gaat naar stap 2")
+        wacht_titel(page, "Snapshots")
+        check(hash_van(page) == "#snapshots", "Next opent zelf het tabblad Snapshots")
+        check(page.locator(".tour-target").first.get_attribute("id") == "snap-health", "en wijst naar het onderdeel dat na de fetch verscheen")
+
+        t0 = time.time()
+        page.locator("#bucky-tour .tour-btn-primary").click()
+        wacht_titel(page, "Security Boost")
+        check(time.time() - t0 < 4, f"de optionele stap zonder onderdeel is snel overgeslagen ({time.time() - t0:.1f}s)")
+        check(hash_van(page) == "#settings", "en de tour is doorgegaan naar Settings")
+        check(page.locator(".tour-target").first.get_attribute("id") == "sec-boost-card", "naar de boostkaart")
+        check("Step 4 of 5" in page.locator("#bucky-tour").text_content(), "de teller telt de overgeslagen stap wel mee")
+        if SCHERM:
+            page.screenshot(path=os.path.join(SCHERM, "tour_desktop_boost.png"))
+
+        page.locator("#bucky-tour .tour-btn:not([hidden])").first.click()      # Back
+        wacht_titel(page, "Snapshots")
+        check(hash_van(page) == "#snapshots", "terug is ook terug: Back opent Snapshots weer")
+
         page.keyboard.press("ArrowRight")
-        page.wait_for_function("document.querySelector('#bucky-tour-title').textContent === 'Refresh'")
-        check("Step 4 of 4" in ballon.text_content(), "de stap zonder onderdeel is overgeslagen (pijl-rechts)")
-        check(page.locator("#bucky-tour .tour-btn-primary").inner_text() == "Done", "de laatste knop heet Done")
-        # Tab blijft in de ballon
+        wacht_titel(page, "Security Boost")
+        page.keyboard.press("ArrowRight")
+        wacht_titel(page, "Refresh")
+        check(hash_van(page) == "#settings" and page.locator("#bucky-tour .tour-btn-primary").inner_text() == "Done",
+              "de laatste stap heeft geen route en heet Done")
         page.locator("#bucky-tour .tour-btn-skip").focus()
         page.keyboard.press("Tab")
         check(page.evaluate("document.activeElement.textContent") == "Back", "Tab draait rond binnen de ballon")
-        page.keyboard.press("ArrowLeft")
-        page.wait_for_function("document.querySelector('#bucky-tour-title').textContent === 'Snapshots'")
-        check(True, "pijl-links gaat terug")
+
         page.keyboard.press("Escape")
         page.wait_for_selector("#bucky-tour", state="detached", timeout=5000)
+        page.wait_for_timeout(600)
         check(page.evaluate("document.body.dataset.tourState") == "skipped", "Escape sluit de tour")
+        check(hash_van(page) == "#overview", "en brengt de bezoeker terug naar het tabblad waar hij begon")
         check(page.evaluate("sessionStorage.getItem('bucky_tour_seen_security')") == "1", "de sessie onthoudt hem")
         check(page.locator(".tour-target").count() == 0, "de markering is weg")
 
-        # herladen in dezelfde sessie: geen ballon
         page.reload(wait_until="domcontentloaded")
         page.wait_for_timeout(1500)
         check(page.locator("#bucky-tour").count() == 0, "na herladen in dezelfde sessie komt hij niet terug")
 
-        # nieuwe browsercontext (nieuwe sessie): wel
+        # Done: ook dan terug naar het begin
         ctx2 = browser.new_context(viewport={"width": 1280, "height": 800})
-        page2 = open_security(ctx2)
+        page2 = open_security(ctx2, start="#snapshots")
         page2.wait_for_selector("#bucky-tour.tour-in", timeout=15000)
-        check(True, "in een nieuwe sessie begint hij opnieuw")
-        # tour uit: geen ballon
+        for _ in range(5):
+            if page2.locator("#bucky-tour").count() == 0:
+                break
+            page2.locator("#bucky-tour .tour-btn-primary").click()
+            page2.wait_for_timeout(900)
+        page2.wait_for_selector("#bucky-tour", state="detached", timeout=10000)
+        page2.wait_for_timeout(600)
+        check(page2.evaluate("document.body.dataset.tourState") == "done", "Done sluit de tour af")
+        check(hash_van(page2) == "#snapshots", "en eindigt bij de ingang: het tabblad waar hij begon")
+
         page3 = open_security(ctx2, tour={"enabled": False, "pages": {}})
         page3.wait_for_timeout(1500)
         check(page3.locator("#bucky-tour").count() == 0, "uit in de config is uit op de pagina")
@@ -127,69 +175,66 @@ def main():
         page4 = open_security(ctx3)
         page4.wait_for_selector("#bucky-tour.tour-in", timeout=15000)
         overgang = page4.locator("#bucky-tour").evaluate("e => getComputedStyle(e).transitionDuration")
-        # de site zet sitebreed 0.001ms bij reduced motion; alles onder 10ms is "geen animatie"
         duur = max(float(x.strip().rstrip("s")) for x in overgang.split(","))
         check(duur < 0.01, f"geen animatie met prefers-reduced-motion ({overgang})")
 
-        # ---- telefoon --------------------------------------------------------
+        # ---- telefoon: de tour opent de lade zelf ----------------------------
         ctx4 = browser.new_context(viewport={"width": 375, "height": 667}, is_mobile=True, has_touch=True)
         page5 = open_security(ctx4)
         page5.wait_for_selector("#bucky-tour.tour-in", timeout=15000)
-        check(page5.locator("#bucky-tour").evaluate("e => e.classList.contains('tour-sheet')"), "op een telefoon is de ballon een onderbalk")
-        b = page5.locator("#bucky-tour").bounding_box()
-        # op een telefoon is #sec-nav de uitgeschoven zijbalk; stap 2 (een navlink) kan
-        # onzichtbaar zijn en wordt dan overgeslagen - de eerste zichtbare stap telt
+        check(lade_open(page5), "op een telefoon opent de tour de lade voor stap 1")
+        check(page5.locator(".tour-target").first.get_attribute("id") == "sec-nav", "en wijst naar de zijbalk zelf, niet naar de knop")
         doel = page5.locator(".tour-target").first.bounding_box()
-        def snijdt(a, c):
-            return (a["x"] < c["x"] + c["width"] and c["x"] < a["x"] + a["width"]
-                    and a["y"] < c["y"] + c["height"] and c["y"] < a["y"] + a["height"])
-        overlapt = bool(doel and b and snijdt(doel, b))
-        check(doel is not None and doel["x"] >= 0 and doel["x"] < 375, "het gemarkeerde onderdeel staat in beeld (niet de weggeschoven zijbalk)")
-        check(page5.locator(".tour-target").first.get_attribute("id") == "sec-burger",
-              "op een telefoon wijst stap 1 naar de menuknop in plaats van de zijbalk")
-        check(page5.locator("#bucky-tour-title").inner_text() == "The sections", "met dezelfde tekst")
-        check(b is not None and b["y"] + b["height"] >= 667 - 2, "de onderbalk staat onderaan")
-        check(not overlapt, "de balk bedekt het onderdeel niet")
+        check(doel is not None and doel["x"] >= 0, "de zijbalk staat in beeld")
+        check(page5.locator("#bucky-tour").evaluate("e => e.classList.contains('tour-sheet')"), "de ballon is een balk")
+        if SCHERM:
+            page5.screenshot(path=os.path.join(SCHERM, "tour_mobile_drawer.png"))
+
+        page5.locator("#bucky-tour .tour-btn-primary").click()
+        wacht_titel(page5, "Snapshots")
+        page5.wait_for_timeout(500)
+        check(not lade_open(page5), "bij de volgende stap gaat de lade weer dicht")
+        check(hash_van(page5) == "#snapshots", "en de tour heeft zelf naar Snapshots genavigeerd")
+        b = page5.locator("#bucky-tour").bounding_box()
+        doel = page5.locator(".tour-target").first.bounding_box()
+        check(b is not None and doel is not None and not snijdt(b, doel), "de balk bedekt het onderdeel niet")
         if SCHERM:
             page5.screenshot(path=os.path.join(SCHERM, "tour_mobile.png"))
+
+        # halverwege sluiten op de telefoon: lade dicht, tabblad terug
+        page5.locator("#bucky-tour .tour-btn:not([hidden])").first.click()      # Back -> stap 1, lade open
+        wacht_titel(page5, "The sections")
+        page5.wait_for_timeout(400)
+        check(lade_open(page5), "Back opent de lade opnieuw voor stap 1")
+        page5.keyboard.press("Escape")
+        page5.wait_for_selector("#bucky-tour", state="detached", timeout=5000)
+        page5.wait_for_timeout(600)
+        check(not lade_open(page5) and hash_van(page5) == "#overview", "Escape laat geen open lade en geen vreemd tabblad achter")
 
         # ---- preview met de echte configuratie ------------------------------
         if SCHERM:
             echt = json.loads(open(ECHT, encoding="utf-8").read())
             ctx5 = browser.new_context(viewport={"width": 1280, "height": 800})
-            page6 = ctx5.new_page()
-            stub(page6, tour=echt)
-            guilds = [{"id": str(10 ** 17 + i), "name": n, "icon": None} for i, n in enumerate(
-                ["Bucky HQ", "Night Market", "The Foundry", "Harbor Watch", "Quiet Hours", "Orbit"])]
-            page6.route("**/api/me*", lambda r: r.fulfill(
-                status=200, content_type="application/json",
-                body=json.dumps({"logged_in": True, "user": {"id": "1", "username": "tester", "avatar": None}, "guilds": guilds})))
-            page6.goto(f"{BASIS}/dashboard.html", wait_until="domcontentloaded")
+            page6 = open_security(ctx5, tour=echt)
             page6.wait_for_selector("#bucky-tour.tour-in", timeout=15000)
             page6.wait_for_timeout(700)
-            page6.screenshot(path=os.path.join(SCHERM, "tour_dashboard.png"))
-            def verder(pg):
-                """klik Next en wacht tot de teller verspringt (een verborgen stap wordt overgeslagen)"""
-                was = pg.locator("#bucky-tour .tour-step").text_content()
-                pg.locator("#bucky-tour .tour-btn-primary").click()
-                pg.wait_for_function(
-                    "was => document.querySelector('#bucky-tour .tour-step').textContent !== was", arg=was, timeout=5000)
-                pg.wait_for_timeout(400)
-            laatste = len(echt["pages"]["dashboard"])
-            for _ in range(laatste):
-                if page6.locator("#bucky-tour .tour-btn-primary").inner_text() == "Done":
-                    break
-                verder(page6)
-            page6.screenshot(path=os.path.join(SCHERM, "tour_dashboard_boost.png"))
-            check("Security Boost" in page6.locator("#bucky-tour").text_content(), "de laatste dashboardstap is de boost")
-            page7 = open_security(ctx5, tour=echt)
+            page6.screenshot(path=os.path.join(SCHERM, "tour_echt_1.png"))
+            for _ in range(3):
+                page6.locator("#bucky-tour .tour-btn-primary").click()
+                page6.wait_for_timeout(1200)
+            check(titel(page6) == "Security Boost" and hash_van(page6) == "#settings", "de echte tour brengt je naar de boostkaart in Settings")
+            page6.screenshot(path=os.path.join(SCHERM, "tour_echt_boost.png"))
+            ctx6 = browser.new_context(viewport={"width": 375, "height": 667}, is_mobile=True, has_touch=True)
+            page7 = open_security(ctx6, tour=echt)
             page7.wait_for_selector("#bucky-tour.tour-in", timeout=15000)
             page7.wait_for_timeout(700)
-            page7.screenshot(path=os.path.join(SCHERM, "tour_security.png"))
-            for _ in range(3):
-                verder(page7)
-            check(page7.locator("#bucky-tour-title").inner_text() == "Security Boost", "stap 4 van het Security Center is de boost")
-            page7.screenshot(path=os.path.join(SCHERM, "tour_security_boost.png"))
+            page7.screenshot(path=os.path.join(SCHERM, "tour_echt_mobiel_1.png"))
+            page7.locator("#bucky-tour .tour-btn-primary").click()
+            wacht_titel(page7, "Snapshots")
+            page7.wait_for_timeout(700)
+            page7.screenshot(path=os.path.join(SCHERM, "tour_echt_mobiel_2.png"))
+            n = len(echt["pages"]["security"])
+            check(f"Step 2 of {n}" in page7.locator("#bucky-tour").text_content(), "op de telefoon wordt geen stap meer overgeslagen")
 
         browser.close()
     if fouten:

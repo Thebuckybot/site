@@ -108,3 +108,16 @@
     transform: none;
   }
 }
+
+/* Op een telefoon staat de balk aan de kant waar het onderdeel NIET is: onder als
+   het onderdeel in de bovenste helft staat, boven als het in de onderste helft
+   staat. Zo bedekt de tekst nooit waar hij naar wijst. */
+.tour-balloon.tour-sheet.tour-sheet-top {
+  top: 0;
+  bottom: auto;
+  border-radius: 0 0 14px 14px;
+  border-top: 0;
+  border-bottom: 1px solid var(--tour-border, rgba(255, 255, 255, 0.12));
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-bottom: 14px;
+}
