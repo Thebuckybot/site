@@ -191,7 +191,14 @@ async function load() {
     return;
   }
 
-  if (!tiers.length) {
+  // ÉÉN ANTWOORD, TWEE SOORTEN. De catalogus draagt sinds 0069 een `kind`: de
+  // vier abonnementen (tier) en de vier Security Boosts (boost). Dezelfde bron,
+  // dezelfde publicatie, twee rasters. Een rij zonder `kind` is een tier - dat is
+  // wat een oudere catalogusrij was.
+  const boosts = tiers.filter((r) => r && r.kind === "boost");
+  tiers = tiers.filter((r) => !r || r.kind !== "boost");
+
+  if (!tiers.length && !boosts.length) {
     say("Premium isn't open yet. Check back soon.");
     return;
   }
@@ -226,7 +233,101 @@ async function load() {
   }
 
   grid.replaceChildren(...tiers.map((tier) => card(tier, tier.tier_key === mine)));
+  renderBoosts(boosts);
   status.hidden = true;
+}
+
+/**
+ * De looptijd van een boost, uit `duration_days`, in de woorden van de winkel.
+ * Geen aparte tekstkolom: één getal, één omzetting, hier en in de bot dezelfde
+ * regel (30 -> "1 month", 365 -> "1 year").
+ */
+function formatDuration(days) {
+  const d = Number(days);
+  if (!Number.isFinite(d) || d <= 0) return "";
+  if (d % 365 === 0) { const n = d / 365; return `${n} year${n === 1 ? "" : "s"}`; }
+  if (d % 30 === 0) { const n = d / 30; return `${n} month${n === 1 ? "" : "s"}`; }
+  return `${d} days`;
+}
+
+/**
+ * Eén boostkaart. Dezelfde bouwstenen als een tierkaart (`<li>` in een `<ul>`,
+ * prijs uit de data, een `<details>` voor de inhoud, een koopknop naar Discord),
+ * zodat een screenreader en een toetsenbord er hetzelfde doorheen komen.
+ */
+function boostCard(row) {
+  const item = el("li", "pr-card pr-card-boost");
+  const head = el("div", "pr-card-head");
+  const title = el("h3", "pr-card-title");
+  if (row.badge_url) {
+    const badge = el("img", "pr-badge");
+    badge.src = row.badge_url;
+    badge.alt = "";
+    badge.loading = "lazy";
+    badge.width = 40;
+    badge.height = 40;
+    badge.addEventListener("error", () => badge.remove());
+    title.appendChild(badge);
+  }
+  title.appendChild(document.createTextNode(row.name || row.tier_key || "Security Boost"));
+  head.appendChild(title);
+  // DE PRIJS MÉT DE KORTING, één string uit de catalogus ("$12.99 (13% off)"):
+  // de site rekent geen procenten, dat doet de config, en zo staat overal
+  // hetzelfde getal.
+  if (row.price) head.appendChild(el("p", "pr-price", row.price));
+  item.appendChild(head);
+
+  const stats = el("dl", "pr-stats");
+  const duration = formatDuration(row.duration_days);
+  const rows = [
+    ["Runs", duration ? `${duration}, from the day you assign it` : ""],
+    ["Applies to", "one server you choose"],
+    ["Move it", "after 7 days, to another server"],
+  ];
+  for (const [label, value] of rows) {
+    if (!value) continue;
+    stats.appendChild(el("dt", null, label));
+    stats.appendChild(el("dd", null, value));
+  }
+  item.appendChild(stats);
+
+  const lines = Array.isArray(row.contents) ? row.contents : [];
+  if (lines.length) {
+    const details = el("details", "pr-details");
+    const summary = el("summary", "pr-summary");
+    summary.appendChild(document.createTextNode("What the server gets"));
+    summary.appendChild(el("span", "pr-count", `${lines.length} items`));
+    details.appendChild(summary);
+    const list = el("ul", "pr-contents");
+    for (const line of lines) list.appendChild(el("li", null, line));
+    details.appendChild(list);
+    item.appendChild(details);
+  }
+
+  if (row.store_url) {
+    const link = el("a", "pr-buy", `Buy ${duration || "this boost"}`);
+    link.href = row.store_url;
+    link.rel = "noopener noreferrer";
+    link.target = "_blank";
+    link.appendChild(el("span", "pr-sr", " (opens Discord in a new tab)"));
+    item.appendChild(link);
+  } else {
+    item.appendChild(el("p", "pr-nolink", "Available in Discord."));
+  }
+  return item;
+}
+
+function renderBoosts(boosts) {
+  const section = document.getElementById("pr-boosts");
+  const boostGrid = document.getElementById("pr-boost-grid");
+  if (!section || !boostGrid) return;
+  if (!boosts.length) {
+    section.hidden = true;
+    return;
+  }
+  const sorted = [...boosts].sort((a, b) => (Number(a.tier_rank) || 0) - (Number(b.tier_rank) || 0));
+  boostGrid.replaceChildren(...sorted.map(boostCard));
+  section.hidden = false;
 }
 
 load();

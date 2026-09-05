@@ -373,3 +373,19 @@
   border-radius: 999px;
   padding: 0.15rem 0.6rem;
 }
+
+/* ---- Security Boosts: een tweede raster onder de tiers, zelfde kaart --------
+   `pr-section-title` is de kop van dat blok; `h3` in de kaart omdat de kop van
+   het blok al de `h2` is, en de documentstructuur is wat een screenreader
+   voorleest. De rand is lichter dan die van "Your tier": een boost is nooit
+   "van jou" op deze pagina, hij is van een server. */
+.pr-section-title {
+  margin: 2.5rem 0 0.5rem;
+  font-size: 1.5rem;
+}
+.pr-boosts .pr-lede {
+  margin-bottom: 1.25rem;
+}
+.pr-card-boost .pr-card-title {
+  font-size: 1.15rem;
+}

@@ -74,6 +74,28 @@
       store page for that tier.
     </p>
 
+    <!--
+      DE VIER SECURITY BOOSTS. Dezelfde bron als de tiers hierboven: de bot
+      schrijft ze in premium_catalog (kind = boost), /api/premium/tiers geeft ze
+      mee, en premium.js zet ze hier. Niets van prijs, looptijd of inhoud staat
+      in deze HTML. Verborgen tot er boostrijen binnenkomen.
+    -->
+    <section class="pr-boosts" id="pr-boosts" hidden aria-labelledby="pr-boosts-title">
+      <h2 id="pr-boosts-title" class="pr-section-title">Security Boosts</h2>
+      <p class="pr-lede">
+        A boost is for a <strong>server</strong>, not for you. Buy one, then give it to a
+        server where you have Manage Server: for the time it runs, that server keeps its
+        security logs for a year instead of two weeks, holds more detection rules and more
+        recovery snapshots. One boost per server; after seven days you can move it.
+      </p>
+      <ul class="pr-grid pr-grid-boosts" id="pr-boost-grid" aria-describedby="pr-boost-note"></ul>
+      <p class="pr-note" id="pr-boost-note">
+        One-time purchases, not a subscription. The clock starts when you assign a boost,
+        so a boost you keep in reserve does not run out. Sold by Discord; a boost is a licence,
+        not property, and is not refundable once delivered.
+      </p>
+    </section>
+
     <section class="pr-faq" aria-labelledby="pr-faq-title">
       <h2 id="pr-faq-title">How the monthly cache works</h2>
       <dl class="pr-dl">
@@ -92,6 +114,27 @@
         <dd>
           Subscribing twice in the same month still gives one cache. Upgrading
           mid-month lifts the waiting cache to the higher tier.
+        </dd>
+        <dt>What is a Security Boost, and who is it for?</dt>
+        <dd>
+          A boost is a one-time purchase for a <em>server</em>: you buy it, then give it to a
+          server where you have Manage Server. While it runs, that server keeps its security
+          logs for a year instead of two weeks, holds 30 detection rules instead of 10 and 25
+          recovery snapshots instead of 10. It changes nothing about your own account.
+        </dd>
+        <dt>When does the clock start, and can I move it?</dt>
+        <dd>
+          The clock starts when you assign the boost, not when you buy it, so a boost in
+          reserve does not run out. After seven days you can move it to another server; the
+          server it leaves keeps its limits for seven more days. A server's admins can decline
+          a boost; it then goes back to your reserve with its clock still running.
+        </dd>
+        <dt>What happens when a boost ends?</dt>
+        <dd>
+          The server keeps its extended logs, rules and snapshots for seven days. Assign a new
+          boost in that window and nothing changes; otherwise the limits fall back to the free
+          ones and older data is removed on the next hourly sweep. The server and its members
+          are told in the server's #b-boost channel.
         </dd>
       </dl>
     </section>

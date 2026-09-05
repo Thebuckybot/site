@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { el, badge, toast, errorState, infoTitle, info, emptyCard, formModal } from "../ui.js";
+import { el, badge, toast, errorState, infoTitle, info, emptyCard, formModal, fmtTime } from "../ui.js";
 import { settingDesc } from "../descriptions.js";
 
 // Settings: general config + data retention + the channel/role provisioning the
@@ -44,6 +44,12 @@ export default {
       }));
       root.appendChild(chanCard);
 
+      // ---- Security Boost ---------------------------------------------------
+      // Waarom de limieten zijn wat ze zijn: wie de boost gaf, tot wanneer, of
+      // dat de server in het respijt zit. Uit `s.boost` (de bot schrijft die
+      // tabellen, de backend leest ze); niets hier is een aanname.
+      root.appendChild(boostCard(s.boost, s.limits));
+
       // ---- Retention -----------------------------------------------------
       // One ladder (`options`), and per server the rungs it may pick
       // (`selectable`, everything up to its `retention_max_days`). The rungs
@@ -74,7 +80,9 @@ export default {
         // entitlement. Er is dus geen aankoop die dit ontgrendelt. Een betaalde
         // functie noemen die niet bestaat is precies het soort belofte waar de
         // rest van deze ronde is opgeruimd.
-        el("p", { class: "sec-muted", text: "Every server keeps security data for 14 days." }),
+        el("p", { class: "sec-muted", text: selectable.length > 1
+          ? `This server may keep security data for up to ${ret.max || Math.max(...selectable)} days while its Security Boost runs.`
+          : "Every server keeps security data for 14 days. A Security Boost lets it keep data for up to a year." }),
       ]));
     } catch (err) { errorState(root, err, () => this.render(root)); }
   },
@@ -127,4 +135,35 @@ function provisionRow({ label, descKey, value, emptyMsg, field, kind, canEdit, r
     }
   }
   return el("div", { class: "sec-settings-row" }, [k, right]);
+}
+
+
+/**
+ * De boostkaart op Settings (en Overview): waarom de limieten zijn wat ze zijn.
+ *
+ * Drie standen, alle drie uit de payload. `boost` is null (geen boost, vrije
+ * limieten), active (wie gaf hem, tot wanneer) of grace (de boost is weg, de
+ * limieten blijven tot een datum). De getallen komen uit `limits`, dus de
+ * kaart kan niet iets anders beweren dan de instellingen eronder.
+ */
+export function boostCard(boost, limits) {
+  const l = limits || {};
+  const card = el("div", { class: "sec-card", style: "margin-top:16px" }, [
+    el("div", { class: "sec-page-title" }, ["Security Boost ", badge(
+      boost && boost.state === "active" ? "Active" : (boost && boost.state === "grace" ? "Ending" : "None"),
+      boost && boost.state === "active" ? "ok" : (boost && boost.state === "grace" ? "warn" : "muted"))]),
+  ]);
+  const lines = [];
+  if (boost && boost.state === "active") {
+    lines.push(`Given by <@${boost.user_id}> on ${fmtTime(boost.assigned_at)}, until ${fmtTime(boost.expires_at)}.`);
+    lines.push(`While boosted: logs kept up to ${l.retention_days} days, ${l.soc_rules} detection rules, ${l.snapshots} snapshots.`);
+  } else if (boost && boost.state === "grace") {
+    lines.push(`The last boost has ended. This server keeps its extended limits until ${fmtTime(boost.grace_until)}.`);
+    lines.push("Assign a new boost before then (in Discord, with +premium) and nothing changes.");
+  } else {
+    lines.push(`No boost. Free limits: logs kept ${l.retention_days || 14} days, ${l.soc_rules || 10} detection rules, ${l.snapshots || 10} snapshots.`);
+    lines.push("A member with Manage Server can give this server a Security Boost from +premium in Discord.");
+  }
+  for (const line of lines) card.appendChild(el("p", { class: "sec-muted", style: "margin:6px 0 0", text: line.replace(/<@(\d+)>/, "user $1") }));
+  return card;
 }

@@ -1,5 +1,6 @@
 import { api } from "../api.js";
 import { el, statCard, badge, pageHeader, errorState, toast, fmtTime } from "../ui.js";
+import { boostCard } from "./settings.js";
 
 export default {
   async render(root) {
@@ -7,11 +8,13 @@ export default {
     // first — otherwise a second full copy of the page stacks on top (FIN-002 M1).
     root.replaceChildren();
     try {
-      const [ov, em, health, incRaw] = await Promise.all([
+      const [ov, em, health, incRaw, settings] = await Promise.all([
         api.get("/overview"),
         api.get("/emergency").catch(() => ({})),
         api.get("/health").catch(() => ({ checks: [], recommendations: [] })),
         api.getRaw("/incidents?per_page=5").catch(() => ({ data: { items: [] } })),
+        // de boostkaart leest uit dezelfde instellingen-payload als Settings
+        api.get("/settings").catch(() => null),
       ]);
       const incidents = (incRaw && incRaw.data && incRaw.data.items) || [];
       const grade = ov.security_score >= 75 ? "ok" : ov.security_score >= 50 ? "warn" : "bad";
@@ -83,6 +86,7 @@ export default {
       hcard.appendChild(el("div", { class: "sec-actions", style: "margin-top:12px" }, [el("a", { class: "sec-btn sec-btn-sm", href: "#health", text: "Security Health" })]));
 
       grid.appendChild(recent); grid.appendChild(hcard);
+      if (settings) grid.appendChild(boostCard(settings.boost, settings.limits));
       root.appendChild(grid);
     } catch (err) { errorState(root, err, () => this.render(root)); }
   },

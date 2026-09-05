@@ -57,7 +57,7 @@
           <tr><td>Discord identifiers</td><td>User ID, Server (guild) ID, role &amp; channel IDs</td><td>Associate settings and data with the right account and server</td></tr>
           <tr><td>Security configuration</td><td>Module toggles, thresholds, punishment chains, ignore rules, SOC rules</td><td>Run and enforce your server's protection</td></tr>
           <tr><td>Security events</td><td>Incident metadata, audit-log derived events, quarantine records including a cached username &amp; avatar URL, snapshots of server structure</td><td>Detection, recovery and the audit trail</td></tr>
-          <tr><td>Purchases</td><td>Which premium plan you hold, when it started and whether the monthly cache has been claimed. Received from Discord; we never see your payment details</td><td>Give you what you bought and keep the monthly cache honest</td></tr>
+          <tr><td>Purchases</td><td>Which premium plan you hold, when it started and whether the monthly cache has been claimed; which Security Boosts you own, which server each one is applied to, when it was assigned and when it ends. Received from Discord; we never see your payment details</td><td>Give you what you bought, keep the monthly cache honest, and apply a boost to the server you chose</td></tr>
           <tr><td>Economy &amp; gameplay</td><td>Balances, inventory, level and progression, organisation membership and contribution</td><td>Power the economy, the arcade and your organisation</td></tr>
           <tr><td>Support tickets</td><td>Ticket messages and transcripts, with the display name of each author</td><td>Handle your request and let staff review how it was handled</td></tr>
           <tr><td>Giveaways</td><td>Entries, and the display name of each drawn winner</td><td>Draw winners and show who won</td></tr>
@@ -78,7 +78,9 @@
         <thead><tr><th>Data</th><th>Retention</th></tr></thead>
         <tbody>
           <tr><td>Premium plan and cache state</td><td>While the plan runs, and for as long afterwards as we need it to settle claims and answer questions about a purchase</td></tr>
-          <tr><td>Security incidents, audit log, rule executions and risk history</td><td>14 days</td></tr>
+          <tr><td>Security incidents, audit log, rule executions, risk history, closed quarantine records and finished recovery jobs</td><td>14 days. Up to 365 days for a server that holds an active Security Boost: the server's administrators choose the period, and it is shown in the Security Center. When a boost ends the server keeps the longer period for 7 days and then returns to 14 days, at which point older data is deleted</td></tr>
+          <tr><td>Security snapshots (server structure)</td><td>The newest 10 per server (25 with a Security Boost) and none older than the server's retention period, except the one snapshot the server has chosen as its restore point</td></tr>
+          <tr><td>Security Boost records</td><td>While the boost runs and for as long afterwards as we need them to settle claims and answer questions about a purchase</td></tr>
           <tr><td>Ticket messages and transcripts</td><td>48 hours after the ticket is closed</td></tr>
           <tr><td>Giveaway entries</td><td>72 hours after the giveaway ends or is cancelled</td></tr>
         </tbody>
