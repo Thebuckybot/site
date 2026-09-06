@@ -9,28 +9,39 @@
 /* `hidden` wint van elke display-regel hieronder */
 #bucky-tour [hidden] { display: none !important; }
 
+/* De demping is één svg over het hele scherm; het masker heeft een gat per
+   gebied dat de bezoeker moet zien of aanklikken, met een crimson ring. Bij een
+   doe-stap zijn dat er meerdere: het formulier én de knop, de Delete-knop én
+   daarna de bevestiging. De svg laat klikken door: de pagina blijft bedienbaar. */
 .tour-spot {
   position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: var(--z-tour, 80);
-  box-sizing: border-box;
-  pointer-events: none;                 /* de pagina blijft bedienbaar: doe-stappen */
-  border-radius: var(--radius-sm, 12px);
-  border: 2px solid var(--bk-red-300, #c24f6f);
-  box-shadow:
-    0 0 0 9999px rgba(11, 15, 22, 0.62),   /* de demping, buiten de uitsnede */
-    0 0 0 1px rgba(11, 15, 22, 0.6),
-    var(--bk-glow, 0 6px 20px rgba(139, 30, 63, 0.30));
+  pointer-events: none;
+  overflow: visible;
   opacity: 0;
-  transition:
-    top var(--dur-slow, 0.4s) var(--ease-out, ease),
-    left var(--dur-slow, 0.4s) var(--ease-out, ease),
-    width var(--dur-slow, 0.4s) var(--ease-out, ease),
-    height var(--dur-slow, 0.4s) var(--ease-out, ease),
-    opacity var(--dur, 0.25s) ease;
+  transition: opacity var(--dur, 0.25s) ease;
 }
 .tour-spot.tour-in { opacity: 1; }
-/* geen maat: alleen de demping (de welkom- en slotkaart) */
-.tour-spot.tour-spot-center { border-color: transparent; box-shadow: 0 0 0 9999px rgba(11, 15, 22, 0.72); }
+.tour-spot .tour-dim { fill: rgba(11, 15, 22, 0.62); }
+/* geen gaten: alleen de demping, iets sterker (de welkom- en slotkaart) */
+.tour-spot.tour-spot-center .tour-dim { fill: rgba(11, 15, 22, 0.72); }
+.tour-spot .tour-hole,
+.tour-spot .tour-ring {
+  transition:
+    x var(--dur-slow, 0.4s) var(--ease-out, ease),
+    y var(--dur-slow, 0.4s) var(--ease-out, ease),
+    width var(--dur-slow, 0.4s) var(--ease-out, ease),
+    height var(--dur-slow, 0.4s) var(--ease-out, ease);
+}
+.tour-spot .tour-ring {
+  fill: none;
+  stroke: var(--bk-red-300, #c24f6f);
+  stroke-width: 2;
+  filter: drop-shadow(0 6px 14px rgba(139, 30, 63, 0.35));
+}
 
 .tour-card {
   position: absolute;
@@ -220,6 +231,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tour-spot,
+  .tour-spot .tour-hole,
+  .tour-spot .tour-ring,
   .tour-card,
   .tour-card.tour-sheet,
   .tour-card.tour-sheet.tour-sheet-top,

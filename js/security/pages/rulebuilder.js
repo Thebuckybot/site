@@ -63,7 +63,7 @@ export default {
     };
 
     // ---- condition / action blocks -----------------------------------------
-    const addBlock = (mode) => {
+    const addBlock = (mode, scroll = true) => {
       const isCond = mode === "condition";
       const container = root.querySelector(isCond ? "#sec-rb-conditions" : "#sec-rb-actions");
       const max = isCond ? MAX_CONDITIONS : MAX_ACTIONS;
@@ -89,7 +89,9 @@ export default {
       const block = el("div", { class: `sec-rb-item ${isCond ? "cond" : "act"}` }, [removeBtn, select, fields]);
       removeBtn.addEventListener("click", () => block.remove());
       container.appendChild(block);
-      block.scrollIntoView({ behavior: "smooth", block: "center" });
+      // a block added by hand scrolls into view; a template fill does not, so
+      // whoever filled it (the tour) keeps control of where the page is
+      if (scroll) block.scrollIntoView({ behavior: "smooth", block: "center" });
       return block;
     };
 
@@ -107,7 +109,7 @@ export default {
       if (t.event_type) { eventSelect.value = t.event_type; eventSelect.dispatchEvent(new Event("change")); }
       const place = (mode, items, keyName) => {
         for (const item of items || []) {
-          const block = addBlock(mode);
+          const block = addBlock(mode, false);
           if (!block) return;
           const select = block.querySelector("select");
           select.value = item[keyName] || "";
@@ -121,7 +123,6 @@ export default {
       place("action", t.actions, "action");
       const sev = root.querySelector("#sec-rb-severity");
       if (sev && t.severity) sev.value = String(t.severity);
-      nameInput.scrollIntoView({ block: "center" });
     };
     if (document.__rbTemplate) document.removeEventListener("bucky:rulebuilder-template", document.__rbTemplate);
     document.__rbTemplate = (e) => fillTemplate(e.detail);
@@ -246,7 +247,9 @@ export default {
         clear(root.querySelector("#sec-rb-actions"));
       });
 
-      const flow = el("div", { class: "sec-card" }, [
+      // ids on the form and its Create button: the onboarding tour lights up
+      // exactly what the visitor has to use at the "create a rule" step
+      const flow = el("div", { class: "sec-card", id: "sec-rb-form" }, [
         el("div", { class: "sec-settings-row" }, [
           el("div", { class: "k" }, [el("label", { class: "sec-rb-flow-label", text: "Rule Name" })]),
           el("input", { id: "sec-rb-name", class: "sec-input", placeholder: "Example: Mention Spam Protection", style: "min-width:280px" }),
@@ -278,7 +281,7 @@ export default {
         el("div", { class: "sec-actions", style: "margin-top:16px" }, [
           (!canEdit || atLimit)
             ? el("button", { class: "sec-btn", disabled: true, text: !canEdit ? "Read-only" : "Rule limit reached" })
-            : el("button", { class: "sec-btn sec-btn-primary", text: "Create Rule", onclick: saveRule }),
+            : el("button", { class: "sec-btn sec-btn-primary", id: "sec-rb-create", text: "Create Rule", onclick: saveRule }),
           el("a", { class: "sec-btn", href: "#rules", text: "View Detection Rules" }),
         ]),
       ]);

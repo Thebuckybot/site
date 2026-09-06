@@ -117,6 +117,41 @@ function el(tag, className, text) {
 }
 
 const PLACEHOLDER = /\{(\w+)\}/g;
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function svg(tag, attrs = {}) {
+  const n = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  return n;
+}
+
+function padRect(r) {
+  return { x: Math.round(r.left - SPOT_PAD), y: Math.round(r.top - SPOT_PAD),
+           w: Math.round(r.width + SPOT_PAD * 2), h: Math.round(r.height + SPOT_PAD * 2) };
+}
+
+// Gebieden die elkaar raken worden één gebied (de ring om een knop ín een
+// formulier is anders een ring in een ring); losse gebieden blijven los.
+function mergeRects(rects) {
+  const out = rects.map((r) => ({ ...r }));
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < out.length && !merged; i++) {
+      for (let j = i + 1; j < out.length; j++) {
+        const a = out[i], b = out[j];
+        if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) {
+          const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+          out[i] = { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
+          out.splice(j, 1);
+          merged = true;
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
 
 class Tour {
   constructor(steps) {
@@ -135,10 +170,18 @@ class Tour {
     this.settle = null;
     this.interacted = false;
 
-    // de uitsnede: één element waarvan de schaduw de rest van de pagina dempt
-    this.spot = el("div", "tour-spot");
-    this.spot.id = "bucky-tour-spot";
-    this.spot.setAttribute("aria-hidden", "true");
+    // de demping: één svg over het hele scherm met een masker. Elk GAT in het
+    // masker is een gebied dat de bezoeker moet zien of aanklikken, met een
+    // crimson ring eromheen; bij een doe-stap zijn dat er meerdere (het
+    // formulier én de knop, de Delete-knop én daarna de bevestiging).
+    this.spot = svg("svg", { class: "tour-spot", id: "bucky-tour-spot", "aria-hidden": "true" });
+    const defs = svg("defs");
+    this.mask = svg("mask", { id: "bucky-tour-mask", maskUnits: "userSpaceOnUse" });
+    this.mask.appendChild(svg("rect", { x: 0, y: 0, width: "100%", height: "100%", fill: "#fff" }));
+    defs.appendChild(this.mask);
+    this.dim = svg("rect", { class: "tour-dim", x: 0, y: 0, width: "100%", height: "100%", mask: "url(#bucky-tour-mask)" });
+    this.spot.append(defs, this.dim);
+    this.holes = [];                   // [{ hole, ring }], hergebruikt per stap
 
     // de kaart
     this.card = el("div", "tour-card");
@@ -200,9 +243,58 @@ class Tour {
 
   yieldToModal() {
     if (!this.card.isConnected) return;
-    const open = !!document.querySelector('[aria-modal="true"]');
-    this.card.classList.toggle("tour-yield", open);
-    this.spot.classList.toggle("tour-yield", open);
+    const modal = document.querySelector('[aria-modal="true"]');
+    // de kaart wijkt altijd voor een dialoog; de demping blijft als de dialoog
+    // bij de stap hoort (act noemt hem: dan wordt hij uitgelicht) en verdwijnt
+    // als het een andere dialoog is
+    this.card.classList.toggle("tour-yield", !!modal);
+    this.spot.classList.toggle("tour-yield", !!modal && !this.modalExpected());
+    this.place();
+  }
+
+  modalExpected() {
+    const s = this.steps[this.i];
+    return !!(s && s.act && String(s.act).includes("aria-modal"));
+  }
+
+  // -- de gaten in de demping ------------------------------------------------------
+  // Alles wat de bezoeker bij deze stap moet zien (selector) of aanklikken (act)
+  // krijgt een gat met een ring. Gebieden die elkaar raken worden samengevoegd;
+  // losse gebieden blijven los.
+  areasFor(step) {
+    const modal = document.querySelector('[aria-modal="true"]');
+    if (modal && this.modalExpected()) return [padRect(modal.getBoundingClientRect())];
+    const rects = [];
+    if (this.target) rects.push(padRect(this.target.getBoundingClientRect()));
+    for (const sel of String(step.act || "").split(",")) {
+      const s = sel.trim();
+      if (!s) continue;
+      const elm = find(this.fill(s));
+      if (elm) rects.push(padRect(elm.getBoundingClientRect()));
+    }
+    return mergeRects(rects);
+  }
+
+  setHoles(rects) {
+    while (this.holes.length < rects.length) {
+      const hole = svg("rect", { class: "tour-hole", fill: "#000", rx: 12, ry: 12 });
+      const ring = svg("rect", { class: "tour-ring", rx: 12, ry: 12 });
+      this.mask.appendChild(hole);
+      this.spot.appendChild(ring);
+      this.holes.push({ hole, ring });
+    }
+    this.holes.forEach(({ hole, ring }, i) => {
+      const r = rects[i];
+      for (const n of [hole, ring]) {
+        n.style.display = r ? "" : "none";
+        if (!r) continue;
+        n.setAttribute("x", r.x); n.setAttribute("y", r.y);
+        n.setAttribute("width", r.w); n.setAttribute("height", r.h);
+        n.style.x = `${r.x}px`; n.style.y = `${r.y}px`;
+        n.style.width = `${r.w}px`; n.style.height = `${r.h}px`;
+      }
+    });
+    this.spot.dataset.holes = JSON.stringify(rects);
   }
 
   // -- artefacten, sprongen, telling -------------------------------------------
@@ -373,6 +465,12 @@ class Tour {
     this.card.classList.toggle("tour-center", center);
     this.spot.classList.toggle("tour-spot-center", center);
 
+    // eerst het event (de Rule Builder vult zijn formulier: de pagina groeit),
+    // dán scrollen en plaatsen, zodat het onderdeel staat waar we heen scrollen
+    if (s.emit && s.emit.event) {
+      document.dispatchEvent(new CustomEvent(s.emit.event, { detail: s.emit.detail || {} }));
+    }
+
     // scrollen en plaatsen
     if (!center) {
       const direct = REDUCED || (isMobile() && task);
@@ -394,9 +492,6 @@ class Tour {
         }
       }, 600);
     });
-    if (s.emit && s.emit.event) {
-      document.dispatchEvent(new CustomEvent(s.emit.event, { detail: s.emit.detail || {} }));
-    }
     if (s.done_when) this.arm(index, s.done_when);
   }
 
@@ -436,20 +531,15 @@ class Tour {
     const s = this.steps[this.i];
     const b = this.card;
     if (this.isCenter(s) || !this.target) {
-      // kaart in het midden, spot zonder maat: alles gedempt
+      // kaart in het midden, geen gaten: alles gedempt
       b.style.left = b.style.top = "";
-      this.spot.style.left = `${Math.round(window.innerWidth / 2)}px`;
-      this.spot.style.top = `${Math.round(window.innerHeight / 2)}px`;
-      this.spot.style.width = this.spot.style.height = "0px";
+      this.setHoles([]);
       b.classList.remove("tour-sheet", "tour-sheet-top");
       return;
     }
     const r = this.target.getBoundingClientRect();
-    // de spot volgt het onderdeel (fixed, dus in schermcoördinaten)
-    this.spot.style.left = `${Math.round(r.left - SPOT_PAD)}px`;
-    this.spot.style.top = `${Math.round(r.top - SPOT_PAD)}px`;
-    this.spot.style.width = `${Math.round(r.width + SPOT_PAD * 2)}px`;
-    this.spot.style.height = `${Math.round(r.height + SPOT_PAD * 2)}px`;
+    // de gaten volgen het onderdeel en alles wat de bezoeker moet aanklikken
+    this.setHoles(this.areasFor(s));
 
     if (isMobile()) {
       b.style.left = b.style.top = "";

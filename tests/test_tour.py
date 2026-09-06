@@ -161,6 +161,9 @@ def maak_regel(page, check):
     check(page.locator("#bucky-tour .tour-next").is_hidden(), "geen Next: de bezoeker moet zelf drukken")
     check(page.locator("#bucky-tour .tour-turn").is_visible() and page.locator("#bucky-tour .tour-turn").text_content() == "Your turn",
           "de chip 'Your turn' zegt het in woorden")
+    for sel in ("#sec-rb-form", "#sec-rb-create"):
+        ok, waarom = verlicht(page, sel)
+        check(ok, f"uitgelicht en bereikbaar bij het aanmaken: {sel} {waarom}")
     return page.get_by_role("button", name="Create Rule")
 
 
@@ -169,10 +172,46 @@ def snijdt(a, c):
             and a["y"] < c["y"] + c["height"] and c["y"] < a["y"] + a["height"])
 
 
-def omsluit(spot, doel, marge=8):
-    return (spot["x"] <= doel["x"] - marge + 1 and spot["y"] <= doel["y"] - marge + 1
-            and spot["x"] + spot["width"] >= doel["x"] + doel["width"] + marge - 1
-            and spot["y"] + spot["height"] >= doel["y"] + doel["height"] + marge - 1)
+def gaten(page):
+    """De gaten in de demping, in schermcoördinaten."""
+    # rects in een <mask> hebben geen getBoundingClientRect; de tour schrijft de
+    # gaten daarom ook als data-holes (schermcoördinaten) op de svg
+    return page.evaluate("""() => { const e = document.getElementById('bucky-tour-spot');
+        return e ? JSON.parse(e.dataset.holes || '[]').map(h => ({x: h.x, y: h.y, width: h.w, height: h.h})) : []; }""")
+
+
+def in_gat(gat, doel, marge=8):
+    return (gat["x"] <= doel["x"] - marge + 1 and gat["y"] <= doel["y"] - marge + 1
+            and gat["x"] + gat["width"] >= doel["x"] + doel["width"] + marge - 1
+            and gat["y"] + gat["height"] >= doel["y"] + doel["height"] + marge - 1)
+
+
+def omsluit(page, doel, marge=8):
+    return any(in_gat(g, doel, marge) for g in gaten(page))
+
+
+def verlicht(page, selector):
+    """DE REGEL VOOR DOE-STAPPEN: elk element dat de bezoeker moet aanklikken ligt in
+    een gat van de demping én is het element dat een klik in zijn midden raakt (niets
+    van de tour ligt eroverheen)."""
+    holes = gaten(page)
+    elementen = page.locator(selector)
+    n = elementen.count()
+    if n == 0:
+        return False, f"{selector}: niet gevonden"
+    for i in range(n):
+        e = elementen.nth(i)
+        if not e.is_visible():
+            continue
+        box = e.bounding_box()
+        if not any(in_gat(g, box, 0) for g in holes):
+            return False, f"{selector}: ligt niet in een gat ({box} vs {holes})"
+        raak = e.evaluate("""el => { const b = el.getBoundingClientRect();
+            const hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+            return hit && (el === hit || el.contains(hit)) ? 'ok' : (hit ? hit.id || hit.className || hit.tagName : 'niets'); }""")
+        if raak != "ok":
+            return False, f"{selector}: een klik in het midden raakt {raak}"
+    return True, ""
 
 
 def main():
@@ -195,15 +234,15 @@ def main():
               "de tour begint met een welkomstkaart in het midden")
         check(page.locator("#bucky-tour .tour-next").inner_text() == "Start tour"
               and page.locator("#bucky-tour .tour-skip").inner_text() == "Not now", "met Start tour en Not now")
-        check(page.locator("#bucky-tour-spot").evaluate("e => e.classList.contains('tour-spot-center')"), "en alles gedempt, zonder uitsnede")
+        check(page.locator("#bucky-tour-spot").evaluate("e => e.classList.contains('tour-spot-center')") and gaten(page) == [],
+              "en alles gedempt, zonder gat")
         check(page.locator("#bucky-tour .tour-close").get_attribute("aria-label") == "Close tour", "het sluitkruisje heeft een naam")
         if SCHERM:
             page.screenshot(path=os.path.join(SCHERM, "vorm_welkom.png"))
         page.locator("#bucky-tour .tour-next").click()
         wacht_titel(page, SECTIES)
-        spot = page.locator("#bucky-tour-spot").bounding_box()
         doel = page.locator(".tour-target").first.bounding_box()
-        check(omsluit(spot, doel), "de uitsnede omsluit het onderdeel met 8 px marge")
+        check(omsluit(page, doel), "het gat in de demping omsluit het onderdeel met 8 px marge")
         check(page.locator("#bucky-tour .tour-chapter").text_content() == "Sections", "het hoofdstuk staat boven de titel")
         check(page.locator("#bucky-tour .tour-count").text_content() == "1 of 3",
               "de telling telt welkom, slot en de voorwaardelijke SOC-stappen (nog) niet mee")
@@ -214,9 +253,8 @@ def main():
         breedte2 = page.locator("#bucky-tour .tour-progress i").evaluate("e => e.getBoundingClientRect().width")
         check(breedte2 > breedte1 > 0, "de voortgangsbalk groeit")
         check(page.locator("#bucky-tour .tour-chapter").text_content() == "Snapshots", "en het hoofdstuk wisselt mee")
-        spot = page.locator("#bucky-tour-spot").bounding_box()
         doel = page.locator(".tour-target").first.bounding_box()
-        check(omsluit(spot, doel), "de uitsnede is meegegleden naar het nieuwe onderdeel")
+        check(omsluit(page, doel), "het gat is meegegleden naar het nieuwe onderdeel")
         page.locator("#bucky-tour .tour-close").click()
         page.wait_for_selector("#bucky-tour", state="detached", timeout=5000)
         page.wait_for_timeout(500)
@@ -270,9 +308,17 @@ def main():
         doel = page.locator(".tour-target").first
         check(hash_van(page) == "#rules" and doel.inner_text() == "Delete"
               and doel.evaluate("e => e.closest('tr').dataset.ruleId") == "101", "verwijderen: de Delete-knop van díe regel")
+        ok, waarom = verlicht(page, 'tr[data-rule-id="101"] .sec-btn-danger')
+        check(ok, f"uitgelicht en bereikbaar bij het verwijderen: de Delete-knop {waarom}")
         doel.click()
         page.wait_for_selector('[aria-modal="true"]', timeout=5000)
+        page.wait_for_timeout(600)
         check(page.locator("#bucky-tour").evaluate("e => e.classList.contains('tour-yield')"), "de kaart wijkt voor de bevestiging")
+        check(not page.locator("#bucky-tour-spot").evaluate("e => e.classList.contains('tour-yield')"), "maar de demping blijft")
+        ok, waarom = verlicht(page, '[aria-modal="true"] button')
+        check(ok, f"en de bevestiging zelf is uitgelicht, met beide knoppen bereikbaar {waarom}")
+        if SCHERM:
+            page.screenshot(path=os.path.join(SCHERM, "soc_confirm_desktop.png"))
         page.keyboard.press("Escape")
         page.wait_for_selector('[aria-modal="true"]', state="detached", timeout=5000)
         check(page.locator("#bucky-tour").count() == 1, "Escape sluit eerst de bevestiging, niet de tour")
