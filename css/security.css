@@ -86,7 +86,10 @@
 }
 .sec-group-items .sec-nav-item.active::before { opacity: 1; }
 
-.sec-sidebar-foot { padding: 14px 18px; border-top: 1px solid var(--sec-border); }
+.sec-sidebar-foot { padding: 14px 18px; border-top: 1px solid var(--sec-border); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+/* De knop "Tour" naast "Switch server": dezelfde link-look, want het is een
+   nevenhandeling en geen call-to-action. */
+.sec-link-btn { appearance: none; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
 .sec-link { color: var(--sec-muted); text-decoration: none; font-weight: 600; }
 .sec-link:hover { color: var(--sec-text); }
 

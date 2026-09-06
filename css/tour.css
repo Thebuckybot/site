@@ -1,133 +1,235 @@
-/* De onboarding-tour: een tekstballon bij een onderdeel, met Back / Next / Skip.
-   Zie js/tour.js. Op een telefoon is de ballon een onderbalk, zodat hij het
-   onderdeel niet bedekt; op een breed scherm staat hij ernaast. Beweging alleen
-   voor wie dat niet heeft uitgezet. */
+/* De onboarding-tour. Zie js/tour.js en docs/TOUR_ONTWERP_2026-09-06.md.
 
-.tour-balloon {
-  position: absolute;
-  z-index: 9999;
+   Eén uitsnede (.tour-spot) waarvan de schaduw de hele pagina dempt behalve het
+   onderdeel; een kaart (.tour-card) in de vormentaal van de panelen (.sec-card):
+   zelfde verloop, rand, radius en schaduw, crimson als accent. Bij Next glijden spot
+   en kaart naar hun nieuwe plek; met prefers-reduced-motion staat alles direct.
+   Op een telefoon is de kaart een balk boven- of onderaan. */
+
+/* `hidden` wint van elke display-regel hieronder */
+#bucky-tour [hidden] { display: none !important; }
+
+.tour-spot {
+  position: fixed;
+  z-index: var(--z-tour, 80);
   box-sizing: border-box;
-  width: min(340px, calc(100vw - 24px));
-  padding: 14px 16px 12px;
-  border-radius: 12px;
-  background: var(--bk-panel, #151b28);
-  color: var(--bk-text, #e8ecf3);
-  border: 1px solid var(--bk-border-strong, rgba(255, 255, 255, 0.18));
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-  font: 14px/1.45 var(--bk-font, "Manrope", system-ui, sans-serif);
+  pointer-events: none;                 /* de pagina blijft bedienbaar: doe-stappen */
+  border-radius: var(--radius-sm, 12px);
+  border: 2px solid var(--bk-red-300, #c24f6f);
+  box-shadow:
+    0 0 0 9999px rgba(11, 15, 22, 0.62),   /* de demping, buiten de uitsnede */
+    0 0 0 1px rgba(11, 15, 22, 0.6),
+    var(--bk-glow, 0 6px 20px rgba(139, 30, 63, 0.30));
   opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition:
+    top var(--dur-slow, 0.4s) var(--ease-out, ease),
+    left var(--dur-slow, 0.4s) var(--ease-out, ease),
+    width var(--dur-slow, 0.4s) var(--ease-out, ease),
+    height var(--dur-slow, 0.4s) var(--ease-out, ease),
+    opacity var(--dur, 0.25s) ease;
 }
-.tour-balloon.tour-in {
-  opacity: 1;
-  transform: none;
+.tour-spot.tour-in { opacity: 1; }
+/* geen maat: alleen de demping (de welkom- en slotkaart) */
+.tour-spot.tour-spot-center { border-color: transparent; box-shadow: 0 0 0 9999px rgba(11, 15, 22, 0.72); }
+
+.tour-card {
+  position: absolute;
+  z-index: calc(var(--z-tour, 80) + 1);
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 24px));
+  padding: 14px 16px 14px;
+  border-radius: var(--radius-sm, 12px);
+  background: linear-gradient(160deg, var(--bk-panel, #151b28), rgba(28, 36, 52, 0.92));
+  color: var(--bk-text, #eef1f6);
+  border: 1px solid var(--bk-border-strong, rgba(255, 255, 255, 0.12));
+  box-shadow: var(--shadow, 0 14px 34px rgba(0, 0, 0, 0.45));
+  font: var(--fs-base, 14px)/1.5 var(--font-sans, "Manrope", "Segoe UI", system-ui, sans-serif);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    top var(--dur-slow, 0.4s) var(--ease-out, ease),
+    left var(--dur-slow, 0.4s) var(--ease-out, ease),
+    opacity var(--dur, 0.25s) ease,
+    transform var(--dur, 0.25s) var(--ease-out, ease);
 }
-.tour-balloon.tour-sheet {
+.tour-card.tour-in { opacity: 1; transform: none; }
+
+/* de kop: hoofdstuk links, telling en sluitkruisje rechts */
+.tour-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  margin-bottom: 8px;
+}
+.tour-chapter,
+.tour-count {
+  font-size: var(--fs-xs, 11px);
+  font-weight: var(--fw-semibold, 700);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bk-muted, #a7b0c2);
+}
+.tour-chapter { color: var(--bk-red-100, #e7b9c6); }
+.tour-count { margin-left: auto; }
+.tour-close {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: -2px -6px -2px 0;
+  border: 0;
+  border-radius: var(--radius-pill, 999px);
+  background: transparent;
+  color: var(--bk-muted, #a7b0c2);
+  cursor: pointer;
+}
+.tour-close:hover { color: var(--bk-text, #eef1f6); background: var(--bk-panel-3, #26324a); }
+
+/* de voortgang: een dunne balk, crimson op paneel */
+.tour-progress {
+  height: 3px;
+  margin: 0 0 12px;
+  border-radius: 2px;
+  background: var(--bk-panel-3, #26324a);
+  overflow: hidden;
+}
+.tour-progress > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--bk-red, #8B1E3F), var(--bk-red-300, #c24f6f));
+  transition: width var(--dur-slow, 0.4s) var(--ease-out, ease);
+}
+
+/* de inhoud wisselt met één korte overgang */
+.tour-body { transition: opacity var(--dur-fast, 0.15s) ease; }
+.tour-body.tour-swap { opacity: 0; transition: none; }
+.tour-turn {
+  display: inline-block;
+  margin: 0 0 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--bk-red-soft, rgba(139, 30, 63, 0.18));
+  color: var(--bk-red-100, #e7b9c6);
+  font-size: var(--fs-xs, 11px);
+  font-weight: var(--fw-semibold, 700);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tour-title {
+  margin: 0 0 6px;
+  font-size: var(--fs-md, 16px);
+  font-weight: var(--fw-semibold, 700);
+  letter-spacing: -0.01em;
+}
+/* De titel krijgt bij elke stap programmatisch de focus voor de schermlezer; de
+   kaart is de zichtbare focusplek. Knoppen houden hun eigen focusring. */
+.tour-title:focus { outline: none; }
+.tour-text { margin: 0 0 14px; color: var(--bk-text, #eef1f6); }
+.tour-text::first-letter { text-transform: uppercase; }
+
+/* de voet: Back links, Next rechts, keuzeknoppen en Not now ertussen */
+.tour-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.tour-next { margin-left: auto; }
+.tour-btn {
+  appearance: none;
+  border: 1px solid var(--bk-border-strong, rgba(255, 255, 255, 0.12));
+  background: var(--bk-panel-2, #1c2434);
+  color: var(--bk-text, #eef1f6);
+  border-radius: var(--radius-pill, 999px);
+  padding: 8px 15px;
+  min-height: 36px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--fw-semibold, 700);
+  cursor: pointer;
+  transition: transform var(--dur-fast, 0.15s) ease, box-shadow var(--dur-fast, 0.15s) ease, border-color var(--dur-fast, 0.15s) ease;
+}
+.tour-btn:hover { transform: translateY(var(--lift-hover, -2px)); border-color: rgba(255, 255, 255, 0.2); }
+.tour-btn-primary {
+  background: linear-gradient(135deg, var(--bk-red, #8B1E3F), var(--bk-red-500, #a3264d));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--bk-glow, 0 6px 20px rgba(139, 30, 63, 0.30));
+}
+.tour-btn-primary:hover { box-shadow: var(--bk-glow-lg, 0 12px 34px rgba(139, 30, 63, 0.38)); }
+.tour-skip {
+  background: transparent;
+  border-color: transparent;
+  color: var(--bk-muted, #a7b0c2);
+}
+.tour-skip:hover { color: var(--bk-text, #eef1f6); border-color: transparent; }
+.tour-choices { display: contents; }
+.tour-btn:focus-visible,
+.tour-close:focus-visible {
+  outline: 3px solid var(--bk-red-300, #c24f6f);
+  outline-offset: 2px;
+}
+
+/* de welkom- en slotkaart: in het midden, iets breder */
+.tour-card.tour-center {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: min(420px, calc(100vw - 24px));
+  padding: 20px 22px 18px;
+  transform: translate(-50%, -50%) translateY(6px);
+}
+.tour-card.tour-center.tour-in { transform: translate(-50%, -50%); }
+.tour-card.tour-center .tour-title { font-size: var(--fs-lg, 20px); letter-spacing: -0.02em; }
+
+/* het onderdeel zelf: geen extra rand, de spot tekent de ring */
+.tour-target { position: relative; }
+
+/* de telefoon: een balk aan de kant waar het onderdeel niet is */
+.tour-card.tour-sheet {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   width: auto;
-  border-radius: 14px 14px 0 0;
+  border-radius: var(--radius-sm, 12px) var(--radius-sm, 12px) 0 0;
   border-bottom: 0;
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
   transform: translateY(8px);
 }
-.tour-balloon.tour-sheet.tour-in {
-  transform: none;
-}
-
-.tour-step {
-  margin: 0 0 4px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--bk-muted, #9aa4b8);
-}
-.tour-title {
-  margin: 0 0 6px;
-  font-size: 16px;
-  font-weight: 700;
-}
-/* De titel krijgt bij elke stap programmatisch de focus zodat een schermlezer de
-   ballon voorleest; de ballon zelf is de zichtbare focusplek (rand + schaduw),
-   dus de kop hoeft geen tweede kader. Knoppen houden hun eigen focusring. */
-.tour-title:focus { outline: none; }
-.tour-text {
-  margin: 0 0 12px;
-}
-.tour-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.tour-btn {
-  appearance: none;
-  border: 1px solid var(--bk-border-strong, rgba(255, 255, 255, 0.18));
-  background: transparent;
-  color: inherit;
-  border-radius: 8px;
-  padding: 7px 12px;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  min-height: 36px;
-}
-.tour-btn-primary {
-  background: var(--bk-accent, #5b7cfa);
-  border-color: var(--bk-accent, #5b7cfa);
-  color: #fff;
-}
-.tour-btn-skip {
-  margin-left: auto;
-  border-color: transparent;
-  color: var(--bk-muted, #9aa4b8);
-}
-.tour-btn:focus-visible,
-.tour-balloon:focus-visible {
-  outline: 3px solid var(--bk-focus, #ffd166);
-  outline-offset: 2px;
-}
-
-/* Het onderdeel waar de ballon over gaat. Een rand en geen donkere overlay: de
-   pagina blijft leesbaar en bedienbaar, en een overlay is precies wat op een
-   telefoon het onderdeel zou bedekken. */
-.tour-target {
-  outline: 3px solid var(--bk-accent, #5b7cfa);
-  outline-offset: 3px;
-  border-radius: 6px;
-  position: relative;
-  z-index: 9998;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tour-balloon,
-  .tour-balloon.tour-sheet {
-    transition: none;
-    transform: none;
-  }
-}
-
-/* Op een telefoon staat de balk aan de kant waar het onderdeel NIET is: onder als
-   het onderdeel in de bovenste helft staat, boven als het in de onderste helft
-   staat. Zo bedekt de tekst nooit waar hij naar wijst. */
-.tour-balloon.tour-sheet.tour-sheet-top {
+.tour-card.tour-sheet.tour-in { transform: none; }
+.tour-card.tour-sheet.tour-sheet-top {
   top: 0;
   bottom: auto;
-  border-radius: 0 0 14px 14px;
+  border-radius: 0 0 var(--radius-sm, 12px) var(--radius-sm, 12px);
   border-top: 0;
-  border-bottom: 1px solid var(--tour-border, rgba(255, 255, 255, 0.12));
-  padding-top: max(12px, env(safe-area-inset-top));
-  padding-bottom: 14px;
+  border-bottom: 1px solid var(--bk-border-strong, rgba(255, 255, 255, 0.12));
+  padding-top: max(14px, env(safe-area-inset-top));
+  transform: translateY(-8px);
 }
+.tour-card.tour-sheet.tour-sheet-top.tour-in { transform: none; }
+.tour-card.tour-sheet.tour-center { left: 12px; right: 12px; top: 50%; bottom: auto; width: auto; border-radius: var(--radius-sm, 12px); border: 1px solid var(--bk-border-strong, rgba(255, 255, 255, 0.12)); }
 
-/* Keuzeknoppen (houden / verwijderen) in plaats van Next bij een doe-stap. */
-.tour-choices { display: contents; }
-.tour-choices:empty { display: none; }
-.tour-btn-choice { font-weight: 600; }
+/* zolang de pagina een eigen dialoog open heeft (aria-modal) wijken kaart en spot */
+.tour-card.tour-yield,
+.tour-spot.tour-yield { opacity: 0; pointer-events: none; }
 
-/* Zolang de pagina een eigen dialoog open heeft (aria-modal) wijkt de ballon:
-   onzichtbaar en niet klikbaar, zodat hij nooit over de knoppen van die dialoog
-   ligt. Zodra de dialoog dicht is komt hij terug. */
-.tour-balloon.tour-yield { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot,
+  .tour-card,
+  .tour-card.tour-sheet,
+  .tour-card.tour-sheet.tour-sheet-top,
+  .tour-progress > i,
+  .tour-body,
+  .tour-btn {
+    transition: none;
+  }
+  .tour-card,
+  .tour-card.tour-sheet,
+  .tour-card.tour-sheet.tour-sheet-top { transform: none; }
+  .tour-card.tour-center { transform: translate(-50%, -50%); }
+}
