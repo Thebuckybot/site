@@ -1358,9 +1358,12 @@ function renderObjective(o) {
     // De eenheid erbij, en bij een AANTAL net zo goed: "1 / 2" naast
     // "1 / 5 x 1.000.000 shards" is anders niet uit elkaar te houden wanneer
     // een challenge allebei op dezelfde gebeurtenis telt.
+    // Een eigen eenheid uit de bevroren regels gaat voor (7 september 2026):
+    // "9 / 34 shifts" en "6 / 40 minutes" in plaats van "times" bij allebei.
+    const eigen = String(o.unit || "").trim();
     const eenheid = o.measure === "amount"
         ? (Number(o.per) > 1 ? ` × ${num(o.per)} shards` : " shards")
-        : (doel === 1 ? " time" : " times");
+        : (eigen ? (doel === 1 ? ` ${eigen}` : ` ${eigen}s`) : (doel === 1 ? " time" : " times"));
     return `<li class="og-objective${o.done ? " is-done" : ""}">
         <span class="og-objective-name">${escapeHtml(naam)}</span>
         <span class="og-mono og-objective-count">${num(waarde)}${

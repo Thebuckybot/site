@@ -44,6 +44,18 @@ BOOSTS = [_boost("boost_1m", 101, "Security Boost - 1 Month", "$4.99", 30),
           _boost("boost_12m", 104, "Security Boost - 1 Year", "$39.99 (33% off)", 365)]
 
 
+def _cipher(key, rank, amount, price):
+    """Een Cipher-pakket (kind = cipher, migratie 0075). De prijs mag leeg zijn."""
+    return {"tier_key": key, "tier_rank": rank, "name": f"{amount:,} Cipher", "price": price, "badge": None,
+            "badge_url": None, "sku_id": str(3000 + rank), "store_url": f"https://discord.com/s/{rank}",
+            "boost": 1.0, "challenge_bonus": 0, "shards_monthly": 0, "cache_key": None,
+            "contents": [f"{amount:,} Cipher, credited once", "Spend it in the Cipher section of +shop on XP boosts"],
+            "featured": False, "kind": "cipher", "duration_days": None}
+
+
+CIPHER = [_cipher("cipher_250", 201, 250, None), _cipher("cipher_500", 202, 500, "$9.99")]
+
+
 def open_premium(page, rows):
     page.route("**/api/site/features", lambda r: r.fulfill(
         status=200, content_type="application/json",
@@ -93,8 +105,25 @@ def main():
         check(knop.inner_text().startswith("Buy 1 year") and knop.get_attribute("href") == "https://discord.com/s/104",
               "de koopknop noemt de looptijd en linkt naar de winkel")
 
+        # DE CIPHER-PAKKETTEN (7 september 2026): derde soort, derde raster.
+        page = open_premium(ctx.new_page(), TIERS + BOOSTS + CIPHER)
+        check(page.locator("#pr-grid .pr-card").count() == 2 and page.locator("#pr-boost-grid .pr-card").count() == 4,
+              "de cipherrijen komen niet in de tiers of de boosts terecht")
+        check(not page.locator("#pr-cipher").is_hidden(), "het cipherblok is zichtbaar als er cipherrijen zijn")
+        cipher = page.locator("#pr-cipher-grid .pr-card-cipher")
+        check(cipher.count() == 2, "twee cipherkaarten")
+        titels = [cipher.nth(i).locator(".pr-card-title").inner_text() for i in range(2)]
+        check(titels == ["250 Cipher", "500 Cipher"], f"de titels in bedragvolgorde: {titels}")
+        check(cipher.nth(0).locator(".pr-price").count() == 0, "zonder prijs geen prijsregel (geen verkeerde prijs)")
+        check(cipher.nth(1).locator(".pr-price").inner_text() == "$9.99", "met prijs de prijs uit de data")
+        knop = cipher.nth(0).locator("a.pr-buy")
+        check(knop.inner_text().startswith("Buy 250 Cipher") and knop.get_attribute("href") == "https://discord.com/s/201",
+              "de koopknop noemt het bedrag en linkt naar de winkel")
+        check("credited once" in cipher.nth(0).text_content(), "wat je krijgt staat in de uitklap")
+
         page = open_premium(ctx.new_page(), TIERS)
         check(page.locator("#pr-boosts").is_hidden(), "zonder boostrijen blijft het blok verborgen")
+        check(page.locator("#pr-cipher").is_hidden(), "zonder cipherrijen blijft het cipherblok verborgen")
 
         browser.close()
     if fouten:

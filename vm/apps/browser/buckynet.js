@@ -38,6 +38,9 @@ import { registerPulseSite, preloadPulse } from "./sites/pulse.js";
 import { registerWarRoomSite, preloadWarRoom } from "./sites/orgleaks.js";
 // v3 blok 4 - de codingreferentie, GEGENEREERD uit de runtime.
 import { registerDocsSite } from "./sites/docs.js";
+// 7 september 2026 - de challengespagina op de nep-Bucky-site, met de
+// dagelijkse code-opgave die de server stelt en toetst.
+import { registerChallengesSite, preloadChallenges } from "./sites/challenges.js";
 
 /** @type {ReturnType<typeof createSiteRegistry>|null} */
 let registry = null;
@@ -74,6 +77,8 @@ export function getBuckyNet() {
     // afgeleid uit de live moduletabel - een module die er morgen bijkomt heeft
     // morgen zijn eigen doorzoekbare pagina, zonder een regel hier.
     registerDocsSite(registry);
+    // De challengespagina: wat er open staat, wat er bestaat, de code-opgave.
+    registerChallengesSite(registry);
     // Hidden pages are searchable:false — present for direct routing, absent
     // from PulseSearch. Registered last; order does not affect resolution.
     registerHiddenSites(registry);
@@ -93,6 +98,8 @@ export function getBuckyNet() {
     // publiek bezoek doet hier geen enkele aanroep.
     try { preloadWarRoom(); }       catch (_e) { /* ditto */ }
     try { preloadLeaks(); }         catch (_e) { /* ditto - live OSINT leak DB */ }
+    // De catalogus is publiek en klein; de eigen stand alleen met een sessie.
+    try { preloadChallenges(); }    catch (_e) { /* ditto */ }
 
     return registry;
 }

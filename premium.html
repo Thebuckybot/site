@@ -96,6 +96,28 @@
       </p>
     </section>
 
+    <!--
+      DE CIPHER-PAKKETTEN. Dezelfde bron als de tiers en de boosts: de bot
+      schrijft ze in premium_catalog (kind = cipher, migratie 0075),
+      /api/premium/tiers geeft ze mee, en premium.js zet ze hier. Bedrag en
+      prijs komen uit entitlements.json; wat Cipher koopt uit cipher_shop.json.
+      Verborgen tot er cipherrijen binnenkomen.
+    -->
+    <section class="pr-cipher" id="pr-cipher" hidden aria-labelledby="pr-cipher-title">
+      <h2 id="pr-cipher-title" class="pr-section-title">Cipher</h2>
+      <p class="pr-lede">
+        Cipher is the premium currency. It lands on your profile the moment the purchase goes
+        through, and you spend it in the Cipher section of <code>+shop</code>: XP boosts that run
+        for a few hours, and the two titles on sale each week. It never expires and is never
+        transferable.
+      </p>
+      <ul class="pr-grid pr-grid-boosts" id="pr-cipher-grid" aria-describedby="pr-cipher-note"></ul>
+      <p class="pr-note" id="pr-cipher-note">
+        One-time purchases. Sold by Discord; Cipher is credited once and is not refundable once
+        delivered. Your balance shows on <code>+balance</code>.
+      </p>
+    </section>
+
     <section class="pr-faq" aria-labelledby="pr-faq-title">
       <h2 id="pr-faq-title">How the monthly cache works</h2>
       <dl class="pr-dl">

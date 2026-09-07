@@ -196,9 +196,12 @@ async function load() {
   // dezelfde publicatie, twee rasters. Een rij zonder `kind` is een tier - dat is
   // wat een oudere catalogusrij was.
   const boosts = tiers.filter((r) => r && r.kind === "boost");
-  tiers = tiers.filter((r) => !r || r.kind !== "boost");
+  // DRIE SOORTEN sinds 0075: de Cipher-pakketten (kind = cipher) krijgen hun
+  // eigen raster, uit dezelfde publicatie.
+  const cipher = tiers.filter((r) => r && r.kind === "cipher");
+  tiers = tiers.filter((r) => !r || (r.kind !== "boost" && r.kind !== "cipher"));
 
-  if (!tiers.length && !boosts.length) {
+  if (!tiers.length && !boosts.length && !cipher.length) {
     say("Premium isn't open yet. Check back soon.");
     return;
   }
@@ -234,6 +237,7 @@ async function load() {
 
   grid.replaceChildren(...tiers.map((tier) => card(tier, tier.tier_key === mine)));
   renderBoosts(boosts);
+  renderCipher(cipher);
   status.hidden = true;
 }
 
@@ -327,6 +331,80 @@ function renderBoosts(boosts) {
   }
   const sorted = [...boosts].sort((a, b) => (Number(a.tier_rank) || 0) - (Number(b.tier_rank) || 0));
   boostGrid.replaceChildren(...sorted.map(boostCard));
+  section.hidden = false;
+}
+
+/**
+ * Eén Cipher-kaart. Zelfde bouwstenen als de boostkaart; wat verschilt is dat
+ * de PRIJS mag ontbreken (de config staat dat voor Cipher toe - een verkeerde
+ * prijs is erger dan geen) en dat er geen looptijd is: Cipher landt en blijft.
+ */
+function cipherCard(row) {
+  const item = el("li", "pr-card pr-card-cipher");
+  const head = el("div", "pr-card-head");
+  const title = el("h3", "pr-card-title");
+  if (row.badge_url) {
+    const badge = el("img", "pr-badge");
+    badge.src = row.badge_url;
+    badge.alt = "";
+    badge.loading = "lazy";
+    badge.width = 40;
+    badge.height = 40;
+    badge.addEventListener("error", () => badge.remove());
+    title.appendChild(badge);
+  }
+  title.appendChild(document.createTextNode(row.name || row.tier_key || "Cipher"));
+  head.appendChild(title);
+  if (row.price) head.appendChild(el("p", "pr-price", row.price));
+  item.appendChild(head);
+
+  const stats = el("dl", "pr-stats");
+  const rows = [
+    ["Lands", "on your profile the moment the purchase goes through"],
+    ["Spend it", "in the Cipher section of +shop"],
+  ];
+  for (const [label, value] of rows) {
+    stats.appendChild(el("dt", null, label));
+    stats.appendChild(el("dd", null, value));
+  }
+  item.appendChild(stats);
+
+  const lines = Array.isArray(row.contents) ? row.contents : [];
+  if (lines.length) {
+    const details = el("details", "pr-details");
+    const summary = el("summary", "pr-summary");
+    summary.appendChild(document.createTextNode("What you get"));
+    summary.appendChild(el("span", "pr-count", `${lines.length} items`));
+    details.appendChild(summary);
+    const list = el("ul", "pr-contents");
+    for (const line of lines) list.appendChild(el("li", null, line));
+    details.appendChild(list);
+    item.appendChild(details);
+  }
+
+  if (row.store_url) {
+    const link = el("a", "pr-buy", `Buy ${row.name || "Cipher"}`);
+    link.href = row.store_url;
+    link.rel = "noopener noreferrer";
+    link.target = "_blank";
+    link.appendChild(el("span", "pr-sr", " (opens Discord in a new tab)"));
+    item.appendChild(link);
+  } else {
+    item.appendChild(el("p", "pr-nolink", "Available in Discord."));
+  }
+  return item;
+}
+
+function renderCipher(packs) {
+  const section = document.getElementById("pr-cipher");
+  const cipherGrid = document.getElementById("pr-cipher-grid");
+  if (!section || !cipherGrid) return;
+  if (!packs.length) {
+    section.hidden = true;
+    return;
+  }
+  const sorted = [...packs].sort((a, b) => (Number(a.tier_rank) || 0) - (Number(b.tier_rank) || 0));
+  cipherGrid.replaceChildren(...sorted.map(cipherCard));
   section.hidden = false;
 }
 

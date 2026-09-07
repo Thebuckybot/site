@@ -638,7 +638,10 @@ function isIdentityAwareUrl(url) {
         || u.startsWith("bucky://leaderboards")
         || u.startsWith("bucky://pulse")
         || u.startsWith("bucky://leaks")
-        || u.startsWith("bucky://incidents");
+        || u.startsWith("bucky://incidents")
+        // De challengespagina leest de catalogus, de eigen stand en de
+        // code-opgave; alle drie komen na de eerste render binnen.
+        || u.startsWith("bucky://bucky/challenges");
 }
 
 export function unmountBrowserApp(runtime, windowState) {

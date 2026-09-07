@@ -395,6 +395,32 @@ function fetchLeakOperators(limit, test) {
 // resolve their inbox (cross-user mail is addressed by email, recipient_user_id
 // is NULL). All resolve to the standard { ok, status, error, data } envelope.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Challenges - the page on bucky://bucky/challenges (7 September 2026)
+// ---------------------------------------------------------------------------
+/** The catalogue: what exists. Public, no token needed. */
+function fetchChallengeCatalogue() {
+    return request("/api/org/challenges/catalogue", { credentials: "omit" });
+}
+
+/** What is open for the operator and how far they are. Needs a session. */
+function fetchMyChallenges() {
+    return request("/api/org/challenges");
+}
+
+/** The day's code challenge and the operator's standing on it. */
+function fetchCodingState() {
+    return request("/api/minigames/coding/state");
+}
+
+/** Submit an answer to the day's code challenge. Needs a session. */
+function submitCodingAnswer(answer) {
+    return request("/api/minigames/coding/submit", {
+        method: "POST",
+        body: { answer: String(answer) },
+    });
+}
+
 function fetchMailInbox(address) {
     return request("/api/vm/mail/inbox" + _qs({ address }), { credentials: "include" });
 }
@@ -460,6 +486,11 @@ export const gatewayClient = {
     fetchLeakIncidents,
     fetchLeakIncident,
     fetchLeakOperators,
+    // Challenges - bucky://bucky/challenges (7 September 2026)
+    fetchChallengeCatalogue,
+    fetchMyChallenges,
+    fetchCodingState,
+    submitCodingAnswer,
     // Phase 5.0A - Mail Platform (authenticated reads + writes)
     fetchMailInbox,
     fetchMailSent,

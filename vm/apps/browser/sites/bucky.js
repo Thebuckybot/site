@@ -52,6 +52,15 @@ const FEATURES = [
         title: "Discord-Linked Progression",
         body: "Bucky lives in your Discord server. Missions, the economy and global events sync " +
             "to the community - the VM is never played alone."
+    },
+    {
+        tag: "Challenges",
+        title: "Something New Every Day",
+        body: "A daily, a weekly and a monthly challenge, always running. Work a shift, clear a " +
+            "board, win on the Range, get into a bank - finish every line and it pays. Plus the " +
+            "day's code challenge, set and checked by the server.",
+        link: "bucky://bucky/challenges",
+        linkLabel: "See what is open"
     }
 ];
 
@@ -112,6 +121,7 @@ function renderFeatures() {
                         <span class="vm-bucky-feature-tag">${escapeHtml(feature.tag)}</span>
                         <h3>${escapeHtml(feature.title)}</h3>
                         <p>${escapeHtml(feature.body)}</p>
+                        ${feature.link ? `<p class="vm-bucky-feature-link">${link(feature.link, feature.linkLabel || feature.link)}</p>` : ""}
                     </article>
                 `).join("")}
             </div>
@@ -180,6 +190,8 @@ function renderBuckyHome() {
                 { url: "bucky://dev", label: "Bucky Dev", note: "patch notes & announcements" },
                 { url: "bucky://tube/welcome-to-the-grid", label: "Welcome to the Grid", note: "orientation reel" },
                 { url: "bucky://wiki/bucky", label: "BuckyWiki: Bucky", note: "the lore entry" },
+                // 7 September 2026 - the challenges page.
+                { url: "bucky://bucky/challenges", label: "Challenges", note: "what is open, what is coming, the day's code challenge" },
                 // Phase 4.3 — identity-aware pages.
                 { url: "bucky://profile", label: "Operator profile", note: "your dashboard" },
                 { url: "bucky://organizations", label: "Organisations", note: "the four founders" },
