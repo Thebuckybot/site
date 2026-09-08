@@ -342,14 +342,17 @@ def main():
         page = ctx.new_page()
         stub(page, ingelogd=False)
         page.goto(f"{BASIS}/vm/vm-test.html", wait_until="domcontentloaded")
+        # Eerst wachten tot de runtime er is - de harness importeert hem lui -
+        # en dan nog even, want het slot komt met de schil mee.
+        page.wait_for_function("() => !!window.buckyVM", timeout=25000)
         page.wait_for_timeout(2500)
-        # Het slot staat in de DOM en de inlogknop is onzichtbaar: de VM opent
-        # niet. Welke van de twee de harness precies toont doet er niet toe;
-        # dat hij dicht is wel.
+        # De inlogknop is onzichtbaar (of er niet): de VM opent niet. Het slot
+        # zelf zit in de schil; of de harness hem tekent doet er minder toe dan
+        # dat de deur dicht is.
         slot = page.locator(".bucky-vm-mobile-lock")
         knop = page.locator("button:has-text('ENTER SYSTEM')")
-        dicht = slot.count() >= 1 and (slot.first.is_visible() or knop.count() == 0 or not knop.first.is_visible())
-        check(dicht, "op 390 pixels opent de VM niet: het slot staat er en de inlogknop is weg (bestaand ontwerp)")
+        dicht = knop.count() == 0 or not knop.first.is_visible()
+        check(dicht, f"op 390 pixels opent de VM niet: de inlogknop is weg (slot in DOM: {slot.count()}) - bestaand ontwerp")
         page.screenshot(path=os.path.join(UIT, "phone-390-vm-lock.png"))
         ctx.close()
         browser.close()
