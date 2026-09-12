@@ -1,0 +1,115 @@
+/* DE STEMSECTIE op de voorpagina.
+   Eigen bestand en niet onderaan index.css, omdat de sectie er ook weer uit
+   moet kunnen: één link eruit en één regel in site_features.json.
+
+   Twee panelen naast elkaar: links waar je kunt stemmen, rechts wat het pays.
+   Op een telefoon onder elkaar. De tabel is een <ul> met drie kolommen per rij
+   (kans, naam, inhoud) in een grid, zodat de percentages onder elkaar staan
+   zonder een <table> die op 390px breed niet past. */
+
+/* `.features` geeft al 104px bovenmarge; die blijft, want de vaste navbalk
+   dekt anders de kop. `scroll-margin-top` is voor de voetnootlink naar #vote:
+   zonder die regel springt de browser de sectie exact tot onder de navbalk,
+   en dan staat de kop eronder. 92px is de navbalk (65) plus lucht. */
+.vote-section { padding-bottom: 104px; scroll-margin-top: 92px; }
+
+.vote-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 18px;
+  max-width: 1080px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+.vote-panel {
+  background: linear-gradient(160deg, var(--bk-panel), rgba(28, 36, 52, 0.7));
+  border: 1px solid var(--bk-border);
+  border-radius: 18px;
+  padding: 28px 26px;
+}
+
+.vote-panel h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0 0 18px;
+}
+
+/* --- links: de knoppen ------------------------------------------------- */
+.vote-sites { display: flex; flex-direction: column; gap: 10px; }
+
+/* De knoppen vullen de kolom, want twee knoppen van verschillende breedte
+   naast elkaar (Top.gg en Discord Bot List) lezen als twee soorten actie. */
+.vote-site { justify-content: center; width: 100%; padding: 13px 22px; }
+
+.vote-note {
+  color: var(--bk-muted);
+  font-size: 13.5px;
+  line-height: 1.65;
+  margin: 18px 0 0;
+}
+
+.vote-note strong { color: var(--bk-text); font-weight: 700; }
+
+.vote-note code {
+  font-family: var(--font-mono, ui-monospace, Consolas, monospace);
+  font-size: 12.5px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--bk-red-100);
+}
+
+/* --- rechts: de tabel -------------------------------------------------- */
+.vote-table { list-style: none; margin: 0; padding: 0; }
+
+.vote-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  grid-template-areas: "chance name" ".      payout";
+  column-gap: 14px;
+  row-gap: 2px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--bk-border);
+}
+
+.vote-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.vote-row:first-child { padding-top: 0; }
+
+/* De kans in een monospace-cijfer, zodat 26% en 3% netjes onder elkaar
+   uitlijnen zonder dat er per rij een breedte bij moet. */
+.vote-chance {
+  grid-area: chance;
+  font-family: var(--font-mono, ui-monospace, Consolas, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bk-red-300);
+  text-align: right;
+  padding-top: 1px;
+}
+
+.vote-name {
+  grid-area: name;
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--bk-text);
+}
+
+/* KLEINE LETTER, net als in de bot. De labels komen uit dezelfde config
+   ("banknote chip"), en een tweede lijst met mooiere namen is een tweede lijst
+   die uit de pas kan lopen. Een hoofdletter forceren zou bovendien alleen de
+   rijen raken die met een item beginnen en niet die met een bedrag, en dat is
+   ongelijker dan gewoon overal klein. */
+.vote-payout {
+  grid-area: payout;
+  color: var(--bk-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .vote-grid { grid-template-columns: 1fr; }
+  .vote-section { padding-bottom: 80px; }
+  .vote-panel { padding: 24px 20px; }
+}

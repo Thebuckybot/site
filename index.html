@@ -38,9 +38,11 @@
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="public.css" />
   <link rel="stylesheet" href="index.css" />
+  <link rel="stylesheet" href="vote.css" />
 
   <script src="js/nav-auth.js" type="module"></script>
 <script type="module" src="js/features.js"></script>
+<script type="module" src="js/vote.js"></script>
 </head>
 <body>
 
@@ -282,6 +284,43 @@
     </div>
   </section>
 
+  <!--
+    VOTE. Waar je kunt stemmen, wat het oplevert en wanneer je weer mag.
+
+    ER STAAN HIER MET OPZET GEEN BEDRAGEN. Alles komt uit `/api/site/vote`, en
+    dat is `vote.json` uit de bot-boom: hetzelfde bestand dat de trekking doet,
+    de DM na een stem schrijft en de kaart van `+vote` vult. Een sectie met haar
+    eigen getallen zou de vierde plek zijn waar die bedragen staan, en de enige
+    die maanden verkeerd kan staan omdat niemand een webpagina naast een
+    Discord-DM legt. Zie `js/vote.js`.
+
+    HIJ BEGINT VERBORGEN, andersom dan de rest van de pagina: een lege
+    "Vote for Bucky"-kop zonder knoppen belooft iets en levert niets. Valt de
+    backend weg of staat de vlag `vote` uit, dan blijft de sectie weg.
+  -->
+  <section class="features vote-section" id="vote" data-feature="vote" hidden aria-hidden="true">
+    <div class="section-head">
+      <span class="eyebrow">Support Bucky</span>
+      <h2>Vote, and see what drops.</h2>
+      <p>Voting on a bot list is free, takes one click and is the single most useful thing you can do for Bucky. Every vote rolls one reward from the table below &mdash; and you do not know which one until you have voted.</p>
+    </div>
+
+    <div class="vote-grid">
+      <div class="vote-panel">
+        <h3>Where to vote</h3>
+        <div class="vote-sites" data-vote-sites></div>
+        <p class="vote-note">One vote per list every <strong data-vote-cooldown>12</strong> hours, so <strong data-vote-per-day>2</strong> rolls a day. Rewards land in your profile within a few seconds, and Bucky sends you a DM with what you got.</p>
+        <p class="vote-note">Bot lists rank by votes, and that ranking is how people find Bucky without anyone being messaged who did not ask for it. A vote is worth more to the bot than it costs you.</p>
+      </div>
+
+      <div class="vote-panel">
+        <h3>What a vote pays</h3>
+        <ul class="vote-table" data-vote-rewards></ul>
+        <p class="vote-note">The reward is rolled at the moment you vote. Shards are the currency; chests, banknotes and chips are opened and used in the bot with <code>+stack</code> and <code>+inventory</code>.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- FINAL CTA -->
   <section class="final">
     <div class="final-inner">
@@ -307,6 +346,7 @@
         <a href="index.html#economy">Economy</a>
         <a href="index.html#organisations">Organisations</a>
         <a href="arcade.html">Arcade</a>
+        <a data-feature="vote" href="index.html#vote">Vote for Bucky</a>
       </div>
       <div class="footer-col">
         <h4>Legal &amp; support</h4>
