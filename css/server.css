@@ -181,6 +181,61 @@ a.srv-dept-btn:hover { color: var(--sec-text); background: rgba(255, 255, 255, 0
 .srv-preview-card .sub { color: var(--sec-muted); font-size: 12px; margin-top: 2px; }
 .srv-preview-card hr { border: 0; border-top: 1px solid rgba(255,255,255,.08); margin: 10px 0; }
 
+/* --- de applicatiebouwer -------------------------------------------------- */
+/* Een formulier in de lijst is een knop over de volle breedte: de hele regel
+   opent hem, niet een klein pijltje ergens rechts. */
+.srv-form-open {
+  display: block; width: 100%; text-align: left; background: none; border: 0;
+  color: inherit; font: inherit; cursor: pointer; padding: 0; min-width: 0;
+}
+.srv-form-open:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 3px; border-radius: 8px; }
+.srv-row.is-active { border-color: var(--bucky-red-light); background: var(--bk-red-soft, rgba(139, 30, 63, 0.18)); }
+
+/* Het nummer van een vraag. Een cijfer en geen bolletje: de volgorde is hier
+   informatie - zo komt hij in Discord te staan. */
+.srv-q-nr {
+  display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 24px;
+  border-radius: 8px; background: var(--sec-panel-2); border: 1px solid var(--sec-border);
+  font-size: 12px; font-weight: 800; color: var(--srv-state);
+}
+
+/* De paginascheiding: hier knipt Discord het formulier in tweeën. Een lijn met
+   een woord erin, want zonder tekst is het decoratie. */
+.srv-page-break {
+  display: flex; align-items: center; gap: 10px; margin: 14px 2px 10px;
+  color: var(--sec-muted); font-size: 11px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.srv-page-break::before, .srv-page-break::after {
+  content: ""; height: 1px; background: var(--sec-border); flex: 1;
+}
+
+/* De nagemaakte modal. Niet Discord natekenen tot op de pixel - wel de maat, de
+   volgorde en wat er afvalt. */
+.srv-modal {
+  width: 100%; max-width: 440px; background: #2b2d31; border-radius: 10px;
+  padding: 16px; box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+}
+.srv-modal-title { font-weight: 800; font-size: 15px; margin-bottom: 14px; }
+.srv-modal-field { margin-bottom: 14px; }
+.srv-modal-field label {
+  display: block; font-size: 11px; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: #b5bac1; margin-bottom: 6px;
+}
+.srv-modal-help { font-size: 12px; color: #949ba4; margin: -2px 0 6px; }
+.srv-modal-input { height: 34px; border-radius: 4px; background: #1e1f22; border: 1px solid #1e1f22; }
+.srv-modal-input.tall { height: 72px; }
+.srv-modal-select {
+  height: 34px; border-radius: 4px; background: #1e1f22; display: flex; align-items: center;
+  padding: 0 10px; font-size: 13px; color: #dbdee1;
+}
+.srv-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.srv-modal-btn {
+  padding: 7px 14px; border-radius: 4px; font-size: 13px; font-weight: 600;
+  background: var(--bucky-red); color: #fff;
+}
+.srv-modal-btn.ghost { background: none; color: #dbdee1; }
+
 /* --- lege staat: een uitnodiging, geen mededeling ------------------------- */
 .srv-empty {
   display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
@@ -219,6 +274,21 @@ a.srv-dept-btn:hover { color: var(--sec-text); background: rgba(255, 255, 255, 0
   .srv-row { grid-template-columns: 1fr auto; gap: 10px 12px; padding: 12px; }
   .srv-row .srv-state { grid-column: 1; grid-row: 2; justify-self: start; }
   .srv-row .srv-actions { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+
+  /* EEN RIJ MET MEER DAN ÉÉN KNOP STAPELT HELEMAAL.
+     Twee kolommen werken zolang er rechts één ding staat (een schakelaar). Een
+     vragenrij heeft er vier - type, verplicht, Edit, Remove - en dan wordt de
+     linkerkolom zo smal dat een vraag over vier regels breekt en de toelichting
+     dwars door de badge ernaast loopt. Gezien op de preview van 17 september,
+     op 390px. Volle breedte per onderdeel is hier het enige dat blijft kloppen. */
+  .srv-row.srv-row-stack { grid-template-columns: 1fr; }
+  .srv-row.srv-row-stack .srv-name,
+  .srv-row.srv-row-stack .srv-state,
+  .srv-row.srv-row-stack .srv-actions {
+    grid-column: 1; grid-row: auto; justify-self: start; align-self: start;
+  }
+  .srv-row.srv-row-stack .srv-actions { flex-wrap: wrap; width: 100%; }
+  .srv-name > div { min-width: 0; }
   .srv-dept { order: 2; }
   .sec-top-actions { flex-wrap: wrap; gap: 8px; }
   .srv-hero h1 { font-size: var(--fs-xl); }
