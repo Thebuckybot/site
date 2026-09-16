@@ -23,6 +23,15 @@
   --srv-rail:       rgba(255, 255, 255, 0.06);
 }
 
+/* EEN EFFEN BASISKLEUR ONDER HET VERLOOP.
+   `.sec-body` zet zijn achtergrond als `background-attachment: fixed`, en een
+   vast verloop dekt alleen het VENSTER. Alles wat daaronder doorloopt - en een
+   lijst met tweehonderd commando's loopt ver door - viel terug op het wit van de
+   browser. Op de preview van 17 september was de halve commandolijst daardoor
+   zwarte tekst op wit. Een effen kleur eronder kost niets en kan niet opraken. */
+html { background: var(--sec-bg1); }
+.srv-body { background-color: var(--sec-bg1); }
+
 .srv-mark {
   background: linear-gradient(135deg, #2f3b4f, #46566f);
   box-shadow: 0 6px 20px rgba(47, 59, 79, 0.45);
@@ -83,12 +92,27 @@ a.srv-dept-btn:hover { color: var(--sec-text); background: rgba(255, 255, 255, 0
 
 /* --- lijst met commando's ------------------------------------------------- */
 .srv-list { display: flex; flex-direction: column; gap: 2px; }
+/* De groepskop DRAAGT de categorieschakelaar. Eerst stond die als een gewone rij
+   onder de kop, en dan zag je "ECONOMY" gevolgd door een rij "Economy" die er
+   precies zo uitzag as een commando - twee dingen die hetzelfde heten en niet
+   hetzelfde doen. Een categorie is een niveau hoger, dus hij staat op de kop. */
 .srv-group-title {
-  display: flex; align-items: center; gap: 10px; margin: 22px 0 8px;
+  display: flex; align-items: center; gap: 10px; margin: 26px 0 8px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--sec-border);
   font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
   font-weight: 800; color: var(--sec-muted);
 }
-.srv-group-title .count { font-weight: 700; color: var(--srv-state); text-transform: none; letter-spacing: 0; }
+.srv-group-title .count {
+  font-weight: 700; color: var(--srv-state); text-transform: none; letter-spacing: 0;
+  /* Op een telefoon brak "2 commands" over twee regels en werd de kop twee hoog
+     terwijl de schakelaar ernaast bleef staan. Het aantal is één ding. */
+  white-space: nowrap;
+}
+.srv-group-title .srv-actions { margin-left: auto; }
+.srv-group-title .srv-state { text-transform: none; letter-spacing: 0; }
+/* Een uitgezette categorie zet alles eronder uit; dat hoort te zien te zijn. */
+.srv-group.is-off .srv-group-title { color: var(--sec-red); border-bottom-color: rgba(214, 79, 79, .35); }
+.srv-group.is-off .srv-list { opacity: .55; }
 
 .srv-row {
   display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 14px;
