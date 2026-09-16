@@ -142,7 +142,11 @@ function wireFilter(guildContainer) {
       let shown = 0;
       guildContainer.querySelectorAll(".server-card").forEach((c) => {
         const match = !q || (c.getAttribute("data-name") || "").includes(q);
-        c.style.display = match ? "" : "none";
+        // De kaart zit sinds 17 september in een wikkel met de tweede knop
+        // ("Server settings") ernaast. Alleen de kaart verbergen zou die knop
+        // laten staan voor een server die is weggefilterd.
+        const doel = c.closest(".server-card-shell") || c;
+        doel.style.display = match ? "" : "none";
         if (match) shown++;
       });
       const count = document.getElementById("picker-count");
@@ -230,6 +234,25 @@ function createGuildCard(guild, guildContainer) {
 
   card.append(img, name, meta, cta);
 
+  // TWEE AFDELINGEN, DUS TWEE INGANGEN (17 september 2026). De kaart zelf blijft
+  // naar het Security Center gaan - dat is waar hij altijd heen ging, en de
+  // gewoonte van iedereen die dit dashboard al gebruikt. Daarnaast staat een
+  // tweede knop naar het Server Center. Buiten de kaartknop, want een knop in
+  // een knop is geen geldige HTML en op een telefoon een gok welk van de twee
+  // je raakt.
+  const shell = document.createElement("div");
+  shell.className = "server-card-shell";
+  const alt = document.createElement("a");
+  alt.className = "s-alt";
+  alt.href = `server.html?guild_id=${guild.id}`;
+  alt.textContent = "Server settings";
+  alt.setAttribute("aria-label", `Open server settings for ${guild.name || "this server"}`);
+  alt.addEventListener("click", () => {
+    try {
+      localStorage.setItem("bucky_active_guild", JSON.stringify({ id: guild.id, name: guild.name, icon: guild.icon || null }));
+    } catch (_) { /* storage disabled */ }
+  });
+
   card.addEventListener("click", () => {
     // Remember the chosen server (name + icon) so the dashboard top bar can show
     // it without another round-trip. Frontend-only; no backend/SQL involved.
@@ -241,7 +264,8 @@ function createGuildCard(guild, guildContainer) {
     setTimeout(() => { window.location.href = `security.html?guild_id=${guild.id}`; }, 160);
   });
 
-  guildContainer.appendChild(card);
+  shell.append(card, alt);
+  guildContainer.appendChild(shell);
 }
 
 

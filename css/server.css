@@ -1,0 +1,212 @@
+/* Bucky Server Center — de niet-security afdeling van hetzelfde dashboard.
+   Laadt NA css/security.css en gebruikt dezelfde tokens, dezelfde shell en
+   dezelfde knoppen. Wat hier staat is wat deze afdeling eigen heeft.
+
+   HET KARAKTER, EN WAAROM.
+   Security is een alarmcentrale: crimson, rood als het misgaat. Deze afdeling
+   is het werkblad van een beheerder - instellen, aanzetten, uitzetten - en dat
+   vraagt rust, geen alarm. Daarom:
+     * dezelfde crimson voor ACTIES (knoppen, focus), want dat is het merk;
+     * een koele leisteenblauwe rand voor STAAT (aan/uit, waar iets geldt), want
+       staat is informatie en geen waarschuwing;
+     * één signatuur: de "Discord preview" — wat je instelt wordt getoond zoals
+       een lid het straks in Discord ziet. Dat is de enige plek waar deze
+       afdeling luid mag zijn.
+   Alles wat beweegt heeft een reden, en alles wat beweegt kan uit
+   (prefers-reduced-motion onderaan). */
+
+:root {
+  --srv-state:      #6f8cab;             /* koel, voor staat en herkomst */
+  --srv-state-soft: rgba(111, 140, 171, 0.16);
+  --srv-on:         var(--sec-green);
+  --srv-off:        var(--sec-muted);
+  --srv-rail:       rgba(255, 255, 255, 0.06);
+}
+
+.srv-mark {
+  background: linear-gradient(135deg, #2f3b4f, #46566f);
+  box-shadow: 0 6px 20px rgba(47, 59, 79, 0.45);
+}
+
+/* --- de afdelingswissel ---------------------------------------------------
+   Twee knoppen in één pil. De actieve is geen link: waar je al bent hoort niet
+   klikbaar te zijn, en een schermlezer hoort het via aria-current. */
+.srv-dept {
+  display: inline-flex; align-items: center; gap: 2px; padding: 3px;
+  background: var(--sec-panel-2); border: 1px solid var(--sec-border);
+  border-radius: var(--radius-pill);
+}
+.srv-dept-btn {
+  display: inline-block; padding: 5px 13px; border-radius: var(--radius-pill);
+  font-size: 12.5px; font-weight: 700; color: var(--sec-muted);
+  text-decoration: none; transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+a.srv-dept-btn:hover { color: var(--sec-text); background: rgba(255, 255, 255, 0.05); }
+.srv-dept-btn.is-active {
+  background: linear-gradient(135deg, var(--bucky-red), var(--bucky-red-light));
+  color: #fff; box-shadow: var(--bucky-glow);
+}
+.srv-dept-btn:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 2px; }
+
+/* --- de landingspagina: drie onderdelen, elk met zijn stand ---------------- */
+.srv-hero { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
+.srv-hero h1 { margin: 0; font-size: var(--fs-2xl); font-weight: 800; letter-spacing: -.02em; }
+.srv-hero p { margin: 0; color: var(--sec-muted); max-width: 62ch; }
+
+.srv-cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+
+/* Een kaart is een KNOP: de hele kaart brengt je naar het onderdeel. Een losse
+   link in een kaart die zelf ook klikbaar is, geeft twee doelen op één vlak. */
+.srv-tile {
+  position: relative; display: flex; flex-direction: column; gap: 12px;
+  padding: 18px; text-align: left; width: 100%; cursor: pointer;
+  background: linear-gradient(160deg, var(--sec-panel), rgba(28, 36, 52, 0.75));
+  border: 1px solid var(--sec-border); border-left: 3px solid var(--srv-rail);
+  border-radius: var(--sec-radius); color: inherit; font: inherit;
+  box-shadow: var(--sec-shadow);
+  transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease),
+              box-shadow var(--dur) var(--ease);
+}
+.srv-tile:hover { transform: translateY(-3px); border-left-color: var(--bucky-red-light); }
+.srv-tile:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 2px; }
+.srv-tile .srv-tile-head { display: flex; align-items: center; gap: 10px; }
+.srv-tile .srv-tile-head .ic { width: 20px; height: 20px; opacity: .85; flex: 0 0 20px; }
+.srv-tile h2 { margin: 0; font-size: var(--fs-md); font-weight: 800; }
+.srv-tile .srv-tile-body { color: var(--sec-muted); font-size: 13px; }
+.srv-tile .srv-tile-foot { margin-top: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Getallen die iets zeggen. Groot genoeg om te scannen, klein genoeg om niet
+   het onderwerp te worden. */
+.srv-figure { display: flex; align-items: baseline; gap: 7px; }
+.srv-figure .n { font-size: var(--fs-xl); font-weight: 800; letter-spacing: -.02em; }
+.srv-figure .unit { color: var(--sec-muted); font-size: 12.5px; }
+
+/* --- lijst met commando's ------------------------------------------------- */
+.srv-list { display: flex; flex-direction: column; gap: 2px; }
+.srv-group-title {
+  display: flex; align-items: center; gap: 10px; margin: 22px 0 8px;
+  font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 800; color: var(--sec-muted);
+}
+.srv-group-title .count { font-weight: 700; color: var(--srv-state); text-transform: none; letter-spacing: 0; }
+
+.srv-row {
+  display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 14px;
+  padding: 11px 14px; border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.015);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.srv-row:hover { background: var(--sec-panel-2); border-color: var(--sec-border); }
+.srv-row + .srv-row { margin-top: 2px; }
+.srv-row.is-off { background: rgba(214, 79, 79, 0.05); }
+
+.srv-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.srv-name code {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  background: var(--sec-panel-2); border: 1px solid var(--sec-border);
+  padding: 2px 8px; border-radius: 8px; color: var(--sec-text);
+}
+.srv-row.is-off .srv-name code { color: var(--sec-muted); text-decoration: line-through; }
+
+/* De herkomstregel: WAAR iets geldt. Nooit alleen kleur - er staat altijd een
+   woord, want kleur alleen is geen informatie (WCAG 1.4.1). */
+.srv-state {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+  font-weight: 700; color: var(--srv-state); background: var(--srv-state-soft);
+  padding: 3px 9px; border-radius: var(--radius-pill); white-space: nowrap;
+}
+.srv-state.is-on { color: var(--srv-on); background: rgba(63, 185, 107, 0.12); }
+.srv-state.is-off { color: var(--sec-red); background: rgba(214, 79, 79, 0.12); }
+
+.srv-actions { display: flex; align-items: center; gap: 8px; }
+
+/* --- de signatuur: hoe het er in Discord uitziet --------------------------
+   Eén plek waar deze afdeling iets laat zien in plaats van iets beweert. Het is
+   geen plaatje maar dezelfde tekst die de bot straks stuurt. */
+.srv-preview {
+  margin-top: 14px; border: 1px solid var(--sec-border); border-radius: var(--sec-radius);
+  background: #1e2229; overflow: hidden;
+}
+.srv-preview-head {
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+  border-bottom: 1px solid var(--sec-border); color: var(--sec-muted);
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+}
+.srv-preview-body { padding: 14px; display: flex; gap: 12px; }
+.srv-preview-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex: 0 0 34px;
+  background: linear-gradient(135deg, var(--bucky-red), var(--bucky-red-light));
+  display: grid; place-items: center; font-weight: 800; color: #fff; font-size: 13px;
+}
+.srv-preview-msg { min-width: 0; }
+.srv-preview-msg .who { font-weight: 700; font-size: 13px; }
+.srv-preview-msg .who .tag {
+  font-size: 10px; font-weight: 800; background: var(--bucky-red); color: #fff;
+  padding: 1px 5px; border-radius: 4px; margin-left: 6px; vertical-align: 1px;
+}
+.srv-preview-msg .text { font-size: 13.5px; line-height: 1.5; margin-top: 3px; word-break: break-word; }
+.srv-preview-msg .text code {
+  font-family: var(--font-mono); background: #12151a; padding: 1px 5px; border-radius: 5px;
+}
+/* Een Components V2-kaart zoals de bot hem stuurt: accentrand links. */
+.srv-preview-card {
+  border-left: 4px solid var(--bucky-red); background: #24282f;
+  border-radius: 6px; padding: 12px 14px; margin-top: 3px;
+}
+.srv-preview-card .title { font-weight: 800; font-size: 14px; }
+.srv-preview-card .sub { color: var(--sec-muted); font-size: 12px; margin-top: 2px; }
+.srv-preview-card hr { border: 0; border-top: 1px solid rgba(255,255,255,.08); margin: 10px 0; }
+
+/* --- lege staat: een uitnodiging, geen mededeling ------------------------- */
+.srv-empty {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  padding: 30px; border: 1px dashed var(--sec-border-strong); border-radius: var(--sec-radius);
+  background: rgba(255, 255, 255, 0.012);
+}
+.srv-empty h3 { margin: 0; font-size: var(--fs-md); font-weight: 800; }
+.srv-empty p { margin: 0; color: var(--sec-muted); max-width: 58ch; }
+
+/* --- opgeslagen: een bevestiging die je voelt, één keer ------------------- */
+@keyframes srv-saved {
+  0%   { transform: scale(.9); opacity: 0; }
+  35%  { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.srv-saved {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
+  color: var(--srv-on); animation: srv-saved var(--dur) var(--ease-out);
+}
+
+/* Rijen die binnenkomen: kort, klein, en met een trap zodat het leest als één
+   lijst die zich vult in plaats van vijftig dingen die los verschijnen. */
+@keyframes srv-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.srv-stagger > * { animation: srv-in var(--dur) var(--ease-out) backwards; }
+.srv-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.srv-stagger > *:nth-child(2) { animation-delay: 22ms; }
+.srv-stagger > *:nth-child(3) { animation-delay: 44ms; }
+.srv-stagger > *:nth-child(4) { animation-delay: 66ms; }
+.srv-stagger > *:nth-child(5) { animation-delay: 88ms; }
+.srv-stagger > *:nth-child(n+6) { animation-delay: 110ms; }
+
+/* --- telefoon -------------------------------------------------------------
+   De maat, niet de uitzondering. Onder 700px stapelt een rij: naam boven,
+   staat en schakelaar eronder, zodat de schakelaar een echt raakdoel blijft. */
+@media (max-width: 700px) {
+  .srv-row { grid-template-columns: 1fr auto; gap: 10px 12px; padding: 12px; }
+  .srv-row .srv-state { grid-column: 1; grid-row: 2; justify-self: start; }
+  .srv-row .srv-actions { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .srv-dept { order: 2; }
+  .sec-top-actions { flex-wrap: wrap; gap: 8px; }
+  .srv-hero h1 { font-size: var(--fs-xl); }
+  .srv-preview-body { padding: 12px; }
+}
+@media (max-width: 480px) {
+  .sec-guild { display: none; }        /* de servernaam staat al in het kruimelpad */
+}
+
+/* --- beweging uit -------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .srv-tile, .srv-row, .srv-dept-btn { transition: none; }
+  .srv-tile:hover { transform: none; }
+  .srv-stagger > *, .srv-saved { animation: none; }
+}

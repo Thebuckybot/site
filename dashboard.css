@@ -59,6 +59,29 @@
 .server-card .s-cta { font-size: 12.5px; font-weight: 700; color: var(--bk-red-300); opacity: 0; transform: translateY(4px); transition: .2s var(--ease); }
 .server-card:hover .s-cta, .server-card:focus-visible .s-cta { opacity: 1; transform: none; }
 
+/* Twee ingangen per server (17 september 2026)
+   De kaart blijft de kaart - hij gaat naar het Security Center, zoals altijd.
+   Daaronder staat een tweede, rustige ingang naar het Server Center.
+
+   WAAROM EEN WIKKEL EN GEEN KNOP IN DE KAART: de kaart IS een <button>, en een
+   knop in een knop is ongeldige HTML; op een telefoon is het bovendien een gok
+   welke van de twee je raakt. De wikkel is nu het gridkind, dus hij moet de
+   volledige hoogte vullen en de kaart laten meegroeien.
+
+   ALTIJD ZICHTBAAR EN NIET ALLEEN BIJ HOVER: hover bestaat niet op een telefoon,
+   en dat is inmiddels de maat. */
+.server-card-shell { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.server-card-shell > .server-card { flex: 1; }
+.s-alt {
+  display: block; text-align: center; padding: 7px 10px; border-radius: 12px;
+  font-size: 12.5px; font-weight: 700; text-decoration: none;
+  color: var(--bk-muted); border: 1px solid var(--bk-border);
+  background: rgba(255, 255, 255, 0.02);
+  transition: color .2s var(--ease), border-color .2s var(--ease), background .2s var(--ease);
+}
+.s-alt:hover { color: var(--bk-text); border-color: var(--bk-border-strong); background: rgba(255, 255, 255, 0.05); }
+.s-alt:focus-visible { outline: 2px solid var(--bk-red-300); outline-offset: 2px; }
+
 /* Skeleton loading cards */
 .server-card.skeleton { cursor: default; pointer-events: none; }
 .server-card.skeleton .sk { background: linear-gradient(90deg, var(--bk-panel-2) 25%, #26324a 37%, var(--bk-panel-2) 63%);
