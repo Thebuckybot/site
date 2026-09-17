@@ -103,9 +103,17 @@ function setServerChip() {
   }
 }
 
+// De wissel naar het Server Center. De guild moet mee in de URL, anders stuurt
+// die pagina je meteen terug naar de serverkiezer.
+function wireDepartments() {
+  const naarServer = document.getElementById("sec-to-server");
+  if (naarServer) naarServer.href = `server.html?guild_id=${encodeURIComponent(guildId() || "")}`;
+}
+
 function boot() {
   if (!guildId()) { window.location.href = "dashboard.html"; return; }
   setServerChip();
+  wireDepartments();
   buildSidebar(nav, navigate);
   document.getElementById("sec-refresh").addEventListener("click", () => loadSection(currentKey()));
   document.getElementById("sec-burger").addEventListener("click", () => appEl.classList.toggle("nav-open"));
