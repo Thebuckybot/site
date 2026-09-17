@@ -229,13 +229,42 @@ export default {
         // De schakelaar van de CATEGORIE hoort op de kop van de categorie, niet
         // als eerste rij van de lijst eronder: daar leest hij als een commando
         // dat toevallig zo heet.
-        const cogInput = el("input", {
-          type: "checkbox", checked: cog.disabled ? "checked" : null,
-          "aria-label": `Whole ${cog.name} category switched off`,
-        });
-        const cogSchakelaar = el("label", { class: "sec-switch" }, [cogInput, el("span", { class: "track" })]);
-        cogInput.addEventListener("change", () =>
-          schakel(cog, cog.name, true, cogInput.checked, cogSchakelaar));
+        // EEN SCHAKELAAR PER COG (17 september 2026, tweede ronde).
+        //
+        // Een kop is een CATEGORIE en dekt soms twee cogs: `+help` toont Range
+        // onder Currency, en dit scherm volgt dat. Maar de bot schakelt per
+        // COGNAAM (`is_command_disabled`: `cog_name in disabled_cogs`), dus een
+        // kopschakelaar kan onmogelijk kloppen: hij doet er twee stilletjes, of
+        // hij doet de helft. Allebei is een schakelaar die iets anders doet dan
+        // zijn label zegt.
+        //
+        // Dekt een kop precies een cog - verreweg de meeste - dan blijft alles
+        // zoals het was: een schakelaar met "Whole category". Dekt hij er meer,
+        // dan staat er een schakelaar per cog met de cognaam ernaast. Ze blijven
+        // in de KOPREGEL staan en niet in het ingeklapte deel, want een
+        // dichtgeklapte categorie moet bedienbaar blijven.
+        const leden = (cog.cogs && cog.cogs.length)
+          ? cog.cogs
+          : [{ name: String(cog.name).toLowerCase(), disabled: !!cog.disabled,
+               channels: cog.channels || [] }];
+        const cogActies = el("div", { class: "srv-actions" });
+        for (const lid of leden) {
+          const input = el("input", {
+            type: "checkbox", checked: lid.disabled ? "checked" : null,
+            "aria-label": `${lid.name} switched off in this server`,
+          });
+          const schakelaar = el("label", { class: "sec-switch" }, [input, el("span", { class: "track" })]);
+          input.addEventListener("change", () =>
+            schakel(lid, lid.name, true, input.checked, schakelaar));
+          cogActies.append(
+            el("span", {
+              class: `srv-state ${lid.disabled ? "is-off" : ""}`.trim(),
+              text: leden.length > 1
+                ? (lid.disabled ? `${lid.name} off` : lid.name)
+                : (lid.disabled ? "Whole category off" : "Whole category"),
+            }),
+            schakelaar);
+        }
 
         // INGEKLAPT TENZIJ JE ERNAAR ZOEKT (17 september 2026).
         //
@@ -267,16 +296,12 @@ export default {
         const groep = el("div", {
           class: "srv-group" + (cog.disabled ? " is-off" : "") + (open ? " open" : ""),
         }, [
-          el("div", { class: "srv-group-row" }, [
-            kop,
-            el("div", { class: "srv-actions" }, [
-              el("span", {
-                class: `srv-state ${cog.disabled ? "is-off" : ""}`.trim(),
-                text: cog.disabled ? "Whole category off" : "Whole category",
-              }),
-              cogSchakelaar,
-            ]),
-          ]),
+          // `is-multi` zodra een kop meer dan een cog dekt: twee
+          // label-plus-schakelaar-paren passen op 390px niet naast de titel, en
+          // dan werd de categorienaam afgekapt tot "EC...". Gezien op de preview
+          // van 17 september. Onder 700px breekt die regel daarom af.
+          el("div", { class: "srv-group-row" + (leden.length > 1 ? " is-multi" : "") },
+             [kop, cogActies]),
         ]);
 
         const blok = el("div", { class: "srv-list srv-stagger srv-group-body" });

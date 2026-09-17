@@ -335,6 +335,17 @@ html { background: var(--sec-bg1); }
      staan. "4 commands" zie je zodra je de categorie opent; "1 off" is waar je
      op scant, en dat was de vraag: in één blik zien wat er uitstaat. */
   .srv-group-title .count { display: none; }
+
+  /* EEN KOP MET TWEE COGS BREEKT AF. Sinds de schakelaar per cog gaat, draagt
+     zo'n kop twee label-plus-schakelaar-paren; naast de titel paste dat niet en
+     werd "ECONOMY" afgekapt tot "EC...". De naam van de categorie is het enige
+     waaraan je ziet waar je bent, dus die houdt zijn regel en de schakelaars
+     zakken eronder. Alleen voor samengevoegde koppen: een gewone kop (verreweg
+     de meeste) verandert niet. */
+  .srv-group-row.is-multi { flex-wrap: wrap; }
+  .srv-group-row.is-multi .srv-actions {
+    flex-basis: 100%; justify-content: flex-start; margin-top: 8px;
+  }
   .srv-dept { order: 2; }
   .sec-top-actions { flex-wrap: wrap; gap: 8px; }
   .srv-hero h1 { font-size: var(--fs-xl); }
