@@ -17,20 +17,30 @@ export default {
         api.get("/settings").catch(() => null),
       ]);
       const incidents = (incRaw && incRaw.data && incRaw.data.items) || [];
-      const grade = ov.security_score >= 75 ? "ok" : ov.security_score >= 50 ? "warn" : "bad";
-      const protectedOk = ov.security_score >= 60 && !(health.checks || []).some((c) => c.key === "anti_nuke" && !c.ok);
+      // EEN ONTBREKEND VELD IS GEEN NUL (17 september 2026). Bij een lege of
+      // gedeeltelijke payload - een server die nog niets heeft, een half antwoord -
+      // stond hier letterlijk het woord `undefined` op vier kaarten. Onbekend is
+      // een eigen toestand: die krijgt een woord, geen verzonnen cijfer en geen
+      // alarmkleur, want "At risk" op een lege payload is een bewering die we
+      // niet kunnen waarmaken.
+      const score = ov.security_score == null ? null : Number(ov.security_score);
+      const grade = score == null ? "muted" : score >= 75 ? "ok" : score >= 50 ? "warn" : "bad";
+      const protectedOk = score != null && score >= 60 && !(health.checks || []).some((c) => c.key === "anti_nuke" && !c.ok);
 
       root.appendChild(pageHeader("Security Center", "Your server's protection at a glance."));
 
       // Row 1 — headline status
       root.appendChild(el("div", { class: "sec-grid sec-grid-4" }, [
         el("div", { class: "sec-card sec-score" }, [
-          el("div", {}, [el("div", { class: "num", text: ov.security_score }), el("div", { class: "grade" }, [badge("Grade " + ov.grade, grade)])]),
+          el("div", {}, [
+            el("div", { class: "num", style: score == null ? "font-size:20px" : null, text: score == null ? "Unknown" : String(score) }),
+            el("div", { class: "grade" }, [ov.grade ? badge("Grade " + ov.grade, grade) : badge("Not scored yet", "muted")]),
+          ]),
           el("div", { class: "sec-muted", text: "Security Score" }),
         ]),
         statCard("Mode", String(ov.mode || "normal").toUpperCase()),
-        el("div", { class: "sec-card sec-stat" }, [el("span", { class: "label", text: "Protection" }), el("span", { class: "value" }, [badge(protectedOk ? "Protected" : "At risk", protectedOk ? "ok" : "bad")])]),
-        statCard("Active Modules", `${ov.modules_enabled}/${ov.modules_total}`),
+        el("div", { class: "sec-card sec-stat" }, [el("span", { class: "label", text: "Protection" }), el("span", { class: "value" }, [score == null ? badge("Unknown", "muted") : badge(protectedOk ? "Protected" : "At risk", protectedOk ? "ok" : "bad")])]),
+        statCard("Active Modules", ov.modules_total == null ? null : `${ov.modules_enabled == null ? 0 : ov.modules_enabled}/${ov.modules_total}`),
       ]));
 
       // Row 2 — activity

@@ -89,9 +89,14 @@ export function pageHeader(title, sub) {
 }
 
 export function statCard(label, value) {
+  // `String(undefined)` is "undefined", en dat woord stond op 17 september op
+  // vier kaarten van het overzicht zodra de payload een veld miste. Een kaart
+  // zonder waarde zegt nu dat hij het niet weet. Let op de `== null`: een nul is
+  // een echte waarde en hoort gewoon als 0 op de kaart.
+  const leeg = value == null || value === "" || (typeof value === "number" && Number.isNaN(value));
   return el("div", { class: "sec-card sec-stat" }, [
     el("span", { class: "label", text: label }),
-    el("span", { class: "value", text: String(value) }),
+    el("span", { class: "value", text: leeg ? "Unknown" : String(value) }),
   ]);
 }
 
