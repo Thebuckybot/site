@@ -49,14 +49,20 @@ function preview(naam, waar) {
 
 export default {
   async render(root, { navigate }) {
-    const state = { zoek: "", filter: "all", data: null, kanalen: [] };
+    // `open` houdt bij welke categorieën de gebruiker zelf heeft opengeklapt.
+    // Standaard staat alles dicht: de kop zegt al hoeveel er uitstaan, en dat is
+    // wat je in één blik wilt zien.
+    const state = { zoek: "", filter: "all", data: null, kanalen: [], open: new Set() };
 
     root.appendChild(el("div", { class: "srv-hero" }, [
       el("h1", { text: "Commands" }),
       el("p", { text: "Switch a command or a whole category off for this server, or only in one channel. A member who tries it gets a short reply telling them where it is off." }),
     ]));
 
-    const controls = el("div", { class: "sec-row", style: "margin-bottom:6px" });
+    // De bediening blijft in beeld tijdens het scrollen: met tweehonderd
+    // commando's is zoeken de snelste weg, en dan moet het veld niet boven de
+    // vouw achterblijven.
+    const controls = el("div", { class: "sec-row srv-sticky" });
     const zoekveld = el("input", {
       class: "sec-input", type: "search", placeholder: "Search commands…",
       "aria-label": "Search commands", style: "max-width:260px",
@@ -231,10 +237,38 @@ export default {
         cogInput.addEventListener("change", () =>
           schakel(cog, cog.name, true, cogInput.checked, cogSchakelaar));
 
-        const groep = el("div", { class: "srv-group" + (cog.disabled ? " is-off" : "") }, [
-          el("div", { class: "srv-group-title" }, [
-            el("span", { text: cog.name }),
-            el("span", { class: "count", text: `${(cog.commands || []).length} commands` }),
+        // INGEKLAPT TENZIJ JE ERNAAR ZOEKT (17 september 2026).
+        //
+        // Met tweehonderd commando's is een lange lijst geen ontwerp: op een
+        // telefoon scrol je langs zeventien categorieën om er één te vinden.
+        // Een categorie toont daarom zijn kop met de stand erin, en klapt open
+        // als je hem opent - of vanzelf, zodra je zoekt of op "Switched off"
+        // filtert, want dan is de lijst zelf al het antwoord.
+        const uitTeller = (cog.commands || []).filter((c) => c.disabled).length;
+        const vanzelfOpen = !!state.zoek || state.filter !== "all" || cog.disabled;
+        const open = vanzelfOpen || state.open.has(cog.name);
+
+        const kop = el("button", {
+          class: "srv-group-title", type: "button",
+          "aria-expanded": open ? "true" : "false",
+          onclick: () => {
+            state.open.has(cog.name) ? state.open.delete(cog.name) : state.open.add(cog.name);
+            teken();
+          },
+        }, [
+          el("span", { class: "chev", text: open ? "⌄" : "›" }),
+          el("span", { class: "name", text: cog.name }),
+          el("span", { class: "count", text: `${(cog.commands || []).length} commands` }),
+          uitTeller
+            ? el("span", { class: "srv-state is-off", text: `${uitTeller} off` })
+            : null,
+        ].filter(Boolean));
+
+        const groep = el("div", {
+          class: "srv-group" + (cog.disabled ? " is-off" : "") + (open ? " open" : ""),
+        }, [
+          el("div", { class: "srv-group-row" }, [
+            kop,
             el("div", { class: "srv-actions" }, [
               el("span", {
                 class: `srv-state ${cog.disabled ? "is-off" : ""}`.trim(),
@@ -245,7 +279,7 @@ export default {
           ]),
         ]);
 
-        const blok = el("div", { class: "srv-list srv-stagger" });
+        const blok = el("div", { class: "srv-list srv-stagger srv-group-body" });
         for (const c of commandos) blok.appendChild(regel(c, cog.name, false));
         zichtbaar += commandos.length;
         groep.appendChild(blok);
