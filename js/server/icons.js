@@ -14,6 +14,8 @@ export const ICONS = {
   tickets: S('<path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/>'),
   // Een formulier met regels en een vinkje.
   applications: S('<path d="M6 3h9l5 5v13H6z"/><path d="M9 12h6M9 16h4"/><path d="M9 8h3"/>'),
+  // Een postvak met iets erin: wat ligt te wachten op een beslissing.
+  submissions: S('<path d="M4 13l2.5-8h11L20 13v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/>'),
 };
 
 export function icon(key) { return ICONS[key] || ICONS.overview; }

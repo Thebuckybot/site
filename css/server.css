@@ -37,25 +37,9 @@ html { background: var(--sec-bg1); }
   box-shadow: 0 6px 20px rgba(47, 59, 79, 0.45);
 }
 
-/* --- de afdelingswissel ---------------------------------------------------
-   Twee knoppen in één pil. De actieve is geen link: waar je al bent hoort niet
-   klikbaar te zijn, en een schermlezer hoort het via aria-current. */
-.srv-dept {
-  display: inline-flex; align-items: center; gap: 2px; padding: 3px;
-  background: var(--sec-panel-2); border: 1px solid var(--sec-border);
-  border-radius: var(--radius-pill);
-}
-.srv-dept-btn {
-  display: inline-block; padding: 5px 13px; border-radius: var(--radius-pill);
-  font-size: 12.5px; font-weight: 700; color: var(--sec-muted);
-  text-decoration: none; transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
-}
-a.srv-dept-btn:hover { color: var(--sec-text); background: rgba(255, 255, 255, 0.05); }
-.srv-dept-btn.is-active {
-  background: linear-gradient(135deg, var(--bucky-red), var(--bucky-red-light));
-  color: #fff; box-shadow: var(--bucky-glow);
-}
-.srv-dept-btn:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 2px; }
+/* De afdelingswissel staat in css/security.css: beide pagina's laden dat
+   bestand, en maar één van de twee laadt dit bestand. Zolang de stijl hier
+   stond, kon de knop alleen aan de Server-kant bestaan. */
 
 /* --- de landingspagina: drie onderdelen, elk met zijn stand ---------------- */
 .srv-hero { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
@@ -109,6 +93,41 @@ a.srv-dept-btn:hover { color: var(--sec-text); background: rgba(255, 255, 255, 0
   white-space: nowrap;
 }
 .srv-group-title .srv-actions { margin-left: auto; }
+
+/* --- inklapbare categorie -------------------------------------------------
+   De kop is een knop over de volle breedte: op een telefoon is de hele regel
+   het raakdoel, niet een pijltje van tien pixels. De schakelaar van de
+   categorie staat ERNAAST en niet erin, want een knop in een knop bestaat niet
+   en zou hier "open de lijst" en "zet alles uit" op één vlak leggen. */
+.srv-group-row { display: flex; align-items: center; gap: 12px; margin: 26px 0 8px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--sec-border); }
+.srv-group-row .srv-group-title {
+  flex: 1; margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--sec-muted); text-align: left; font: inherit;
+  font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 800;
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+}
+.srv-group-row .srv-group-title:hover { color: var(--sec-text); }
+.srv-group-row .srv-group-title:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 3px; border-radius: 8px; }
+.srv-group-title .chev { opacity: .7; font-size: 14px; width: 12px; flex: 0 0 12px; }
+/* DE KOP MAG NOOIT OVER DE SCHAKELAAR HEEN LOPEN (17 september 2026).
+   De knop had wel `flex: 1`, maar zijn KINDEREN mochten niet krimpen: bij 390px
+   liep de titel buiten zijn eigen vak door en stond er "1 0ffWhole category" -
+   twee teksten over elkaar. De naam is het enige dat mag inkorten; het aantal en
+   de stand zijn kort en blijven heel. */
+.srv-group-title .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srv-group-title .count, .srv-group-title .srv-state { flex: 0 0 auto; }
+.srv-group-row .srv-actions { flex: 0 0 auto; }
+.srv-group-body { display: none; }
+.srv-group.open .srv-group-body { display: block; }
+
+/* De bediening blijft in beeld terwijl je door de lijst scrolt. Zoeken is hier
+   de snelste weg naar één commando, en dan moet het veld niet boven de vouw
+   achterblijven. */
+.srv-sticky {
+  position: sticky; top: 0; z-index: 4; padding: 10px 0 12px;
+  background: linear-gradient(180deg, var(--sec-bg1) 72%, rgba(11, 15, 22, 0));
+}
 .srv-group-title .srv-state { text-transform: none; letter-spacing: 0; }
 /* Een uitgezette categorie zet alles eronder uit; dat hoort te zien te zijn. */
 .srv-group.is-off .srv-group-title { color: var(--sec-red); border-bottom-color: rgba(214, 79, 79, .35); }
@@ -189,6 +208,16 @@ a.srv-dept-btn:hover { color: var(--sec-text); background: rgba(255, 255, 255, 0
   color: inherit; font: inherit; cursor: pointer; padding: 0; min-width: 0;
 }
 .srv-form-open:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 3px; border-radius: 8px; }
+
+/* Een aanvraag in de wachtrij OPENT, en dat moet je zien voordat je klikt. Op de
+   preview van 17 september stond er alleen "4 answers" en geen enkel teken dat
+   daar iets achter zat - op precies het scherm dat bestaat om die antwoorden te
+   lezen. De chevron zegt de stand, het woord zegt de handeling. */
+.srv-sub-open { display: flex; align-items: flex-start; gap: 10px; }
+.srv-sub-open .chev { flex: 0 0 12px; opacity: .7; font-size: 14px; line-height: 1.4; }
+.srv-sub-head { min-width: 0; }
+.srv-sub-hint { color: var(--bucky-red-light); text-decoration: underline; text-underline-offset: 2px; }
+.srv-sub-open:hover .srv-sub-hint { color: var(--sec-text); }
 .srv-row.is-active { border-color: var(--bucky-red-light); background: var(--bk-red-soft, rgba(139, 30, 63, 0.18)); }
 
 /* Het nummer van een vraag. Een cijfer en geen bolletje: de volgorde is hier
@@ -235,6 +264,18 @@ a.srv-dept-btn:hover { color: var(--sec-text); background: rgba(255, 255, 255, 0
   background: var(--bucky-red); color: #fff;
 }
 .srv-modal-btn.ghost { background: none; color: #dbdee1; }
+
+/* --- de antwoorden van een aanvraag --------------------------------------
+   Vraag en antwoord onder elkaar, met de vraag klein en grijs: wie beoordeelt
+   leest de ANTWOORDEN, en de vraag is er om te weten waar hij bij hoort. */
+.srv-answer-wrap { padding: 0 6px 14px; }
+.srv-answers { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px;
+  border: 1px solid var(--sec-border); border-left: 3px solid var(--srv-state);
+  border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.015); }
+.srv-answer-q { font-size: 12px; font-weight: 800; letter-spacing: .02em;
+  text-transform: uppercase; color: var(--sec-muted); margin-bottom: 3px; }
+.srv-answer-a { font-size: 14px; line-height: 1.55; white-space: pre-wrap;
+  overflow-wrap: anywhere; }
 
 /* --- lege staat: een uitnodiging, geen mededeling ------------------------- */
 .srv-empty {
@@ -289,6 +330,11 @@ a.srv-dept-btn:hover { color: var(--sec-text); background: rgba(255, 255, 255, 0
   }
   .srv-row.srv-row-stack .srv-actions { flex-wrap: wrap; width: 100%; }
   .srv-name > div { min-width: 0; }
+
+  /* Op een telefoon valt het AANTAL uit de categoriekop weg en blijft de stand
+     staan. "4 commands" zie je zodra je de categorie opent; "1 off" is waar je
+     op scant, en dat was de vraag: in één blik zien wat er uitstaat. */
+  .srv-group-title .count { display: none; }
   .srv-dept { order: 2; }
   .sec-top-actions { flex-wrap: wrap; gap: 8px; }
   .srv-hero h1 { font-size: var(--fs-xl); }

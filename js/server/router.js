@@ -11,6 +11,10 @@ export const NAV = [
   { key: "commands", label: "Commands" },
   { key: "tickets", label: "Tickets" },
   { key: "applications", label: "Applications" },
+  // Het scherm achter het getal op het overzicht. Een eigen ingang en geen tab
+  // binnen de bouwer: beslissen over een aanvraag is ander werk dan een vraag
+  // schrijven, en het gebeurt door andere mensen.
+  { key: "submissions", label: "Waiting" },
 ];
 
 const LABEL = {};
