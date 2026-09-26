@@ -47,14 +47,16 @@ def eis(voorwaarde, melding):
 
 
 def stand(*, nick="Bucky Jr", avatar=AVATAR, bio="Here to help in this server.",
-          bio_known=True, kan=True):
+          bio_known=True, kan=True, banner=None):
     return {
         "bot": {"id": "907664862493167680", "username": "bucky", "name": "Bucky.",
-                "avatar_url": EIGEN, "bio": "The global About me."},
-        "server": {"nick": nick, "avatar_url": avatar, "bio": bio, "bio_known": bio_known},
+                "avatar_url": EIGEN, "bio": "The global About me.", "banner_url": None},
+        "server": {"nick": nick, "avatar_url": avatar, "bio": bio, "bio_known": bio_known,
+                   "banner_url": banner},
         "can_change_nickname": kan,
         "limits": {"max_nick": 32, "max_bio": 190, "max_upload_bytes": 2097152,
-                   "changes_per_window": 20, "window_seconds": 300},
+                   "changes_per_window": 20, "window_seconds": 300,
+                   "banner_min": [300, 120], "banner_changes": "twice in about 10 to 15 minutes"},
         "rate_limit": None,
     }
 
@@ -223,6 +225,62 @@ def main():
         eis("Nothing has been set here" in page.locator(".srv-field-hint").all_inner_texts().__str__(),
             "de uitleg staat erbij")
         eis(page.locator(".dc-profiel-bio").inner_text() == "The global About me.", "de preview toont de About me")
+        page.close()
+
+        print("\n10. De banner: instellen, zien, leegmaken")
+        BANNER = "data:image/png;base64," + base64.b64encode(wp._png(600, 240, (20, 60, 160))).decode()
+        page, spoor = open_scherm(browser, stand(banner=BANNER))
+        eis(page.locator(".srv-banner-klein").get_attribute("src") == BANNER, "de banner van nu staat in de kaart")
+        eis(page.locator(".dc-profiel-kop img.dc-profiel-banner").get_attribute("src") == BANNER,
+            "en bovenaan het profielkaartje in de preview")
+        page.get_by_label("Upload a banner").set_input_files(
+            {"name": "wide.png", "mimeType": "image/png", "buffer": wp._png(600, 240, (240, 180, 40))})
+        page.wait_for_timeout(400)
+        eis(page.locator(".dc-profiel-kop img.dc-profiel-banner").get_attribute("src").startswith("blob:"),
+            "een nieuwe banner staat lokaal in de preview")
+        foto(page, "botprofiel-banner")
+        page.locator("#srv-botprofile-save").click()
+        page.wait_for_timeout(400)
+        body = spoor["patches"][0] if spoor["patches"] else {}
+        eis(list(body) == ["banner"] and str(body["banner"]).startswith("data:image/png;base64,"),
+            f"alleen de banner gaat mee ({list(body)})")
+        page.close()
+
+        page, spoor = open_scherm(browser, stand(banner=BANNER))
+        page.get_by_role("button", name="Remove the banner").click()
+        page.wait_for_timeout(200)
+        eis(page.locator(".dc-profiel-kop img").count() == 0, "leeggemaakt: geen banner in de preview")
+        page.locator("#srv-botprofile-save").click()
+        page.wait_for_timeout(400)
+        eis(spoor["patches"] == [{"banner": None}], f"leegmaken stuurt null ({spoor['patches']})")
+        page.close()
+
+        page, spoor = open_scherm(browser, stand())
+        groot = b"\x89PNG\r\n\x1a\n" + b"\0" * (3 * 1024 * 1024)
+        page.get_by_label("Upload a banner").set_input_files(
+            {"name": "huge.png", "mimeType": "image/png", "buffer": groot})
+        page.wait_for_timeout(200)
+        eis("3.0 MB" in fout(page), "een te grote banner: grootte en limiet")
+        page.get_by_label("Upload a banner").set_input_files(
+            {"name": "square.png", "mimeType": "image/png", "buffer": wp._png(128, 128, (1, 2, 3))})
+        page.wait_for_timeout(300)
+        eis("128x128" in fout(page) and "300 x 120" in fout(page), "een te kleine banner: maat en minimum")
+        eis("twice in about 10 to 15 minutes" in page.locator(".sec-card", has_text="Banner").first.inner_text(),
+            "het bannerlimiet staat vooraf in de kaart")
+        eis(not spoor["patches"], "en niets verstuurd")
+        page.close()
+
+        limiet = ("Discord only lets a bot change its banner a few times in a short while, and that "
+                  "limit has been reached. This is separate from the general limit on profile changes. "
+                  "Try again later. Nothing was changed.")
+        page, spoor = open_scherm(browser, stand(), patch=lambda b: (429, limiet))
+        page.get_by_label("Upload a banner").set_input_files(
+            {"name": "wide.png", "mimeType": "image/png", "buffer": wp._png(600, 240, (240, 180, 40))})
+        page.wait_for_timeout(300)
+        page.locator("#srv-botprofile-save").click()
+        page.wait_for_timeout(4000)
+        eis(limiet in fout(page), "Discords bannerlimiet blijft bij de knop staan")
+        foto(page, "botprofiel-bannerlimiet", ".srv-welcome > div > .sec-card:last-child")
         page.close()
 
         print("\n9. Telefoon")
