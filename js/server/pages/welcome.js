@@ -123,6 +123,9 @@ export default {
       afbeeldingen: (data.images || []).slice(),
       limieten: data.limits || {},
       kanalen: data.channels || [],
+      // Is de kanaallijst echt opgehaald? Leeg kan ook "Discord hikte"
+      // betekenen, en dan is een kanaal onbekend en niet verwijderd.
+      kanalenBekend: data.channels_known !== false && (data.channels || []).length > 0,
       // Het laatst aangeraakte tekstveld, zodat een placeholder-chip weet waar
       // hij geplakt moet worden.
       laatsteVeld: null,
@@ -167,6 +170,10 @@ export default {
 
     function huidig() { return state.berichten[state.kind]; }
 
+    function kanaalVan(id) {
+      return state.kanalen.find((k) => String(k.id) === String(id || "")) || null;
+    }
+
     function vuil(ja = true) {
       state.vuil[state.kind] = ja;
       tabs();
@@ -177,8 +184,10 @@ export default {
     function ververs() {
       if (!previewHost) return;
       clear(previewHost);
-      previewHost.appendChild(tekenPreview(huidig().layout,
-        { hosts: state.limieten.image_hosts || [] }));
+      previewHost.appendChild(tekenPreview(huidig().layout, {
+        hosts: state.limieten.image_hosts || [],
+        kanalen: state.kanalen, kanalenBekend: state.kanalenBekend,
+      }));
       tellers();
     }
 
@@ -300,6 +309,19 @@ export default {
       function blokken() {
         clear(blokhost);
         const lijst = bericht.layout.blocks || [];
+        // BIJ HET LADEN GEMELD, BOVENAAN: een knop naar een verdwenen kanaal
+        // gaat niet mee in het bericht. Dat hoort iemand te lezen voordat hij
+        // op Save drukt, niet pas te merken als er een lid binnenkomt.
+        const dood = lijst.flatMap((b) => (b.type === "buttons" ? b.items || [] : []))
+          .filter((k) => k.kind === "channel" && state.kanalenBekend && !kanaalVan(k.channel_id));
+        if (dood.length) {
+          blokhost.appendChild(el("p", { class: "srv-fout", role: "alert", style: "margin-bottom:12px",
+            text: `${dood.length === 1 ? "One button points" : dood.length + " buttons point"} `
+                  + "to a channel that no longer exists: "
+                  + dood.map((k) => `"${k.label}"`).join(", ")
+                  + `. ${dood.length === 1 ? "It is" : "They are"} left out of the message `
+                  + "until you pick another channel." }));
+        }
         if (!lijst.length) {
           blokhost.appendChild(el("p", { class: "sec-muted",
             text: "No blocks yet. Add one below and it appears in the preview." }));
@@ -508,29 +530,7 @@ export default {
 
         // buttons
         const max = state.limieten.max_buttons || 5;
-        const rijen = (blok.items || []).map((knop, j) => el("div", {
-          style: "display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end",
-        }, [
-          veld("Label", (() => {
-            const i1 = el("input", { class: "sec-input",
-                                     maxlength: String(state.limieten.max_button_label || 80) });
-            i1.value = knop.label || "";
-            i1.addEventListener("input", () => { knop.label = i1.value; vuil(); ververs(); });
-            return i1;
-          })()),
-          veld("Link", (() => {
-            const i2 = el("input", { class: "sec-input", type: "url" });
-            i2.value = knop.url || "";
-            i2.addEventListener("input", () => { knop.url = i2.value.trim(); vuil(); ververs(); });
-            return i2;
-          })()),
-          el("button", { class: "srv-iconbtn", type: "button", text: "✕",
-                         "aria-label": "Remove this button",
-                         onclick: () => {
-                           blok.items.splice(j, 1);
-                           vuil(); blokken(); ververs();
-                         } }),
-        ]));
+        const rijen = (blok.items || []).map((knop, j) => knopRij(blok, knop, j));
         rijen.push(el("button", {
           class: "sec-btn sec-btn-sm", type: "button", text: "+ Button",
           disabled: (blok.items || []).length >= max ? "disabled" : null,
@@ -541,9 +541,92 @@ export default {
           },
         }));
         rijen.push(el("p", { class: "sec-muted", style: "font-size:12px;margin:0",
-          text: "Buttons open a link. A button that does something inside Discord "
-                + "is not built yet." }));
+          text: "A button opens a web address or takes the member to a channel in "
+                + "this server. A button that does something inside Discord is not "
+                + "built yet." }));
         return rijen;
+      }
+
+      // EEN KNOP GAAT NAAR EEN WEBADRES OF NAAR EEN KANAAL. Voor Discord zijn het
+      // allebei linkknoppen; een kanaalknop wordt een link naar
+      // discord.com/channels/<deze server>/<kanaal>. DE SERVER-ID STAAT NERGENS
+      // IN HET DOCUMENT: de bot vult hem in bij het versturen, uit de server
+      // waar het bericht heen gaat. Hier wordt alleen het kanaal gekozen, uit
+      // een lijst - geen id's intypen.
+      function knopRij(blok, knop, j) {
+        const soort = knop.kind === "channel" ? "channel" : "link";
+        const label = el("input", { class: "sec-input",
+                                    maxlength: String(state.limieten.max_button_label || 80) });
+        label.value = knop.label || "";
+        label.addEventListener("input", () => { knop.label = label.value; vuil(); ververs(); });
+
+        const naar = el("select", { class: "sec-select", "aria-label": "Where this button goes" }, [
+          el("option", { value: "link", text: "A web address" }),
+          el("option", { value: "channel", text: "A channel in this server" }),
+        ]);
+        naar.value = soort;
+        naar.addEventListener("change", () => {
+          if (naar.value === "channel") {
+            knop.kind = "channel";
+            delete knop.url;
+            const eerste = state.kanalen[0];
+            knop.channel_id = eerste ? String(eerste.id) : "";
+            if (eerste) zetAutoLabel(knop, eerste);
+          } else {
+            delete knop.kind; delete knop.channel_id;
+            knop.url = "https://";
+          }
+          vuil(); blokken(); ververs();
+        });
+
+        let doel;
+        let waarschuwing = null;
+        if (soort === "channel") {
+          const bekend = kanaalVan(knop.channel_id);
+          doel = el("select", { class: "sec-select", "aria-label": "Channel" },
+            state.kanalen.map((k) => el("option", { value: String(k.id), text: "#" + k.name })));
+          if (!bekend && knop.channel_id) {
+            // HET KANAAL STAAT NIET MEER IN DE LIJST. Laten zien wat er staat, en
+            // zeggen wat dat betekent - niet stil het eerste kanaal kiezen.
+            doel.prepend(el("option", { value: String(knop.channel_id),
+              text: state.kanalenBekend ? "#deleted-channel" : `Channel ${knop.channel_id}` }));
+            waarschuwing = el("p", { class: "srv-fout", role: "alert", text: state.kanalenBekend
+              ? "This channel no longer exists. The button is left out of the message "
+                + "until you pick another channel or remove it."
+              : "Could not check the channels with Discord just now, so this button "
+                + "cannot be checked. Saving will ask again." });
+          }
+          doel.value = String(knop.channel_id || "");
+          doel.addEventListener("change", () => {
+            const k = kanaalVan(doel.value);
+            knop.channel_id = doel.value;
+            if (k) zetAutoLabel(knop, k);
+            vuil(); blokken(); ververs();
+          });
+        } else {
+          doel = el("input", { class: "sec-input", type: "url" });
+          doel.value = knop.url || "";
+          doel.addEventListener("input", () => { knop.url = doel.value.trim(); vuil(); ververs(); });
+        }
+
+        return el("div", { class: "srv-knoprij" }, [
+          veld("Label", label),
+          veld("Goes to", naar),
+          el("button", { class: "srv-iconbtn", type: "button", text: "✕",
+                         "aria-label": "Remove this button",
+                         onclick: () => { blok.items.splice(j, 1); vuil(); blokken(); ververs(); } }),
+          el("div", { class: "srv-knoprij-doel" }, [
+            veld(soort === "channel" ? "Channel" : "Link", doel), waarschuwing]),
+        ]);
+      }
+
+      // Het label volgt het kanaal zolang de beheerder het niet zelf heeft
+      // veranderd: leeg, "Button" of een kale kanaalnaam ("#rules") wordt de
+      // nieuwe kanaalnaam; een eigen tekst ("Read the rules") blijft staan.
+      function zetAutoLabel(knop, kanaal) {
+        if (!knop.label || knop.label === "Button" || /^#\S*$/.test(knop.label)) {
+          knop.label = "#" + kanaal.name;
+        }
       }
 
       blokken();

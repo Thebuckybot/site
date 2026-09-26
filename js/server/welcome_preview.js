@@ -185,12 +185,26 @@ function blokNaarElement(blok, waarden, opties = {}) {
 
   if (soort === "buttons") {
     return el("div", { class: "dc-buttons" },
-      (blok.items || []).map((knop) => el("span", { class: "dc-btn" }, [
-        el("span", { text: vulIn(knop.label, waarden) }),
-        // Het pijltje dat Discord op een link-knop zet. Een CONSTANTE, dus
-        // `text:` met een vast teken - geen icoon uit de data.
-        el("span", { class: "dc-btn-ext", text: "↗" }),
-      ])));
+      (blok.items || []).map((knop) => {
+        // EEN KNOP NAAR EEN VERDWENEN KANAAL gaat niet mee (de bot laat hem
+        // weg). De preview toont dat, in plaats van een knop te beloven die
+        // er straks niet staat.
+        const kanaalWeg = knop.kind === "channel" && opties.kanalenBekend
+          && !(opties.kanalen || []).some((k) => String(k.id) === String(knop.channel_id));
+        if (kanaalWeg) {
+          return el("span", { class: "dc-btn dc-btn-weg" }, [
+            el("s", { text: knop.label || "Button" }),
+            el("span", { text: " channel deleted, not sent" }),
+          ]);
+        }
+        // Een kanaalknop IS een linkknop bij Discord (naar discord.com/channels/…),
+        // dus hij krijgt hetzelfde pijltje. Een CONSTANTE, dus `text:` met een
+        // vast teken - geen icoon uit de data.
+        return el("span", { class: "dc-btn" }, [
+          el("span", { text: vulIn(knop.label, waarden) }),
+          el("span", { class: "dc-btn-ext", text: "↗" }),
+        ]);
+      }));
   }
 
   return null;

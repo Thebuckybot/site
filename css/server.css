@@ -468,6 +468,24 @@ html { background: var(--sec-bg1); }
   padding: 7px 14px; font-size: 14px; font-weight: 500;
 }
 .dc-btn-ext { opacity: .6; font-size: 12px; }
+/* Een knop naar een verdwenen kanaal: de bot stuurt hem niet mee. */
+.dc-btn.dc-btn-weg {
+  background: transparent; border: 1px dashed #4e5058; color: #949ba4;
+}
+.dc-btn-weg s { text-decoration-color: rgba(148, 155, 164, .7); }
+
+/* Een knop in de bouwer: label en soort naast elkaar, het doel eronder over de
+   hele breedte. Op een telefoon onder elkaar. */
+.srv-knoprij {
+  display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end;
+  padding: 10px 0; border-top: 1px solid rgba(255, 255, 255, .06);
+}
+.srv-knoprij:first-child { border-top: 0; padding-top: 0; }
+.srv-knoprij-doel { grid-column: 1 / -1; display: grid; gap: 8px; }
+@media (max-width: 560px) {
+  .srv-knoprij { grid-template-columns: 1fr auto; }
+  .srv-knoprij > .srv-field:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+}
 
 /* --- de bouwer links ----------------------------------------------------- */
 .srv-block {
