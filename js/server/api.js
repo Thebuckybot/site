@@ -63,6 +63,42 @@ export const api = {
   post: async (path, body) => (await call("POST", path, body || {})).data,
   patch: async (path, body) => (await call("PATCH", path, body || {})).data,
   del: async (path) => (await call("DELETE", path)).data,
+  // Een bestand, en dus GEEN `Content-Type` die wij zetten: de browser moet er
+  // zelf de multipart-grens in zetten, en die kent hij pas als hij de FormData
+  // serialiseert. Zelf `multipart/form-data` zetten levert een body op die de
+  // server niet kan ontleden - een klassieker die er stil uitziet.
+  //
+  // Ook een RUIMERE TIMEOUT dan de 15 s hierboven: twee megabyte over een trage
+  // upload is geen hangende backend.
+  async upload(path, file) {
+    const gid = guildId();
+    const formulier = new FormData();
+    formulier.append("file", file);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 60000);
+    let res;
+    try {
+      res = await apiFetch(`${BASE}/${gid}${path}`, {
+        method: "POST", body: formulier, signal: ctrl.signal,
+      });
+    } catch (err) {
+      const e = new Error(ctrl.signal.aborted
+        ? "The upload timed out." : "Network error while uploading.");
+      e.code = "network";
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+    let json = {};
+    try { json = await res.json(); } catch (_) { /* geen JSON */ }
+    if (!res.ok || json.ok === false) {
+      const e = new Error((json && json.error && json.error.message)
+        || `Upload failed (${res.status}).`);
+      e.status = res.status;
+      throw e;
+    }
+    return json.data;
+  },
   async me() {
     if (!permsCache) permsCache = (await call("GET", "/me")).data;
     return permsCache;

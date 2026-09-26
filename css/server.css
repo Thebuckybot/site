@@ -361,3 +361,182 @@ html { background: var(--sec-bg1); }
   .srv-tile:hover { transform: none; }
   .srv-stagger > *, .srv-saved { animation: none; }
 }
+
+/* --- de welcome-bouwer en zijn live preview ------------------------------
+   DE PREVIEW IS DE SIGNATUUR VAN DEZE AFDELING, en dit scherm is de plek waar
+   dat het meest waar is: je bent letterlijk een Discord-bericht aan het maken.
+   Daarom mag deze kant er wel uitzien als Discord en niet als het dashboard -
+   dat contrast is het punt. Discords eigen grijstinten, niet de onze.
+
+   De donkere kleuren hieronder zijn met opzet HARDGECODEERD en geen tokens: ze
+   horen bij Discord en niet bij Bucky. Zou iemand het thema van het dashboard
+   wijzigen, dan hoort de preview NIET mee te veranderen - hij laat zien hoe het
+   er ergens anders uitziet. */
+.srv-welcome {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px; align-items: start;
+}
+@media (max-width: 1100px) { .srv-welcome { grid-template-columns: minmax(0, 1fr); } }
+
+/* De preview blijft in beeld terwijl je links doorwerkt. Onder 1100px staat hij
+   eronder en dan is plakken juist hinderlijk. */
+@media (min-width: 1101px) {
+  .srv-welcome-preview { position: sticky; top: 16px; }
+}
+
+.dc-surface {
+  background: #313338; border-radius: var(--sec-radius);
+  border: 1px solid rgba(0, 0, 0, .35); overflow: hidden;
+}
+.dc-surface-head {
+  display: flex; align-items: center; gap: 8px; padding: 9px 14px;
+  background: #2b2d31; border-bottom: 1px solid rgba(0, 0, 0, .3);
+  color: #b5bac1; font-size: 12px; font-weight: 700;
+}
+.dc-surface-head .hash { color: #80848e; font-weight: 800; }
+
+.dc-msg { display: flex; gap: 14px; padding: 14px 16px 18px; }
+.dc-avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex: 0 0 40px;
+  background: linear-gradient(135deg, var(--bucky-red), var(--bucky-red-light));
+  display: grid; place-items: center; font-weight: 800; color: #fff; font-size: 15px;
+}
+.dc-body { min-width: 0; flex: 1; }
+.dc-who { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+.dc-name { color: #f2f3f5; font-weight: 600; font-size: 15px; }
+.dc-tag {
+  background: #5865f2; color: #fff; font-size: 10px; font-weight: 700;
+  padding: 1px 4px; border-radius: 3px; letter-spacing: .02em;
+}
+.dc-when { color: #949ba4; font-size: 12px; }
+
+/* De Container: een gekleurde rand links, precies zoals Components V2 hem
+   tekent. De kleur komt uit het document via --dc-accent. */
+.dc-container {
+  background: #2b2d31; border-left: 4px solid var(--dc-accent, #5865f2);
+  border-radius: 8px; padding: 12px 14px; color: #dbdee1;
+  font-size: 15px; line-height: 1.45;
+}
+.dc-empty { color: #80848e; font-style: italic; font-size: 14px; }
+
+.dc-text { white-space: normal; word-break: break-word; }
+.dc-text + .dc-text { margin-top: 8px; }
+.dc-text strong { color: #f2f3f5; font-weight: 700; }
+.dc-text code, .dc-section code {
+  font-family: var(--font-mono); background: #1e1f22; color: #dbdee1;
+  padding: 1px 4px; border-radius: 4px; font-size: 13px;
+}
+.dc-mention {
+  background: rgba(88, 101, 242, .3); color: #c9cdfb; border-radius: 3px;
+  padding: 0 2px; font-weight: 500;
+}
+
+.dc-sep { height: 1px; background: rgba(255, 255, 255, .1); margin: 10px 0; }
+.dc-sep.large { margin: 18px 0; }
+/* Een `divider: false` scheidt met RUIMTE en zonder streep. Zichtbaar houden
+   dat er iets staat is hier fout: Discord toont dan ook niets. */
+.dc-sep.invisible { background: transparent; }
+
+.dc-section { display: flex; gap: 14px; align-items: flex-start; margin: 8px 0; }
+.dc-section-text { flex: 1; min-width: 0; word-break: break-word; }
+.dc-thumb {
+  width: 74px; height: 74px; flex: 0 0 74px; border-radius: 6px;
+  object-fit: cover; background: #1e1f22;
+}
+
+.dc-media { margin: 10px 0 4px; }
+.dc-media img {
+  max-width: 100%; max-height: 260px; border-radius: 8px; display: block;
+  background: #1e1f22;
+}
+
+.dc-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.dc-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #4e5058; color: #fff; border-radius: 6px;
+  padding: 7px 14px; font-size: 14px; font-weight: 500;
+}
+.dc-btn-ext { opacity: .6; font-size: 12px; }
+
+/* --- de bouwer links ----------------------------------------------------- */
+.srv-block {
+  border: 1px solid var(--sec-border); border-radius: 10px;
+  background: var(--sec-panel-2); margin-bottom: 10px;
+}
+.srv-block-head {
+  display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+  border-bottom: 1px solid var(--sec-border);
+}
+.srv-block-kind {
+  font-size: 11px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--srv-state);
+}
+.srv-block-actions { margin-left: auto; display: flex; gap: 4px; }
+/* Verplaatsen en weggooien zijn kleine knoppen met een groot RAAKVLAK: 32px is
+   het minimum uit de toegankelijkheidsronde, ook al is het icoontje 14px. */
+.srv-iconbtn {
+  width: 32px; height: 32px; display: grid; place-items: center;
+  background: none; border: 1px solid transparent; border-radius: 7px;
+  color: var(--sec-muted); cursor: pointer; font-size: 14px; line-height: 1;
+}
+.srv-iconbtn:hover { background: var(--sec-panel-3); color: var(--sec-text); }
+.srv-iconbtn:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 2px; }
+.srv-iconbtn[disabled] { opacity: .35; cursor: default; }
+.srv-block-body { padding: 12px; display: grid; gap: 10px; }
+
+.srv-add-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* De tellers onder de bouwer. Ze kleuren pas als het knelt: een teller die
+   altijd rood-ish is leest niemand meer. */
+.srv-meters { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; font-size: 12px; }
+.srv-meter { color: var(--sec-muted); }
+.srv-meter b { color: var(--sec-text); font-variant-numeric: tabular-nums; }
+.srv-meter.warn b { color: var(--bk-amber); }
+.srv-meter.over b { color: var(--bk-danger); }
+
+/* De placeholderlijst: klikken plakt hem in het veld waar je was. */
+.srv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.srv-chip {
+  font-family: var(--font-mono); font-size: 12px; cursor: pointer;
+  background: var(--srv-state-soft); color: var(--sec-text);
+  border: 1px solid transparent; border-radius: 6px; padding: 3px 8px;
+}
+.srv-chip:hover { border-color: var(--srv-state); }
+.srv-chip:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 2px; }
+
+/* De kleurkiezer. Een `input[type=color]` ziet er per browser anders uit, dus
+   hij krijgt een eigen omhulsel met een vaste maat. */
+.srv-accent { display: flex; align-items: center; gap: 10px; }
+.srv-accent input[type="color"] {
+  width: 44px; height: 32px; padding: 0; border: 1px solid var(--sec-border);
+  border-radius: 7px; background: none; cursor: pointer;
+}
+.srv-swatches { display: flex; gap: 6px; }
+.srv-swatch {
+  width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,.15);
+  cursor: pointer; padding: 0;
+}
+.srv-swatch:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 2px; }
+
+@media (max-width: 720px) {
+  .dc-msg { padding: 12px; gap: 10px; }
+  .dc-thumb { width: 56px; height: 56px; flex-basis: 56px; }
+}
+
+/* Een veld in de welcome-bouwer: label boven, bediening eronder, uitleg
+   daaronder. GESTAPELD EN NIET OP EEN RIJ, want de uitleg is hier vaak een hele
+   zin en die past niet naast een keuzelijst. Op de preview van 26 september
+   stond de uitleg dwars door het volgende label heen - dat is wat dit oplost. */
+.srv-field { display: grid; gap: 5px; }
+.srv-field + .srv-field { margin-top: 12px; }
+.srv-field-label { font-weight: 700; font-size: 13px; color: var(--sec-text); }
+.srv-field-hint { font-size: 12px; color: var(--sec-muted); line-height: 1.45; }
+/* Een schakelaar is 44px breed; zonder dit rekt de grid hem over de volle
+   breedte uit en wordt het klikvlak een balk. */
+.srv-field > .sec-switch { justify-self: start; }
+.srv-field > textarea.sec-input { width: 100%; min-height: 76px; resize: vertical; }
+.srv-field > .sec-input, .srv-field > .sec-select { width: 100%; }
+
+/* De kleurkiezer stond naast de acht voorkeuzes en leek daardoor een negende.
+   Nu staat hij eronder, met een eigen label. */
+.srv-accent { display: grid; gap: 10px; }

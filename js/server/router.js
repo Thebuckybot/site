@@ -10,6 +10,9 @@ export const NAV = [
   { key: "overview", label: "Overview" },
   { key: "commands", label: "Commands" },
   { key: "tickets", label: "Tickets" },
+  // Welcome en Goodbye samen onder een ingang: het is een scherm met twee
+  // tabbladen, want het is hetzelfde werk met andere inhoud.
+  { key: "welcome", label: "Welcome" },
   { key: "applications", label: "Applications" },
   // Het scherm achter het getal op het overzicht. Een eigen ingang en geen tab
   // binnen de bouwer: beslissen over een aanvraag is ander werk dan een vraag
