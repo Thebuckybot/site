@@ -579,3 +579,30 @@ html { background: var(--sec-bg1); }
 /* De kleurkiezer stond naast de acht voorkeuzes en leek daardoor een negende.
    Nu staat hij eronder, met een eigen label. */
 .srv-accent { display: grid; gap: 10px; }
+
+/* --- Bot profile ---------------------------------------------------------
+   De preview: een bericht in een kanaal, en het profielkaartje dat een lid ziet
+   als het op Bucky klikt. Zelfde Discord-kleuren als de welcome-preview. */
+.dc-avatar-img {
+  width: 40px; height: 40px; border-radius: 50%; flex: 0 0 40px;
+  object-fit: cover; background: #1e1f22;
+}
+.dc-profiel {
+  position: relative; margin: 0 16px 16px; padding: 0 16px 16px;
+  background: #232428; border-radius: 10px; overflow: hidden; max-width: 340px;
+}
+.dc-profiel-kop { height: 60px; margin: 0 -16px; background: #8b1e3f; }
+.dc-profiel .dc-avatar-img {
+  width: 80px; height: 80px; flex-basis: 80px; margin-top: -40px;
+  border: 6px solid #232428; display: block;
+}
+.dc-profiel-naam { font-size: 20px; font-weight: 700; color: #f2f3f5; margin-top: 6px; overflow-wrap: anywhere; }
+.dc-profiel-user { font-size: 14px; color: #b5bac1; }
+.dc-profiel-kopje { font-size: 12px; font-weight: 700; color: #f2f3f5; margin-top: 14px; }
+.dc-profiel-bio { font-size: 14px; color: #dbdee1; margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.srv-rij { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.srv-avatar-nu { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.srv-avatar-klein {
+  width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: #1e1f22;
+}

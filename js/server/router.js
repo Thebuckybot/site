@@ -13,6 +13,7 @@ export const NAV = [
   // Welcome en Goodbye samen onder een ingang: het is een scherm met twee
   // tabbladen, want het is hetzelfde werk met andere inhoud.
   { key: "welcome", label: "Welcome" },
+  { key: "botprofile", label: "Bot profile" },
   { key: "applications", label: "Applications" },
   // Het scherm achter het getal op het overzicht. Een eigen ingang en geen tab
   // binnen de bouwer: beslissen over een aanvraag is ander werk dan een vraag
