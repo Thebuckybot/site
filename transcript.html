@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Een transcript hoort niet in een zoekmachine, ook niet de lege pagina. -->
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Ticket transcript · Bucky</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/transcript.css" />
+</head>
+<!-- De pagina is leeg tot js/transcript.js hem vult. Alles wat uit een ticket
+     komt wordt daar met textContent gezet en nooit als HTML: zie
+     bucky1.0/tests/test_site_html_injectie.py en test_transcript_pagina.py. -->
+<body class="tr-body">
+  <header class="tr-top">
+    <a class="tr-brand" href="index.html" aria-label="Bucky home">
+      <span class="tr-mark" aria-hidden="true">B</span>
+      <span>Bucky</span>
+    </a>
+    <span class="tr-top-title">Ticket transcript</span>
+    <span class="tr-top-spacer"></span>
+    <span id="tr-view" class="tr-pill" hidden></span>
+  </header>
+  <main id="tr-main" class="tr-main" aria-busy="true" tabindex="-1">
+    <p class="tr-state">Loading…</p>
+  </main>
+  <footer class="tr-foot">
+    Bucky keeps a ticket transcript for 48 hours after the ticket closes, then deletes it.
+    <a href="privacy.html">Privacy</a>
+  </footer>
+  <script type="module" src="js/transcript.js"></script>
+</body>
+</html>

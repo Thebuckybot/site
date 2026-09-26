@@ -1,0 +1,195 @@
+/* Het tickettranscript (transcript.html).
+   Huisstijl uit tokens.css: dezelfde donkere vlakken, het karmozijn van Bucky en
+   Manrope. De berichtstroom volgt hoe Discord een gesprek toont - avatar, naam en
+   tijd één keer per groep, vervolgregels eronder - zodat het leest als het
+   kanaal waar het gesprek plaatsvond. */
+
+* { box-sizing: border-box; }
+
+.tr-body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1200px 500px at 50% -200px, rgba(139, 30, 63, 0.22), transparent 70%),
+    var(--bk-bg-1);
+  color: var(--bk-text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: 1.5;
+}
+
+a { color: #7cc4ff; }
+a:hover { color: #a9d7ff; }
+
+/* ---- bovenbalk ---------------------------------------------------------- */
+.tr-top {
+  position: sticky; top: 0; z-index: var(--z-topbar);
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: rgba(11, 15, 22, 0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--bk-border);
+}
+.tr-brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--bk-text); text-decoration: none; font-weight: var(--fw-bold); }
+.tr-mark {
+  display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 10px;
+  background: var(--bk-red); box-shadow: var(--bk-glow); color: #fff; font-weight: var(--fw-bold);
+}
+.tr-top-title { color: var(--bk-muted); font-weight: var(--fw-medium); }
+.tr-top-spacer { flex: 1; }
+.tr-pill {
+  padding: 3px 12px; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: var(--fw-semibold);
+  background: var(--bk-panel-2); border: 1px solid var(--bk-border-strong); color: var(--bk-text);
+}
+.tr-pill-staff { background: var(--bk-amber-soft); border-color: rgba(224, 165, 58, 0.45); color: #f3c877; }
+
+/* ---- hoofdkolom --------------------------------------------------------- */
+.tr-main {
+  width: 100%; max-width: 940px; margin: 0 auto; flex: 1;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+  display: flex; flex-direction: column; gap: var(--space-4);
+  outline: none;
+}
+.tr-card {
+  background: var(--bk-panel); border: 1px solid var(--bk-border); border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.tr-muted { color: var(--bk-muted); }
+.tr-state { color: var(--bk-muted); text-align: center; margin-top: var(--space-8); }
+
+/* ---- kop ---------------------------------------------------------------- */
+.tr-head { padding: var(--space-6); }
+.tr-head-title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.tr-head-title h1 { margin: 0; font-size: var(--fs-2xl); font-weight: var(--fw-bold); letter-spacing: -0.01em; }
+.tr-type {
+  padding: 2px 10px; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: var(--fw-semibold);
+  background: var(--bk-red-soft); color: var(--bk-red-100); border: 1px solid rgba(194, 79, 111, 0.4);
+}
+.tr-head-sub { margin: var(--space-1) 0 var(--space-5); color: var(--bk-text); font-weight: var(--fw-medium); overflow-wrap: anywhere; }
+.tr-facts {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin: 0;
+}
+.tr-fact { background: var(--bk-panel-2); border: 1px solid var(--bk-border); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); min-width: 0; }
+.tr-fact dt { color: var(--bk-muted); font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.06em; }
+.tr-fact dd { margin: 2px 0 0; font-weight: var(--fw-semibold); overflow-wrap: anywhere; }
+.tr-fact-sub { font-size: var(--fs-sm); font-weight: var(--fw-regular); }
+.tr-participants { margin: var(--space-4) 0 0; overflow-wrap: anywhere; }
+.tr-retention {
+  margin: var(--space-4) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--bk-border-strong); color: var(--bk-muted); font-size: var(--fs-sm);
+}
+
+/* ---- staff-notities ----------------------------------------------------- */
+.tr-notes { padding: var(--space-5) var(--space-6); border-color: rgba(224, 165, 58, 0.35); border-left: 4px solid var(--bk-amber); }
+.tr-notes h2 { margin: 0; font-size: var(--fs-md); }
+.tr-notes-warn { margin: 2px 0 var(--space-3); color: #f3c877; font-size: var(--fs-sm); }
+.tr-note-list { list-style: none; margin: 0; padding: 0; }
+.tr-note { padding: var(--space-3) 0; border-top: 1px solid var(--bk-border); }
+.tr-note-head { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+
+/* ---- gesprek ------------------------------------------------------------ */
+.tr-conversation { padding: var(--space-2) 0 var(--space-4); overflow: hidden; }
+.tr-stream { list-style: none; margin: 0; padding: 0; }
+
+.tr-day { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-5) var(--space-5) var(--space-2); color: var(--bk-muted); font-size: var(--fs-xs); font-weight: var(--fw-semibold); }
+.tr-day::before, .tr-day::after { content: ""; flex: 1; height: 1px; background: var(--bk-border-strong); }
+
+.tr-group { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: var(--space-3); padding: var(--space-2) var(--space-5); margin-top: var(--space-2); }
+.tr-group:hover, .tr-system:hover { background: rgba(255, 255, 255, 0.025); }
+.tr-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: block; background: var(--bk-panel-3); }
+.tr-avatar-fallback { display: grid; place-items: center; font-weight: var(--fw-bold); color: #fff; background: linear-gradient(135deg, var(--bk-red-500), var(--bk-red-900)); }
+.tr-group-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px var(--space-2); }
+.tr-author { font-weight: var(--fw-semibold); color: #fff; overflow-wrap: anywhere; }
+.tr-role { font-size: var(--fs-xs); font-weight: var(--fw-semibold); padding: 0 8px; border-radius: var(--radius-pill); }
+.tr-role-owner { background: var(--bk-red-soft); color: var(--bk-red-100); }
+.tr-role-staff { background: var(--bk-green-soft); color: #8fe0ad; }
+.tr-time { color: var(--bk-muted); font-size: var(--fs-xs); }
+
+.tr-line { position: relative; }
+.tr-line + .tr-line { margin-top: 2px; }
+.tr-line-time {
+  position: absolute; left: -56px; width: 48px; top: 3px; text-align: right;
+  color: var(--bk-muted); font-size: 10.5px; opacity: 0;
+}
+.tr-line:hover .tr-line-time, .tr-line:focus-within .tr-line-time { opacity: 1; }
+.tr-text { white-space: pre-wrap; overflow-wrap: anywhere; color: #dde3ec; }
+.tr-code { font-family: var(--font-mono); font-size: 0.9em; background: var(--bk-panel-3); padding: 1px 5px; border-radius: 5px; }
+.tr-pre { margin: var(--space-1) 0; padding: var(--space-3); background: #0e131c; border: 1px solid var(--bk-border); border-radius: 8px; overflow-x: auto; white-space: pre; font-family: var(--font-mono); font-size: var(--fs-sm); }
+.tr-mention { background: rgba(88, 101, 242, 0.22); color: #c9cdfb; padding: 0 3px; border-radius: 4px; font-weight: var(--fw-medium); }
+.tr-chip { background: var(--bk-panel-3); padding: 0 5px; border-radius: 4px; }
+.tr-tag { font-size: 10px; font-weight: var(--fw-bold); padding: 1px 5px; border-radius: 4px; background: #5865f2; color: #fff; letter-spacing: 0.03em; }
+
+/* bijlagen en embeds */
+.tr-image-link { display: inline-block; margin-top: var(--space-2); }
+.tr-image { display: block; max-width: min(100%, 420px); max-height: 320px; border-radius: 10px; border: 1px solid var(--bk-border); }
+.tr-file {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 var(--space-2); align-items: center;
+  margin-top: var(--space-2); max-width: 420px; padding: var(--space-3); border-radius: 10px;
+  background: var(--bk-panel-2); border: 1px solid var(--bk-border);
+}
+.tr-file-icon { grid-row: span 2; font-size: 22px; }
+.tr-file-name { font-weight: var(--fw-semibold); overflow-wrap: anywhere; }
+.tr-file-note { color: var(--bk-muted); font-size: var(--fs-xs); }
+.tr-embed {
+  margin-top: var(--space-2); max-width: 520px; padding: var(--space-3) var(--space-4);
+  background: var(--bk-panel-2); border: 1px solid var(--bk-border); border-left: 4px solid var(--bk-red-300); border-radius: 8px;
+}
+.tr-embed-title { display: block; font-weight: var(--fw-semibold); color: #fff; margin-bottom: 2px; overflow-wrap: anywhere; }
+a.tr-embed-title { color: #7cc4ff; }
+.tr-embed-desc, .tr-embed-field-value { white-space: pre-wrap; overflow-wrap: anywhere; color: #dde3ec; font-size: var(--fs-sm); }
+.tr-embed-fields { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.tr-embed-field-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: #fff; }
+.tr-embed-footer { margin-top: var(--space-2); color: var(--bk-muted); font-size: var(--fs-xs); }
+.tr-sticker { margin-top: var(--space-1); color: var(--bk-muted); font-style: italic; }
+
+/* systeemmeldingen: smaller, gedempt, met een eigen merkteken */
+.tr-system {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: var(--space-3);
+  padding: var(--space-2) var(--space-5); margin-top: var(--space-2); color: var(--bk-muted);
+}
+.tr-system-icon {
+  justify-self: center; width: 26px; height: 26px; margin-top: 2px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--bk-panel-3); color: var(--bk-muted); font-size: 13px;
+}
+.tr-system-head { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; font-size: var(--fs-sm); }
+.tr-system-name { font-weight: var(--fw-semibold); color: var(--bk-text); }
+.tr-system .tr-text { color: var(--bk-muted); font-size: var(--fs-sm); }
+.tr-system .tr-embed { border-left-color: var(--bk-panel-3); opacity: 0.92; }
+.tr-empty { padding: var(--space-6); text-align: center; color: var(--bk-muted); }
+
+/* ---- toestanden (inloggen, niet gevonden) ------------------------------- */
+.tr-state-card { padding: var(--space-7) var(--space-6); text-align: center; margin-top: var(--space-7); }
+.tr-state-card h1 { margin: 0 0 var(--space-2); font-size: var(--fs-xl); }
+.tr-state-card p { margin: 0 auto; max-width: 46ch; color: var(--bk-muted); }
+.tr-btn {
+  display: inline-block; margin-top: var(--space-5); padding: 11px 22px; border-radius: var(--radius-pill);
+  background: var(--bk-red); color: #fff; font-weight: var(--fw-semibold); text-decoration: none; box-shadow: var(--bk-glow);
+  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.tr-btn:hover { color: #fff; background: var(--bk-red-500); transform: translateY(var(--lift-hover)); }
+.tr-btn:focus-visible, a:focus-visible { outline: 2px solid var(--bk-red-300); outline-offset: 3px; }
+
+.tr-foot { text-align: center; color: var(--bk-muted); font-size: var(--fs-sm); padding: var(--space-5) var(--space-4) var(--space-7); }
+
+/* ---- tablet en telefoon ------------------------------------------------- */
+@media (max-width: 860px) {
+  .tr-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .tr-top { padding: var(--space-3) var(--space-4); }
+  .tr-top-title { display: none; }
+  .tr-main { padding: var(--space-4) var(--space-3) var(--space-7); gap: var(--space-3); }
+  .tr-head { padding: var(--space-5) var(--space-4); }
+  .tr-head-title h1 { font-size: var(--fs-xl); }
+  .tr-facts { gap: var(--space-2); }
+  .tr-fact { padding: var(--space-2) var(--space-3); }
+  .tr-notes { padding: var(--space-4); }
+  .tr-group, .tr-system { grid-template-columns: 34px minmax(0, 1fr); gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+  .tr-avatar { width: 34px; height: 34px; }
+  .tr-day { margin: var(--space-4) var(--space-3) var(--space-2); }
+  /* Geen hover op een telefoon: de vervolgtijd verdwijnt niet in het niets
+     maar staat dan gewoon niet, net als in de Discord-app. */
+  .tr-line-time { display: none; }
+}
