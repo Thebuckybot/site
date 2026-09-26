@@ -444,6 +444,17 @@ html { background: var(--sec-bg1); }
   object-fit: cover; background: #1e1f22;
 }
 
+/* Een link die de preview bewust NIET ophaalt (welcome_checks.js). Een vlak
+   met tekst in plaats van een lege plek: anders lijkt het een plaatje dat nog
+   laadt. */
+.dc-geweigerd {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 1px dashed #4e5058; border-radius: 8px; color: #949ba4;
+  font-size: 12px; line-height: 1.35; padding: 10px; background: #1e1f22;
+}
+.dc-thumb.dc-geweigerd { padding: 4px; font-size: 11px; }
+.dc-media.dc-geweigerd { min-height: 64px; }
+
 .dc-media { margin: 10px 0 4px; }
 .dc-media img {
   max-width: 100%; max-height: 260px; border-radius: 8px; display: block;
@@ -531,6 +542,16 @@ html { background: var(--sec-bg1); }
 .srv-field + .srv-field { margin-top: 12px; }
 .srv-field-label { font-weight: 700; font-size: 13px; color: var(--sec-text); }
 .srv-field-hint { font-size: 12px; color: var(--sec-muted); line-height: 1.45; }
+
+/* Een weigering die BLIJFT STAAN tot de volgende handeling - een toast is weg
+   voordat een lijst domeinen gelezen is. */
+.srv-fout {
+  margin: 0; padding: 9px 11px; border-radius: 8px; font-size: 13px; line-height: 1.45;
+  color: #f2b8b8; background: rgba(214, 79, 79, .12);
+  border: 1px solid rgba(214, 79, 79, .45); border-left: 3px solid var(--sec-red);
+  overflow-wrap: anywhere;
+}
+.srv-fout[hidden] { display: none; }
 /* Een schakelaar is 44px breed; zonder dit rekt de grid hem over de volle
    breedte uit en wordt het klikvlak een balk. */
 .srv-field > .sec-switch { justify-self: start; }

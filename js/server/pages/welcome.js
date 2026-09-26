@@ -24,6 +24,7 @@
 import { api } from "../api.js";
 import { el, clear, toast, confirmDialog } from "../../security/ui.js";
 import { tekenPreview, gewicht, tekens, VOORBEELD } from "../welcome_preview.js";
+import { urlFout, bestandFout } from "../welcome_checks.js";
 
 const LABEL = { welcome: "Welcome", leave: "Goodbye" };
 const UITLEG = {
@@ -134,6 +135,21 @@ export default {
     host.append(tabhost, scherm);
 
     function tabs() {
+      // BIJWERKEN, NIET VERVANGEN, als de knoppen er al zijn. `vuil()` roept
+      // dit aan, en `vuil()` kan vuren op de `change` van een veld dat zijn
+      // focus verliest - precies op het moment dat je op een tab klikt. Werden
+      // de knoppen dan vervangen, dan landde de klik op een knop die al uit
+      // de pagina was, en gebeurde er niets (gemeten op 26 september).
+      const bestaand = tabhost.querySelectorAll("[role=tab]");
+      if (bestaand.length === Object.keys(LABEL).length) {
+        Object.keys(LABEL).forEach((k, i) => {
+          const knop = bestaand[i];
+          knop.className = "sec-tab" + (state.kind === k ? " active" : "");
+          knop.setAttribute("aria-selected", String(state.kind === k));
+          knop.textContent = LABEL[k] + (state.vuil[k] ? " •" : "");
+        });
+        return;
+      }
       clear(tabhost);
       tabhost.appendChild(el("div", { class: "sec-tabs", role: "tablist" },
         Object.keys(LABEL).map((k) => el("button", {
@@ -161,7 +177,8 @@ export default {
     function ververs() {
       if (!previewHost) return;
       clear(previewHost);
-      previewHost.appendChild(tekenPreview(huidig().layout, {}));
+      previewHost.appendChild(tekenPreview(huidig().layout,
+        { hosts: state.limieten.image_hosts || [] }));
       tellers();
     }
 
@@ -335,7 +352,29 @@ export default {
         return vak;
       }
 
+      // EEN FOUT BLIJFT STAAN tot de volgende handeling. Een toast verdwijnt na
+      // drie seconden, en een melding met een lijst domeinen of een grootte
+      // is niet in drie seconden gelezen. De toast komt er nog bij, voor wie
+      // naar de hoek kijkt.
+      function foutvak() {
+        const vak = el("p", { class: "srv-fout", role: "alert", hidden: true });
+        return {
+          node: vak,
+          toon(tekst) { vak.textContent = tekst; vak.hidden = false; },
+          wis() { vak.textContent = ""; vak.hidden = true; },
+        };
+      }
+
+      // DE KIEZER HEEFT ALLE DRIE DE WEGEN: uit de lijst, uploaden, of een link
+      // plakken. Tot 26 september stond het plakveld alleen bij het losse
+      // Image-blok; bij "Text with image" beloofde de uitleg het wel, maar
+      // stond er geen veld. Nu zit het in de kiezer zelf, zodat elk blok met
+      // een afbeelding - in welcome en in leave - hetzelfde krijgt.
       function afbeeldingskiezer(huidigeUrl, onKies) {
+        const hosts = state.limieten.image_hosts || [];
+        const fout = foutvak();
+        const eigen = (url) => state.afbeeldingen.some((a) => a.url === url);
+
         const keuze = el("select", { class: "sec-select" }, [
           el("option", { value: "", text: "No image" }),
           ...state.afbeeldingen.map((a) => el("option", {
@@ -343,17 +382,62 @@ export default {
         ]);
         // Een URL die niet in de lijst staat (van Discords CDN, met de hand
         // ingevuld) hoort niet stil te verdwijnen uit de keuzelijst.
-        if (huidigeUrl && !state.afbeeldingen.some((a) => a.url === huidigeUrl)) {
-          keuze.appendChild(el("option", { value: huidigeUrl, text: "(linked image)" }));
+        const gelinkt = el("option", { value: "", text: "(linked image)" });
+        function zetGelinkt(url) {
+          if (url && !eigen(url)) {
+            gelinkt.value = url;
+            if (!gelinkt.parentNode) keuze.appendChild(gelinkt);
+          } else if (gelinkt.parentNode) {
+            gelinkt.remove();
+          }
+          keuze.value = url || "";
         }
-        keuze.value = huidigeUrl || "";
-        keuze.addEventListener("change", () => onKies(keuze.value || ""));
+        zetGelinkt(huidigeUrl);
+
+        const plak = el("input", { class: "sec-input", type: "url",
+                                   placeholder: "https://cdn.discordapp.com/…",
+                                   "aria-label": "Paste an image link" });
+        plak.value = huidigeUrl && !eigen(huidigeUrl) ? huidigeUrl : "";
+
+        keuze.addEventListener("change", () => {
+          fout.wis();
+          plak.value = keuze.value && !eigen(keuze.value) ? keuze.value : "";
+          onKies(keuze.value || "");
+        });
+
+        // Tijdens het typen niets doen: "https://cdn.disc" is nog geen fout,
+        // en de preview mag een halve link niet gaan ophalen. Pas bij verlaten
+        // of Enter wordt er gekeken - en alleen een goedgekeurde link komt in
+        // het document en dus in de preview.
+        plak.addEventListener("input", () => fout.wis());
+        const neemOver = () => {
+          const url = plak.value.trim();
+          const probleem = urlFout(url, hosts);
+          if (probleem) { fout.toon(probleem); return; }
+          fout.wis();
+          zetGelinkt(url);
+          onKies(url);
+        };
+        plak.addEventListener("change", neemOver);
+        plak.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") { e.preventDefault(); neemOver(); }
+        });
 
         const bestand = el("input", { type: "file", class: "sec-input",
                                       accept: "image/png,image/jpeg,image/gif,image/webp" });
         bestand.addEventListener("change", async () => {
           const f = bestand.files && bestand.files[0];
           if (!f) return;
+          fout.wis();
+          // EERST HIER, dan pas de server. Hetzelfde oordeel, maar zonder dat
+          // er drie megabyte over de lijn gaat om het te horen.
+          const vooraf = bestandFout(f, state.limieten, state.afbeeldingen.length);
+          if (vooraf) {
+            fout.toon(vooraf);
+            toast("That image was not uploaded.", "err");
+            bestand.value = "";
+            return;
+          }
           try {
             const uit = await api.upload("/welcome/images", f);
             state.afbeeldingen.unshift(uit);
@@ -361,7 +445,8 @@ export default {
             toast("Image uploaded.");
             teken();
           } catch (err) {
-            toast((err && err.message) || "Upload failed.", "err");
+            fout.toon((err && err.message) || "Upload failed.");
+            toast("That image was not uploaded.", "err");
           } finally {
             bestand.value = "";
           }
@@ -373,21 +458,11 @@ export default {
           veld("Or upload one", bestand,
                `PNG, JPEG, GIF or WebP, up to ${mb} MB. `
                + `At most ${state.limieten.max_uploads || 10} per server.`),
-          el("p", { class: "sec-muted", style: "font-size:12px;margin:0",
-                    text: "You can also paste a link, but only from Discord or "
-                          + "buckybot.app. Anything else has to be uploaded." }),
+          veld("Or paste a link", plak,
+               `Only from ${[...hosts].sort().join(", ")}. `
+               + "Anything else has to be uploaded."),
+          fout.node,
         ]);
-      }
-
-      function urlveld(blok, sleutel, label) {
-        const invoer = el("input", { class: "sec-input", type: "url",
-                                     placeholder: "https://…" });
-        invoer.value = blok[sleutel] || "";
-        invoer.addEventListener("input", () => {
-          blok[sleutel] = invoer.value.trim();
-          vuil(); ververs();
-        });
-        return veld(label, invoer);
       }
 
       function blokVelden(blok) {
@@ -426,9 +501,8 @@ export default {
         if (blok.type === "image") {
           return [
             veld("Image", afbeeldingskiezer(blok.url, (url) => {
-              blok.url = url; vuil(); ververs(); teken();
+              blok.url = url; vuil(); ververs();
             })),
-            urlveld(blok, "url", "Or paste a link"),
           ];
         }
 

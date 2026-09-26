@@ -23,6 +23,7 @@
 // ziet WAT er staat en in welke volgorde - niet dat de pixels kloppen. Waar de
 // preview gokt, staat het erbij.
 import { el } from "../security/ui.js";
+import { magTonen } from "./welcome_checks.js";
 
 // De placeholderwaarden in de preview. VERZONNEN EN HERKENBAAR VERZONNEN: een
 // preview die "Tommy" zegt terwijl er straks iemand anders binnenkomt, leest als
@@ -141,7 +142,8 @@ function tekstNaarKnopen(tekst) {
 }
 
 // --- de blokken --------------------------------------------------------------
-function blokNaarElement(blok, waarden) {
+function blokNaarElement(blok, waarden, opties = {}) {
+  const hosts = opties.hosts || [];
   const soort = blok && blok.type;
 
   if (soort === "text") {
@@ -161,14 +163,21 @@ function blokNaarElement(blok, waarden) {
          tekstNaarKnopen(vulIn(blok.content, waarden))),
     ];
     if (blok.accessory && blok.accessory.url) {
-      kinderen.push(el("img", {
-        class: "dc-thumb", src: blok.accessory.url, alt: "", loading: "lazy",
-      }));
+      kinderen.push(magTonen(blok.accessory.url, hosts)
+        ? el("img", { class: "dc-thumb", src: blok.accessory.url, alt: "", loading: "lazy" })
+        : el("div", { class: "dc-thumb dc-geweigerd", text: "Not shown" }));
     }
     return el("div", { class: "dc-section" }, kinderen);
   }
 
   if (soort === "image") {
+    // EEN LINK DIE DE SERVER ZOU WEIGEREN WORDT NIET OPGEHAALD. Anders is de
+    // preview het baken waar de allowlist juist tegen bestaat (welcome_checks.js).
+    if (!magTonen(blok.url, hosts)) {
+      return el("div", { class: "dc-media dc-geweigerd", text: blok.url
+        ? "This image is not shown: the link is not from an allowed address."
+        : "No image picked yet." });
+    }
     return el("div", { class: "dc-media" }, [
       el("img", { src: blok.url, alt: "", loading: "lazy" }),
     ]);
@@ -211,7 +220,7 @@ export function tekenPreview(doc, opties = {}) {
       "Nothing here yet. Add a block on the left and it appears here." }));
   } else {
     for (const blok of blokken) {
-      const node = blokNaarElement(blok, waarden);
+      const node = blokNaarElement(blok, waarden, opties);
       if (node) kaart.appendChild(node);
     }
   }
