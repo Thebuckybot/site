@@ -24,7 +24,7 @@
   <header class="legal-hero">
     <span class="eyebrow">Legal</span>
     <h1>Cookie Policy</h1>
-    <p class="updated">Last updated: 1 September 2026</p>
+    <p class="updated">Last updated: 27 September 2026</p>
   </header>
 
   <div class="legal-body">
@@ -50,8 +50,8 @@
       <table class="legal-table">
         <thead><tr><th>Name</th><th>Type</th><th>Purpose</th><th>Duration</th></tr></thead>
         <tbody>
-          <tr><td>Session cookie</td><td>Essential</td><td>Keeps you signed in to the dashboard after Discord authentication</td><td>Session</td></tr>
-          <tr><td>api_token</td><td>Essential (localStorage)</td><td>Authenticates dashboard API requests</td><td>Until logout</td></tr>
+          <tr><td>bucky_session</td><td>Essential (cookie on api.buckybot.app, HttpOnly)</td><td>Keeps you signed in after Discord authentication. It holds a random identifier only; the session itself is stored on our server, and signing out ends it there</td><td>7 days, extended while you use the site</td></tr>
+          <tr><td>bucky_oauth</td><td>Essential (cookie on api.buckybot.app, HttpOnly)</td><td>Ties a Discord sign-in to the browser that started it, so nobody can sign you in to someone else's account</td><td>10 minutes, removed after sign-in</td></tr>
           <tr><td>Onboarding / UI preferences</td><td>Functional (localStorage)</td><td>Remembers dashboard tour progress and interface preferences</td><td>Until cleared</td></tr>
         </tbody>
       </table>
@@ -61,7 +61,7 @@
       <p>The site loads a small number of resources from third parties (for example, web fonts and script libraries from their content-delivery networks). These providers may set their own cookies or receive your IP address as part of serving that content. We keep such dependencies to a minimum.</p>
 
       <h2 id="manage">Managing cookies</h2>
-      <p>You can clear or block cookies and local storage through your browser settings, and you can sign out of the dashboard to remove your session token. Blocking essential cookies will prevent the dashboard from working.</p>
+      <p>You can clear or block cookies and local storage through your browser settings, and you can sign out to end your session on our server. Blocking essential cookies will prevent the dashboard from working.</p>
 
       <h2 id="changes">Changes to this policy</h2>
       <p>We may update this Cookie Policy as the Service evolves. Changes will be posted here with an updated date.</p>

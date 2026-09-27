@@ -21,9 +21,6 @@ const viewPill = document.getElementById("tr-view");
 // zoals Discord ze toont.
 const GROEP_MINUTEN = 7;
 
-// De sleutel die dashboard.js na het inloggen leest om hierheen terug te keren.
-// Hij accepteert ALLEEN `transcript.html?id=<cijfers>`; zie daar.
-const TERUG_SLEUTEL = "bucky_return_to";
 
 function ticketId() {
   const id = new URLSearchParams(window.location.search).get("id") || "";
@@ -320,12 +317,11 @@ function toestand(titel, tekst, knop) {
   ]));
 }
 
+// Na het inloggen stuurt de backend je terug naar deze pagina. Hij neemt alleen
+// een pagina van de site zelf aan (services/sessions.py, safe_return_path).
 function loginKnop(id) {
-  const knop = el("a", { class: "tr-btn", href: `${API_URL}/login`, text: "Log in with Discord" });
-  knop.addEventListener("click", () => {
-    try { sessionStorage.setItem(TERUG_SLEUTEL, `transcript.html?id=${id}`); } catch (_) { /* privévenster */ }
-  });
-  return knop;
+  const terug = encodeURIComponent(`transcript.html?id=${id}`);
+  return el("a", { class: "tr-btn", href: `${API_URL}/login?redirect=${terug}`, text: "Log in with Discord" });
 }
 
 function toon(data) {

@@ -41,11 +41,13 @@ function renderNavDirect() {
   renderNav(Boolean(user), user);
 }
 
+// Geen token meer in de browser (sessiemodel, 27-9-2026): de sessie is een
+// httpOnly-cookie. Dit ruimt alleen nog een oud token en een oude ?token= op.
+// Zelfde als storeTokenFromUrl in dashboard.js.
 function storeTokenFromUrl() {
+  try { localStorage.removeItem("api_token"); } catch (_) { /* privévenster */ }
   const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
-  if (token) {
-    localStorage.setItem("api_token", token);
+  if (params.has("token")) {
     params.delete("token");
     const newUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
     window.history.replaceState({}, "", newUrl);
@@ -136,19 +138,11 @@ async function addPremiumLink() {
 
 async function checkLogin() {
   try {
-    const token = localStorage.getItem("api_token");
-    const headers = {};
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
     // MET DEADLINE. Zonder abort hangt een stille server deze promise voor
     // eeuwig op - en al hangt de balk daar sinds 12 augustus niet meer aan,
     // een login-status die nooit komt is nog steeds een kapotte upgrade.
     const res = await fetchMetDeadline(`${API_URL}/api/me`, {
-      credentials: "include",
-      headers
+      credentials: "include"
     });
 
     const data = await res.json();

@@ -150,9 +150,10 @@ export class BuckyVMRuntime {
         // performs its first fetch. The token is what makes /api/player/me
         // resolve to a real identity instead of returning 401 (the previous
         // "anonymous visitor" failure mode).
-        const token = user && (user.api_token || user.access_token || user.token);
-        if (token) {
-            gatewayClient.setAuthToken(token);
+        // Sinds het sessiemodel (27-9-2026) is er geen token: de embedder meldt
+        // alleen dat de bezoeker is ingelogd, en de cookie doet de rest.
+        if (user && (user.signed_in || user.api_token || user.access_token || user.token)) {
+            gatewayClient.setAuthToken(true);
         }
         // Phase 4.3 polish — eagerly build the BuckyNet site registry so its
         // boot-time preload hooks fire NOW (before the user navigates to any

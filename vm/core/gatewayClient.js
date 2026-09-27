@@ -82,15 +82,23 @@ function resolveBase() {
  * Token storage is in-module — never persisted, never read from localStorage
  * by the gateway itself (the gateway stays portable across embedders).
  */
-let _bearerToken = null;
-function setAuthToken(token) {
-    _bearerToken = token ? String(token) : null;
+//
+// SINDS HET SESSIEMODEL (27 september 2026) is er geen token meer om mee te
+// sturen: de sessie is een httpOnly-cookie die JavaScript niet kan lezen, en
+// buckybot.app en api.buckybot.app zijn same-site, dus `credentials: "include"`
+// stuurt hem mee. De namen blijven (vijf plekken vragen `hasAuthToken()` als
+// "is deze bezoeker ingelogd"), maar wat ze dragen is nu alleen dát: de
+// embedder meldt dat /api/me een ingelogde gebruiker gaf. Er gaat geen
+// Authorization-header meer mee.
+let _signedIn = false;
+function setAuthToken(signedIn) {
+    _signedIn = Boolean(signedIn);
 }
 function clearAuthToken() {
-    _bearerToken = null;
+    _signedIn = false;
 }
 function hasAuthToken() {
-    return Boolean(_bearerToken);
+    return _signedIn;
 }
 
 /**
@@ -121,13 +129,7 @@ async function request(path, options = {}) {
         ? setTimeout(() => controller.abort(), timeoutMs)
         : null;
 
-    // Compose headers: caller-supplied first, then the Phase 4.3 Bearer
-    // header if a token has been set via `setAuthToken`. The caller may still
-    // override `Authorization` explicitly by passing it in options.headers.
     const headers = { Accept: "application/json", ...(options.headers || {}) };
-    if (_bearerToken && !headers.Authorization && !headers.authorization) {
-        headers.Authorization = "Bearer " + _bearerToken;
-    }
 
     // Phase 5.0A — JSON body support (the mail platform is the VM's first WRITE
     // surface: send / mark-read are POSTs). A body is serialised to JSON and the
@@ -146,12 +148,10 @@ async function request(path, options = {}) {
         const response = await fetch(url, {
             method: options.method || "GET",
             headers,
-            // When a Bearer token is set, the gateway is operator-authenticated.
-            // Default to `include` so the session cookie also flows on
-            // same-site setups; the explicit `omit` request still wins when
-            // an unauthenticated public read is intended.
+            // Ingelogd: de sessiecookie gaat mee. Een expliciete `omit` (een
+            // publieke lezing) wint nog steeds.
             credentials: options.credentials
-                || (_bearerToken ? "include" : "omit"),
+                || (_signedIn ? "include" : "omit"),
             body: bodyPayload,
             signal: controller ? controller.signal : undefined,
         });

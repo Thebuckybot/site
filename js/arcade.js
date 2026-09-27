@@ -119,16 +119,10 @@ async function loadProfile() {
 
     const user = data.user;
     user.avatarUrl = getDiscordAvatar(user);
-    // Phase 4.3 — propagate the localStorage API token into the VM. The site
-    // uses `apiFetch` with `Authorization: Bearer <token>`; the VM's gateway
-    // used to rely only on the cross-origin session cookie, which dropped in
-    // third-party / cross-origin contexts and resulted in the "anonymous
-    // visitor" identity-binding failure on bucky://profile.
-    try {
-        user.api_token = localStorage.getItem("api_token") || null;
-    } catch (_e) {
-        user.api_token = null;
-    }
+    // De VM hoort te weten dat deze bezoeker is ingelogd; /api/me zei net ja.
+    // Geen token meer (sessiemodel, 27-9-2026): de httpOnly-cookie gaat met
+    // `credentials: "include"` vanzelf mee naar api.buckybot.app.
+    user.signed_in = true;
 
     document.getElementById("hero-username").innerText = user.username;
     document.getElementById("hero-avatar").src = user.avatarUrl;

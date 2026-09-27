@@ -31,11 +31,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
 
-    const token = localStorage.getItem("api_token");
-    if (!token) {
-        alert("You are not logged in.");
-        window.location.href = "dashboard.html";
-    }
+    // Geen token-poort meer (sessiemodel, 27-9-2026): de sessie is een httpOnly-cookie
+    // die JavaScript niet kan zien. Wie niet is ingelogd krijgt een 401 van de API;
+    // dat is de echte poort, en die bestond al.
 
     // Back link fix
     const backLink = document.getElementById("back-link");

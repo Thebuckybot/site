@@ -56,49 +56,31 @@ function renderNav(loggedIn, user = null) {
   }
 }
 
-// Helper: token uit URL halen en opslaan in localStorage, daarna token uit URL verwijderen
+// GEEN TOKEN MEER IN DE BROWSER (sessiemodel, 27 september 2026).
+//
+// Hier stond: een `?token=` uit de URL lezen en in localStorage zetten, en dat
+// token bij elk verzoek als Bearer meesturen. Dat token stond daardoor in de
+// browsergeschiedenis, in Referer-headers en binnen bereik van elk script op de
+// pagina. De sessie woont nu in een httpOnly-cookie die JavaScript niet kan
+// lezen, en `credentials: "include"` stuurt hem mee naar api.buckybot.app.
+//
+// Deze functie blijft bestaan (andere pagina's importeren hem) en ruimt op: een
+// oud token uit localStorage weg, en een `?token=` die een oude link nog
+// meedraagt uit de adresbalk.
 function storeTokenFromUrl() {
+  try { localStorage.removeItem("api_token"); } catch (_) { /* privévenster */ }
   const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
-  if (token) {
-    localStorage.setItem("api_token", token);
+  if (params.has("token")) {
     params.delete("token");
     const newUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
     window.history.replaceState({}, "", newUrl);
   }
 }
 
-const TERUG_NA_LOGIN = /^transcript\.html\?id=\d{1,20}$/;
-
-function keerTerugNaLogin() {
-  let doel = null;
-  try {
-    doel = sessionStorage.getItem("bucky_return_to");
-    sessionStorage.removeItem("bucky_return_to");
-  } catch (_) {
-    return false;
-  }
-  if (!doel || !TERUG_NA_LOGIN.test(doel) || !getStoredToken()) return false;
-  window.location.replace(doel);
-  return true;
-}
-
-function getStoredToken() {
-  return localStorage.getItem("api_token");
-}
-
-// Fetch wrapper die Bearer token gebruikt als die er is
+// Fetch naar de API met de sessiecookie. Geen Authorization-header: de sessie
+// is een httpOnly-cookie (zie storeTokenFromUrl hierboven).
 async function apiFetch(url, options = {}) {
   options.headers = options.headers || {};
-  const token = getStoredToken();
-
-  // SECURITY: never log the auth token (or the Authorization header). Logging the
-  // bearer token to the browser console leaks it into console history / screen
-  // shares / support attachments. Log presence only, never the value.
-  if (token) {
-    options.headers["Authorization"] = `Bearer ${token}`;
-  }
-
   options.credentials = "include";
 
   try {
@@ -440,12 +422,6 @@ window.addEventListener("DOMContentLoaded", () => {
     // het kenmerk dat alleen dashboard.html heeft.
     if (!document.getElementById("guilds-container")) return;
 
-    // TERUG NAAR HET TRANSCRIPT NA HET INLOGGEN. De OAuth-callback stuurt altijd
-    // hierheen (en alleen
-    // dashboard.html heeft #guilds-container); transcript.html zet vóór het inloggen waar je vandaan kwam.
-    // ALLEEN `transcript.html?id=<cijfers>`: alles anders wordt weggegooid, zodat
-    // deze sleutel nooit een doorstuurmogelijkheid naar een ander adres wordt.
-    if (keerTerugNaLogin()) return;
 
     const refreshBtn = document.getElementById("refresh-servers");
     if (refreshBtn) refreshBtn.addEventListener("click", refreshServers);

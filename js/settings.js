@@ -369,12 +369,9 @@ document.addEventListener("change", e => {
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
 
-  const token = localStorage.getItem("api_token");
-  if (!token) {
-    alert("You are not logged in. Redirecting to dashboard...");
-    window.location.href = "dashboard.html";
-    return;
-  }
+  // Geen token-poort meer (sessiemodel, 27-9-2026): de sessie is een httpOnly-cookie
+  // die JavaScript niet kan zien. Wie niet is ingelogd krijgt een 401 van de API;
+  // dat is de echte poort, en die bestond al.
 
   // SOC is now a section of the one Security Center — link straight into the
   // SPA (security.html#soc), not the deprecated standalone soc.html shell.
