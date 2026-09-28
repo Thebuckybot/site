@@ -426,6 +426,16 @@ body.sec-readonly .sec-write { display: none !important; }
 @media (max-width: 560px) {
   .sec-grid-2, .sec-grid-3, .sec-grid-4, .sec-quick { grid-template-columns: 1fr; }
 }
+/* De afdelingswissel (Security | Server) kwam op 279a682 ook in deze kopbalk,
+   zonder de telefoonregel die server.css al had: de balk liep op 375 px tot
+   466 px, de telefoon zoomde uit en de tour-test (blok H) werd rood. Zelfde
+   regels als server.css. */
+@media (max-width: 920px) {
+  .sec-top-actions { flex-wrap: wrap; gap: 8px; min-width: 0; }
+}
+@media (max-width: 480px) {
+  .sec-guild { display: none; }        /* de servernaam staat al in het kruimelpad */
+}
 
 /* ---------------------------------------------------------------------------
    Rule Builder (SOC) — WHEN / IF / THEN flow. Ported from the old standalone
