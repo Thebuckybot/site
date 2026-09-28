@@ -1,0 +1,7 @@
+/* Stond als <style>-blok in __profile_harness.html; de Content Security Policy staat geen
+   inline stijl toe. */
+
+html, body { margin:0; background:#02050d; color:#e8ffff; font-family: system-ui, sans-serif; }
+#frame { margin: 20px; padding: 12px; border:1px solid #234; border-radius:10px;
+         background: rgba(4,10,22,.82); }
+#status { margin: 20px; font: 13px/1.5 monospace; white-space: pre; }

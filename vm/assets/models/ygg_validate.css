@@ -1,0 +1,19 @@
+/* Stond als <style>-blok in ygg_validate.html; de Content Security Policy staat geen
+   inline stijl toe. */
+
+html,body{margin:0;height:100%;background:#0b0f14;color:#cfe;font:13px/1.45 system-ui,sans-serif;overflow:hidden}
+#c{position:fixed;inset:0;display:block}
+#hud{position:fixed;left:12px;top:12px;max-width:340px;background:rgba(8,12,18,.82);
+     border:1px solid #2a3a4a;border-radius:10px;padding:10px 12px;z-index:5}
+#hud h1{font-size:14px;margin:0 0 6px;color:#9fe6c0}
+#shotname{color:#ffd479;font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+button{background:#16222e;color:#bfe;border:1px solid #2c4153;border-radius:7px;
+       padding:5px 8px;cursor:pointer;font-size:12px}
+button:hover{background:#1e3140}
+button.on{background:#2b6;color:#031;border-color:#2b6}
+#status{margin-top:8px;font-size:12px;color:#9fb}
+#leak{margin-top:6px;font-size:12px}
+.ok{color:#6f6}.bad{color:#f77}
+#err{position:fixed;inset:auto 12px 12px 12px;background:#3a1417;border:1px solid #a33;
+     color:#fbb;padding:10px;border-radius:8px;display:none;z-index:9;white-space:pre-wrap}

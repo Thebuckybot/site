@@ -35,10 +35,10 @@ export function buildSidebar(navEl, onNavigate) {
       class: "sec-nav-item", "data-key": item.key, type: "button",
       onclick: () => onNavigate(item.key),
     }, [
-      // `html:` krijgt hier uitsluitend een SVG-constante uit icons.js. Tekst
-      // van een server gaat nooit door deze weg - zie de vangrail in
+      // Het icoon is een <svg>-knoop uit icons.js, als kind meegegeven; er
+      // gaat geen markup door innerHTML - zie de vangrail in
       // bucky1.0/tests/test_site_html_injectie.py.
-      el("span", { class: "ic", html: icon(item.key) }),
+      el("span", { class: "ic" }, [icon(item.key)]),
       el("span", { text: item.label }),
     ]));
   }

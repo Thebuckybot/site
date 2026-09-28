@@ -251,3 +251,13 @@ body.no-motion .browser img { max-height: none; }
    <div>'s, want er valt niets te openen - een link naar een pagina die niet
    bestaat is precies de belofte die deze strook juist wil vermijden. */
 .trust-grid .feature-card.is-planned { cursor: default; }
+
+/* Stonden als style-attribuut in index.html. De Content Security Policy staat
+   geen inline stijl toe, dus ze staan hier - onderaan, en met een klasse extra,
+   zodat ze net als het attribuut winnen van de gewone regels en van de
+   mediaquery die .hero-cta op een telefoon centreert. */
+.hero-cta.hero-cta-start { justify-content: flex-start; }
+.product-glow.product-glow-gold { background: radial-gradient(circle, rgba(224,165,58,0.16), transparent 60%); top: -140px; right: -160px; }
+.product-glow.product-glow-green { background: radial-gradient(circle, rgba(63,185,107,0.14), transparent 60%); bottom: -160px; left: -160px; }
+.art-badge .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--bk-green); display: inline-block; }
+#why.features { padding: 118px 24px 44px; }

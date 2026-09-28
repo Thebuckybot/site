@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Content Security Policy. Als <meta> omdat GitHub Pages geen headers laat
+       zetten; frame-ancestors (clickjacking) werkt daardoor niet. Moet vóór elk
+       script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py.
+       unpkg: alleen GSAP (het pad geldt voor het eerste verzoek; unpkg stuurt
+       door naar een vaste versie, en na een doorverwijzing kijkt CSP alleen
+       nog naar de host). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://unpkg.com/gsap@3/dist/; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <title>Bucky -- Security, economy &amp; organisations for your Discord server</title>
   <meta name="description" content="Bucky is an all-in-one Discord bot for server security, a living economy, four rival organisations and an arcade, all managed from one polished dashboard." />
 
@@ -121,7 +128,7 @@
                 <li data-rv>One-click snapshot recovery</li>
                 <li data-rv>Full audit trail &amp; emergency lockdown</li>
               </ul>
-              <div class="hero-cta" style="justify-content:flex-start" data-rv>
+              <div class="hero-cta hero-cta-start" data-rv>
                 <a data-feature="dashboard" class="btn btn-primary" href="dashboard.html">Open Security Dashboard →</a>
                 <span class="showcase-step">Keep scrolling to tour it →</span>
               </div>
@@ -175,7 +182,7 @@
 
   <!-- ECONOMY -->
   <section class="product" id="economy">
-    <div class="product-glow" style="background:radial-gradient(circle,rgba(224,165,58,0.16),transparent 60%);top:-140px;right:-160px"></div>
+    <div class="product-glow product-glow-gold"></div>
     <div class="product-inner">
       <div class="product-text">
         <span class="eyebrow">Economy</span>
@@ -202,7 +209,7 @@
 
   <!-- ADVENTURES -->
   <section class="product reverse" id="organisations">
-    <div class="product-glow" style="background:radial-gradient(circle,rgba(63,185,107,0.14),transparent 60%);bottom:-160px;left:-160px"></div>
+    <div class="product-glow product-glow-green"></div>
     <div class="product-inner">
       <div class="product-text">
         <span class="eyebrow">Organisations</span>
@@ -219,7 +226,7 @@
       <div class="product-media">
         <div class="art-frame art-tilt">
           <img src="assets/images/products/8arcOneIntro.webp" alt="The Grid, the world the four factions operate in" loading="lazy">
-          <span class="art-badge"><span class="pulse" style="width:8px;height:8px;border-radius:50%;background:var(--bk-green);display:inline-block"></span> Four factions · live</span>
+          <span class="art-badge"><span class="pulse"></span> Four factions · live</span>
         </div>
       </div>
     </div>
@@ -259,7 +266,7 @@
   </section>
 
   <!-- WHY BUCKY (capability-focused -- no metrics) -->
-  <section class="features" id="why" style="padding:118px 24px 44px">
+  <section class="features" id="why">
     <div class="section-head">
       <span class="eyebrow">Why Bucky</span>
       <h2>Built to be trusted.</h2>
@@ -365,21 +372,6 @@
   <script src="js/index.js"></script>
 
   <!-- Hamburger -->
-  <script>
-    (function () {
-      var hb = document.querySelector('.hamburger');
-      var menu = document.getElementById('nav-menu');
-      if (!hb || !menu) return;
-      hb.addEventListener('click', function () {
-        var open = hb.getAttribute('aria-expanded') === 'true';
-        hb.setAttribute('aria-expanded', String(!open));
-        hb.classList.toggle('open');
-        menu.classList.toggle('open');
-      });
-      menu.addEventListener('click', function (e) {
-        if (e.target.closest('a')) { hb.classList.remove('open'); menu.classList.remove('open'); hb.setAttribute('aria-expanded', 'false'); }
-      });
-    })();
-  </script>
+  <script src="js/nav-toggle.js" data-close-on-link></script>
 </body>
 </html>

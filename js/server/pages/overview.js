@@ -31,7 +31,7 @@ function tile({ key, title, body, foot, navigate }) {
     "aria-label": `Open ${title}`,
   }, [
     el("div", { class: "srv-tile-head" }, [
-      el("span", { class: "ic", html: icon(key) }),   // constante SVG, geen serverdata
+      el("span", { class: "ic" }, [icon(key)]),   // vaste SVG-knoop, geen serverdata
       el("h2", { text: title }),
     ]),
     el("div", { class: "srv-tile-body", text: body }),

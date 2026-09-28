@@ -3,6 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Content Security Policy. Als <meta> omdat GitHub Pages geen headers laat
+     zetten; frame-ancestors (clickjacking) werkt daardoor niet. Moet vóór elk
+     script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py.
+
+     style-src-attr 'unsafe-inline' - WAAROM: de VM bouwt haar schermen met
+     innerHTML-sjablonen en zet daarin style-attributen: de positie en maat van
+     elk venster (vm/components/WindowManager.js), balken en organisatiekleuren
+     (vm/apps/OrgApp.js, MailApp.js, browser/sites/*). Die sjablonen ombouwen
+     naar CSSOM is een herschrijving van de VM, geen CSP-klus. Zonder deze
+     uitzondering stapelen alle vensters linksboven. Het geldt ALLEEN voor
+     style-attributen: <style>-blokken blijven verboden (style-src-elem 'self'),
+     en scripts zijn nergens inline toegestaan. De 'unsafe-inline' in style-src
+     zelf is de terugval voor browsers die style-src-attr/-elem niet kennen.
+
+     Mission Hub staat op slot en laadt daarom niets van buiten. Gaat hij weer
+     open, dan moeten erbij: script-src https://esm.sh 'wasm-unsafe-eval'
+     (three.js, Rapier), connect-src https://www.gstatic.com (Draco-decoder),
+     worker-src blob: (Draco-worker), connect-src 'self' blob: (de GLB en zijn
+     texturen via fetch) en img-src data: - zie vm/assets/models/ygg_validate.html,
+     waar dat gemeten is; en het
+     <style>-element dat MissionHubApp.js aanmaakt moet dan naar een .css-bestand. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https://cdn.discordapp.com https://media.discordapp.net; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'">
 <title>Bucky Arcade</title>
 
 <link rel="stylesheet" href="arcade.css">
@@ -269,15 +291,7 @@
 
 </div>
 
-<script>
-const hamburger = document.querySelector('.hamburger');
-const navMenu = document.getElementById('nav-menu');
-
-hamburger.addEventListener('click', () => {
-    hamburger.classList.toggle('open');
-    navMenu.classList.toggle('open');
-});
-</script>
+<script src="js/nav-toggle.js"></script>
 
 </body>
 </html>

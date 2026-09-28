@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Content Security Policy. Als <meta> omdat GitHub Pages geen headers laat
+       zetten; frame-ancestors (clickjacking) werkt daardoor niet. Moet vóór elk
+       script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <title>Rule Builder - Bucky Security Center</title>
   <!--
     DEPRECATED SHELL - kept only as a temporary compatibility redirector.
@@ -12,17 +16,12 @@
     The old shell and js/rule-builder.js are legacy and scheduled for removal
     after Shadow Mode (do not delete yet).
   -->
-  <script>
-    (function () {
-      var qs = window.location.search || "";
-      window.location.replace("security.html" + qs + "#rulebuilder");
-    })();
-  </script>
+  <script src="js/legacy-redirect.js" data-section="rulebuilder"></script>
   <meta http-equiv="refresh" content="0; url=security.html#rulebuilder" />
-  <style>body{background:#0b0f16;color:#98a2b8;font-family:"Manrope",system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0}</style>
+  <link rel="stylesheet" href="css/legacy-redirect.css" />
 <script type="module" src="js/features.js"></script>
 </head>
 <body>
-  <p>Opening the Security Center… <a href="security.html#rulebuilder" style="color:#a3264d">Continue</a></p>
+  <p>Opening the Security Center… <a class="legacy-continue" href="security.html#rulebuilder">Continue</a></p>
 </body>
 </html>

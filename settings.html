@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- Content Security Policy. Als <meta> omdat GitHub Pages geen headers laat
+       zetten; frame-ancestors (clickjacking) werkt daardoor niet. Moet vóór elk
+       script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://cdn.discordapp.com; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <title>Server Settings</title>
   <link rel="stylesheet" href="settings.css" />
 <script type="module" src="js/features.js"></script>
@@ -11,16 +15,13 @@
   <!-- DEPRECATED PAGE. The new Security v2 Center (security.html) is the active
        dashboard; this legacy page is kept only for the shadow-migration period
        and is no longer linked from the main dashboard. Remove at GA cutover. -->
-  <div id="v2-deprecation" style="background:#141a2b;border-bottom:2px solid #5865f2;color:#e6e9f2;padding:10px 16px;font-family:system-ui,sans-serif;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap">
+  <div id="v2-deprecation">
     <span>You're on the legacy Security page. The new <strong>Security Center</strong> is now available.</span>
-    <a data-feature="security_center" id="v2-open" href="security.html" style="background:#5865f2;color:#fff;padding:6px 12px;border-radius:8px;text-decoration:none;font-weight:600">Open Security v2 →</a>
+    <a data-feature="security_center" id="v2-open" href="security.html">Open Security v2 →</a>
   </div>
-  <script>
-    (function () {
-      var g = new URLSearchParams(location.search).get("guild_id");
-      if (g) { var a = document.getElementById("v2-open"); if (a) a.href = "security.html?guild_id=" + g; }
-    })();
-  </script>
+  <!-- De stijl van deze balk staat onderaan settings.css en het zetten van de
+       guild_id op de knop in js/settings.js: de CSP staat geen inline stijl of
+       script toe. -->
   <header id="guild-header">
     <div class="guild-info">
       <img id="guild-icon" alt="Guild Icon" />

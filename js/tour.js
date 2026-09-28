@@ -194,7 +194,9 @@ class Tour {
     this.close = el("button", "tour-close");
     this.close.type = "button";
     this.close.setAttribute("aria-label", "Close tour");
-    this.close.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    const kruis = svg("svg", { viewBox: "0 0 16 16", width: "14", height: "14", "aria-hidden": "true" });
+    kruis.appendChild(svg("path", { d: "M3 3l10 10M13 3L3 13", stroke: "currentColor", "stroke-width": "1.8", "stroke-linecap": "round" }));
+    this.close.appendChild(kruis);
     head.append(this.chapter, this.count, this.close);
     this.progress = el("div", "tour-progress");
     this.progress.setAttribute("aria-hidden", "true");

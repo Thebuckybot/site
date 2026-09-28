@@ -6,6 +6,34 @@ import { apiFetch, storeTokenFromUrl } from './dashboard.js'; // Importeer store
 const params = new URLSearchParams(window.location.search);
 const guildId = params.get("guild_id");
 
+// De knop naar Security v2 in de deprecatiebalk neemt de guild mee. Dit stond
+// als inline <script> in settings.html; de Content Security Policy van de site
+// staat geen inline scripts meer toe.
+if (guildId) {
+  const v2 = document.getElementById("v2-open");
+  if (v2) v2.href = "security.html?guild_id=" + guildId;
+}
+
+// Een element met klasse en tekst - tekst altijd via textContent, nooit als HTML.
+function maak(tag, className = "", text = null) {
+  const n = document.createElement(tag);
+  if (className) n.className = className;
+  if (text != null) n.textContent = String(text);
+  return n;
+}
+
+// <label class="switch"><input type="checkbox" ...><span class="slider"></span></label>
+function schakelaar(data, value, aan) {
+  const label = maak("label", "switch");
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  for (const [k, v] of Object.entries(data)) input.dataset[k] = v;
+  input.setAttribute("value", value);
+  input.defaultChecked = aan;
+  label.append(input, maak("span", "slider"));
+  return label;
+}
+
 if (!guildId) {
     alert("No guild selected.");
     window.location.href = "dashboard.html";
@@ -56,26 +84,14 @@ function renderCommandTree(allCommands, disabledData){
 
     const cogDisabled = disabledCogs.includes(cog)
 
-    cogDiv.innerHTML = `
-    
-    <div class="cog-header">
-
-      <button class="cog-toggle">▶</button>
-
-      <span class="cog-name">${cog}</span>
-
-      <label class="switch">
-        <input type="checkbox" data-type="cog" value="${cog}" ${!cogDisabled ? "checked":""}>
-        <span class="slider"></span>
-      </label>
-
-    </div>
-
-    <div class="command-list"></div>
-    
-    `
-
-    const commandList = cogDiv.querySelector(".command-list")
+    const kop = maak("div", "cog-header")
+    kop.append(
+      maak("button", "cog-toggle", "▶"),
+      maak("span", "cog-name", cog),
+      schakelaar({ type: "cog" }, cog, !cogDisabled),
+    )
+    const commandList = maak("div", "command-list")
+    cogDiv.append(kop, commandList)
 
     allCommands[cog].forEach(cmd => {
 
@@ -84,16 +100,10 @@ function renderCommandTree(allCommands, disabledData){
       const row = document.createElement("div")
       row.className = "command-row"
 
-      row.innerHTML = `
-
-        <span>${cmd}</span>
-
-        <label class="switch">
-          <input type="checkbox" data-type="command" data-cog="${cog}" value="${cmd}" ${!disabled ? "checked":""}>
-          <span class="slider"></span>
-        </label>
-
-      `
+      row.append(
+        maak("span", "", cmd),
+        schakelaar({ type: "command", cog }, cmd, !disabled),
+      )
 
       commandList.appendChild(row)
 
@@ -132,10 +142,11 @@ function renderSecuritySettings(securityData) {
     
     for (const [name, key] of Object.entries(antiModes)) {
         const label = document.createElement("label");
-        label.innerHTML = `
-            ${name}:
-            <input type="checkbox" id="${key}" ${securityData?.[key] ? 'checked' : ''} />
-        `;
+        const vinkje = document.createElement("input");
+        vinkje.type = "checkbox";
+        vinkje.id = key;
+        vinkje.defaultChecked = !!securityData?.[key];
+        label.append(` ${name}: `, vinkje, " ");
         antiModeContainer.appendChild(label);
     }
     
@@ -163,17 +174,26 @@ function renderSecuritySettings(securityData) {
         const limitValue = allSettings[action.limitKey] !== undefined ? allSettings[action.limitKey] : 0;
         const punishmentValue = allSettings[action.punishmentKey] || 'none';
 
-        div.innerHTML = `
-            <h3>${action.name}</h3>
-            <label>Limit:
-                <input type="number" data-key="${action.limitKey}" value="${limitValue}" min="0" />
-            </label>
-            <label>Punishment:
-                <select data-key="${action.punishmentKey}">
-                    ${action.punishments.map(p => `<option value="${p}" ${p === punishmentValue ? 'selected' : ''}>${p.charAt(0).toUpperCase() + p.slice(1)}</option>`).join('')}
-                </select>
-            </label>
-        `;
+        const limiet = document.createElement("input");
+        limiet.type = "number";
+        limiet.dataset.key = action.limitKey;
+        limiet.setAttribute("value", String(limitValue));
+        limiet.min = "0";
+
+        const keuze = document.createElement("select");
+        keuze.dataset.key = action.punishmentKey;
+        for (const p of action.punishments) {
+          const tekst = p.charAt(0).toUpperCase() + p.slice(1);
+          keuze.appendChild(new Option(tekst, p, p === punishmentValue, p === punishmentValue));
+        }
+
+        // De spaties staan er zoals het oude sjabloon ze na het inklappen van
+        // witruimte opleverde: de labels zijn inline, dus ze tellen mee.
+        const limietLabel = document.createElement("label");
+        limietLabel.append("Limit: ", limiet, " ");
+        const strafLabel = document.createElement("label");
+        strafLabel.append("Punishment: ", keuze, " ");
+        div.append(maak("h3", "", action.name), " ", limietLabel, " ", strafLabel, " ");
         punishmentOptionsContainer.appendChild(div);
     });
 }

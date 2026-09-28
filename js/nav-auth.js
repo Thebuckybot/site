@@ -2,11 +2,22 @@ import { API_URL } from "./config.js";
 
 const navMenu = document.getElementById("nav-menu");
 
+// Een <li><a>tekst</a></li> voor de balk, met DOM en zonder innerHTML (zie
+// bucky1.0/tests/test_site_html_injectie.py). `id` mag leeg blijven.
+function navLi(href, text, id = "") {
+  const li = document.createElement("li");
+  const a = document.createElement("a");
+  if (id) a.id = id;
+  a.href = href;
+  a.textContent = text;
+  li.appendChild(a);
+  return li;
+}
+
 // Deze elementen willen we altijd tonen, ongeacht login status
-const essentialLinksHTML = `
-  <li><a href="tos.html">Terms of Service</a></li>
-  <li><a href="privacy.html">Privacy Policy</a></li>
-`;
+function essentialLinks() {
+  return [navLi("tos.html", "Terms of Service"), navLi("privacy.html", "Privacy Policy")];
+}
 
 // DE BALK HANGT AAN GEEN ENKELE FETCH. Dat is de les van 12 augustus: de HTML
 // heeft een leeg <ul>, renderNav was de enige vuller, en die draaide pas nadat
@@ -62,19 +73,15 @@ function clearUserData() {
 }
 
 function renderNav(loggedIn, user = null) {
-  navMenu.innerHTML = essentialLinksHTML; // toon eerst altijd cruciale links
+  navMenu.replaceChildren(...essentialLinks()); // toon eerst altijd cruciale links
 
   if (loggedIn && user) {
     // 🔥 Arcade (NIEUW)
-    const arcadeLi = document.createElement("li");
-    arcadeLi.innerHTML = `<a id="arcade-link" href="arcade.html">Arcade</a>`;
-    navMenu.appendChild(arcadeLi);
+    navMenu.appendChild(navLi("arcade.html", "Arcade", "arcade-link"));
 
 
     // Dashboard link
-    const dashLi = document.createElement("li");
-    dashLi.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
-    navMenu.appendChild(dashLi);
+    navMenu.appendChild(navLi("dashboard.html", "Dashboard", "dashboard-link"));
 
     // Logout knop
     const logoutLi = document.createElement("li");
@@ -88,10 +95,11 @@ function renderNav(loggedIn, user = null) {
 
   } else {
     // Login knop
-    const loginLi = document.createElement("li");
-    loginLi.innerHTML = `<a id="login-link" href="${API_URL}/login">
-      <button id="discord-login-button">Login</button>
-    </a>`;
+    const loginLi = navLi(`${API_URL}/login`, "", "login-link");
+    const loginBtn = document.createElement("button");
+    loginBtn.id = "discord-login-button";
+    loginBtn.textContent = "Login";
+    loginLi.firstChild.replaceChildren(loginBtn);
     navMenu.appendChild(loginLi);
   }
 }
@@ -193,8 +201,8 @@ async function doLogout() {
 // Sync logout/login over meerdere tabs
 window.addEventListener("storage", (event) => {
   if (event.key === "user_info" && !event.newValue) {
-    // `renderNav` begint met `innerHTML = essentialLinksHTML` en veegt de
-    // premiumlink dus weg. Hij hoort daarna opnieuw te komen, want uitloggen in
+    // `renderNav` begint met `replaceChildren(...essentialLinks())` en veegt
+    // de premiumlink dus weg. Hij hoort daarna opnieuw te komen, want uitloggen in
     // een ander tabblad verandert niets aan of premium open staat.
     renderNav(false);
     addPremiumLink();

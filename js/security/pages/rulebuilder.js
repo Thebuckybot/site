@@ -175,10 +175,13 @@ export default {
     const openDetails = async (rule) => {
       const created = rule.created_at ? fmtTime(rule.created_at) : "—";
       const body = [
-        el("div", { class: "sec-muted", html:
-          `<strong>Event:</strong> ${rule.event_type}<br>` +
-          `<strong>Severity:</strong> ${rule.severity}<br>` +
-          `<strong>Created:</strong> ${created}` }),
+        // Velden uit het API-antwoord als TEKST. Hier stond een `html:` met
+        // event_type en severity erin; een <img onerror> in die velden voerde uit.
+        el("div", { class: "sec-muted" }, [
+          el("strong", { text: "Event:" }), ` ${rule.event_type}`, el("br"),
+          el("strong", { text: "Severity:" }), ` ${rule.severity}`, el("br"),
+          el("strong", { text: "Created:" }), ` ${created}`,
+        ]),
         el("div", { class: "sec-rb-code-label", text: "Conditions" }),
         el("pre", { class: "sec-rb-code", text: JSON.stringify(rule.conditions_json ?? [], null, 2) }),
         el("div", { class: "sec-rb-code-label", text: "Actions" }),

@@ -78,7 +78,7 @@ export function groupOf(key) { return GROUP_OF[key]; }
 
 function navButton(item, onNavigate) {
   return el("button", { class: "sec-nav-item", "data-key": item.key, onclick: () => onNavigate(item.key) }, [
-    el("span", { class: "ic", html: icon(item.key) }),
+    el("span", { class: "ic" }, [icon(item.key)]),
     el("span", { text: item.label }),
   ]);
 }
@@ -98,9 +98,9 @@ export function buildSidebar(navEl, onNavigate) {
     if (!zichtbaar.length) continue;
     const items = el("div", { class: "sec-group-items" }, zichtbaar.map((it) => navButton(it, onNavigate)));
     const head = el("button", { class: "sec-group-head", type: "button" }, [
-      el("span", { class: "ic", html: icon(entry.key) }),
+      el("span", { class: "ic" }, [icon(entry.key)]),
       el("span", { text: entry.label }),
-      el("span", { class: "chev", html: "&#8250;" }),
+      el("span", { class: "chev", text: "›" }),   // ›
     ]);
     const group = el("div", { class: "sec-group", "data-group": entry.key }, [head, items]);
     head.addEventListener("click", () => group.classList.toggle("open"));

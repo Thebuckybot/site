@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Content Security Policy. Als <meta> omdat GitHub Pages geen headers laat
+       zetten; frame-ancestors (clickjacking) werkt daardoor niet. Moet vóór elk
+       script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <title>Privacy Policy - Bucky</title>
   <meta name="description" content="How Bucky collects, uses, stores and protects your data." />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -135,9 +139,6 @@
     <div class="footer-bottom">© 2026 Bucky Bot. All rights reserved.</div>
   </footer>
 
-  <script>
-    (function(){var hb=document.querySelector('.hamburger'),m=document.getElementById('nav-menu');if(!hb||!m)return;
-    hb.addEventListener('click',function(){var o=hb.getAttribute('aria-expanded')==='true';hb.setAttribute('aria-expanded',String(!o));hb.classList.toggle('open');m.classList.toggle('open');});})();
-  </script>
+  <script src="js/nav-toggle.js"></script>
 </body>
 </html>

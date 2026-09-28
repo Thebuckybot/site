@@ -2,12 +2,23 @@
 // pagination, badges, skeletons, and formatting. Used by every page so look,
 // feel and behaviour stay consistent and pages stay small.
 
+// GEEN `html:` MEER (28 september 2026). De bouwer had een sleutel die zijn
+// waarde door innerHTML haalde; in security/pages/rulebuilder.js ging daar een
+// `event_type` uit een API-antwoord doorheen, en een <img onerror> in dat veld
+// voerde echt uit. Tekst gaat via `text:`, iconen als kind-knoop (icon(key)
+// levert een <svg>-element), opmaak in losse elementen. Wie `html:` toch
+// meegeeft krijgt een fout in plaats van een stil gat.
+//
+// `style:` gaat via node.style.cssText (CSSOM) en niet via setAttribute: de
+// Content Security Policy van de site staat geen inline style-ATTRIBUTEN toe,
+// maar wel stijl die een script via het CSSOM zet. Zelfde uitkomst op het scherm.
 export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (k === "class") node.className = v;
-    else if (k === "html") node.innerHTML = v;
+    else if (k === "html") throw new Error("el(): `html` bestaat niet meer - gebruik `text` of kind-elementen");
     else if (k === "text") node.textContent = v;
+    else if (k === "style") { if (v !== null && v !== undefined && v !== false) node.style.cssText = v; }
     else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
     else if (v !== null && v !== undefined && v !== false) node.setAttribute(k, v);
   }
@@ -20,6 +31,20 @@ export function el(tag, attrs = {}, children = []) {
     node.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
   }
   return node;
+}
+
+// Een <svg> met vaste onderdelen, gebouwd met createElementNS: een icoon gaat
+// zo nooit als markup-string door een parser. `parts` is [[tag, {attr: waarde}], ...].
+const SVG_NS = "http://www.w3.org/2000/svg";
+export function svg(attrs = {}, parts = []) {
+  const root = document.createElementNS(SVG_NS, "svg");
+  for (const [k, v] of Object.entries(attrs)) root.setAttribute(k, v);
+  for (const [tag, a] of parts) {
+    const n = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(a)) n.setAttribute(k, v);
+    root.appendChild(n);
+  }
+  return root;
 }
 
 export function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
@@ -323,7 +348,7 @@ export function accordion({ title, count, body, open = false, tone } = {}) {
   const head = el("button", { class: "sec-acc-head", type: "button", "aria-expanded": open ? "true" : "false" }, [
     el("span", { text: title }),
     count != null ? el("span", { class: "sec-acc-count", text: String(count) }) : null,
-    el("span", { class: "chev", html: "&#8250;" }),
+    el("span", { class: "chev", text: "›" }),   // ›
   ]);
   const root = el("div", { class: `sec-acc${open ? " open" : ""}${tone ? " tone-" + tone : ""}` }, [head, bodyWrap]);
   head.addEventListener("click", () => {

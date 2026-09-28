@@ -11,6 +11,31 @@ function clearUserData() {
   localStorage.removeItem("api_token");
 }
 
+// Een <li><a id=... href=...>tekst</a></li> voor de navigatiebalk, met DOM en
+// zonder innerHTML (zie bucky1.0/tests/test_site_html_injectie.py).
+function navLink(id, href, text) {
+  const li = document.createElement("li");
+  const a = document.createElement("a");
+  a.id = id;
+  a.href = href;
+  a.textContent = text;
+  li.appendChild(a);
+  return li;
+}
+
+// Een <svg> met vaste onderdelen via createElementNS: [[tag, {attr: waarde}], ...].
+const SVG_NS = "http://www.w3.org/2000/svg";
+function svgIcon(attrs, parts) {
+  const root = document.createElementNS(SVG_NS, "svg");
+  for (const [k, v] of Object.entries(attrs)) root.setAttribute(k, v);
+  for (const [tag, a] of parts) {
+    const n = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(a)) n.setAttribute(k, v);
+    root.appendChild(n);
+  }
+  return root;
+}
+
 function renderNav(loggedIn, user = null) {
   // Haal navMenu op binnen de functie.
   const navMenu = document.getElementById("nav-menu");
@@ -29,9 +54,7 @@ function renderNav(loggedIn, user = null) {
 
   if (loggedIn && user) {
     if (!dashboardLink) {
-      const li = document.createElement("li");
-      li.innerHTML = `<a id="dashboard-link" href="dashboard.html">Dashboard</a>`;
-      navMenu.appendChild(li);
+      navMenu.appendChild(navLink("dashboard-link", "dashboard.html", "Dashboard"));
     }
     if (!logoutBtn) {
       const li = document.createElement("li");
@@ -50,7 +73,14 @@ function renderNav(loggedIn, user = null) {
 
     if (!loginLink) {
       const li = document.createElement("li");
-      li.innerHTML = `<a id="login-link" href="${API_URL}/login"><button id="discord-login-button">Login</button></a>`;
+      const a = document.createElement("a");
+      a.id = "login-link";
+      a.href = `${API_URL}/login`;
+      const btn = document.createElement("button");
+      btn.id = "discord-login-button";
+      btn.textContent = "Login";
+      a.appendChild(btn);
+      li.appendChild(a);
       navMenu.appendChild(li);
     }
   }
@@ -158,7 +188,11 @@ function renderSkeleton(guildContainer, n = 8) {
     for (let i = 0; i < n; i++) {
       const card = document.createElement("div");
       card.className = "server-card skeleton";
-      card.innerHTML = '<div class="sk sk-icon"></div><div class="sk sk-line"></div><div class="sk sk-line short"></div>';
+      for (const cls of ["sk sk-icon", "sk sk-line", "sk sk-line short"]) {
+        const blok = document.createElement("div");
+        blok.className = cls;
+        card.appendChild(blok);
+      }
       guildContainer.appendChild(card);
     }
 }
@@ -167,12 +201,28 @@ function renderSkeleton(guildContainer, n = 8) {
 function renderEmpty(guildContainer) {
     const wrap = document.createElement("div");
     wrap.className = "picker-empty";
-    wrap.innerHTML =
-      '<div class="e-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="14" width="18" height="5" rx="1.5"/><path d="M7 6.5h.01M7 16.5h.01"/></svg></div>' +
-      '<h2>No manageable servers yet</h2>' +
-      '<p>You need <strong>Manage&nbsp;Server</strong> permission on a server that has Bucky. Invite Bucky to a server you manage, then refresh - it will appear here.</p>' +
-      '<div class="e-actions"></div>';
-    const actions = wrap.querySelector(".e-actions");
+
+    const mark = document.createElement("div");
+    mark.className = "e-mark";
+    mark.appendChild(svgIcon(
+      { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.7",
+        "stroke-linecap": "round", "stroke-linejoin": "round" },
+      [["rect", { x: "3", y: "4", width: "18", height: "5", rx: "1.5" }],
+       ["rect", { x: "3", y: "14", width: "18", height: "5", rx: "1.5" }],
+       ["path", { d: "M7 6.5h.01M7 16.5h.01" }]]));
+
+    const h2 = document.createElement("h2");
+    h2.textContent = "No manageable servers yet";
+
+    const p = document.createElement("p");
+    const sterk = document.createElement("strong");
+    sterk.textContent = "Manage Server";      // vaste spatie, zoals &nbsp; eerst
+    p.append("You need ", sterk,
+      " permission on a server that has Bucky. Invite Bucky to a server you manage, then refresh - it will appear here.");
+
+    const actions = document.createElement("div");
+    actions.className = "e-actions";
+    wrap.append(mark, h2, p, actions);
     const invite = document.createElement("a");
     invite.className = "btn btn-primary"; invite.href = getInviteURL(); invite.textContent = "Invite Bucky";
     const refresh = document.createElement("button");

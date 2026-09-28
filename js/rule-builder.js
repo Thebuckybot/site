@@ -45,6 +45,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 
+// Een element met klasse en tekst - tekst altijd via textContent.
+function maak(tag, className = "", text = null) {
+  const n = document.createElement(tag);
+  if (className) n.className = className;
+  if (text != null) n.textContent = String(text);
+  return n;
+}
+
 let registry;
 const MAX_CONDITIONS = 3;
 const MAX_ACTIONS = 3;
@@ -310,26 +318,27 @@ async function loadRules() {
     const card = document.createElement("div");
     card.className = "rule-card";
 
-    card.innerHTML = `
-      <div class="rule-header">
-        <div>
-          <div class="rule-title">${rule.name}</div>
-          <div class="rule-meta">${rule.event_type} • Severity ${rule.severity}</div>
-        </div>
+    // Met DOM en textContent: naam, event_type en severity komen uit een
+    // API-antwoord, en in het oude innerHTML-sjabloon voerde een <img onerror>
+    // in die velden echt uit.
+    const header = maak("div", "rule-header");
+    const tekst = document.createElement("div");
+    tekst.append(maak("div", "rule-title", `${rule.name}`),
+                 maak("div", "rule-meta", `${rule.event_type} • Severity ${rule.severity}`));
 
-        <div class="rule-controls">
-          <label class="switch">
-            <input type="checkbox" ${rule.enabled ? "checked" : ""} data-id="${rule.id}">
-            <span class="slider"></span>
-          </label>
-          <button class="delete-btn" data-id="${rule.id}">⋮</button>
-        </div>
-      </div>
+    const controls = maak("div", "rule-controls");
+    const schakelaar = maak("label", "switch");
+    const vinkje = document.createElement("input");
+    vinkje.type = "checkbox";
+    vinkje.defaultChecked = !!rule.enabled;
+    vinkje.dataset.id = rule.id;
+    schakelaar.append(vinkje, maak("span", "slider"));
+    const menu = maak("button", "delete-btn", "⋮");
+    menu.dataset.id = rule.id;
+    controls.append(schakelaar, menu);
+    header.append(tekst, controls);
 
-      <div class="rule-details hidden">
-        Conditions & Actions configured
-      </div>
-    `;
+    card.append(header, maak("div", "rule-details hidden", "Conditions & Actions configured"));
 
     // Toggle enable
     card.querySelector("input").addEventListener("change", async e => {
@@ -368,18 +377,16 @@ function openRuleModal(rule) {
     ? new Date(rule.created_at).toLocaleString()
     : "-";
 
-    body.innerHTML = `
-    <strong>Event:</strong> ${rule.event_type}<br>
-    <strong>Severity:</strong> ${rule.severity}<br>
-    <strong>Created:</strong> ${created}
-    <br><br>
-
-    <strong>Conditions:</strong>
-    <pre>${JSON.stringify(rule.conditions_json, null, 2)}</pre>
-
-    <strong>Actions:</strong>
-    <pre>${JSON.stringify(rule.actions_json, null, 2)}</pre>
-    `;
+    body.replaceChildren(
+      maak("strong", "", "Event:"), ` ${rule.event_type}`, document.createElement("br"),
+      maak("strong", "", "Severity:"), ` ${rule.severity}`, document.createElement("br"),
+      maak("strong", "", "Created:"), ` ${created}`,
+      document.createElement("br"), document.createElement("br"),
+      maak("strong", "", "Conditions:"),
+      maak("pre", "", `${JSON.stringify(rule.conditions_json, null, 2)}`),
+      maak("strong", "", "Actions:"),
+      maak("pre", "", `${JSON.stringify(rule.actions_json, null, 2)}`),
+    );
 
 
   deleteBtn.onclick = async () => {

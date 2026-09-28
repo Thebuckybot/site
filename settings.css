@@ -657,3 +657,9 @@ input[type="checkbox"] {
   }
 
 }
+
+/* De deprecatiebalk bovenaan settings.html. Stond als style-attribuut in de
+   HTML; de Content Security Policy staat geen inline stijl toe. Op id, zodat
+   hij net als het attribuut wint van de algemene regels hierboven. */
+#v2-deprecation{background:#141a2b;border-bottom:2px solid #5865f2;color:#e6e9f2;padding:10px 16px;font-family:system-ui,sans-serif;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+#v2-deprecation #v2-open{background:#5865f2;color:#fff;padding:6px 12px;border-radius:8px;text-decoration:none;font-weight:600}

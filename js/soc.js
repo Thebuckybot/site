@@ -188,12 +188,13 @@ async function loadIncidents() {
         date.getMinutes().toString().padStart(2,"0");
     }
 
-    tr.innerHTML = `
-      <td>${formattedDate}</td>
-      <td>${row.event_type}</td>
-      <td>${row.user_id || "-"}</td>
-      <td>${row.severity}</td>
-    `;
+    // Velden uit het API-antwoord als TEKST, nooit als HTML: hier stond een
+    // innerHTML-sjabloon, en een <img onerror> in event_type voerde uit.
+    for (const waarde of [formattedDate, row.event_type, row.user_id || "-", row.severity]) {
+      const td = document.createElement("td");
+      td.textContent = String(waarde);
+      tr.appendChild(td);
+    }
 
     tbody.appendChild(tr);
   });
