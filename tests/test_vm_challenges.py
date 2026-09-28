@@ -245,7 +245,12 @@ def main():
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
-        init = "window.BUCKY_API_BASE = 'http://127.0.0.1:8899';"
+        # GEEN eigen API-adres meer (28-9-2026): sinds de CSP staat alleen
+        # https://api.buckybot.app in connect-src, en de browser blokkeert een
+        # fetch naar 127.0.0.1 nog vóór Playwright hem kan onderscheppen. De VM
+        # praat dus met het echte adres, zoals in productie; de stubs hieronder
+        # matchen op **/api/** en de vangnet-route houdt productie buiten schot.
+        init = ""
 
         # --- desktop, ingelogd -------------------------------------------
         ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
