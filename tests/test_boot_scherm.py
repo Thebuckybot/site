@@ -19,10 +19,31 @@ verplaatste de broosheid naar het volgende been. De oorzaak was de OPZET en niet
 de afstanden: als elk been afhangt van waar het vorige eindigde, is de kans dat
 alles klopt het product van zeven kansen.
 
-Nu heeft elk hoofdstuk zijn EIGEN sessie en zijn eigen kortste route, en krijgt
-een hoofdstuk dat sturen bevat twee kansen. Een spel besturen door een joystick
-is nu eenmaal niet exact; wat wel exact is, is OF het gelukt is, en dat zegt het
-spel zelf in zijn statusregel. Daar wordt op gestuurd.
+Nu heeft elk hoofdstuk zijn EIGEN sessie en zijn eigen kortste route. Wat
+exact is, is OF iets gelukt is, en dat zegt het spel zelf in zijn statusregel.
+Daar wordt op gestuurd.
+
+DE TIJD VAN HET SPEL IS EEN NEPKLOK (sinds 29 september 2026)
+Tot dan hield de test de joystick "600 ms" vast in ECHTE tijd. Hoeveel frames
+een drukke machine in 600 ms tekent, verschilt per run, dus de boot kwam elke
+keer ergens anders uit, en elke run viel op een ander hoofdstuk om: aanmeren,
+meubels, duiken of de hut. Ook op een schone HEAD. Twee herkansingen per
+hoofdstuk maakten dat minder vaak rood, niet minder willekeurig.
+
+Nu staat de klok van de pagina stil (`page.clock`, zie `nieuwe_pagina`), en
+krijgt het spel alleen tijd via `wacht()`. Dat is `clock.run_for`: de tekenlus
+draait dan precies ms/16 frames van 16 ms, hoe druk de machine ook is. Het spel
+zelf heeft geen toeval in zijn beweging (Math.random alleen in de ruis van het
+geluid), dus dezelfde invoer geeft dezelfde reis.
+
+De invoer moet dan wel AANGEKOMEN zijn voordat de tijd loopt. Een sleep over
+de stick komt pas bij het volgende echte frame van de browser aan, en de
+nepklok maakt geen echte frames. Daarom wacht `stick()` op het BEWIJS dat de
+sleep er is (de knop van de stick staat uit het midden) voordat hij tijd
+geeft, en na het loslaten op de knop die terugveert. Zo wacht de test op
+gebeurtenissen en niet op milliseconden. Precies dat miste de eerste poging met
+een nepklok op 28 september, en toen viel de stickcontrole in twee van de zes
+runs om.
 
 DRAAIEN:
     cd site && python -m http.server 8899
@@ -61,13 +82,101 @@ def leg_vast(page, naam):
     print(f"       beeld: preview_{naam}.png")
 
 
+# --- de klok -------------------------------------------------------------
+
+# 1 januari 2026, 12:00 UTC. Welk moment maakt niet uit, als het maar vast is.
+KLOK_START = 1_767_268_800_000
+
+
+def nieuwe_pagina(browser, **opties):
+    """Een verse sessie waarin de tijd stilstaat tot de test hem geeft.
+
+    `pause_at` staat vóór de eerste `goto`: Playwright zet de klok ook in elk
+    nieuw document, dus de arcade laadt al met een stilstaande klok.
+    """
+    ctx = browser.new_context(viewport={"width": 1440, "height": 1000}, **opties)
+    ctx.clock.install(time=KLOK_START)
+    page = ctx.new_page()
+    page.clock.pause_at(KLOK_START + 1000)
+    return ctx, page
+
+
+def wacht(page, ms):
+    """Geeft het spel `ms` milliseconden, los van hoe snel de machine is."""
+    page.clock.run_for(ms)
+
+
+def wacht_op(page, js, echt_ms=5000):
+    """Wacht in ECHTE tijd tot `js` waar is, zonder de nepklok te verzetten.
+
+    Voor wat de browser zelf aflevert, zoals een sleep die bij het volgende
+    frame aankomt. Geeft True terug als het gebeurde.
+    """
+    for _ in range(max(1, echt_ms // 20)):
+        if page.evaluate(js):
+            return True
+        page.wait_for_timeout(20)
+    return bool(page.evaluate(js))
+
+
+STICK_VAST = "() => document.querySelector('.mg-stick').classList.contains('is-actief')"
+KNOP_VERSCHOVEN = """() => {
+  const t = document.querySelector('.mg-stick-knob').style.transform;
+  return !!t && !t.includes('translate(0px, 0px)');
+}"""
+KNOP_IN_RUST = """() => {
+  const s = document.querySelector('.mg-stick');
+  const t = document.querySelector('.mg-stick-knob').style.transform;
+  return !s.classList.contains('is-actief') && (!t || t.includes('translate(0px, 0px)'));
+}"""
+
+
+def pak_de_stick(page):
+    """Muis omlaag op het midden van de stick, tot de stick zegt dat hij vastzit.
+
+    DE PAGINA VERSPRINGT IN ECHTE TIJD. Op 29 september kwam in twee van tien
+    runs een pointerdown niet bij de stick aan. De diagnose hieronder liet zien
+    waarom: tussen meten en klikken schoof het spel 366 px omlaag (de klik viel
+    op het canvas), en een andere keer lag de stick onder de rand van het
+    venster (y 1034 bij een venster van 1000; op dat punt lag niets). Iets boven
+    het spel krijgt later inhoud, wanneer een netwerkaanroep terugkomt, en dat
+    wacht niet op de nepklok. Dus: eerst in beeld scrollen, zoals een mens doet,
+    dan pas meten.
+
+    Het spel heeft geen last van een mislukte greep: er loopt geen speltijd
+    zolang de stick niet vastzit, en een klik naast de stick valt op het
+    canvas, dat er alleen focus van krijgt. Lukt het toch niet, dan zegt de
+    NB-regel wat er op dat punt lag.
+    """
+    for poging in range(3):
+        page.locator(".mg-stick").scroll_into_view_if_needed()
+        s = page.locator(".mg-stick").bounding_box()
+        cx, cy = s["x"] + s["width"] / 2, s["y"] + s["height"] / 2
+        page.mouse.move(cx, cy)
+        page.mouse.down()
+        if wacht_op(page, STICK_VAST, 2000):
+            return cx, cy
+        page.mouse.up()
+        daar = page.evaluate("""([x, y]) => {
+          const e = document.elementFromPoint(x, y);
+          const r = document.querySelector('.mg-stick').getBoundingClientRect();
+          return (e ? (e.className || e.tagName) : 'niets') + ' ; stick nu op '
+            + [r.x, r.y, r.width, r.height].map(Math.round).join(',');
+        }""", [cx, cy])
+        print(f"       NB  de stick zat niet vast na pointerdown op ({cx:.0f}, {cy:.0f}): "
+              f"{daar} (poging {poging + 1})")
+    raise AssertionError("de stick is in drie pogingen niet vast te pakken")
+
+
 # --- gereedschap ---------------------------------------------------------
 
 def start_spel(page):
     """Laadt de arcade en start het bootspel; wacht tot de bediening er staat."""
     page.goto(f"{BASIS}/arcade.html", wait_until="domcontentloaded")
     page.wait_for_selector("#mg-boat", timeout=30000)
-    page.wait_for_timeout(700)
+    # De opening van de arcade (luiken en een fade) loopt op setTimeout en
+    # duurt ruim 3,5 s. Op een stilstaande klok gaat hij anders nooit weg.
+    wacht(page, 4500)
     knop = page.locator('.mg-btn[data-game="boat"]')
     if not knop.count():
         return False
@@ -77,29 +186,47 @@ def start_spel(page):
         page.wait_for_selector(".mg-stick", timeout=30000)
     except Exception:
         return False
-    page.wait_for_timeout(500)
+    wacht(page, 500)
     page.locator("#mg-boat").click()
     return True
 
 
 def stick(page, dx, dy, ms):
-    """Trekt de joystick een kant op, houdt hem daar, en laat los."""
-    s = page.locator(".mg-stick").bounding_box()
-    cx, cy = s["x"] + s["width"] / 2, s["y"] + s["height"] / 2
-    page.mouse.move(cx, cy)
-    page.mouse.down()
-    page.mouse.move(cx + dx, cy + dy, steps=4)
-    page.wait_for_timeout(ms)
+    """Trekt de joystick een kant op, houdt hem precies `ms` vast, en laat los.
+
+    Houdt de tijd pas vast als de sleep is AANGEKOMEN, en gaat pas verder als
+    de stick weer in rust is. Komt een sleep niet aan, dan is dat een fout en
+    geen pech: dan faalt de test met die reden.
+
+    EEN beweging, geen `steps=4`. Met vier tussenstappen gaf "de knop is
+    verschoven" al groen na de eerste, en druppelden de andere drie binnen
+    terwijl de nepklok liep: de boot kreeg dan een paar frames een andere
+    richting, en de reis verschilde per run (gemeten met een vingerafdruk van
+    het canvas, 29-9-2026). Met één beweging is verschoven ook: op zijn plek.
+    """
+    cx, cy = pak_de_stick(page)
+    page.mouse.move(cx + dx, cy + dy)
+    if not wacht_op(page, KNOP_VERSCHOVEN):
+        page.mouse.up()
+        raise AssertionError(f"de sleep over de stick kwam niet aan ({dx}, {dy})")
+    wacht(page, ms)
     page.mouse.up()
+    if not wacht_op(page, KNOP_IN_RUST):
+        raise AssertionError("de stick veert na loslaten niet terug")
+
+
+# De laatste statusregel die de test las, voor de foutmelding van een reis.
+status_laatst = [""]
 
 
 def status(page):
-    return page.locator("#mg-boat-status").text_content() or ""
+    status_laatst[0] = page.locator("#mg-boat-status").text_content() or ""
+    return status_laatst[0]
 
 
-def anker(page, wacht=700):
+def anker(page, ms=700):
     page.locator(".mg-knop-anker").click()
-    page.wait_for_timeout(wacht)
+    wacht(page, ms)
 
 
 def is_water(kleur):
@@ -164,8 +291,7 @@ def meer_aan(page, pogingen=45):
 
 def hoofdstuk_bediening(browser, mislukt):
     """Maat, plaatsing, aanraakbaarheid en geluid. Geen reis, dus geen kansen."""
-    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
-    page = ctx.new_page()
+    ctx, page = nieuwe_pagina(browser)
     fouten = []
     page.on("pageerror", lambda e: fouten.append(str(e)[:200]))
     page.add_init_script("""
@@ -233,24 +359,22 @@ def hoofdstuk_bediening(browser, mislukt):
     # transform hetzelfde als een teruggeveerde: een knop die nooit is
     # aangeraakt staat ook in het midden. Deze test meldde een keer "veert niet
     # terug" terwijl de sleep helemaal niet was aangekomen.
+    #
+    # Beide stappen wachten op de gebeurtenis, tot 5 s echte tijd, en niet een
+    # vast aantal milliseconden: een sleep komt pas bij het volgende frame van
+    # de browser aan. Met een vaste 260 ms en een nepklok viel deze controle op
+    # 28 september in twee van de zes runs om, terwijl de stick gewoon werkte.
     knob = "() => document.querySelector('.mg-stick-knob').style.transform"
-    doos = page.locator(".mg-stick").bounding_box()
-    cx, cy = doos["x"] + doos["width"] / 2, doos["y"] + doos["height"] / 2
-    bewogen = ""
-    for _ in range(3):
-        page.mouse.move(cx, cy)
-        page.mouse.down()
-        page.mouse.move(cx + 40, cy, steps=4)
-        page.wait_for_timeout(260)
-        bewogen = page.evaluate(knob)
-        page.mouse.up()
-        page.wait_for_timeout(400)
-        if bewogen and "translate(0px, 0px)" not in bewogen:
-            break
+    cx, cy = pak_de_stick(page)
+    page.mouse.move(cx + 40, cy)
+    wacht_op(page, KNOP_VERSCHOVEN)
+    bewogen = page.evaluate(knob)
+    page.mouse.up()
     if not bewogen or "translate(0px, 0px)" in bewogen:
         print(f"  FOUT de stick beweegt niet bij slepen ({bewogen!r})")
         mislukt.append("stick beweegt niet")
     else:
+        wacht_op(page, KNOP_IN_RUST)
         rust = page.evaluate(knob)
         if "translate(0px, 0px)" not in rust:
             print(f"  FOUT de stick veert niet terug ({rust!r})")
@@ -273,7 +397,7 @@ def hoofdstuk_bediening(browser, mislukt):
     else:
         print("  OK   geluid uit, en geen AudioContext gebouwd")
     knop.first.click()
-    page.wait_for_timeout(500)
+    wacht(page, 500)
     if knop.first.get_attribute("aria-pressed") != "true":
         print("  FOUT de geluidsknop gaat niet aan")
         mislukt.append("geluidsknop dood")
@@ -288,8 +412,7 @@ def hoofdstuk_bediening(browser, mislukt):
 
 def hoofdstuk_aan_wal(browser, mislukt):
     """Aanmeren, aan wal stappen, en niet het water in kunnen lopen."""
-    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
-    page = ctx.new_page()
+    ctx, page = nieuwe_pagina(browser)
     try:
         if not start_spel(page) or not meer_aan(page):
             return False
@@ -304,7 +427,7 @@ def hoofdstuk_aan_wal(browser, mislukt):
         # Vier seconden dezelfde kant op is met zekerheid tot voorbij de kust,
         # als er niets tegenhoudt: lopen gaat 118 eenheden per seconde.
         stick(page, 0, 46, 4200)
-        page.wait_for_timeout(400)
+        wacht(page, 400)
         kleuren = grond_rond_het_midden(page)
         if sum(1 for k in kleuren if is_water(k)) >= 3:
             print(f"  FOUT Bucky is het water in gelopen ({kleuren})")
@@ -318,8 +441,7 @@ def hoofdstuk_aan_wal(browser, mislukt):
 
 def hoofdstuk_binnen(browser, mislukt):
     """Een huis in, tegen een meubel aan, een kist open, en via de deur eruit."""
-    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
-    page = ctx.new_page()
+    ctx, page = nieuwe_pagina(browser)
     try:
         if not start_spel(page) or not meer_aan(page):
             return False
@@ -344,7 +466,7 @@ def hoofdstuk_binnen(browser, mislukt):
 
         # Tegen het bed aan lopen, linksboven. Je mag er niet doorheen.
         stick(page, -40, -30, 2000)
-        page.wait_for_timeout(300)
+        wacht(page, 300)
         if "Inside" not in status(page):
             print(f"  FOUT lopen tegen een meubel bracht hem de kamer uit "
                   f"({status(page)!r})")
@@ -370,7 +492,7 @@ def hoofdstuk_binnen(browser, mislukt):
         leg_vast(page, "kist")
 
         page.locator(".mg-knop-tas").click()
-        page.wait_for_timeout(600)
+        wacht(page, 600)
         if "Your finds:" not in status(page):
             print(f"  FOUT de tas meldt de inhoud niet ({status(page)!r})")
             mislukt.append("tas")
@@ -396,7 +518,7 @@ def hoofdstuk_binnen(browser, mislukt):
         else:
             print(f"  OK   de vondst blijft in dit spel: {opslag}")
         page.locator(".mg-knop-tas").click()
-        page.wait_for_timeout(400)
+        wacht(page, 400)
 
         # Ver van de deur kom je er niet uit. WELKE melding je krijgt maakt niet
         # uit - het anker doet wat er op die plek te doen valt - maar naar
@@ -440,8 +562,7 @@ def hoofdstuk_binnen(browser, mislukt):
 
 def hoofdstuk_duiken(browser, mislukt):
     """Duiken, een kist onder water, en zonder lucht boven komen zonder verlies."""
-    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
-    page = ctx.new_page()
+    ctx, page = nieuwe_pagina(browser)
     try:
         if not start_spel(page):
             return False
@@ -481,13 +602,13 @@ def hoofdstuk_duiken(browser, mislukt):
 
         def zwem(toets, ms):
             page.keyboard.down(toets)
-            page.wait_for_timeout(ms)
+            wacht(page, ms)
             page.keyboard.up(toets)
 
         # Eerst omlaag: je begint aan de oppervlakte, en daar betekent de actie
         # "klim terug in de boot" - meteen drukken haalt je er dus weer uit.
         page.keyboard.down("ArrowDown")
-        page.wait_for_timeout(2200)
+        wacht(page, 2200)
 
         gevonden = False
         for toets in ["ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight"]:
@@ -496,7 +617,7 @@ def hoofdstuk_duiken(browser, mislukt):
                 # scheert in plaats van er tussendoor op te drijven.
                 zwem(toets, 420)
                 page.keyboard.press("Space")
-                page.wait_for_timeout(500)
+                wacht(page, 500)
                 if "Found:" in status(page):
                     gevonden = True
                     break
@@ -538,7 +659,7 @@ def hoofdstuk_duiken(browser, mislukt):
         for _ in range(20):
             page.locator("#mg-boat").click()
             page.keyboard.down("ArrowDown")
-            page.wait_for_timeout(2500)
+            wacht(page, 2500)
             if "Out of air" in status(page):
                 break
             page.keyboard.up("ArrowDown")
@@ -570,8 +691,7 @@ def hoofdstuk_duikpak(browser, mislukt):
     te gaan zoeken. Dat het pak in de goede kist zit, controleert de wereldtest
     exact; hier gaat het om het gevolg.
     """
-    ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
-    page = ctx.new_page()
+    ctx, page = nieuwe_pagina(browser)
     try:
         page.add_init_script("""
           try {
@@ -589,7 +709,7 @@ def hoofdstuk_duikpak(browser, mislukt):
         page.keyboard.down("ArrowDown")
         opgeraakt_na = None
         for sec in range(1, 33):
-            page.wait_for_timeout(1000)
+            wacht(page, 1000)
             if "Out of air" in status(page):
                 opgeraakt_na = sec
                 break
@@ -607,9 +727,7 @@ def hoofdstuk_duikpak(browser, mislukt):
 
 
 def hoofdstuk_reduced_motion(browser, mislukt):
-    ctx = browser.new_context(viewport={"width": 1440, "height": 1000},
-                              reduced_motion="reduce")
-    page = ctx.new_page()
+    ctx, page = nieuwe_pagina(browser, reduced_motion="reduce")
     page.add_init_script("""
       window.__frames = 0;
       const r = window.requestAnimationFrame;
@@ -620,7 +738,7 @@ def hoofdstuk_reduced_motion(browser, mislukt):
     """)
     start_spel(page)
     voor = page.evaluate("() => window.__frames")
-    page.wait_for_timeout(2000)
+    wacht(page, 2000)
     erbij = page.evaluate("() => window.__frames") - voor
     # Andere delen van de pagina mogen een frame vragen; wat NIET mag is een
     # doorlopende lus, en die zit rond de 120 in twee seconden.
@@ -632,25 +750,29 @@ def hoofdstuk_reduced_motion(browser, mislukt):
     ctx.close()
 
 
-def met_kansen(naam, functie, browser, mislukt, kansen=2):
-    """Draait een hoofdstuk dat een REIS bevat, met een herkansing.
+def reis(naam, functie, browser, mislukt):
+    """Draait een hoofdstuk dat een REIS bevat, één keer.
 
-    Een spel besturen door een joystick is niet exact: de boot rolt uit, de kust
-    is grillig, en waar je aan wal komt hangt af van hoe je hebt aangelegd. Dat
-    is geen reden om de eigenschap dan maar niet te testen, en al helemaal geen
-    reden om een test te laten printen zonder te falen - dat is groen dat niets
-    bewaakt.
+    Tot 29 september kreeg een reis twee kansen, omdat hij van de snelheid van
+    de machine afhing. Op de nepklok is dezelfde reis elke run dezelfde reis:
+    een herkansing zou precies hetzelfde doen, en een echte regressie alleen
+    twee keer zo lang laten duren.
 
-    Twee kansen, en pas daarna een fout. Elke kans begint in een VERSE sessie,
-    dus een mislukte poging kan de volgende niet in de weg zitten. Een echte
-    regressie faalt allebei de keren; een ongelukkige aanvaring niet.
+    Een reis die zijn doel niet haalt (`False`) is een fout, net als een sleep
+    over de stick die niet aankomt (`AssertionError` uit `stick()`). Dat is
+    groen dat iets bewaakt, en rood dat iets zegt.
     """
-    for poging in range(1, kansen + 1):
-        print(f"\n{naam}" + (f"  (poging {poging})" if poging > 1 else ""))
-        if functie(browser, mislukt):
-            return
-    print(f"  FOUT {naam.lower()} is in {kansen} pogingen niet gelukt")
-    mislukt.append(naam.lower())
+    print(f"\n{naam}")
+    try:
+        gelukt = functie(browser, mislukt)
+    except AssertionError as e:
+        print(f"  FOUT {e}")
+        mislukt.append(naam.lower())
+        return
+    if not gelukt:
+        print(f"  FOUT {naam.lower()} is niet gelukt "
+              f"(laatste status: {status_laatst[0].strip()!r})")
+        mislukt.append(naam.lower())
 
 
 def main():
@@ -677,22 +799,22 @@ def main():
     """
     mislukt = []
     with sync_playwright() as pw:
-        def alleen(naam, functie, kansen=1):
+        def alleen(naam, functie, is_reis=False):
             browser = pw.chromium.launch()
             try:
-                if kansen == 1:
+                if is_reis:
+                    reis(naam, functie, browser, mislukt)
+                else:
                     print(f"\n{naam}")
                     functie(browser, mislukt)
-                else:
-                    met_kansen(naam, functie, browser, mislukt)
             finally:
                 browser.close()
 
         alleen("De bediening", hoofdstuk_bediening)
-        alleen("Aanmeren en aan wal", hoofdstuk_aan_wal, kansen=2)
-        alleen("Binnen, kisten en de tas", hoofdstuk_binnen, kansen=2)
-        alleen("Duiken", hoofdstuk_duiken, kansen=2)
-        alleen("Het duikpak", hoofdstuk_duikpak, kansen=2)
+        alleen("Aanmeren en aan wal", hoofdstuk_aan_wal, is_reis=True)
+        alleen("Binnen, kisten en de tas", hoofdstuk_binnen, is_reis=True)
+        alleen("Duiken", hoofdstuk_duiken, is_reis=True)
+        alleen("Het duikpak", hoofdstuk_duikpak, is_reis=True)
         alleen("Reduced motion", hoofdstuk_reduced_motion)
 
     if mislukt:
