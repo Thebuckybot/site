@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Content Security Policy. Als <meta> omdat GitHub Pages geen headers laat
+       zetten. Moet voor elk script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <title>Community rules &amp; reporting - Bucky</title>
+  <meta name="description" content="The rules for posts, replies and messages in the Bucky app, how to report something, and what happens next." />
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="public.css" />
+  <link rel="stylesheet" href="legal.css" />
+  <script src="js/nav-auth.js" type="module"></script>
+<script type="module" src="js/features.js"></script>
+</head>
+<body>
+  <!-- Ronde 22, deel C (1-10-2026): de gedragsregels en het meldbeleid van de app,
+       uit 03-sociaal.md §6.2 en 07-berichten-zorgplicht.md §6.2. De getallen en
+       regelnamen komen uit de code; backend/tests/test_regels_zichtbaar.py houdt
+       ze gelijk. -->
+  <nav class="site-nav" id="site-nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><img class="mark" src="pics/buckypfp.JPEG" alt="Bucky" /><span>Bucky</span></a>
+      <button class="hamburger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <ul id="nav-menu"></ul>
+    </div>
+  </nav>
+
+  <header class="legal-hero">
+    <span class="eyebrow">Legal</span>
+    <h1>Community rules &amp; reporting</h1>
+    <p class="updated">Last updated: 1 October 2026</p>
+  </header>
+
+  <div class="legal-body">
+    <aside class="legal-toc">
+      <h4>On this page</h4>
+      <a href="#age">Who can join in</a>
+      <a href="#rules">The rules</a>
+      <a href="#security">Security content</a>
+      <a href="#messages">Messages</a>
+      <a href="#reporting">How to report</a>
+      <a href="#after">After you report</a>
+      <a href="#review">Asking for a review</a>
+      <a href="#contact">Contact</a>
+    </aside>
+
+    <main class="legal-content">
+      <p>These rules apply to everything you post, reply or send in the Bucky app. They are part of our <a href="tos.html">Terms of Service</a>. If you see something that breaks them, report it: this page explains how, and what happens next.</p>
+
+      <h2 id="age">Who can join in</h2>
+      <p>Anyone who is signed in can look around. Posting, replies, likes, follows and messages are for people aged 16 or older, for now. You tell us your age yourself in the app, the first time you use it, and you can change it in Settings. We take your word for it.</p>
+      <p>Younger players can read posts, see profiles and organizations, do challenges, save posts, report and block. For younger players, joining in needs a parent's permission, and we can't ask for that yet.</p>
+
+      <h2 id="rules">The rules</h2>
+      <p>A moderator's decision always names one of these rules.</p>
+      <ul>
+        <li><strong>Illegal content.</strong> Nothing that breaks the law, like stolen data or threats.</li>
+        <li><strong>Harassment or hate.</strong> Don't target a person or a group.</li>
+        <li><strong>Spam or scams.</strong> No ads, fake giveaways or phishing.</li>
+        <li><strong>A working attack on a real target, or real credentials.</strong> See <a href="#security">Security content</a> below.</li>
+        <li><strong>Self-harm.</strong> Don't encourage it. If someone may be in danger, report it: moderators look at these first.</li>
+        <li><strong>Other rule in the terms.</strong> Anything else these rules or our Terms of Service don't allow.</li>
+      </ul>
+
+      <h2 id="security">Security content: where the line is</h2>
+      <p>Bucky is about security, so talking about attacks is part of it.</p>
+      <ul>
+        <li><strong>Fine:</strong> explaining how a technique works, CTF solutions, labs and practice targets that are meant to be attacked.</li>
+        <li><strong>Not fine:</strong> a working attack on a real target you don't own or don't have permission to test, and real usernames, passwords, keys or other credentials, even old ones.</li>
+      </ul>
+
+      <h2 id="messages">Messages</h2>
+      <ul>
+        <li>Messages are private between the people in the conversation. The community rules for posts apply to messages too.</li>
+        <li>Someone who doesn't follow you can send you a message request. You see it in Message requests, not in your inbox, and they can send at most three messages until you accept. Replying to a request accepts it. If you delete a request, the sender is not told.</li>
+        <li>You can block anyone. After a block, neither of you can message the other or add the other to a group.</li>
+        <li>The person who creates a group manages it: they can rename it and add or remove people. Anyone can leave a group.</li>
+        <li>You can report a conversation. You choose which messages to include; moderators see only those. Anyone you message can report the messages you sent them.</li>
+        <li>We limit how many messages you can send per minute and how many new conversations you can start per day, to stop spam.</li>
+        <li>If a moderator pauses your posting, you also can't send messages until the pause ends. You see the reason in your notices.</li>
+        <li>When you report illegal content in a conversation, explain why and confirm that you're reporting in good faith. You'll be told what the moderators decided.</li>
+      </ul>
+
+      <h2 id="reporting">How to report</h2>
+      <ul>
+        <li><strong>A post or a reply:</strong> open the menu on the post and choose Report post, then pick a reason.</li>
+        <li><strong>A conversation:</strong> open the conversation, tap the info button at the top and choose Report conversation. You pick up to 20 messages to include.</li>
+        <li><strong>A person:</strong> report what they posted or sent, and block them from the menu on one of their posts.</li>
+        <li><strong>Illegal content:</strong> explain what is illegal about it and confirm that you're reporting in good faith.</li>
+        <li><strong>Without an account:</strong> tell us in our <a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Discord support server</a>. Say why it is illegal or breaks a rule, exactly where it is (a link or the post), your name and how to reach you, and that you're reporting in good faith.</li>
+      </ul>
+      <p>You can report something once, and send up to 20 new reports an hour.</p>
+
+      <h2 id="after">What happens after you report</h2>
+      <ul>
+        <li>You see a confirmation right away.</li>
+        <li>Moderators are people with a moderator role in our support server. They look at reports of illegal content and self-harm first.</li>
+        <li>A post that is reported by 3 different people is hidden automatically until a moderator decides.</li>
+        <li>A moderator can remove a post, put it back, or pause someone's posting and messages for 1 hour, 24 hours or 7 days.</li>
+        <li>Every decision names the rule and gives a reason. The person it is about sees it under Moderation notices in their profile.</li>
+        <li>You're told what the moderators decided, in your notifications. We never tell the other person who reported them.</li>
+      </ul>
+
+      <h2 id="review">Asking for a review</h2>
+      <p>If you think a decision about you, or about something you reported, is wrong, ask the team in our support server to look at it again. You can also take a dispute to a certified out-of-court dispute settlement body or to court.</p>
+
+      <h2 id="contact">Contact</h2>
+      <p>For questions about these rules, about a report, or about anything in the app, reach us in our <a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Discord support server</a> or through the <a href="contact.html">Contact</a> page. This is also our contact point for authorities. We answer in English and Dutch.</p>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a class="brand" href="index.html"><img class="mark" src="pics/buckypfp.JPEG" alt="Bucky" /><span>Bucky</span></a>
+        <p>Security, economy and four rival organisations for your Discord server - one platform, endlessly configurable.</p>
+      </div>
+      <div class="footer-col"><h4>Product</h4>
+        <a href="index.html#security">Security</a><a data-feature="dashboard" href="dashboard.html">Dashboard</a><a href="arcade.html">Arcade</a>
+        <a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&scope=bot%20applications.commands&permissions=8">Invite Bucky</a>
+      </div>
+      <div class="footer-col"><h4>Legal &amp; support</h4>
+        <a href="privacy.html">Privacy Policy</a><a href="tos.html">Terms of Service</a><a href="rules.html">Community rules</a><a href="cookie.html">Cookie Policy</a><a href="contact.html">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 Bucky Bot. All rights reserved.</div>
+  </footer>
+
+  <script src="js/nav-toggle.js"></script>
+</body>
+</html>
