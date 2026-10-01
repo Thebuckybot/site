@@ -7,11 +7,9 @@
        zetten; frame-ancestors (clickjacking) werkt daardoor niet. Moet vóór elk
        script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py.
        Chart.js: precies dit ene bestand van cdnjs, geen hele CDN. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://cdn.discordapp.com; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js; style-src 'self'; font-src 'self'; img-src 'self' https://cdn.discordapp.com; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <title>Bucky Security Center</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/fonts.css" />
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/security.css" />
 <script type="module" src="js/features.js"></script>

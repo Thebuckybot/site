@@ -8,12 +8,10 @@
        script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py.
        img-src https://buckybot.app: de badge_url's zijn absolute adressen op
        buckybot.app (bucky1.0/cogs/assets.py); live is dat 'self', lokaal niet. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://buckybot.app; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https://buckybot.app; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <title>Bucky Premium</title>
   <meta name="description" content="The four Bucky premium tiers: what each boost does, and exactly what is in the monthly cache." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/fonts.css" />
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="public.css" />
   <link rel="stylesheet" href="premium.css" />
