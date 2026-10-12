@@ -501,3 +501,52 @@ def test_een_kaart_komt_omhoog_met_een_zachte_rode_gloed(v2):
     na = kaart.evaluate("k => ({t: getComputedStyle(k).transform, s: getComputedStyle(k).boxShadow})")
     assert na["t"] != "none" and na["t"].endswith("-4)"), na
     assert "rgba(255, 70, 92" in na["s"] and na["s"] != voor
+
+
+# --------------------------------------------------------------------------- #
+# E. De donkere Security-sectie
+# --------------------------------------------------------------------------- #
+def test_de_security_sectie_is_het_warme_bijna_zwart_van_de_app(v2):
+    t = v2()
+    bg = t.page.evaluate("() => getComputedStyle(document.querySelector('#security')).backgroundColor")
+    assert bg == "rgb(14, 13, 16)"          # #0E0D10, palette.dark.bg in de app
+
+
+def test_de_lijst_noemt_alleen_wat_security_v2_heeft(v2):
+    t = v2()
+    koppen = t.page.evaluate("() => [...document.querySelectorAll('.secure-list h3')].map(h => h.textContent)")
+    assert koppen == ["Anti-Nuke", "Anti-Raid", "Auto-Moderation", "Live incidents and recovery"]
+    # "Real-Time Alerts" uit de brief staat er met opzet niet: dat bestaat niet als
+    # functie. Komt hij er ooit bij, dan eerst in de bot.
+    assert not t.page.locator("text=Real-Time Alerts").count()
+
+
+def test_het_kaartje_is_een_voorbeeld_en_zegt_dat(v2):
+    t = v2()
+    paneel = t.page.evaluate("""() => {
+      const p = document.querySelector('.secure-panel');
+      return {tekst: p.innerText, label: document.getElementById(p.getAttribute('aria-labelledby')).textContent};
+    }""")
+    assert "EXAMPLE" in paneel["tekst"].upper()
+    assert "not live data" in paneel["label"]
+    import re
+    assert not re.search(r"\d", paneel["tekst"]), "een getal in een voorbeeld leest als een echte telling"
+
+
+def test_de_modules_in_het_kaartje_bestaan_echt():
+    import re
+    bron = SITE.parent / "bucky1.0" / "cogs" / "security_v2" / "constants.py"
+    if not bron.exists():
+        pytest.skip("de bot-boom staat niet naast site/ in deze checkout")
+    echt = set(re.findall(r'"label":\s*"([^"]+)"', bron.read_text(encoding="utf-8")))
+    html = (SITE / "v2" / "index.html").read_text(encoding="utf-8")
+    getoond = re.findall(r'<li class="panel-row"><span>([^<]+)</span>', html)
+    getoond.append(re.search(r'class="panel-incident-name">([^<]+)<', html).group(1))
+    assert getoond and set(getoond) <= echt, set(getoond) - echt
+
+
+def test_de_knop_naar_het_security_center_volgt_de_dashboardvlag(v2):
+    t = v2(features={"premium": True, "dashboard": False})
+    t.page.wait_for_function("() => document.querySelector('.btn-on-dark').hidden")
+    assert not t.page.locator(".btn-on-dark").is_visible()
+

@@ -768,3 +768,182 @@ html.v2 {
   .v2 .bridge { margin-top: 80px; text-align: left; }
   .v2 .bridge-text { margin-left: 0; }
 }
+
+/* =========================================================================
+   E. De donkere Security-sectie: een bewuste contrastbreuk in het warme
+   bijna-zwart van de app. Rood spaarzaam: het etiket, de vinkjes, de aan-stand.
+   ========================================================================= */
+.v2 .secure {
+  position: relative;
+  isolation: isolate;
+  margin-inline: clamp(0px, 1.2vw, 16px);
+  border-radius: clamp(0px, 2.6vw, 36px);
+  padding: 128px 0;
+  background: var(--dark-bg);
+  color: var(--dark-ink);
+  overflow: hidden;
+}
+.v2 .secure::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 78% 30%, rgba(255, 70, 92, 0.14), transparent 46%);
+  pointer-events: none;
+}
+.v2 .secure-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 72px;
+  align-items: center;
+}
+.v2 .secure-label { color: var(--signal); }
+.v2 .secure-title { margin-top: 18px; color: var(--dark-ink); }
+.v2 .secure-lead { margin-top: 22px; color: var(--dark-dim); max-width: 44ch; }
+.v2 .secure-list { margin-top: 40px; display: grid; gap: 22px; }
+.v2 .secure-list li { display: grid; grid-template-columns: 22px 1fr; gap: 16px; align-items: start; }
+.v2 .secure-check { color: var(--signal); margin-top: 2px; }
+.v2 .secure-list h3 {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--dark-ink);
+}
+.v2 .secure-list p { margin-top: 4px; color: var(--dark-dim); font-size: 16px; line-height: 1.55; }
+
+.v2 .btn-on-dark {
+  margin-top: 44px;
+  background: transparent;
+  color: var(--dark-ink);
+  border-color: var(--dark-line);
+}
+.v2 .btn-on-dark:hover {
+  transform: translateY(-1px);
+  border-color: var(--dark-dim);
+  background: var(--dark-surface);
+}
+.v2 .secure :focus-visible { outline-color: var(--signal); }
+
+/* Het kaartje: een nette, statische mock in de stijl van de app. */
+.v2 .secure-panel {
+  margin: 0;
+  padding: 22px;
+  border: 1px solid var(--dark-line);
+  border-radius: 22px;
+  background: var(--dark-surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 30px 60px -30px rgba(0, 0, 0, 0.8);
+  font-size: 15px;
+}
+.v2 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.v2 .panel-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--dark-ink);
+}
+.v2 .panel-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); }
+.v2 .panel-tag {
+  padding: 4px 10px;
+  border: 1px solid var(--dark-line);
+  border-radius: var(--radius-pill);
+  color: var(--dark-dim);
+  font-size: 11px;
+}
+.v2 .panel-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--dark-raised);
+}
+.v2 .panel-mode .label,
+.v2 .panel-block-title { color: var(--dark-dim); }
+.v2 .panel-mode-value { color: var(--dark-ink); font-weight: 600; }
+.v2 .panel-block { margin-top: 20px; }
+.v2 .panel-block-title { margin-bottom: 8px; }
+.v2 .panel-rows { border-top: 1px solid var(--dark-line); }
+.v2 .panel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--dark-line);
+  color: var(--dark-ink);
+}
+.v2 .panel-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.v2 .panel-switch.is-on { color: var(--signal); }
+.v2 .panel-switch.is-off { color: var(--dark-dim); }
+.v2 .panel-knob {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--dark-raised);
+  border: 1px solid var(--dark-line);
+}
+.v2 .panel-knob::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--dark-dim);
+}
+.v2 .is-on .panel-knob { background: var(--signal); border-color: var(--signal); }
+.v2 .is-on .panel-knob::after { left: 14px; background: var(--dark-bg); }
+.v2 .panel-incident {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--dark-raised);
+}
+.v2 .panel-incident-name { color: var(--dark-ink); font-weight: 600; }
+.v2 .panel-incident-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 8px;
+  color: var(--dark-dim);
+  font-size: 14px;
+}
+/* Een rand en geen rode vulling: rood op een rode tint haalde 4,16:1 (de
+   AA-meting in test_v2_pagina.py vond het), rood op --dark-raised 4,93:1. */
+.v2 .panel-pill {
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 70, 92, 0.5);
+  border-radius: var(--radius-pill);
+  color: var(--signal);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.v2 .panel-caption {
+  margin-top: 16px;
+  color: var(--dark-dim);
+  font-size: 13px;
+}
+
+@media (max-width: 1079.98px) {
+  .v2 .secure-grid { grid-template-columns: 1fr; gap: 56px; }
+  .v2 .secure-panel { max-width: 560px; }
+}
+@media (max-width: 639.98px) {
+  .v2 .secure { padding: 88px 0; margin-inline: 0; border-radius: 0; }
+  .v2 .secure-panel { padding: 18px; }
+}
