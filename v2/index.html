@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="v2">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,11 +8,24 @@
        en is er geen preview (?site=v2), dan gaat deze pagina terug naar v1. -->
   <script src="../js/site-version.js" data-page="v2" data-v1="../"></script>
   <title>Bucky - More than a bot. A universe.</title>
+  <meta name="description" content="Bucky brings security, a living economy, four rival organisations and an arcade to your Discord server, all in one connected platform." />
   <link rel="canonical" href="https://buckybot.app/" />
+  <meta name="theme-color" content="#EAEDF1" />
+
+  <!-- Letters van de eigen site, nooit van Google (test_v2_pagina.py). De
+       titel en de tekst staan boven de vouw, dus die twee eerst. -->
+  <link rel="preload" href="fonts/inter-800.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/v2.css" />
+
+  <link rel="icon" type="image/jpeg" href="../pics/buckypfp.JPEG" />
 </head>
 <body>
-  <main id="top">
-    <h1>More than a bot. A universe.</h1>
+  <a class="skip" href="#main">Skip to content</a>
+  <main id="main">
+    <section class="wrap" id="top">
+      <h1 class="title-xl">More than a bot. A universe.</h1>
+    </section>
   </main>
 </body>
 </html>
