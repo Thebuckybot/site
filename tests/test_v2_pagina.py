@@ -99,7 +99,7 @@ class V2:
                                "Access-Control-Allow-Credentials": "true"})
 
     def _features(self, route):
-        self._json(route, {"features": self.features, "homepage": {"version": "v1"}})
+        self._json(route, {"features": self.features, "site": {"version": "v1"}})
 
     def _stats(self, route):
         if self.stats == "afbreken":

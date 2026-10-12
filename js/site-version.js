@@ -1,11 +1,25 @@
 /*
- * DE VERSIESCHAKELAAR VAN DE VOORPAGINA (docs/site-redesign-clean-epic.md, deel A0).
+ * DE VERSIESCHAKELAAR VAN DE SITE (docs/site-redesign-clean-epic.md, deel A0; sitebreed
+ * sinds 13-10-2026).
  * ADR: docs/adr/0011-twee-voorpaginas-gekozen-door-de-config-en-een-router-in-de-head.md
  *
- * buckybot.app heeft twee voorpagina's naast elkaar: v1 (index.html, de huidige)
- * en v2 (v2/index.html, "Clean & Epic"). Welke het publiek krijgt, zet de
- * eigenaar met `+ownerconfig` in site_features.json (`homepage.version`); de
+ * buckybot.app heeft twee versies naast elkaar: v1 (de huidige) en v2 ("Clean &
+ * Epic", in v2/). Welke het publiek krijgt, zet de eigenaar met `+ownerconfig` in
+ * site_features.json (`site.version`, tot 13-10-2026 `homepage.version`); de
  * backend geeft die stand mee in /api/site/features. Omzetten is dus geen deploy.
+ *
+ * DRIE SOORTEN PAGINA, gekozen met `data-page` op de scripttag:
+ *   "v1" / "v2"  een pagina met een tegenhanger (`data-v1` / `data-v2`, relatief).
+ *                Klopt de versie niet, dan gaat hij daarheen. Een pagina zonder
+ *                tegenhanger (de org-pagina bestaat alleen in v2) wijst in
+ *                `data-v1` naar wat v1 op die plek deed.
+ *   "beide"      een pagina die in allebei hetzelfde is (de arcade). Geen sprong;
+ *                de versie bepaalt alleen gedrag. Met `data-gate="login"` eist
+ *                hij onder v2 een sessie: zonder gaat de bezoeker naar de login en
+ *                daarna terug naar deze pagina. Dat is een nette deur aan de
+ *                voorkant, geen beveiliging: de data achter de arcade bewaakt de
+ *                backend zelf (elke persoonlijke route eist een sessie).
+ * Pagina's zonder deze scripttag (de dashboards) zijn altijd v1.
  *
  * DIT IS DE SCHAKELAAR EN GEEN VAN BEIDE VERSIES. Beide pagina's laden dit ene
  * bestand, met hun eigen naam erbij (`data-page`). Verder delen ze niets: geen
@@ -49,6 +63,8 @@
     var WACHT_MS = 1200;            // langer wacht een eerste bezoek niet op de backend
     var VANGNET_MS = 2500;          // nooit langer dan dit een lege pagina
     var LUS_MS = 2000;              // twee sprongen heen en terug binnen dit venster = een lus
+    var POORT_MS = 2400;            // zo lang wacht de login-poort op /api/me (onder het vangnet)
+    var SESSIE_SLEUTEL = "user_info";   // de sessiecache van js/nav-auth.js
 
     function geldig(v) {
         return VERSIES.indexOf(v) !== -1 ? v : null;
@@ -114,14 +130,17 @@
             .then(function (body) {
                 // Een backend zonder dit veld (van voor deze ronde) of met een
                 // onzinwaarde betekent v1: dat is wat de eigenaar dan ook ziet.
-                var v = geldig(body && body.homepage && body.homepage.version) || STANDAARD;
+                var v = geldig(body && body.site && body.site.version) || STANDAARD;
                 schrijf("localStorage", CACHE_SLEUTEL, JSON.stringify({ v: v, at: Date.now() }));
                 return v;
             });
     }
 
     var script = document.currentScript;
-    var pagina = geldig(script && script.getAttribute("data-page")) || STANDAARD;
+    var paginaRuw = script && script.getAttribute("data-page");
+    var gedeeld = paginaRuw === "beide";
+    var pagina = geldig(paginaRuw) || STANDAARD;
+    var poort = script && script.getAttribute("data-gate");
     var adressen = {
         v1: (script && script.getAttribute("data-v1")) || "./",
         v2: (script && script.getAttribute("data-v2")) || "v2/"
@@ -141,7 +160,70 @@
         root.style.visibility = "";
     }
 
+    // ---- De login-poort (alleen op een gedeelde pagina, alleen onder v2) ----
+    // Hergebruikt de sessie van de site: dezelfde /api/me die js/nav-auth.js
+    // vraagt, en dezelfde cache (sessionStorage "user_info") die nav-auth.js
+    // vult en bij uitloggen wist.
+    function naarLogin() {
+        // Terug naar deze pagina, relatief aan de site (backend: sessions.
+        // safe_return_path laat alleen een eigen pagina toe, geen open redirect).
+        var basis = new URL("../", script.src).href;
+        var hier = window.location.href;
+        var terug = hier.indexOf(basis) === 0 ? hier.slice(basis.length) : "";
+        if (vangnet !== null) { clearTimeout(vangnet); vangnet = null; }
+        root.style.visibility = "hidden";
+        window.location.replace(API_URL + "/login?redirect=" + encodeURIComponent(terug));
+    }
+
+    function vraagSessie() {
+        return fetch(API_URL + "/api/me", { credentials: "include" }).then(function (res) {
+            if (res.status === 401) return false;
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.json().then(function (body) {
+                if (body && body.logged_in && body.user) {
+                    schrijf("sessionStorage", SESSIE_SLEUTEL, JSON.stringify(body.user));
+                    return true;
+                }
+                return false;
+            });
+        });
+    }
+
+    function loginPoort() {
+        var bekend = null;
+        try { bekend = JSON.parse(lees("sessionStorage", SESSIE_SLEUTEL) || "null"); } catch (e) { bekend = null; }
+        if (bekend) {
+            // Ingelogd volgens deze tab: meteen tonen, op de achtergrond nagaan.
+            // Verliep de sessie intussen, dan alsnog naar de login.
+            toon();
+            vraagSessie().then(function (ok) { if (!ok) naarLogin(); }, function () { /* onbekend: laten */ });
+            return;
+        }
+        verberg();
+        var klaar = false;
+        // Onbereikbare backend: open laten (de data is zonder sessie toch dicht)
+        // in plaats van een lege pagina of een lus naar een login die niet antwoordt.
+        var klok = setTimeout(function () { if (!klaar) { klaar = true; toon(); } }, POORT_MS);
+        vraagSessie().then(function (ok) {
+            if (klaar) return;
+            klaar = true;
+            clearTimeout(klok);
+            if (ok) toon(); else naarLogin();
+        }, function () {
+            if (klaar) return;
+            klaar = true;
+            clearTimeout(klok);
+            toon();
+        });
+    }
+
     function ga(versie) {
+        window.BuckySiteVersion.versie = versie;
+        root.setAttribute("data-site-versie", versie);
+        if (gedeeld) {
+            if (versie === "v2" && poort === "login") loginPoort(); else toon();
+            return;
+        }
         if (versie === pagina) { toon(); return; }
         // LUSBEVEILIGING. Kwamen we hier net met een sprong NAARTOE en willen we
         // meteen weer weg, dan zijn de twee pagina's het oneens (opslag die niet
@@ -153,7 +235,9 @@
 
         var doel = new URL(adressen[versie], window.location.href);
         doel.search = window.location.search;
-        doel.hash = window.location.hash;
+        // Een doel met een eigen anker (v1 van de org-pagina: arcade.html#the-vm)
+        // houdt dat; anders gaat het anker van deze pagina mee.
+        if (!doel.hash) doel.hash = window.location.hash;
         // Onzichtbaar blijven tot de andere versie er staat: geen vangnet meer,
         // want dat zou juist de verkeerde versie laten zien.
         if (vangnet !== null) { clearTimeout(vangnet); vangnet = null; }
@@ -177,7 +261,8 @@
         besluit = { versie: STANDAARD, bron: "fout", ophalen: "nee" };
     }
 
-    window.BuckySiteVersion = { kies: kies, pagina: pagina, besluit: besluit, VERSIES: VERSIES };
+    window.BuckySiteVersion = { kies: kies, pagina: gedeeld ? "beide" : pagina, besluit: besluit,
+                                VERSIES: VERSIES, versie: null };
 
     if (besluit.ophalen === "wachten") {
         verberg();

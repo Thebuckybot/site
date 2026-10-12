@@ -1,13 +1,13 @@
 """De versieschakelaar van de voorpagina, zoals een bezoeker hem merkt (deel A0).
 
 buckybot.app heeft twee voorpagina's: v1 (index.html) en v2 (v2/index.html).
-Welke het publiek krijgt staat in site_features.json (`homepage.version`, om te
+Welke het publiek krijgt staat in site_features.json (`site.version`, sitebreed; tot 13-10 `homepage.version`, om te
 zetten met `+ownerconfig`) en komt binnen via /api/site/features. De keuze
 maakt js/site-version.js, voor de eerste paint.
 
 De andere twee kanten van deze schakelaar:
-  * backend/tests/test_site_homepage_versie.py  - de lezer (onzin wordt v1);
-  * bucky1.0/tests/test_owner_config_homepage.py - de schrijver (alleen v1/v2).
+  * backend/tests/test_site_versie_config.py    - de lezer (onzin wordt v1);
+  * bucky1.0/tests/test_owner_config_site_versie.py - de schrijver (alleen v1/v2).
 
 WAT DIT BEWAAKT, in een echte browser met een onderschepte backend:
   * standaard v1; config op v2 geeft v2; een onzinwaarde of een oude backend
@@ -185,7 +185,7 @@ class Opstelling:
 
 
 def stand(versie):
-    return {"features": {"wordle": True}, "homepage": {"version": versie}}
+    return {"features": {"wordle": True}, "site": {"version": versie}}
 
 
 @pytest.fixture
@@ -226,12 +226,12 @@ def test_een_hash_en_query_gaan_mee_naar_de_andere_versie(opstelling):
 
 @pytest.mark.parametrize("waarde", ["v3", "V2", "", None, 2])
 def test_een_ongeldige_waarde_valt_terug_op_v1(opstelling, waarde):
-    o = opstelling({"features": {}, "homepage": {"version": waarde}}).open("/")
+    o = opstelling({"features": {}, "site": {"version": waarde}}).open("/")
     assert o.versie == "v1"
 
 
 def test_een_backend_van_voor_deze_ronde_geeft_v1(opstelling):
-    """Zonder `homepage` in het antwoord (backend nog niet herstart): v1."""
+    """Zonder `site` in het antwoord (een backend van voor deze ronde): v1."""
     o = opstelling({"features": {"wordle": True}}).open("/")
     assert o.versie == "v1"
 
