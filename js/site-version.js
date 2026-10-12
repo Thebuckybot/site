@@ -103,7 +103,9 @@
 
     /** Vraagt de stand op. Geeft "v1"/"v2", of gooit bij een netwerk- of HTTP-fout. */
     function haal() {
-        return fetch(API_URL + "/api/site/features", { credentials: "omit" })
+        // `?switch=1` doet niets aan het antwoord; het maakt dit verzoek
+        // herkenbaar naast dat van js/features.js (in de tests en in een log).
+        return fetch(API_URL + "/api/site/features?switch=1", { credentials: "omit" })
             .then(function (res) {
                 if (!res.ok) throw new Error("HTTP " + res.status);
                 return res.json();

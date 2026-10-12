@@ -74,7 +74,7 @@ class V2:
         self.features = features or {"premium": True, "dashboard": True}
         self.page.on("request", lambda r: self.verzoeken.append(r.url))
         self.page.route("**/*", self._buiten)                  # vangnet eerst
-        self.page.route(f"{API}/api/site/features", self._features)
+        self.page.route(f"{API}/api/site/features*", self._features)
         self.page.route(f"{API}/api/site/stats", self._stats)
         self.page.goto(f"{server}/v2/?site=v2", wait_until="load")
         self.page.wait_for_function(
@@ -232,3 +232,218 @@ def test_premium_volgt_de_vlag(v2):
     t.page.wait_for_function(
         "() => [...document.querySelectorAll('[data-feature=premium]')].every(e => e.hidden)")
     assert not t.page.locator(".nav-links a", has_text="Premium").is_visible()
+
+
+# --------------------------------------------------------------------------- #
+# C. De hero
+# --------------------------------------------------------------------------- #
+def test_het_heldenbeeld_heeft_afmetingen_varianten_en_wordt_vooraf_gehaald(v2):
+    t = v2()
+    img = t.page.evaluate("""() => {
+      const i = document.querySelector('.hero-img');
+      const s = document.querySelector('.hero picture source');
+      const pre = document.querySelector('link[rel=preload][as=image]');
+      return {w: i.getAttribute('width'), h: i.getAttribute('height'), prio: i.getAttribute('fetchpriority'),
+              geladen: i.complete && i.naturalWidth > 0, bron: i.currentSrc,
+              srcset: s.getAttribute('srcset'), type: s.getAttribute('type'),
+              pre: pre && pre.getAttribute('imagesrcset')};
+    }""")
+    assert (img["w"], img["h"]) == ("1600", "900")
+    assert img["prio"] == "high" and img["geladen"]
+    assert img["type"] == "image/webp" and img["bron"].endswith(".webp")
+    assert img["pre"] == img["srcset"], "de preload haalt een andere variant dan het beeld toont"
+    from PIL import Image
+    for deel in img["srcset"].split(","):
+        pad, breedte = deel.split()
+        bestand = (SITE / "v2" / pad).resolve()
+        assert bestand.exists(), pad
+        assert bestand.stat().st_size < 120_000, f"{pad} is {bestand.stat().st_size} bytes"
+        assert Image.open(bestand).width == int(breedte[:-1])
+
+
+def test_de_hero_draagt_exact_de_hoekkleur_en_het_beeld_vervaagt(v2):
+    t = v2()
+    uit = t.page.evaluate("""() => {
+      const h = getComputedStyle(document.querySelector('.hero'));
+      const i = getComputedStyle(document.querySelector('.hero-img'));
+      return {bg: h.backgroundColor, masker: i.maskImage || i.webkitMaskImage};
+    }""")
+    assert uit["bg"] == "rgb(234, 237, 241)"          # #EAEDF1, de pixel linksboven
+    assert "gradient" in uit["masker"] and "rgba(0, 0, 0, 0)" in uit["masker"]
+
+
+_BURCHT = """() => {
+  // Waar de rode burcht (66,1% van de breedte van de render) op het scherm
+  // staat: object-fit cover, object-position, en dan de schaal rond de origin.
+  const i = document.querySelector('.hero-img');
+  const s = getComputedStyle(i);
+  const m = s.transform === 'none' ? new DOMMatrix() : new DOMMatrix(s.transform);
+  const w = i.offsetWidth, h = i.offsetHeight;          // de ongeschaalde doos
+  const doos = i.getBoundingClientRect();
+  const links = doos.left + (doos.width - w * m.a) / 2 * 0;   // offsetLeft hieronder
+  let el = i, x0 = 0; while (el) { x0 += el.offsetLeft; el = el.offsetParent; }
+  const schaal = Math.max(w / i.naturalWidth, h / i.naturalHeight);
+  const breed = i.naturalWidth * schaal;
+  const px = parseFloat(s.objectPosition) / 100;
+  const xLokaal = 0.661 * breed - (breed - w) * px;
+  const ox = parseFloat(s.transformOrigin);
+  const xNa = ox + (xLokaal - ox) * m.a;
+  return {burcht: x0 + xNa - scrollX, midden: innerWidth / 2, breedte: innerWidth};
+}"""
+
+
+def test_op_een_telefoon_staat_de_burcht_in_het_midden(v2):
+    t = v2(breedte=390, hoogte=844)
+    m = t.page.evaluate(_BURCHT)
+    assert abs(m["burcht"] - m["midden"]) < 0.08 * m["breedte"], m
+
+
+def test_op_een_breed_scherm_staat_de_burcht_rechts_en_de_kop_links(v2):
+    t = v2(breedte=1280)
+    m = t.page.evaluate(_BURCHT)
+    assert m["burcht"] > 0.6 * m["breedte"], m
+    kop = t.page.evaluate("() => document.querySelector('.hero-title').getBoundingClientRect().right")
+    assert kop < m["burcht"] - 150
+    # "More than a bot." op een regel, "A universe." eronder
+    regels = t.page.evaluate("""() => [...document.querySelectorAll('.hero-line')]
+        .map(l => Math.round(l.getBoundingClientRect().height))""")
+    hoogte = t.page.evaluate("() => parseFloat(getComputedStyle(document.querySelector('.hero-title')).lineHeight)")
+    assert len(regels) == 2 and all(h <= hoogte * 1.2 for h in regels), (regels, hoogte)
+
+
+# --------------------------------------------------------------------------- #
+# C4. De stats-balk: echte cijfers of niets
+# --------------------------------------------------------------------------- #
+def _balk(page):
+    return page.evaluate("""() => {
+      const b = document.querySelector('[data-stats]');
+      return {zichtbaar: !b.hidden && b.offsetParent !== null,
+              vakken: [...b.querySelectorAll('.stat')].map(s => [s.querySelector('dt').textContent,
+                       s.querySelector('dd .sr-only').textContent])};
+    }""")
+
+
+def test_de_balk_toont_de_echte_cijfers(v2):
+    t = v2(minder_beweging=True)
+    t.page.wait_for_function("() => !document.querySelector('[data-stats]').hidden")
+    assert _balk(t.page)["vakken"] == [["Discord servers", "104"], ["Players this week", "33"],
+                                       ["Challenges finished", "194"], ["Organisations", "4"]]
+
+
+def test_wat_ontbreekt_of_geen_echt_getal_is_valt_weg(v2):
+    t = v2(stats={"stats": {"servers": 104, "players_week": 0, "challenges": None,
+                            "organisations": "4", "verzonnen": 999}}, minder_beweging=True)
+    t.page.wait_for_function("() => !document.querySelector('[data-stats]').hidden")
+    assert _balk(t.page)["vakken"] == [["Discord servers", "104"]]
+
+
+@pytest.mark.parametrize("stats", ["afbreken", 500, 503, {"stats": {}}, {"stats": None}, {"iets": 1},
+                                   {"stats": {"servers": 0, "players_week": -3}}],
+                         ids=["afbreken", "500", "503", "leeg", "null", "geen-stats", "nul-en-negatief"])
+def test_zonder_echte_cijfers_blijft_de_balk_weg(v2, stats):
+    t = v2(stats=stats)
+    t.page.wait_for_timeout(600)
+    b = _balk(t.page)
+    assert not b["zichtbaar"] and b["vakken"] == []
+    tekst = t.page.evaluate("() => document.querySelector('.hero').innerText")
+    assert " 0 " not in f" {tekst} "
+
+
+def test_de_cijfers_tellen_op_en_eindigen_op_het_echte_getal(v2):
+    t = v2()
+    t.page.wait_for_function("() => !document.querySelector('[data-stats]').hidden")
+    t.page.wait_for_timeout(1500)
+    zicht = t.page.evaluate(
+        "() => [...document.querySelectorAll('.stat dd [aria-hidden]')].map(s => s.textContent)")
+    assert zicht == ["104", "33", "194", "4"]
+
+
+def test_met_minder_beweging_staat_het_getal_er_meteen(v2):
+    t = v2(minder_beweging=True)
+    t.page.wait_for_function("() => !document.querySelector('[data-stats]').hidden")
+    zicht = t.page.evaluate(
+        "() => [...document.querySelectorAll('.stat dd [aria-hidden]')].map(s => s.textContent)")
+    assert zicht == ["104", "33", "194", "4"]
+
+
+# --------------------------------------------------------------------------- #
+# H. Geen layout-shift
+# --------------------------------------------------------------------------- #
+_CLS = """() => new Promise((klaar) => {
+  let som = 0;
+  new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) som += e.value; })
+    .observe({type: 'layout-shift', buffered: true});
+  setTimeout(() => klaar(som), 2200);
+})"""
+
+
+@pytest.mark.parametrize("breedte,hoogte", [(390, 844), (820, 1180), (1280, 900)])
+def test_geen_layout_shift_ook_niet_als_de_cijfers_binnenkomen(v2, breedte, hoogte):
+    t = v2(breedte=breedte, hoogte=hoogte)
+    cls = t.page.evaluate(_CLS)
+    assert cls < 0.01, cls
+
+
+@pytest.mark.parametrize("breedte,hoogte", [(390, 844), (1280, 900)])
+def test_geen_layout_shift_als_de_cijfers_wegblijven(v2, breedte, hoogte):
+    t = v2(breedte=breedte, hoogte=hoogte, stats="afbreken")
+    assert t.page.evaluate(_CLS) < 0.01
+
+
+# --------------------------------------------------------------------------- #
+# Over alles: AA tegen wat er werkelijk achter de tekst staat
+# --------------------------------------------------------------------------- #
+_AA = r"""() => {
+  const rgba = (s) => { const m = s.match(/rgba?\(([^)]+)\)/); if (!m) return null;
+    const p = m[1].split(',').map(x => parseFloat(x)); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; };
+  const over = (boven, onder) => { const a = boven[3]; return [0, 1, 2].map(i => boven[i] * a + onder[i] * (1 - a)).concat(1); };
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const L = (k) => 0.2126 * lin(k[0]) + 0.7152 * lin(k[1]) + 0.0722 * lin(k[2]);
+  const ratio = (a, b) => { const x = L(a), y = L(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const achtergrond = (el) => {
+    const lagen = [];
+    for (let n = el; n; n = n.parentElement) {
+      const k = rgba(getComputedStyle(n).backgroundColor);
+      if (k && k[3] > 0) { lagen.push(k); if (k[3] >= 1) break; }
+    }
+    let kleur = [250, 250, 252, 1];
+    for (let i = lagen.length - 1; i >= 0; i--) kleur = over(lagen[i], kleur);
+    return kleur;
+  };
+  const fout = [];
+  let geteld = 0;
+  const loper = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const gezien = new Set();
+  while (loper.nextNode()) {
+    const tekst = loper.currentNode; const el = tekst.parentElement;
+    if (!tekst.textContent.trim() || gezien.has(el)) continue; gezien.add(el);
+    const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+    if (r.width === 0 || r.height === 0 || s.visibility === 'hidden' || el.closest('.sr-only,[hidden]')) continue;
+    let zicht = 1; for (let n = el; n; n = n.parentElement) zicht *= parseFloat(getComputedStyle(n).opacity);
+    if (zicht < 0.99) continue;
+    geteld++;
+    const voor = rgba(s.color); const bg = achtergrond(el);
+    const groot = parseFloat(s.fontSize) >= 24 || (parseFloat(s.fontSize) >= 18.66 && parseInt(s.fontWeight) >= 700);
+    const r2 = ratio(over(voor, bg), bg);
+    if (r2 < (groot ? 3 : 4.5)) fout.push(`${el.tagName}.${el.className} "${tekst.textContent.trim().slice(0, 30)}" ${r2.toFixed(2)}:1`);
+  }
+  return {fout, geteld};
+}"""
+
+
+@pytest.mark.parametrize("breedte,hoogte", [(390, 844), (1280, 900)])
+def test_elke_zichtbare_tekst_haalt_aa(v2, breedte, hoogte):
+    t = v2(breedte=breedte, hoogte=hoogte, minder_beweging=True)
+    t.page.wait_for_function("() => !document.querySelector('[data-stats]').hidden")
+    uit = t.page.evaluate(_AA)
+    assert uit["geteld"] > 20, "de meting zag bijna geen tekst; dan bewijst hij niets"
+    assert uit["fout"] == []
+
+
+def test_de_aa_meting_ziet_een_slecht_paar(v2):
+    """De meting hierboven kan alleen groen zijn als hij rood ZOU worden."""
+    t = v2(minder_beweging=True)
+    t.page.evaluate("""() => { const p = document.createElement('p'); p.textContent = 'proef';
+      p.style.color = '#FF465C'; p.style.background = '#EAEDF1'; p.style.fontSize = '16px';
+      document.querySelector('.hero-copy').append(p); }""")
+    assert any("proef" in f for f in t.page.evaluate(_AA)["fout"])

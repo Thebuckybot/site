@@ -16,6 +16,9 @@
        titel en de tekst staan boven de vouw, dus die twee eerst. -->
   <link rel="preload" href="fonts/inter-800.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" as="image" type="image/webp"
+        imagesrcset="../assets/images/hero/bucky-hero-island-700.webp 700w, ../assets/images/hero/bucky-hero-island-1000.webp 1000w, ../assets/images/hero/bucky-hero-island-1600.webp 1600w"
+        imagesizes="(max-width: 759px) 190vw, (max-width: 1079px) 150vw, min(125vw, 1640px)" fetchpriority="high" />
   <link rel="stylesheet" href="css/v2.css" />
 
   <link rel="icon" type="image/jpeg" href="../pics/buckypfp.JPEG" />
@@ -65,8 +68,45 @@
   </header>
 
   <main id="main">
-    <section class="wrap" id="top">
-      <h1 class="title-xl">More than a bot. A universe.</h1>
+    <!-- C. DE HERO. Het beeld heeft geen doorzichtige achtergrond: de sectie
+         draagt exact de hoekkleur ervan (--sky) en een masker laat de randen
+         daarin oplossen. Breedte en hoogte staan erop, dus geen layout-shift. -->
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-media" data-parallax>
+        <picture>
+          <source type="image/webp"
+                  srcset="../assets/images/hero/bucky-hero-island-700.webp 700w, ../assets/images/hero/bucky-hero-island-1000.webp 1000w, ../assets/images/hero/bucky-hero-island-1600.webp 1600w"
+                  sizes="(max-width: 759px) 190vw, (max-width: 1079px) 150vw, min(125vw, 1640px)" />
+          <img class="hero-img" src="../assets/images/hero/bucky-hero-island-1000.jpg" width="1600" height="900"
+               alt="A low-poly floating island above the clouds, with Bucky's red citadel at its centre and smaller districts glowing green, blue and amber around it."
+               fetchpriority="high" decoding="async" />
+        </picture>
+      </div>
+
+      <div class="hero-inner wrap">
+        <div class="hero-copy">
+          <h1 class="hero-title title-xl" id="hero-title">
+            <span class="hero-line">More than a bot.</span>
+            <span class="hero-line hero-accent">A universe.</span>
+          </h1>
+          <p class="hero-sub lead">Security, economy, organisations and challenges, all in one connected platform.</p>
+          <div class="hero-actions">
+            <a class="btn btn-signal btn-lg" href="https://discord.com/oauth2/authorize?client_id=907664862493167680&amp;scope=bot%20applications.commands&amp;permissions=8">Invite Bucky</a>
+            <a class="btn btn-quiet btn-lg" href="#features">View features</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- C4. LIVE CIJFERS uit /api/site/stats, dezelfde bronnen als +ownerstats.
+           Verborgen tot er echte cijfers zijn; lukt het ophalen niet, dan blijft
+           hij weg. Nooit nullen. Absoluut geplaatst: verschijnen of wegblijven
+           verschuift niets. -->
+      <div class="stats-wrap wrap">
+        <div class="stats" data-stats hidden>
+          <p class="stats-live label"><span class="stats-dot" aria-hidden="true"></span>Live</p>
+          <dl class="stats-list" data-stats-list></dl>
+        </div>
+      </div>
     </section>
   </main>
 

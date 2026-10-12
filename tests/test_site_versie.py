@@ -114,7 +114,10 @@ class Opstelling:
         # VANGNET EERST, specifiek erna: Playwright probeert routes in omgekeerde
         # volgorde van registratie.
         self.page.route("**/*", self._buiten)
-        self.page.route(f"{API}/api/site/features", self._features)
+        # Met en zonder query: de schakelaar vraagt `?switch=1`, js/features.js
+        # (op v1 en op v2) vraagt zonder. Alleen de eerste telt als verzoek
+        # van de schakelaar.
+        self.page.route(f"{API}/api/site/features*", self._features)
 
     def _buiten(self, route):
         host = urlsplit(route.request.url).hostname
@@ -124,7 +127,8 @@ class Opstelling:
             route.abort()           # GSAP van unpkg en de rest: niet nodig hier
 
     def _features(self, route):
-        self.verzoeken.append(time.monotonic())
+        if "switch=1" in route.request.url:
+            self.verzoeken.append(time.monotonic())
         a = self.antwoord
         if a == "afbreken":
             route.abort()

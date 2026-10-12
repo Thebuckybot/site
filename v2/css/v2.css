@@ -192,7 +192,7 @@ html.v2 {
   text-wrap: balance;
 }
 .v2 .title-xl {
-  font-size: clamp(44px, 7.4vw, 96px);
+  font-size: clamp(40px, 6.3vw, 92px);
   line-height: 0.98;
   letter-spacing: -0.045em;
 }
@@ -492,4 +492,187 @@ html.v2 {
 @media (max-width: 480px) {
   .v2 .foot-grid { grid-template-columns: 1fr; gap: 32px; }
   .v2 .foot-col a { min-height: 44px; }
+}
+
+/* =========================================================================
+   C. De hero
+   De sectie draagt EXACT de hoekkleur van de render (--sky). Het beeld staat
+   rechts (de render heeft bewust veel lege lucht links) en lost met een masker
+   op in die kleur: links en onder een zachte fade, zodat er nergens een harde
+   rechthoek-naad is. Onderaan loopt de lucht over in het canvas.
+   ========================================================================= */
+.v2 .hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: clamp(680px, 100svh, 940px);
+  padding-top: var(--nav-h);
+  background: var(--sky);
+  overflow: hidden;
+}
+.v2 .hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 140px;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(250, 250, 252, 0), var(--canvas));
+  pointer-events: none;
+}
+.v2 .hero-media {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 76%;
+  z-index: -2;
+}
+.v2 .hero-media picture { display: contents; }
+.v2 .hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 66% 40%;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 34%),
+    linear-gradient(to top, transparent 0%, #000 26%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 34%),
+    linear-gradient(to top, transparent 0%, #000 26%);
+  mask-composite: intersect;
+}
+
+.v2 .hero-inner {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding-top: 40px;
+  padding-bottom: 168px;          /* ruimte voor de stats-balk */
+}
+.v2 .hero-copy { max-width: 720px; }
+.v2 .hero-title { display: block; }
+/* "More than a bot." op een regel, "A universe." eronder (de brief). */
+.v2 .hero-line { display: block; white-space: nowrap; }
+.v2 .hero-accent { color: var(--signal-text); }
+.v2 .hero-sub {
+  max-width: 34ch;
+  margin-top: 28px;
+}
+.v2 .hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 36px;
+}
+
+/* ---- C4. De stats-balk ------------------------------------------------------ */
+.v2 .stats-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 40px;
+}
+.v2 .stats {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  width: fit-content;
+  max-width: 100%;
+  padding: 18px 8px 18px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.v2 .stats[hidden] { display: none; }
+.v2 .stats-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 22px;
+  margin: 0;
+  color: var(--ink-dim);
+}
+.v2 .stats-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 0 4px var(--signal-soft);
+}
+.v2 .stats-list { display: flex; margin: 0; }
+.v2 .stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 24px;
+  border-left: 1px solid var(--line);
+}
+.v2 .stat dt { order: 2; margin-top: 4px; white-space: nowrap; }
+.v2 .stat dd {
+  order: 1;
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* ---- Tablet: de tussenvorm. Kop boven, het eiland eronder en iets omhoog
+   geschoven zodat de lucht van de tekst er doorloopt. ------------------------ */
+@media (max-width: 1079.98px) {
+  .v2 .hero { min-height: 0; }
+  .v2 .hero-inner { order: 1; flex: none; padding-top: 56px; padding-bottom: 0; }
+  .v2 .hero-copy { max-width: 640px; }
+  .v2 .hero-media {
+    order: 2;
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: clamp(420px, 66vw, 600px);
+    margin-top: -40px;
+    z-index: -2;
+  }
+  .v2 .hero-img {
+    object-position: 74% 42%;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 72%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 72%, transparent 100%);
+    -webkit-mask-composite: source-over;
+    mask-composite: add;
+  }
+  .v2 .stats-wrap { bottom: 32px; }
+}
+
+/* ---- Telefoon: gestapeld, de rode burcht in het midden en iets ingezoomd. -- */
+@media (max-width: 759.98px) {
+  .v2 .hero-inner { padding-top: 36px; }
+  .v2 .hero-sub { margin-top: 20px; }
+  .v2 .hero-actions { margin-top: 28px; }
+  .v2 .hero-actions .btn { flex: 1 1 auto; }
+  .v2 .hero-media {
+    height: clamp(460px, 132vw, 600px);
+    margin-top: -24px;
+  }
+  /* De burcht staat op 66,1% van de breedte van de render. In een kader van
+     390 x 515 (cover, dus geschaald op de hoogte) komt hij met 78% precies in
+     het midden; de schaal rond het midden houdt hem daar. */
+  .v2 .hero-img {
+    object-position: 78% 40%;
+    transform: scale(1.06);
+    transform-origin: 50% 36%;
+  }
+  .v2 .stats-wrap { bottom: 20px; }
+  .v2 .stats {
+    width: 100%;
+    flex-direction: column;
+    padding: 14px 16px 16px;
+  }
+  .v2 .stats-live { padding: 0 0 10px; }
+  .v2 .stats-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+  .v2 .stat { padding: 0; border-left: 0; }
+  .v2 .stat dt { white-space: normal; }
+  .v2 .stat dd { font-size: 26px; }
 }
