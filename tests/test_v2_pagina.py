@@ -305,7 +305,7 @@ def test_op_een_breed_scherm_staat_de_burcht_rechts_en_de_kop_links(v2):
     kop = t.page.evaluate("() => document.querySelector('.hero-title').getBoundingClientRect().right")
     assert kop < m["burcht"] - 150
     # "More than a bot." op een regel, "A universe." eronder
-    regels = t.page.evaluate("""() => [...document.querySelectorAll('.hero-line')]
+    regels = t.page.evaluate("""() => [...document.querySelectorAll('.hero-title .hero-line')]
         .map(l => Math.round(l.getBoundingClientRect().height))""")
     hoogte = t.page.evaluate("() => parseFloat(getComputedStyle(document.querySelector('.hero-title')).lineHeight)")
     assert len(regels) == 2 and all(h <= hoogte * 1.2 for h in regels), (regels, hoogte)
@@ -550,3 +550,52 @@ def test_de_knop_naar_het_security_center_volgt_de_dashboardvlag(v2):
     t.page.wait_for_function("() => document.querySelector('.btn-on-dark').hidden")
     assert not t.page.locator(".btn-on-dark").is_visible()
 
+
+
+# --------------------------------------------------------------------------- #
+# F. Het slot en de vier orgs
+# --------------------------------------------------------------------------- #
+def test_de_vier_orgs_met_hun_echte_naam_en_crest(v2):
+    import re
+    bron = SITE.parent / "bucky1.0" / "cogs" / "data" / "organizations.py"
+    t = v2()
+    orgs = t.page.evaluate("""() => [...document.querySelectorAll('.org')].map(o => ({
+      naam: o.querySelector('.org-name').textContent,
+      streek: getComputedStyle(o.querySelector('.crest path')).stroke,
+      paden: o.querySelectorAll('.crest path').length}))""")
+    assert [o["naam"] for o in orgs] == ["Null Division", "Vanta Collective", "Aether Systems", "CyTek Industries"]
+    if bron.exists():
+        echt = set(re.findall(r'"name":\s*"([^"]+)"', bron.read_text(encoding="utf-8")))
+        assert {o["naam"] for o in orgs} <= echt
+    # de streek is de -mark-kleur van de org (3:1 op licht, test_v2_contrast.py)
+    assert [o["streek"] for o in orgs] == ["rgb(98, 108, 126)", "rgb(30, 157, 52)",
+                                           "rgb(16, 42, 84)", "rgb(175, 126, 12)"]
+    assert all(o["paden"] >= 4 for o in orgs)
+
+
+def test_de_crests_zijn_die_van_de_app():
+    """De paden zonder afgeleide (rand, embleem) letterlijk uit Crest.tsx."""
+    import re
+    app = SITE.parent / "app" / "src" / "ui" / "crests" / "Crest.tsx"
+    if not app.exists():
+        pytest.skip("app/ staat niet naast site/ in deze checkout")
+    bron = app.read_text(encoding="utf-8")
+    html = (SITE / "v2" / "index.html").read_text(encoding="utf-8")
+    letterlijk = re.findall(r'\{ d: "([^"]+)", streek', bron)
+    assert len(letterlijk) >= 8
+    for d in letterlijk:
+        assert f'd="{d}"' in html, d
+
+
+def test_het_slot_nodigt_uit_met_de_echte_invite(v2):
+    t = v2()
+    knop = t.page.locator(".closing .btn-signal")
+    assert knop.inner_text().strip() == "Invite Bucky"
+    assert knop.get_attribute("href") == INVITE
+
+
+def test_elk_anker_op_de_pagina_heeft_een_doel(v2):
+    t = v2()
+    zonder = t.page.evaluate("""() => [...document.querySelectorAll('a[href^="#"]')]
+      .map(a => a.getAttribute('href')).filter(h => h.length > 1 && !document.getElementById(h.slice(1)))""")
+    assert zonder == []
