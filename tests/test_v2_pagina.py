@@ -712,3 +712,19 @@ def test_alleen_de_eigen_site_en_de_eigen_api(v2):
     t.page.wait_for_timeout(600)
     hosts = {urlsplit(u).hostname for u in t.verzoeken if u.startswith("http")}
     assert hosts <= {"127.0.0.1", "api.buckybot.app"}, hosts
+
+
+@pytest.mark.parametrize("breedte", [360, 390])
+def test_de_tegels_raken_elkaar_niet_op_een_telefoon(v2, breedte):
+    """Live stond "104,831" tegen "163" aan (13-10-2026): zes cijfers zijn breder
+    dan een derde kolom. De getallen moeten minstens 8 px van elkaar staan."""
+    t = v2(breedte=breedte, hoogte=844, minder_beweging=True,
+           stats={"stats": {"servers": 104, "members": 104831, "commands": 163}})
+    t.page.wait_for_function("() => !document.querySelector('[data-stats]').hidden")
+    dozen = t.page.evaluate("""() => [...document.querySelectorAll('.stat dd [aria-hidden]')]
+        .map(s => { const r = s.getBoundingClientRect(); return [r.left, r.right]; })""")
+    assert len(dozen) == 3
+    for (_, rechts), (links, _) in zip(dozen, dozen[1:]):
+        assert links - rechts >= 8, dozen
+    paneel = t.page.evaluate("() => document.querySelector('.stats').getBoundingClientRect().right")
+    assert dozen[-1][1] <= paneel, (dozen, paneel)

@@ -671,10 +671,11 @@ html.v2 {
     padding: 14px 16px 16px;
   }
   .v2 .stats-live { padding: 0 0 10px; }
-  .v2 .stats-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 12px; }
+  /* Kolommen op inhoud: "104,831" is breder dan een derde van 358 px. */
+  .v2 .stats-list { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between; gap: 14px 16px; }
   .v2 .stat { padding: 0; border-left: 0; }
   .v2 .stat dt { white-space: normal; }
-  .v2 .stat dd { font-size: 26px; }
+  .v2 .stat dd { font-size: 24px; }
 }
 
 /* =========================================================================
