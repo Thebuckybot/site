@@ -676,3 +676,95 @@ html.v2 {
   .v2 .stat dt { white-space: normal; }
   .v2 .stat dd { font-size: 26px; }
 }
+
+/* =========================================================================
+   D. De vier systemen
+   ========================================================================= */
+.v2 .features { padding: 112px 0 128px; }
+.v2 .features-label { margin-bottom: 28px; }
+.v2 .cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.v2 .card-item { display: flex; }
+.v2 .card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 268px;
+  padding: 28px 26px 26px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out),
+              border-color 0.35s var(--ease-out);
+}
+.v2 .card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 70, 92, 0.45);
+  box-shadow: 0 0 0 4px var(--signal-soft), 0 22px 44px -24px var(--signal-glow);
+}
+.v2 .card-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--ink);
+  transition: background-color 0.35s var(--ease-out), color 0.35s var(--ease-out);
+}
+.v2 .card:hover .card-icon { background: var(--signal-soft); color: var(--signal-text); }
+.v2 .card-game .card-icon { color: var(--game); }
+.v2 .card-title { margin-top: 28px; }
+.v2 .card-text {
+  margin-top: 10px;
+  color: var(--ink-dim);
+  font-size: 16px;
+  line-height: 1.55;
+}
+.v2 .card-go {
+  margin-top: auto;
+  padding-top: 20px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-dim);
+  transition: transform 0.35s var(--ease-out), color 0.35s var(--ease-out);
+}
+.v2 .card:hover .card-go { transform: translateX(4px); color: var(--signal-text); }
+
+.v2 .bridge {
+  max-width: 760px;
+  margin: 112px auto 0;
+  text-align: center;
+}
+.v2 .bridge-text { margin: 20px auto 0; max-width: 46ch; }
+
+@media (max-width: 1079.98px) {
+  .v2 .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2 .card { min-height: 236px; }
+}
+@media (max-width: 639.98px) {
+  .v2 .features { padding: 88px 0 96px; }
+  .v2 .cards { grid-template-columns: 1fr; gap: 14px; }
+  /* Compact op een telefoon: icoon links, titel en regel ernaast. */
+  .v2 .card {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    column-gap: 16px;
+    align-items: start;
+    min-height: 0;
+    padding: 20px 18px;
+  }
+  .v2 .card-icon { grid-row: 1 / span 2; }
+  .v2 .card-title { margin-top: 2px; }
+  .v2 .card-text { margin-top: 4px; font-size: 15px; }
+  .v2 .card-go { display: none; }
+  .v2 .bridge { margin-top: 80px; text-align: left; }
+  .v2 .bridge-text { margin-left: 0; }
+}

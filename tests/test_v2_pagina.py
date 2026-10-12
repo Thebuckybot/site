@@ -447,3 +447,57 @@ def test_de_aa_meting_ziet_een_slecht_paar(v2):
       p.style.color = '#FF465C'; p.style.background = '#EAEDF1'; p.style.fontSize = '16px';
       document.querySelector('.hero-copy').append(p); }""")
     assert any("proef" in f for f in t.page.evaluate(_AA)["fout"])
+
+
+# --------------------------------------------------------------------------- #
+# D. De vier systemen
+# --------------------------------------------------------------------------- #
+def test_vier_kaarten_met_een_titel_en_een_regel(v2):
+    t = v2()
+    kaarten = t.page.evaluate("""() => [...document.querySelectorAll('.cards .card')].map(k => ({
+      titel: k.querySelector('h3').textContent.trim(),
+      tekst: k.querySelector('.card-text').textContent.trim(),
+      href: k.getAttribute('href')}))""")
+    assert [k["titel"] for k in kaarten] == ["Security", "Economy", "Organisations", "Arcade"]
+    for k in kaarten:
+        assert k["tekst"].endswith(".") and k["tekst"].count(".") == 1, k   # een zin
+        assert k["href"], k
+    assert t.page.locator(".bridge-title").inner_text().strip() == "Four systems. One platform."
+
+
+def test_de_iconen_zijn_een_familie(v2):
+    """Zelfde grid, zelfde streek, ronde uiteinden: de familie van de app."""
+    t = v2()
+    iconen = t.page.evaluate("""() => [...document.querySelectorAll('.card-icon svg')].map(s => ({
+      box: s.getAttribute('viewBox'), streek: s.getAttribute('stroke-width'),
+      kap: s.getAttribute('stroke-linecap'), hoek: s.getAttribute('stroke-linejoin'),
+      vulling: s.getAttribute('fill')}))""")
+    assert len(iconen) == 4
+    assert all(i == {"box": "0 0 24 24", "streek": "1.75", "kap": "round", "hoek": "round", "vulling": "none"}
+               for i in iconen), iconen
+
+
+def test_org_en_arcade_zijn_de_iconen_van_de_app_zelf():
+    """Hergebruik, geen namaak: de paden van `org` en `challenge` uit de app."""
+    app = SITE.parent / "app" / "src" / "ui" / "iconen" / "LijnIcoon.tsx"
+    if not app.exists():
+        pytest.skip("app/ staat niet naast site/ in deze checkout")
+    import re
+    bron = app.read_text(encoding="utf-8")
+    html = (SITE / "v2" / "index.html").read_text(encoding="utf-8")
+    for naam in ("org", "challenge"):
+        blok = re.search(rf"\n  {naam}: \[(.*?)\n  \],", bron, re.S).group(1)
+        for d in re.findall(r'd: "([^"]+)"', blok):
+            assert f'd="{d}"' in html, (naam, d)
+
+
+def test_een_kaart_komt_omhoog_met_een_zachte_rode_gloed(v2):
+    t = v2()
+    kaart = t.page.locator(".cards .card").first
+    kaart.scroll_into_view_if_needed()
+    voor = kaart.evaluate("k => getComputedStyle(k).boxShadow")
+    kaart.hover()
+    t.page.wait_for_timeout(450)
+    na = kaart.evaluate("k => ({t: getComputedStyle(k).transform, s: getComputedStyle(k).boxShadow})")
+    assert na["t"] != "none" and na["t"].endswith("-4)"), na
+    assert "rgba(255, 70, 92" in na["s"] and na["s"] != voor
