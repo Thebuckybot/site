@@ -1,5 +1,6 @@
 /*
  * DE VERSIESCHAKELAAR VAN DE VOORPAGINA (docs/site-redesign-clean-epic.md, deel A0).
+ * ADR: docs/adr/0011-twee-voorpaginas-gekozen-door-de-config-en-een-router-in-de-head.md
  *
  * buckybot.app heeft twee voorpagina's naast elkaar: v1 (index.html, de huidige)
  * en v2 (v2/index.html, "Clean & Epic"). Welke het publiek krijgt, zet de
