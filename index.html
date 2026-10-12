@@ -10,6 +10,10 @@
        door naar een vaste versie, en na een doorverwijzing kijkt CSP alleen
        nog naar de host). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://unpkg.com/gsap@3/dist/; style-src 'self'; font-src 'self'; img-src 'self'; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <!-- De versieschakelaar v1/v2 (+ownerconfig, homepage.version): beslist voor de
+       eerste paint welke voorpagina er staat. Hoort bij geen van beide versies;
+       zie js/site-version.js. Verder is deze pagina v1 en blijft ze dat. -->
+  <script src="js/site-version.js" data-page="v1" data-v2="v2/"></script>
   <title>Bucky -- Security, economy &amp; organisations for your Discord server</title>
   <meta name="description" content="Bucky is an all-in-one Discord bot for server security, a living economy, four rival organisations and an arcade, all managed from one polished dashboard." />
 
