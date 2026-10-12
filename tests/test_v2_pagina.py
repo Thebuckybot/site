@@ -678,3 +678,34 @@ def test_geen_fouten_in_de_console(browser, server):
     pg.wait_for_timeout(500)
     ctx.close()
     assert fouten == []
+
+
+# --------------------------------------------------------------------------- #
+# H. Performance: een budget, zodat het licht blijft
+# --------------------------------------------------------------------------- #
+#: Alles wat v2 bij het laden ophaalt, ongecomprimeerd (GitHub Pages comprimeert
+#: tekst nog). Gemeten op 12-10-2026: 201 KB (60 KB daarvan het heldenbeeld). Wie hier
+#: overheen gaat, voegt iets zwaars toe en moet dat met een reden doen.
+BUDGET_BYTES = 260_000
+
+
+@pytest.mark.parametrize("breedte,hoogte", [(390, 844), (1280, 900)])
+def test_de_pagina_blijft_binnen_het_budget(v2, breedte, hoogte):
+    t = v2(breedte=breedte, hoogte=hoogte)
+    t.page.wait_for_timeout(500)
+    bytes_ = t.page.evaluate("""() => {
+      const nav = performance.getEntriesByType('navigation')[0];
+      return [nav, ...performance.getEntriesByType('resource')]
+        .filter(e => e.name.startsWith(location.origin))
+        .reduce((s, e) => s + (e.decodedBodySize || 0), 0);
+    }""")
+    assert 0 < bytes_ < BUDGET_BYTES, bytes_
+
+
+def test_alleen_de_eigen_site_en_de_eigen_api(v2):
+    """Geen derde partijen: geen fonts-CDN, geen GSAP van unpkg, geen tracker."""
+    t = v2()
+    t.page.evaluate("() => window.scrollTo(0, document.body.scrollHeight)")
+    t.page.wait_for_timeout(600)
+    hosts = {urlsplit(u).hostname for u in t.verzoeken if u.startswith("http")}
+    assert hosts <= {"127.0.0.1", "api.buckybot.app"}, hosts
