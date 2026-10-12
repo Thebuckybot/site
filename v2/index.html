@@ -19,13 +19,99 @@
   <link rel="stylesheet" href="css/v2.css" />
 
   <link rel="icon" type="image/jpeg" href="../pics/buckypfp.JPEG" />
+  <script type="module" src="js/v2.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
+
+  <!-- B1. NAV, alleen van v2. Links naar wat bestaat; "Docs" ontbreekt met
+       opzet: de site heeft geen docs-pagina (alleen bucky://docs in de VM). -->
+  <header class="nav" data-nav>
+    <div class="nav-bar wrap">
+      <a class="brand" href="#top">
+        <img class="brand-mark" src="img/bucky-mark-96.webp" width="34" height="34" alt="" />
+        <span class="brand-word">Bucky</span>
+      </a>
+
+      <nav class="nav-menu" id="nav-menu" aria-label="Main">
+        <ul class="nav-links">
+          <li><a href="#top" aria-current="page">Home</a></li>
+          <li><a href="#security">Security</a></li>
+          <li><a href="#economy">Economy</a></li>
+          <li><a href="#organisations">Organisations</a></li>
+          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-feature="premium"><a href="../premium.html">Premium</a></li>
+        </ul>
+        <ul class="nav-sheet-extra">
+          <li><a href="https://api.buckybot.app/login">Log in</a></li>
+          <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Bucky on Discord</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <a class="nav-login" href="https://api.buckybot.app/login">Log in</a>
+        <!-- Discord-logo: Font Awesome Free 6 (brands, "discord"), CC BY 4.0,
+             https://fontawesome.com/license/free -->
+        <a class="nav-discord" href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener" aria-label="Bucky on Discord (support server)">
+          <svg viewBox="-6 0 600 448" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M499.4 38Q498.4 37 498.4 37Q440.4 11 378.4 0Q377.4 0 376.4 1Q368.4 16 361.4 32Q294.4 21 227.4 32Q220.4 16 212.4 1Q211.4 0 210.4 0Q148.4 11 90.4 37Q90.4 37 89.4 38Q33.4 123 13.4 207Q-5.6 290 2.4 372Q3.4 373 3.4 374Q70.4 423 150.4 448Q151.4 448 152.4 447Q169.4 424 182.4 398Q182.4 398 182.4 397Q182.4 396 181.4 396Q157.4 387 135.4 374Q134.4 373 134.4 372Q134.4 371 135.4 371Q140.4 367 144.4 364Q145.4 363 146.4 363Q219.4 396 294.4 396Q370.4 396 442.4 363Q443.4 363 443.4 364Q448.4 367 453.4 371Q453.4 371 453.4 372Q453.4 373 452.4 374Q430.4 387 407.4 396Q406.4 396 405.4 397Q405.4 398 406.4 398Q419.4 424 436.4 447Q436.4 448 438.4 448Q517.4 423 585.4 374Q585.4 373 585.4 372Q601.4 183 499.4 38ZM196.4 306Q174.4 305 159.4 288Q144.4 271 144.4 246Q144.4 221 159.4 204Q174.4 188 196.4 187Q219.4 188 234.4 205Q249.4 221 249.4 246Q249.4 271 234.4 288Q219.4 305 196.4 306ZM392.4 306Q370.4 305 355.4 288Q340.4 271 339.4 246Q340.4 221 354.4 204Q369.4 188 392.4 187Q415.4 188 430.4 205Q444.4 221 445.4 246Q444.4 271 429.4 288Q415.4 305 392.4 306Z"/></svg>
+        </a>
+        <a class="btn btn-signal btn-nav" href="https://discord.com/oauth2/authorize?client_id=907664862493167680&amp;scope=bot%20applications.commands&amp;permissions=8">Invite Bucky</a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu">
+          <span class="sr-only">Menu</span>
+          <span class="nav-toggle-bars" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
   <main id="main">
     <section class="wrap" id="top">
       <h1 class="title-xl">More than a bot. A universe.</h1>
     </section>
   </main>
+
+  <!-- B2. FOOTER, alleen van v2. Alleen echte, bestaande links. -->
+  <footer class="foot">
+    <div class="wrap foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="#top">
+          <img class="brand-mark" src="img/bucky-mark-96.webp" width="34" height="34" alt="" loading="lazy" />
+          <span class="brand-word">Bucky</span>
+        </a>
+        <p>Security, a living economy, four organisations and an arcade for your Discord server.</p>
+      </div>
+      <nav class="foot-col" aria-labelledby="foot-product">
+        <h2 class="label" id="foot-product">Product</h2>
+        <ul>
+          <li><a href="#security">Security</a></li>
+          <li><a href="#economy">Economy</a></li>
+          <li><a href="#organisations">Organisations</a></li>
+          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-feature="premium"><a href="../premium.html">Premium</a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-labelledby="foot-community">
+        <h2 class="label" id="foot-community">Community</h2>
+        <ul>
+          <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Discord server</a></li>
+          <li><a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&amp;scope=bot%20applications.commands&amp;permissions=8">Invite Bucky</a></li>
+          <li><a href="../contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-labelledby="foot-legal">
+        <h2 class="label" id="foot-legal">Legal</h2>
+        <ul>
+          <li><a href="../privacy.html">Privacy Policy</a></li>
+          <li><a href="../tos.html">Terms of Service</a></li>
+          <li><a href="../cookie.html">Cookie Policy</a></li>
+          <li><a href="../rules.html">Community rules</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="wrap foot-base">
+      <p>&copy; 2026 Bucky Bot. All rights reserved.</p>
+      <p class="label">More than a bot.</p>
+    </div>
+  </footer>
 </body>
 </html>
