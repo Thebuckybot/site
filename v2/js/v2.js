@@ -137,5 +137,73 @@ async function stats() {
     if (!minderBeweging.matches) telOp(doos, vakken);
 }
 
+/* ---- G. Beweging, ingetogen -----------------------------------------------
+   Secties komen zacht binnen (IntersectionObserver + CSS, geen bibliotheek) en
+   het eiland in de hero schuift een paar pixels trager dan de pagina. Alles
+   blijft stil bij prefers-reduced-motion, bij "data besparen" en op een zwak
+   toestel; dan staat de inhoud er meteen, zonder beginstand. */
+function zwakToestel() {
+    const geheugen = navigator.deviceMemory;
+    const kernen = navigator.hardwareConcurrency;
+    const zuinig = navigator.connection && navigator.connection.saveData;
+    return Boolean(zuinig) || (geheugen !== undefined && geheugen <= 2) || (kernen !== undefined && kernen <= 2);
+}
+
+function beweging() {
+    if (minderBeweging.matches || zwakToestel() || !("IntersectionObserver" in window)) return;
+    const root = document.documentElement;
+    const items = [...document.querySelectorAll("[data-reveal]")];
+
+    // Wat NU al in beeld staat (een link naar #security, of terug in de
+    // geschiedenis) krijgt meteen zijn eindstand, in hetzelfde frame als de
+    // klasse: anders verdwijnt het heel even en komt het dan pas binnen.
+    const hoogte = window.innerHeight;
+    for (const el of items) {
+        const r = el.getBoundingClientRect();
+        if (r.top < hoogte && r.bottom > 0) el.classList.add("is-in");
+    }
+    root.classList.add("v2-motion");
+
+    const kijker = new IntersectionObserver((lijst) => {
+        for (const i of lijst) {
+            if (!i.isIntersecting) continue;
+            i.target.classList.add("is-in");
+            kijker.unobserve(i.target);
+        }
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
+    for (const el of items) if (!el.classList.contains("is-in")) kijker.observe(el);
+
+    parallax(root);
+}
+
+function parallax(root) {
+    const media = document.querySelector("[data-parallax]");
+    const hero = document.querySelector(".hero");
+    if (!media || !hero) return;
+    const breed = window.matchMedia("(min-width: 1080px)");
+    let gepland = false;
+
+    const zet = () => {
+        gepland = false;
+        if (!breed.matches) {
+            media.style.transform = "";
+            return;
+        }
+        const y = Math.min(window.scrollY, hero.offsetHeight);
+        media.style.transform = `translate3d(0, ${(y * 0.05).toFixed(1)}px, 0)`;
+    };
+    const vraag = () => {
+        if (!gepland) {
+            gepland = true;
+            requestAnimationFrame(zet);
+        }
+    };
+    root.classList.add("v2-parallax");
+    window.addEventListener("scroll", vraag, { passive: true });
+    breed.addEventListener("change", vraag);
+    zet();
+}
+
 nav();
 stats();
+beweging();

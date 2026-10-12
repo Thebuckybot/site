@@ -492,7 +492,9 @@ def test_org_en_arcade_zijn_de_iconen_van_de_app_zelf():
 
 
 def test_een_kaart_komt_omhoog_met_een_zachte_rode_gloed(v2):
-    t = v2()
+    # Zonder beweging: anders scrolt `scroll-behavior: smooth` ook de muis van
+    # Playwright weg van de kaart. Het eindbeeld van de hover is hetzelfde.
+    t = v2(minder_beweging=True)
     kaart = t.page.locator(".cards .card").first
     kaart.scroll_into_view_if_needed()
     voor = kaart.evaluate("k => getComputedStyle(k).boxShadow")
@@ -599,3 +601,80 @@ def test_elk_anker_op_de_pagina_heeft_een_doel(v2):
     zonder = t.page.evaluate("""() => [...document.querySelectorAll('a[href^="#"]')]
       .map(a => a.getAttribute('href')).filter(h => h.length > 1 && !document.getElementById(h.slice(1)))""")
     assert zonder == []
+
+
+# --------------------------------------------------------------------------- #
+# G. Beweging, ingetogen
+# --------------------------------------------------------------------------- #
+_ZICHT = """() => [...document.querySelectorAll('[data-reveal]')].map(e => parseFloat(getComputedStyle(e).opacity))"""
+
+
+def test_met_minder_beweging_staat_alles_stil_en_zichtbaar(v2):
+    t = v2(minder_beweging=True)
+    assert not t.page.evaluate("() => document.documentElement.classList.contains('v2-motion')")
+    assert all(o == 1 for o in t.page.evaluate(_ZICHT))
+    t.page.evaluate("() => window.scrollTo(0, 500)")
+    t.page.wait_for_timeout(200)
+    assert t.page.evaluate("() => document.querySelector('.hero-media').style.transform") == ""
+
+
+def test_met_beweging_komen_secties_binnen_en_staan_ze_daarna_helemaal(v2):
+    t = v2()
+    assert t.page.evaluate("() => document.documentElement.classList.contains('v2-motion')")
+    voor = t.page.evaluate(_ZICHT)
+    assert min(voor) < 1, "onder de vouw hoort het nog te wachten"
+    hoogte = t.page.evaluate("() => document.body.scrollHeight")
+    for y in range(0, hoogte, 400):
+        t.page.evaluate(f"() => window.scrollTo(0, {y})")
+        t.page.wait_for_timeout(120)
+    t.page.wait_for_timeout(1000)
+    assert all(o == 1 for o in t.page.evaluate(_ZICHT))
+
+
+def test_een_link_naar_een_sectie_toont_hem_en_laat_niets_half_staan(v2, server):
+    """Een link naar #security: als het scrollen klaar is, staat alles wat in
+    beeld is er helemaal. Wat bij het laden al in beeld stond, krijgt meteen
+    zijn eindstand (v2.js), zodat het niet eerst verdwijnt."""
+    t = v2()
+    t.page.goto(f"{server}/v2/?site=v2#security", wait_until="load")
+    t.page.wait_for_function("() => document.documentElement.classList.contains('v2-motion')")
+    vorige = -1
+    for _ in range(40):                      # wachten tot het zachte scrollen stilstaat
+        y = t.page.evaluate("() => scrollY")
+        if y == vorige and y > 0:
+            break
+        vorige = y
+        t.page.wait_for_timeout(100)
+    t.page.wait_for_timeout(900)
+    in_beeld = t.page.evaluate("""() => [...document.querySelectorAll('[data-reveal]')].filter(e => {
+        const r = e.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })
+      .map(e => parseFloat(getComputedStyle(e).opacity))""")
+    assert in_beeld and all(o == 1 for o in in_beeld), in_beeld
+
+
+def test_de_parallax_is_een_paar_pixels_en_alleen_op_een_breed_scherm(v2):
+    t = v2(breedte=1280)
+    t.page.evaluate("() => window.scrollTo(0, 600)")
+    t.page.wait_for_timeout(250)
+    y = t.page.evaluate("() => new DOMMatrix(getComputedStyle(document.querySelector('.hero-media')).transform).m42")
+    assert 0 < y <= 50, y
+    s = v2(breedte=390, hoogte=844)
+    s.page.evaluate("() => window.scrollTo(0, 600)")
+    s.page.wait_for_timeout(250)
+    assert s.page.evaluate("() => getComputedStyle(document.querySelector('.hero-media')).transform") == "none"
+
+
+def test_geen_fouten_in_de_console(browser, server):
+    ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+    pg = ctx.new_page()
+    fouten = []
+    pg.on("pageerror", lambda e: fouten.append(str(e)))
+    pg.on("console", lambda m: fouten.append(m.text) if m.type == "error" and "net::" not in m.text
+          and "Failed to load resource" not in m.text else None)
+    pg.route("**/*", lambda r: r.continue_() if urlsplit(r.request.url).hostname == "127.0.0.1" else r.abort())
+    pg.goto(f"{server}/v2/?site=v2", wait_until="load")
+    pg.wait_for_timeout(800)
+    pg.evaluate("() => window.scrollTo(0, document.body.scrollHeight)")
+    pg.wait_for_timeout(500)
+    ctx.close()
+    assert fouten == []
