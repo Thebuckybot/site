@@ -206,10 +206,19 @@ def main():
         else:
             knop_min.first.click()
             page.wait_for_selector(".vm-window.is-minimized", timeout=15000)
-            # Minimaliseren vervaagt; de MAAT staat dan al stil terwijl de
-            # dekking nog loopt. Hier is een korte pauze wel het juiste
-            # gereedschap, want er is niets dat op nul springt om op te wachten.
-            page.wait_for_timeout(700)
+            # Minimaliseren vervaagt (opacity 220ms in vm.css). EERST stond hier
+            # een vaste pauze van 700 ms, en die ging op 13-10-2026 een keer mis:
+            # onder belasting, vlak na tientallen andere browserruns, was de
+            # overgang toen nog niet klaar (drie herhalingen daarna groen). Dus
+            # nu wachten op de eindstand zelf, met een ruime grens: een knop die
+            # het venster echt niet laat verdwijnen faalt nog steeds, na 5 s.
+            try:
+                page.wait_for_function(
+                    "() => { const w = document.querySelector('.vm-window.is-minimized');"
+                    " return w && parseFloat(getComputedStyle(w).opacity) <= 0.05; }",
+                    timeout=5000)
+            except Exception:                       # noqa: BLE001 - de meting hieronder zegt wat
+                pass
             klein = meet(page)
             # Onzichtbaar is de eis, niet "kleiner": minimaliseren laat het
             # venster wegvallen naar de taakbalk en verandert de maat nauwelijks.

@@ -56,7 +56,7 @@ def browser():
         b.close()
 
 
-ECHTE_STATS = {"stats": {"servers": 104, "players_week": 33, "challenges": 194, "organisations": 4}}
+ECHTE_STATS = {"stats": {"servers": 104, "members": 48213, "commands": 171}}
 
 
 class V2:
@@ -326,19 +326,22 @@ def _balk(page):
 def test_de_balk_toont_de_echte_cijfers(v2):
     t = v2(minder_beweging=True)
     t.page.wait_for_function("() => !document.querySelector('[data-stats]').hidden")
-    assert _balk(t.page)["vakken"] == [["Discord servers", "104"], ["Players this week", "33"],
-                                       ["Challenges finished", "194"], ["Organisations", "4"]]
+    assert _balk(t.page)["vakken"] == [["Discord servers", "104"], ["Members reached", "48,213"],
+                                       ["Commands", "171"]]
 
 
 def test_wat_ontbreekt_of_geen_echt_getal_is_valt_weg(v2):
-    t = v2(stats={"stats": {"servers": 104, "players_week": 0, "challenges": None,
-                            "organisations": "4", "verzonnen": 999}}, minder_beweging=True)
+    # members 0 en commands als tekst vallen weg; players_week en organisations
+    # zijn sinds 13-10 geen tegel meer, ook niet als een oude backend ze stuurt.
+    t = v2(stats={"stats": {"servers": 104, "members": 0, "commands": "171",
+                            "players_week": 33, "organisations": 4, "verzonnen": 999}},
+           minder_beweging=True)
     t.page.wait_for_function("() => !document.querySelector('[data-stats]').hidden")
     assert _balk(t.page)["vakken"] == [["Discord servers", "104"]]
 
 
 @pytest.mark.parametrize("stats", ["afbreken", 500, 503, {"stats": {}}, {"stats": None}, {"iets": 1},
-                                   {"stats": {"servers": 0, "players_week": -3}}],
+                                   {"stats": {"servers": 0, "members": -3, "commands": None}}],
                          ids=["afbreken", "500", "503", "leeg", "null", "geen-stats", "nul-en-negatief"])
 def test_zonder_echte_cijfers_blijft_de_balk_weg(v2, stats):
     t = v2(stats=stats)
@@ -355,7 +358,7 @@ def test_de_cijfers_tellen_op_en_eindigen_op_het_echte_getal(v2):
     t.page.wait_for_timeout(1500)
     zicht = t.page.evaluate(
         "() => [...document.querySelectorAll('.stat dd [aria-hidden]')].map(s => s.textContent)")
-    assert zicht == ["104", "33", "194", "4"]
+    assert zicht == ["104", "48,213", "171"]
 
 
 def test_met_minder_beweging_staat_het_getal_er_meteen(v2):
@@ -363,7 +366,7 @@ def test_met_minder_beweging_staat_het_getal_er_meteen(v2):
     t.page.wait_for_function("() => !document.querySelector('[data-stats]').hidden")
     zicht = t.page.evaluate(
         "() => [...document.querySelectorAll('.stat dd [aria-hidden]')].map(s => s.textContent)")
-    assert zicht == ["104", "33", "194", "4"]
+    assert zicht == ["104", "48,213", "171"]
 
 
 # --------------------------------------------------------------------------- #

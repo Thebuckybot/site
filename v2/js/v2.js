@@ -46,15 +46,16 @@ function nav() {
 }
 
 /* ---- C4. De stats-balk -------------------------------------------------------
-   Uit /api/site/stats (backend/services/site_stats.py): dezelfde bronnen als
-   +ownerstats. Alleen positieve gehele getallen komen op de pagina; wat
-   ontbreekt, nul is of geen getal, valt weg. Is er niets, of faalt het
-   ophalen, dan blijft de balk verborgen. Nooit een nul, nooit een gok. */
+   Uit /api/site/stats (backend/services/site_stats.py), en die uit de bot zelf,
+   zoals +ownerstats: servers, de leden van al die servers samen, en de
+   commando's die een gewone gebruiker kan draaien. Alleen positieve gehele
+   getallen komen op de pagina; wat ontbreekt, nul is of geen getal, valt weg.
+   Is er niets, of faalt het ophalen, dan blijft de balk verborgen. Nooit een
+   nul, nooit een gok. */
 const STATS = [
     ["servers", "Discord servers"],
-    ["players_week", "Players this week"],
-    ["challenges", "Challenges finished"],
-    ["organisations", "Organisations"],
+    ["members", "Members reached"],
+    ["commands", "Commands"],
 ];
 
 async function haalStats() {
