@@ -22,7 +22,11 @@
   <a class="skip" href="#main">Skip to content</a>
 
   <!-- B1. NAV, alleen van v2. Links naar wat bestaat; "Docs" ontbreekt met
-       opzet: de site heeft geen docs-pagina (alleen bucky://docs in de VM). -->
+       opzet: de site heeft geen docs-pagina (alleen bucky://docs in de VM).
+       "Arcade" staat er alleen met een sessie (data-auth-in, v2.js): onder v2
+       zit de arcade achter de login, dus wie uitgelogd is ziet hem niet. De
+       poort op arcade.html blijft het vangnet; de Arcade-kaart verderop is een
+       teaser en blijft staan. Ook in de footer. -->
   <header class="nav" data-nav>
     <div class="nav-bar wrap">
       <a class="brand" href="index.html">
@@ -36,7 +40,7 @@
           <li><a href="index.html#security">Security</a></li>
           <li><a href="index.html#economy">Economy</a></li>
           <li><a href="organisations.html" aria-current="page">Organisations</a></li>
-          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-auth-in hidden><a href="../arcade.html">Arcade</a></li>
           <li data-feature="premium"><a href="../premium.html">Premium</a></li>
         </ul>
         <ul class="nav-sheet-extra">
@@ -235,7 +239,7 @@
           <li><a href="index.html#security">Security</a></li>
           <li><a href="index.html#economy">Economy</a></li>
           <li><a href="organisations.html">Organisations</a></li>
-          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-auth-in hidden><a href="../arcade.html">Arcade</a></li>
           <li data-feature="premium"><a href="../premium.html">Premium</a></li>
         </ul>
       </nav>

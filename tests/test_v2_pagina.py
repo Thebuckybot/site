@@ -222,8 +222,11 @@ def test_op_een_telefoon_opent_en_sluit_de_hamburger(v2):
 def test_op_een_breed_scherm_staan_de_links_er_gewoon(v2):
     t = v2(breedte=1280)
     assert not t.page.locator(".nav-toggle").is_visible()
-    for naam in ("Home", "Security", "Economy", "Organisations", "Arcade", "Premium"):
+    for naam in ("Home", "Security", "Economy", "Organisations", "Premium"):
         assert t.page.locator(".nav-links a", has_text=naam).first.is_visible(), naam
+    # Arcade alleen met een sessie (13-10-2026); uitgelogd en ingelogd staan
+    # in test_auth_flow.py. Hier is de bezoeker uitgelogd.
+    assert not t.page.locator(".nav-links a", has_text="Arcade").first.is_visible()
     assert t.page.locator(".nav-actions .btn-signal", has_text="Invite Bucky").is_visible()
     assert t.page.locator(".nav-discord").is_visible()
 

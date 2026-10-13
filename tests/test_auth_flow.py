@@ -220,3 +220,93 @@ def test_een_naam_wordt_als_tekst_gezet_en_niet_als_html(sessie):
     s.page.wait_for_function("() => !document.querySelector('.nav-user').hidden")
     assert s.page.evaluate("() => window.__xss") is None
     assert "<img" in s.page.locator(".nav-user-naam").inner_text()
+
+
+# --------------------------------------------------------------------------- #
+# De arcade is onder v2 voor een uitgelogde bezoeker niet alleen dicht, maar
+# ook onzichtbaar (13-10-2026, aanvulling op deel C). Het Arcade-item in de nav,
+# het telefoonmenu en de footer verschijnt pas met een sessie. De poort op
+# arcade.html blijft het vangnet (test_arcade_poort.py); de Arcade-KAART op de
+# voorpagina blijft staan als teaser (klik -> login). v1 verandert niet.
+# --------------------------------------------------------------------------- #
+V2_PAGINAS = ["/v2/index.html", "/v2/organisations.html", "/v2/privacy.html", "/v2/contact.html"]
+
+_ZICHTBARE_ARCADE = """(waar) => [...document.querySelectorAll(waar + ' a')]
+  .filter(a => a.textContent.trim() === 'Arcade')
+  .filter(a => { const r = a.getBoundingClientRect(); const s = getComputedStyle(a);
+                 return r.width > 0 && r.height > 0 && s.visibility !== 'hidden'; }).length"""
+
+
+def _arcade(page, waar):
+    return page.evaluate(_ZICHTBARE_ARCADE, waar)
+
+
+@pytest.mark.parametrize("pad", V2_PAGINAS)
+def test_v2_uitgelogd_geen_arcade_in_nav_en_footer(sessie, pad):
+    s = sessie(versie="v2")
+    s.open(pad)
+    s.page.wait_for_function("() => !document.querySelector('.nav-auth .nav-login').hidden")
+    assert _arcade(s.page, "header.nav") == 0
+    assert _arcade(s.page, "footer.foot") == 0
+
+
+@pytest.mark.parametrize("pad", V2_PAGINAS)
+def test_v2_ingelogd_wel_arcade_in_nav_en_footer(sessie, pad):
+    s = sessie(versie="v2")
+    s.ingelogd = True
+    s.open(pad)
+    s.page.wait_for_function("() => !document.querySelector('.nav-user').hidden")
+    assert _arcade(s.page, "header.nav") == 1
+    assert _arcade(s.page, "footer.foot") == 1
+
+
+def test_v2_telefoonmenu_arcade_alleen_ingelogd(sessie):
+    s = sessie(versie="v2", breedte=390)
+    s.open("/v2/index.html")
+    s.page.click(".nav-toggle")
+    s.page.wait_for_timeout(300)
+    assert _arcade(s.page, "header.nav") == 0
+
+    s.ingelogd = True
+    s.open("/v2/index.html")
+    s.page.click(".nav-toggle")
+    s.page.wait_for_function("() => !document.querySelector('.nav-sheet-user').hidden")
+    assert _arcade(s.page, "header.nav") == 1
+
+
+def test_v2_uitloggen_verbergt_arcade_weer(sessie):
+    s = sessie(versie="v2")
+    s.ingelogd = True
+    s.open("/v2/index.html")
+    s.page.wait_for_function("() => !document.querySelector('.nav-user').hidden")
+    assert _arcade(s.page, "header.nav") == 1
+    s.page.click(".nav-user-knop")
+    s.page.click("#nav-user-menu [data-auth-logout]")
+    s.page.wait_for_url("**/v2/index.html")
+    s.page.wait_for_function("() => document.querySelector('.nav-user').hidden")
+    assert _arcade(s.page, "header.nav") == 0
+
+
+def test_v2_de_arcadekaart_blijft_als_teaser(sessie):
+    s = sessie(versie="v2")
+    s.open("/v2/index.html")
+    kaart = s.page.locator('.card-game[href="../arcade.html"]')
+    kaart.scroll_into_view_if_needed()
+    assert kaart.is_visible()
+
+
+def test_v1_toont_arcade_ook_uitgelogd(sessie):
+    s = sessie(versie="v1")
+    s.open("/index.html")
+    assert s.page.locator('a[href="arcade.html"]', has_text="Arcade").first.is_visible()
+
+
+@pytest.mark.parametrize("naam", ["index", "organisations", "tos", "privacy", "cookie", "rules", "contact"])
+def test_elke_v2_pagina_draagt_het_arcade_item_verborgen(naam):
+    """Statisch: nav en footer van elke v2-pagina (kopieen, geen sjabloon)."""
+    import re
+    html = (SITE / "v2" / f"{naam}.html").read_text(encoding="utf-8")
+    items = re.findall(r'<li([^>]*)><a href="\.\./arcade\.html">Arcade</a></li>', html)
+    assert len(items) == 2, (naam, items)
+    for attrs in items:
+        assert "data-auth-in" in attrs and "hidden" in attrs, (naam, attrs)
