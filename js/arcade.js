@@ -1,6 +1,7 @@
 import { API_URL } from "./config.js";
 import { apiFetch } from "./dashboard.js";
 import { BuckyVMRuntime } from "../vm/core/vmRuntime.js";
+import { leesStart } from "../vm/core/launch.js";
 
 let buckyVM = null;
 
@@ -192,7 +193,9 @@ function mountBuckyVM(user) {
     const root = document.getElementById("bucky-vm-root");
     if (!root || buckyVM) return;
 
-    buckyVM = new BuckyVMRuntime(root, user);
+    // `?app=org&maximize=1`: meteen in de focusmodus en in de org-app (de
+    // org-pagina van v2 stuurt hierheen). Zonder parameters: zoals altijd.
+    buckyVM = new BuckyVMRuntime(root, user, { launch: leesStart(window.location.search) });
     buckyVM.start();
 }
 

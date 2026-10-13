@@ -181,6 +181,8 @@ export class BuckyVMRuntime {
         //
         // When Mission Hub is unlocked again, call preloadMissionHub() from the
         // app's open path, not from this constructor.
+        // Opstarten vanaf een link (core/launch.js): {app, maximize} of null.
+        this.launch = options.launch || null;
         this.debug = Boolean(options.debug);
         setDebugMode(this.debug);
         this.mode = "embedded";
@@ -274,6 +276,9 @@ export class BuckyVMRuntime {
             this.snapWindow(kant);
         };
         window.addEventListener("keydown", this._onKeyDown);
+        // Vanaf een link met `maximize=1`: meteen de focusmodus. De modus
+        // overleeft elke render, dus dit mag voor het bureaublad er staat.
+        if (this.launch && this.launch.maximize) this.setMode("expanded");
         this.runBootSequence();
     }
 
@@ -289,6 +294,9 @@ export class BuckyVMRuntime {
             this.phase = "login";
             this.notify("Identity linked", `${this.user.username} profile injected`);
             this.render();
+            // Vanaf een link die een app vraagt: de ENTER SYSTEM-klik is dan al
+            // gegeven, door op de link te klikken.
+            if (this.launch && this.launch.app) this.startDesktopBoot();
         }, 3100);
     }
 
@@ -310,6 +318,12 @@ export class BuckyVMRuntime {
             this.phase = "desktop";
             this.render();
             this.notify("Desktop ready", "Open Terminal or Files from the desktop");
+            if (this.launch && this.launch.app) {
+                const app = this.launch.app;
+                this.launch = { ...this.launch, app: null };   // eenmalig
+                this.openApp(app);
+                this.snapWindow("max");
+            }
         }, 2300);
     }
 
