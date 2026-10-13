@@ -310,3 +310,35 @@ def test_elke_v2_pagina_draagt_het_arcade_item_verborgen(naam):
     assert len(items) == 2, (naam, items)
     for attrs in items:
         assert "data-auth-in" in attrs and "hidden" in attrs, (naam, attrs)
+
+
+# --------------------------------------------------------------------------- #
+# Een in-app browser zonder opslag (13-10-2026). localStorage en sessionStorage
+# kunnen daar ontbreken of gooien. De sessielaag moet dan "uitgelogd" zeggen
+# in plaats van af te breken: anders blijft de org-knop stil op "Checking your
+# login..." hangen en tekent de nav zijn uitgelogde stand niet.
+# --------------------------------------------------------------------------- #
+_GEEN_OPSLAG = ("for (const k of ['localStorage', 'sessionStorage'])"
+                "  Object.defineProperty(window, k, {get() { throw new Error('geen opslag'); }});")
+
+
+def test_zonder_opslag_toont_de_v2_nav_gewoon_de_login(sessie):
+    s = sessie(versie="v2")
+    fouten = []
+    s.page.on("pageerror", lambda e: fouten.append(str(e)))
+    s.ctx.add_init_script(_GEEN_OPSLAG)
+    s.open("/v2/index.html")
+    s.page.wait_for_function("() => !document.querySelector('.nav-auth .nav-login').hidden")
+    assert s.page.locator(".nav-auth .nav-login").is_visible()
+    assert fouten == [], fouten
+
+
+def test_zonder_opslag_gaat_de_orgknop_naar_de_login(sessie):
+    s = sessie(versie="v2", breedte=390)
+    logins = []
+    s.page.route(f"{API}/login*", lambda r: (logins.append(r.request.url), r.fulfill(status=200, body="login")))
+    s.ctx.add_init_script(_GEEN_OPSLAG)
+    s.open("/v2/organisations.html")
+    s.page.locator("[data-org-cta]").first.click()
+    s.page.wait_for_timeout(2500)
+    assert logins and "flow%3Dorg" in logins[0], logins

@@ -19,9 +19,13 @@ function fetchMetDeadline(url, opts = {}) {
 }
 
 function clearUserData() {
-  sessionStorage.removeItem("user_info");
-  sessionStorage.removeItem("user_guilds");
-  localStorage.removeItem("api_token"); // consistent met dashboard.js
+  // Elke opslag apart en zonder te gooien: een in-app browser (Discord) kan
+  // localStorage/sessionStorage missen of laten gooien. Dan is er ook niets te
+  // wissen; een fout hier liet haalLogin() afbreken in plaats van "uitgelogd"
+  // te zeggen, en de org-knop bleef stil hangen (13-10-2026).
+  try { sessionStorage.removeItem("user_info"); } catch (err) { /* geen opslag */ }
+  try { sessionStorage.removeItem("user_guilds"); } catch (err) { /* geen opslag */ }
+  try { localStorage.removeItem("api_token"); } catch (err) { /* consistent met dashboard.js */ }
 }
 
 /**
