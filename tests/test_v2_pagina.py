@@ -184,7 +184,9 @@ def _links(page):
 
 def test_elke_link_naar_buiten_bestaat_al_op_de_site(v2):
     t = v2()
-    buiten = {h for h in _links(t.page) if h.startswith("http")}
+    # De login draagt sinds 13-10 een terugkeerpad (?redirect=v2/index.html);
+    # het adres zelf is dezelfde login als in v1.
+    buiten = {h.split("?redirect=")[0] for h in _links(t.page) if h.startswith("http")}
     assert buiten <= ECHTE_LINKS_NAAR_BUITEN, buiten - ECHTE_LINKS_NAAR_BUITEN
     assert INVITE in buiten
 
@@ -675,6 +677,11 @@ def test_geen_fouten_in_de_console(browser, server):
     pg.on("console", lambda m: fouten.append(m.text) if m.type == "error" and "net::" not in m.text
           and "Failed to load resource" not in m.text else None)
     pg.route("**/*", lambda r: r.continue_() if urlsplit(r.request.url).hostname == "127.0.0.1" else r.abort())
+    # Een bezoeker zonder sessie: /api/me zegt 401, zoals de echte backend.
+    pg.route(f"{API}/api/me", lambda r: r.fulfill(
+        status=401, content_type="application/json", body='{"logged_in": false}',
+        headers={"Access-Control-Allow-Origin": r.request.headers.get("origin", "*"),
+                 "Access-Control-Allow-Credentials": "true"}))
     pg.goto(f"{server}/v2/?site=v2", wait_until="load")
     pg.wait_for_timeout(800)
     pg.evaluate("() => window.scrollTo(0, document.body.scrollHeight)")

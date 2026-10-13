@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https://cdn.discordapp.com; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <!-- De versieschakelaar v1/v2: zie ../js/site-version.js. Staat dit niet op v2
        en is er geen preview (?site=v2), dan gaat deze pagina terug naar v1. -->
   <script src="../js/site-version.js" data-page="v2" data-v1="../"></script>
@@ -46,13 +46,34 @@
           <li data-feature="premium"><a href="../premium.html">Premium</a></li>
         </ul>
         <ul class="nav-sheet-extra">
-          <li><a href="https://api.buckybot.app/login">Log in</a></li>
+          <li data-auth-uit><a href="https://api.buckybot.app/login" data-auth-login>Log in with Discord</a></li>
+          <li class="nav-sheet-user" data-auth-in hidden>
+            <img class="nav-avatar" data-auth-avatar src="img/bucky-mark-96.webp" width="28" height="28" alt="" />
+            <span data-auth-naam></span>
+          </li>
+          <li data-auth-in hidden><a href="../dashboard.html">Dashboard</a></li>
+          <li data-auth-in hidden><button type="button" class="nav-sheet-logout" data-auth-logout>Log out</button></li>
           <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Bucky on Discord</a></li>
         </ul>
       </nav>
 
       <div class="nav-actions">
-        <a class="nav-login" href="https://api.buckybot.app/login">Log in</a>
+        <!-- A. Inloggen en uitloggen met de bestaande sessie (js/nav-auth.js:
+             /api/me, de sessiecache en POST /logout). Uitgelogd: Log in;
+             ingelogd: avatar en naam, met Dashboard en Log out. -->
+        <div class="nav-auth">
+          <a class="nav-login" href="https://api.buckybot.app/login" data-auth-uit data-auth-login>Log in</a>
+          <div class="nav-user" data-auth-in hidden>
+            <button type="button" class="nav-user-knop" aria-expanded="false" aria-controls="nav-user-menu">
+              <img class="nav-avatar" data-auth-avatar src="img/bucky-mark-96.webp" width="28" height="28" alt="" />
+              <span class="nav-user-naam" data-auth-naam></span>
+            </button>
+            <ul class="nav-user-menu" id="nav-user-menu" hidden>
+              <li><a href="../dashboard.html">Dashboard</a></li>
+              <li><button type="button" data-auth-logout>Log out</button></li>
+            </ul>
+          </div>
+        </div>
         <!-- Discord-logo: Font Awesome Free 6 (brands, "discord"), CC BY 4.0,
              https://fontawesome.com/license/free -->
         <a class="nav-discord" href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener" aria-label="Bucky on Discord (support server)">

@@ -2,6 +2,12 @@ import { API_URL } from "./config.js";
 
 const navMenu = document.getElementById("nav-menu");
 
+// OP EEN v2-PAGINA TEKENT DIT BESTAND NIETS (13-10-2026). Daar heet de <nav>
+// zelf `nav-menu`, en `renderNav` zou hem leegvegen. v2 gebruikt dezelfde
+// sessie via de exports onderaan (haalLogin, uitloggen, leesSessieCache,
+// loginUrl) en tekent zijn eigen knoppen (v2/js/v2.js). Voor v1 verandert er niets.
+const IS_V2 = document.documentElement.classList.contains("v2");
+
 // Een <li><a>tekst</a></li> voor de balk, met DOM en zonder innerHTML (zie
 // bucky1.0/tests/test_site_html_injectie.py). `id` mag leeg blijven.
 function navLi(href, text, id = "") {
@@ -144,7 +150,11 @@ async function addPremiumLink() {
   }
 }
 
-async function checkLogin() {
+/**
+ * De sessie bij de server nagaan: `{loggedIn, user}`. Werkt de cache bij, of
+ * wist hem. Gedeeld door de v1-balk (checkLogin) en de v2-balk.
+ */
+async function haalLogin() {
   try {
     // MET DEADLINE. Zonder abort hangt een stille server deze promise voor
     // eeuwig op - en al hangt de balk daar sinds 12 augustus niet meer aan,
@@ -159,33 +169,56 @@ async function checkLogin() {
       try {
         sessionStorage.setItem("user_info", JSON.stringify(data.user));
       } catch (err) { /* private mode: geen cache, wel een balk */ }
-      renderNav(true, data.user);
-    } else {
-      clearUserData();
-      renderNav(false);
+      return { loggedIn: true, user: data.user };
     }
+    clearUserData();
+    return { loggedIn: false, user: null };
   } catch (err) {
     console.error("Error checking login status:", err);
     clearUserData();
-    renderNav(false);
+    return { loggedIn: false, user: null };
   }
+}
+
+async function checkLogin() {
+  const stand = await haalLogin();
+  renderNav(stand.loggedIn, stand.user);
+}
+
+/** De sessie zoals deze tab hem kent (zonder netwerk), of null. */
+function leesSessieCache() {
+  try {
+    return JSON.parse(sessionStorage.getItem("user_info") || "null");
+  } catch (err) {
+    return null;
+  }
+}
+
+/** Waar de login begint; met een terugkeerpagina (backend: safe_return_path). */
+function loginUrl(terug) {
+  return terug ? `${API_URL}/login?redirect=${encodeURIComponent(terug)}` : `${API_URL}/login`;
+}
+
+/** Uitloggen bij de server en de cache wissen. `true` als de server het bevestigde. */
+async function uitloggen() {
+  const res = await fetch(`${API_URL}/logout`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  // Wis altijd direct, ongeacht serverresponse
+  clearUserData();
+  return res.ok;
 }
 
 
 async function doLogout() {
   try {
-    const res = await fetch(`${API_URL}/logout`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
+    const ok = await uitloggen();
 
-    // Wis altijd direct, ongeacht serverresponse
-    clearUserData();
-
-    if (res.ok) {
+    if (ok) {
       renderNav(false);
       window.location.href = "index.html";
     } else {
@@ -200,6 +233,7 @@ async function doLogout() {
 
 // Sync logout/login over meerdere tabs
 window.addEventListener("storage", (event) => {
+  if (IS_V2) return;
   if (event.key === "user_info" && !event.newValue) {
     // `renderNav` begint met `replaceChildren(...essentialLinks())` en veegt
     // de premiumlink dus weg. Hij hoort daarna opnieuw te komen, want uitloggen in
@@ -211,6 +245,7 @@ window.addEventListener("storage", (event) => {
 
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
+  if (IS_V2) return;
   // TEKENEN VOOR HET NETWERK. De balk staat er vanaf de eerste tick, uit de
   // sessiecache of als uitgelogde default; checkLogin is daarna een UPGRADE en
   // geen voorwaarde. Premium blijft erachter gehaakt omdat renderNav het menu
@@ -220,3 +255,4 @@ document.addEventListener("DOMContentLoaded", () => {
   checkLogin().finally(() => addPremiumLink());
 });
 
+export { haalLogin, leesSessieCache, loginUrl, uitloggen };

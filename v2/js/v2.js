@@ -11,6 +11,7 @@
  */
 import "../../js/features.js";
 import { API_URL } from "../../js/config.js";
+import { haalLogin, leesSessieCache, loginUrl, uitloggen } from "../../js/nav-auth.js";
 
 /** Staat de bezoeker beweging toe? Zo niet: alles staat meteen stil en klaar. */
 const minderBeweging = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -205,6 +206,89 @@ function parallax(root) {
     zet();
 }
 
+/* ---- A. Inloggen en uitloggen -------------------------------------------------
+   Dezelfde sessie als v1 (js/nav-auth.js): de cache in sessionStorage voor de
+   eerste tekening, /api/me als bevestiging, POST /logout om uit te loggen. Hier
+   alleen de plek en de stijl. */
+function avatarUrl(user) {
+    if (user.avatar) {
+        return `https://cdn.discordapp.com/avatars/${encodeURIComponent(user.id)}/${encodeURIComponent(user.avatar)}.png?size=64`;
+    }
+    // Zonder eigen avatar: dezelfde standaardavatar als Discord zelf toont.
+    let index = 0;
+    try { index = Number((BigInt(user.id) >> 22n) % 6n); } catch (_e) { index = 0; }
+    return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
+}
+
+/** Waar de login terugkomt: deze pagina, relatief aan de site (bijv. "v2/tos.html").
+ *
+ * Alleen het pad, als `.html`: dat is wat de backend toelaat (sessions.
+ * safe_return_path). Een map wordt `index.html`; de query blijft weg (een
+ * preview met ?site=v2 staat al in de sessionStorage van dit tabblad). */
+function terugPad() {
+    const basis = new URL("../../", import.meta.url).pathname;
+    let pad = window.location.pathname;
+    if (!pad.startsWith(basis)) return "";
+    pad = pad.slice(basis.length);
+    if (pad === "" || pad.endsWith("/")) pad += "index.html";
+    return pad;
+}
+
+function tekenAuth(user) {
+    const binnen = Boolean(user && user.id);
+    for (const el of document.querySelectorAll("[data-auth-in]")) el.hidden = !binnen;
+    for (const el of document.querySelectorAll("[data-auth-uit]")) el.hidden = binnen;
+    if (!binnen) return;
+    const naam = user.global_name || user.username || "Signed in";
+    for (const el of document.querySelectorAll("[data-auth-naam]")) el.textContent = naam;
+    for (const img of document.querySelectorAll("[data-auth-avatar]")) {
+        img.src = avatarUrl(user);
+        img.alt = "";
+    }
+}
+
+function auth() {
+    for (const a of document.querySelectorAll("[data-auth-login]")) a.href = loginUrl(terugPad());
+    tekenAuth(leesSessieCache());
+    haalLogin().then((stand) => tekenAuth(stand.loggedIn ? stand.user : null));
+
+    const knop = document.querySelector(".nav-user-knop");
+    const menu = document.getElementById("nav-user-menu");
+    if (knop && menu) {
+        const zet = (open) => {
+            menu.hidden = !open;
+            knop.setAttribute("aria-expanded", String(open));
+        };
+        knop.addEventListener("click", () => zet(menu.hidden));
+        document.addEventListener("click", (e) => {
+            if (!menu.hidden && !e.target.closest(".nav-user")) zet(false);
+        });
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && !menu.hidden) { zet(false); knop.focus(); }
+        });
+    }
+    for (const b of document.querySelectorAll("[data-auth-logout]")) {
+        b.addEventListener("click", async () => {
+            // Zoals v1 (doLogout): wissen, en dan naar de voorpagina.
+            try {
+                if (await uitloggen()) {
+                    tekenAuth(null);
+                    window.location.href = "index.html";
+                } else {
+                    alert("Logout failed.");
+                }
+            } catch (_e) {
+                alert("Logout failed due to network error.");
+            }
+        });
+    }
+    // Uitloggen in een ander tabblad: hier ook.
+    window.addEventListener("storage", (e) => {
+        if (e.key === "user_info" && !e.newValue) tekenAuth(null);
+    });
+}
+
 nav();
+auth();
 stats();
 beweging();
