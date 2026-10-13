@@ -220,6 +220,8 @@
     function ga(versie) {
         window.BuckySiteVersion.versie = versie;
         root.setAttribute("data-site-versie", versie);
+        // Voor pagina-scripts die op de versie wachten (js/arcade-uitloggen.js).
+        try { document.dispatchEvent(new CustomEvent("bucky:site-versie", { detail: versie })); } catch (e) { /* oud */ }
         if (gedeeld) {
             if (versie === "v2" && poort === "login") loginPoort(); else toon();
             return;

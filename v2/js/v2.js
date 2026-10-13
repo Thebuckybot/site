@@ -11,7 +11,7 @@
  */
 import "../../js/features.js";
 import { API_URL } from "../../js/config.js";
-import { haalLogin, leesSessieCache, loginUrl, uitloggen } from "../../js/nav-auth.js";
+import { haalLogin, leesSessieCache, loginUrl, uitloggen } from "../../js/sessie.js";
 
 /** Staat de bezoeker beweging toe? Zo niet: alles staat meteen stil en klaar. */
 const minderBeweging = window.matchMedia("(prefers-reduced-motion: reduce)");

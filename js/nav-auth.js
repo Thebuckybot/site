@@ -1,12 +1,10 @@
 import { API_URL } from "./config.js";
+// De sessie zelf (/api/me, de cache, uitloggen) staat sinds 13-10-2026 in
+// sessie.js, zonder bijwerkingen, zodat v2 en de arcade hem kunnen gebruiken
+// zonder deze balk te tekenen. Hier is hij precies wat hij was.
+import { clearUserData, fetchMetDeadline, haalLogin, uitloggen } from "./sessie.js";
 
 const navMenu = document.getElementById("nav-menu");
-
-// OP EEN v2-PAGINA TEKENT DIT BESTAND NIETS (13-10-2026). Daar heet de <nav>
-// zelf `nav-menu`, en `renderNav` zou hem leegvegen. v2 gebruikt dezelfde
-// sessie via de exports onderaan (haalLogin, uitloggen, leesSessieCache,
-// loginUrl) en tekent zijn eigen knoppen (v2/js/v2.js). Voor v1 verandert er niets.
-const IS_V2 = document.documentElement.classList.contains("v2");
 
 // Een <li><a>tekst</a></li> voor de balk, met DOM en zonder innerHTML (zie
 // bucky1.0/tests/test_site_html_injectie.py). `id` mag leeg blijven.
@@ -35,15 +33,6 @@ function essentialLinks() {
 // Daarom: (1) de balk wordt METEEN getekend, voordat er ook maar één request
 // vertrekt - uitgelogd als default, ingelogd als er een sessiecache ligt;
 // (2) elke fetch hier draagt een deadline, zodat "traag" nooit "nooit" wordt.
-const FETCH_DEADLINE_MS = 8000;
-
-function fetchMetDeadline(url, opts = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_DEADLINE_MS);
-  return fetch(url, { ...opts, signal: controller.signal })
-    .finally(() => clearTimeout(timer));
-}
-
 function renderNavDirect() {
   // Ingelogd tekenen als de vorige pagina dat wist, anders uitgelogd. Beide
   // zijn compleet; checkLogin werkt het daarna bij als de server iets anders
@@ -71,12 +60,6 @@ function storeTokenFromUrl() {
   }
 }
 
-
-function clearUserData() {
-  sessionStorage.removeItem("user_info");
-  sessionStorage.removeItem("user_guilds");
-  localStorage.removeItem("api_token"); // consistent met dashboard.js
-}
 
 function renderNav(loggedIn, user = null) {
   navMenu.replaceChildren(...essentialLinks()); // toon eerst altijd cruciale links
@@ -150,69 +133,10 @@ async function addPremiumLink() {
   }
 }
 
-/**
- * De sessie bij de server nagaan: `{loggedIn, user}`. Werkt de cache bij, of
- * wist hem. Gedeeld door de v1-balk (checkLogin) en de v2-balk.
- */
-async function haalLogin() {
-  try {
-    // MET DEADLINE. Zonder abort hangt een stille server deze promise voor
-    // eeuwig op - en al hangt de balk daar sinds 12 augustus niet meer aan,
-    // een login-status die nooit komt is nog steeds een kapotte upgrade.
-    const res = await fetchMetDeadline(`${API_URL}/api/me`, {
-      credentials: "include"
-    });
-
-    const data = await res.json();
-
-    if (data.logged_in) {
-      try {
-        sessionStorage.setItem("user_info", JSON.stringify(data.user));
-      } catch (err) { /* private mode: geen cache, wel een balk */ }
-      return { loggedIn: true, user: data.user };
-    }
-    clearUserData();
-    return { loggedIn: false, user: null };
-  } catch (err) {
-    console.error("Error checking login status:", err);
-    clearUserData();
-    return { loggedIn: false, user: null };
-  }
-}
-
 async function checkLogin() {
   const stand = await haalLogin();
   renderNav(stand.loggedIn, stand.user);
 }
-
-/** De sessie zoals deze tab hem kent (zonder netwerk), of null. */
-function leesSessieCache() {
-  try {
-    return JSON.parse(sessionStorage.getItem("user_info") || "null");
-  } catch (err) {
-    return null;
-  }
-}
-
-/** Waar de login begint; met een terugkeerpagina (backend: safe_return_path). */
-function loginUrl(terug) {
-  return terug ? `${API_URL}/login?redirect=${encodeURIComponent(terug)}` : `${API_URL}/login`;
-}
-
-/** Uitloggen bij de server en de cache wissen. `true` als de server het bevestigde. */
-async function uitloggen() {
-  const res = await fetch(`${API_URL}/logout`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-  // Wis altijd direct, ongeacht serverresponse
-  clearUserData();
-  return res.ok;
-}
-
 
 async function doLogout() {
   try {
@@ -233,7 +157,6 @@ async function doLogout() {
 
 // Sync logout/login over meerdere tabs
 window.addEventListener("storage", (event) => {
-  if (IS_V2) return;
   if (event.key === "user_info" && !event.newValue) {
     // `renderNav` begint met `replaceChildren(...essentialLinks())` en veegt
     // de premiumlink dus weg. Hij hoort daarna opnieuw te komen, want uitloggen in
@@ -245,7 +168,6 @@ window.addEventListener("storage", (event) => {
 
 document.addEventListener("DOMContentLoaded", () => {
   storeTokenFromUrl();
-  if (IS_V2) return;
   // TEKENEN VOOR HET NETWERK. De balk staat er vanaf de eerste tick, uit de
   // sessiecache of als uitgelogde default; checkLogin is daarna een UPGRADE en
   // geen voorwaarde. Premium blijft erachter gehaakt omdat renderNav het menu
@@ -254,5 +176,3 @@ document.addEventListener("DOMContentLoaded", () => {
   renderNavDirect();
   checkLogin().finally(() => addPremiumLink());
 });
-
-export { haalLogin, leesSessieCache, loginUrl, uitloggen };

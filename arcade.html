@@ -25,6 +25,9 @@
      waar dat gemeten is; en het
      <style>-element dat MissionHubApp.js aanmaakt moet dan naar een .css-bestand. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https://cdn.discordapp.com https://media.discordapp.net; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'">
+<!-- De versieschakelaar (ADR 0011): de arcade is in v1 en v2 dezelfde pagina
+     ("beide"); onder v2 eist hij een login (data-gate). Verder verandert er niets. -->
+<script src="js/site-version.js" data-page="beide" data-gate="login"></script>
 <title>Bucky Arcade</title>
 
 <link rel="stylesheet" href="arcade.css">
@@ -33,6 +36,7 @@
 <script type="module" src="js/minigames/mount.js"></script>
 
 <script type="module" src="js/features.js"></script>
+<script type="module" src="js/arcade-uitloggen.js"></script>
 </head>
 <body>
 

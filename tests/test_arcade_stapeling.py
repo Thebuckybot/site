@@ -125,6 +125,13 @@ def main():
             # uitslag te negeren.
             page.wait_for_selector(".player-hero-card", timeout=30000)
             page.wait_for_selector("#the-vm", timeout=30000)
+            # Sinds 13-10-2026 laadt de arcade de versieschakelaar (ADR 0011): bij
+            # een eerste bezoek blijft de pagina heel even onzichtbaar tot de
+            # keuze er is. Ook daarop wachten, op het signaal en niet op de klok.
+            page.wait_for_function(
+                "() => window.BuckySiteVersion && window.BuckySiteVersion.versie"
+                " && getComputedStyle(document.documentElement).visibility !== 'hidden'",
+                timeout=30000)
             page.wait_for_timeout(600)
             page.evaluate("""() => {
               const vm = document.querySelector('#the-vm');
