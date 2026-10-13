@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" class="v2">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https://cdn.discordapp.com; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <!-- De versieschakelaar (ADR 0011): onder v1 terug naar ../privacy.html. -->
+  <script src="../js/site-version.js" data-page="v2" data-v1="../privacy.html"></script>
+  <title>Privacy Policy - Bucky</title>
+  <meta name="description" content="How Bucky collects, uses, stores and protects your data." />
+  <link rel="canonical" href="https://buckybot.app/privacy.html" />
+  <meta name="theme-color" content="#FAFAFC" />
+  <link rel="preload" href="fonts/inter-800.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/v2.css" />
+  <link rel="icon" type="image/webp" href="img/bucky-mark-96.webp" />
+  <script type="module" src="js/v2.js"></script>
+</head>
+<body class="legal-pagina">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <!-- B1. NAV, alleen van v2. Links naar wat bestaat; "Docs" ontbreekt met
+       opzet: de site heeft geen docs-pagina (alleen bucky://docs in de VM). -->
+  <header class="nav" data-nav>
+    <div class="nav-bar wrap">
+      <a class="brand" href="index.html">
+        <img class="brand-mark" src="img/bucky-mark-96.webp" width="34" height="34" alt="" />
+        <span class="brand-word">Bucky</span>
+      </a>
+
+      <nav class="nav-menu" id="nav-menu" aria-label="Main">
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="index.html#security">Security</a></li>
+          <li><a href="index.html#economy">Economy</a></li>
+          <li><a href="index.html#organisations">Organisations</a></li>
+          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-feature="premium"><a href="../premium.html">Premium</a></li>
+        </ul>
+        <ul class="nav-sheet-extra">
+          <li data-auth-uit><a href="https://api.buckybot.app/login" data-auth-login>Log in with Discord</a></li>
+          <li class="nav-sheet-user" data-auth-in hidden>
+            <img class="nav-avatar" data-auth-avatar src="img/bucky-mark-96.webp" width="28" height="28" alt="" />
+            <span data-auth-naam></span>
+          </li>
+          <li data-auth-in hidden><a href="../dashboard.html">Dashboard</a></li>
+          <li data-auth-in hidden><button type="button" class="nav-sheet-logout" data-auth-logout>Log out</button></li>
+          <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Bucky on Discord</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <!-- A. Inloggen en uitloggen met de bestaande sessie (js/nav-auth.js:
+             /api/me, de sessiecache en POST /logout). Uitgelogd: Log in;
+             ingelogd: avatar en naam, met Dashboard en Log out. -->
+        <div class="nav-auth">
+          <a class="nav-login" href="https://api.buckybot.app/login" data-auth-uit data-auth-login>Log in</a>
+          <div class="nav-user" data-auth-in hidden>
+            <button type="button" class="nav-user-knop" aria-expanded="false" aria-controls="nav-user-menu">
+              <img class="nav-avatar" data-auth-avatar src="img/bucky-mark-96.webp" width="28" height="28" alt="" />
+              <span class="nav-user-naam" data-auth-naam></span>
+            </button>
+            <ul class="nav-user-menu" id="nav-user-menu" hidden>
+              <li><a href="../dashboard.html">Dashboard</a></li>
+              <li><button type="button" data-auth-logout>Log out</button></li>
+            </ul>
+          </div>
+        </div>
+        <!-- Discord-logo: Font Awesome Free 6 (brands, "discord"), CC BY 4.0,
+             https://fontawesome.com/license/free -->
+        <a class="nav-discord" href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener" aria-label="Bucky on Discord (support server)">
+          <svg viewBox="-6 0 600 448" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M499.4 38Q498.4 37 498.4 37Q440.4 11 378.4 0Q377.4 0 376.4 1Q368.4 16 361.4 32Q294.4 21 227.4 32Q220.4 16 212.4 1Q211.4 0 210.4 0Q148.4 11 90.4 37Q90.4 37 89.4 38Q33.4 123 13.4 207Q-5.6 290 2.4 372Q3.4 373 3.4 374Q70.4 423 150.4 448Q151.4 448 152.4 447Q169.4 424 182.4 398Q182.4 398 182.4 397Q182.4 396 181.4 396Q157.4 387 135.4 374Q134.4 373 134.4 372Q134.4 371 135.4 371Q140.4 367 144.4 364Q145.4 363 146.4 363Q219.4 396 294.4 396Q370.4 396 442.4 363Q443.4 363 443.4 364Q448.4 367 453.4 371Q453.4 371 453.4 372Q453.4 373 452.4 374Q430.4 387 407.4 396Q406.4 396 405.4 397Q405.4 398 406.4 398Q419.4 424 436.4 447Q436.4 448 438.4 448Q517.4 423 585.4 374Q585.4 373 585.4 372Q601.4 183 499.4 38ZM196.4 306Q174.4 305 159.4 288Q144.4 271 144.4 246Q144.4 221 159.4 204Q174.4 188 196.4 187Q219.4 188 234.4 205Q249.4 221 249.4 246Q249.4 271 234.4 288Q219.4 305 196.4 306ZM392.4 306Q370.4 305 355.4 288Q340.4 271 339.4 246Q340.4 221 354.4 204Q369.4 188 392.4 187Q415.4 188 430.4 205Q444.4 221 445.4 246Q444.4 271 429.4 288Q415.4 305 392.4 306Z"/></svg>
+        </a>
+        <a class="btn btn-signal btn-nav" href="https://discord.com/oauth2/authorize?client_id=907664862493167680&amp;scope=bot%20applications.commands&amp;permissions=8">Invite Bucky</a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu">
+          <span class="sr-only">Menu</span>
+          <span class="nav-toggle-bars" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- D. DE TEKST, LETTERLIJK UIT ../privacy.html. Alleen de vormgeving is van v2;
+       links naar een pagina zonder v2-versie wijzen naar ../, en de knoppen
+       dragen de v2-klassen. site/tests/test_v2_legal.py houdt de tekst gelijk. -->
+  <div id="main" class="legal">
+<header class="legal-hero">
+    <span class="eyebrow">Legal</span>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: 28 September 2026</p>
+  </header>
+
+  <div class="legal-body">
+    <aside class="legal-toc">
+      <h4>On this page</h4>
+      <a href="#intro">Overview</a>
+      <a href="#collect">What we collect</a>
+      <a href="#use">How we use it</a>
+      <a href="#basis">Lawful basis</a>
+      <a href="#retention">Retention</a>
+      <a href="#sharing">Sharing &amp; processors</a>
+      <a href="#rights">Your rights</a>
+      <a href="#security">Security</a>
+      <a href="#children">Children</a>
+      <a href="#changes">Changes</a>
+      <a href="#contact">Contact</a>
+    </aside>
+
+    <main class="legal-content">
+      <h2 id="intro">Overview</h2>
+      <p>This Privacy Policy explains how Bucky ("Bucky", "we", "our" or "us") collects, uses, stores and protects information when you use the Bucky Discord bot, dashboard and related services (together, the "Service"). We collect the minimum data required to operate the Service and we never sell it.</p>
+      <div class="legal-card"><p>By adding Bucky to a server or signing in to the dashboard, you agree to the practices described here and in our <a href="tos.html">Terms of Service</a> and <a href="cookie.html">Cookie Policy</a>.</p></div>
+
+      <h2 id="collect">Information we collect</h2>
+      <p>We collect only what is needed to provide each feature. Application answers, ordinary message contents and direct messages are not stored: security detections record the metadata of what triggered them (for a blocked link, the domain only) rather than the message itself.</p>
+      <p>Support tickets are the exception. Messages sent inside a ticket, and the transcript generated when it is closed, are stored so staff can handle and review the request; they are deleted 48 hours after the ticket is closed. The transcript is shown on buckybot.app, after logging in with Discord, only to the person who opened the ticket and to that server's staff; staff also see their internal notes. Bucky posts a link to it, not a copy, so no part of the conversation is left behind in a Discord channel or DM. Transcripts posted as files before 27 September 2026 remain where they were posted, under Discord's own retention.</p>
+      <table class="legal-table">
+        <thead><tr><th>Category</th><th>Examples</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Discord identifiers</td><td>User ID, Server (guild) ID, role &amp; channel IDs</td><td>Associate settings and data with the right account and server</td></tr>
+          <tr><td>Security configuration</td><td>Module toggles, thresholds, punishment chains, ignore rules, SOC rules</td><td>Run and enforce your server's protection</td></tr>
+          <tr><td>Security events</td><td>Incident metadata, audit-log derived events, quarantine records including a cached username &amp; avatar URL, snapshots of server structure</td><td>Detection, recovery and the audit trail</td></tr>
+          <tr><td>Purchases</td><td>Which premium plan you hold, when it started and whether the monthly cache has been claimed; which Security Boosts you own, which server each one is applied to, when it was assigned and when it ends. Received from Discord; we never see your payment details</td><td>Give you what you bought, keep the monthly cache honest, and apply a boost to the server you chose</td></tr>
+          <tr><td>Economy &amp; gameplay</td><td>Balances, inventory, level and progression, organisation membership and contribution</td><td>Power the economy, the arcade and your organisation</td></tr>
+          <tr><td>Support tickets</td><td>Ticket messages and transcripts, with the display name of each author</td><td>Handle your request and let staff review how it was handled</td></tr>
+          <tr><td>Giveaways</td><td>Entries, and the display name of each drawn winner</td><td>Draw winners and show who won</td></tr>
+          <tr><td>Reminders</td><td>Reminder text and scheduled time</td><td>Deliver reminders you create</td></tr>
+          <tr><td>Technical</td><td>A sign-in session: a random identifier (stored only as a hash), the name of your browser or app, a salted hash of your IP address, and your Discord access token, stored encrypted so we can read which servers you manage</td><td>Authentication, security and abuse prevention</td></tr>
+          <tr><td>Technical logs</td><td>Text logs that the bot and the website backend write while they run: Discord user and server IDs next to what the Service did (security actions, votes, purchases and boosts, economy and rank changes, minigame rounds, errors), and search terms typed into the help search, without who typed them. Message contents, IP addresses and passwords are not written to them</td><td>Keep the Service running and investigate faults and abuse</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="use">How we use your information</h2>
+      <p>Your data is used solely to operate and improve the Service: authenticating dashboard access, enforcing security settings, powering the economy and story systems, delivering reminders, and diagnosing problems. We do <strong>not</strong> sell, rent or monetise your data, and we do not use it for advertising.</p>
+
+      <h2 id="basis">Lawful basis for processing</h2>
+      <p>Where the GDPR or similar laws apply, we rely on: <strong>performance of a contract</strong> (to provide features you request), <strong>legitimate interests</strong> (to keep servers secure and prevent abuse), and <strong>consent</strong> (for optional cookies, withdrawable at any time).</p>
+
+      <h2 id="retention">Data retention</h2>
+      <p>Data that expires on a fixed schedule is deleted automatically:</p>
+      <table class="legal-table">
+        <thead><tr><th>Data</th><th>Retention</th></tr></thead>
+        <tbody>
+          <tr><td>Premium plan and cache state</td><td>While the plan runs, and for as long afterwards as we need it to settle claims and answer questions about a purchase</td></tr>
+          <tr><td>Security incidents, audit log, rule executions, risk history, closed quarantine records and finished recovery jobs</td><td>14 days. Up to 365 days for a server that holds an active Security Boost: the server's administrators choose the period, and it is shown in the Security Center. When a boost ends the server keeps the longer period for 7 days and then returns to 14 days, at which point older data is deleted</td></tr>
+          <tr><td>Security snapshots (server structure)</td><td>The newest 10 per server (25 with a Security Boost) and none older than the server's retention period, except the one snapshot the server has chosen as its restore point</td></tr>
+          <tr><td>Security Boost records</td><td>While the boost runs and for as long afterwards as we need them to settle claims and answer questions about a purchase</td></tr>
+          <tr><td>Ticket messages and transcripts</td><td>48 hours after the ticket is closed</td></tr>
+          <tr><td>Sign-in sessions</td><td>7 days on the website and 30 days in the app, counted from your last use. Signing out ends a session immediately; expired sessions are deleted within a day</td></tr>
+          <tr><td>Giveaway entries</td><td>72 hours after the giveaway ends or is cancelled</td></tr>
+          <tr><td>Technical logs</td><td>30 days. Every night, log lines older than 30 days are deleted</td></tr>
+        </tbody>
+      </table>
+      <p>Everything else is kept for as long as it is needed to provide the Service. Configuration, economy and progression data have no fixed expiry, because deleting them would reset your server or your account. Security snapshots are kept to support recovery and you can delete them from the dashboard at any time. If Bucky is removed from a server, associated configuration and security data may be deleted after a reasonable period unless earlier deletion is requested.</p>
+
+      <h2 id="sharing">Sharing &amp; sub-processors</h2>
+      <p>We do not share personal data with third parties for their own purposes. We rely on a small number of processors to run the Service:</p>
+      <ul>
+        <li><strong>Discord</strong> - the platform the Service operates on; governed by Discord's own <a href="https://discord.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</li>
+        <li><strong>Google Translate</strong> - receives the text you ask Bucky to translate, and only then; it is the primary translation provider.</li>
+        <li><strong>MyMemory</strong> - receives the same text as a fallback when Google Translate does not answer; governed by <a href="https://mymemory.translated.net/doc/en/privacy.php" target="_blank" rel="noopener">its own privacy policy</a>.</li>
+        <li><strong>Discord</strong> - also the seller for every paid plan. Discord takes the payment and tells us which plan you hold; your payment details stay with Discord and never reach us.</li>
+        <li><strong>Hosting &amp; database providers</strong> - to store configuration and run the bot and dashboard.</li>
+      </ul>
+      <p>We may disclose information if required by law or to protect the rights, safety and security of our users and the Service.</p>
+
+      <h2 id="rights">Your rights</h2>
+      <p>Depending on your location, you may have the right to access, correct, export or delete your data, to object to or restrict certain processing, and to withdraw consent. To exercise any of these, contact us via the <a href="contact.html">Contact</a> page with your Discord User ID. We respond to verified requests within a reasonable timeframe.</p>
+
+      <h2 id="security">Security</h2>
+      <p>We use industry-standard measures to protect your data, including encrypted transport, scoped access tokens and least-privilege access to production systems. No method of transmission or storage is completely secure, but we work to protect your information and to promptly address any issues.</p>
+
+      <h2 id="children">Children's privacy</h2>
+      <p>The Service is not directed to anyone under the minimum age required to use Discord in their country (at least 13). We do not knowingly collect data from children below that age. If you believe a child has provided us data, contact us and we will delete it.</p>
+
+      <h2 id="changes">Changes to this policy</h2>
+      <p>We may update this policy from time to time. Material changes will be reflected here with an updated date, and where appropriate we will provide additional notice.</p>
+
+      <h2 id="contact">Contact</h2>
+      <p>Questions about privacy or a data request? Reach us through the <a href="contact.html">Contact</a> page or our Discord support server.</p>
+    </main>
+  </div>
+  </div>
+
+  <!-- B2. FOOTER, alleen van v2. Alleen echte, bestaande links. -->
+  <footer class="foot">
+    <div class="wrap foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="img/bucky-mark-96.webp" width="34" height="34" alt="" loading="lazy" />
+          <span class="brand-word">Bucky</span>
+        </a>
+        <p>Security, a living economy, four organisations and an arcade for your Discord server.</p>
+      </div>
+      <nav class="foot-col" aria-labelledby="foot-product">
+        <h2 class="label" id="foot-product">Product</h2>
+        <ul>
+          <li><a href="index.html#security">Security</a></li>
+          <li><a href="index.html#economy">Economy</a></li>
+          <li><a href="index.html#organisations">Organisations</a></li>
+          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-feature="premium"><a href="../premium.html">Premium</a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-labelledby="foot-community">
+        <h2 class="label" id="foot-community">Community</h2>
+        <ul>
+          <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Discord server</a></li>
+          <li><a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&amp;scope=bot%20applications.commands&amp;permissions=8">Invite Bucky</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-labelledby="foot-legal">
+        <h2 class="label" id="foot-legal">Legal</h2>
+        <ul>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+          <li><a href="tos.html">Terms of Service</a></li>
+          <li><a href="cookie.html">Cookie Policy</a></li>
+          <li><a href="rules.html">Community rules</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="wrap foot-base">
+      <p>&copy; 2026 Bucky Bot. All rights reserved.</p>
+      <p class="label">More than a bot.</p>
+    </div>
+  </footer>
+</body>
+</html>

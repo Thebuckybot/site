@@ -7,6 +7,8 @@
        zetten; frame-ancestors (clickjacking) werkt daardoor niet. Moet vóór elk
        script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <!-- De versieschakelaar (ADR 0011): onder v2 naar v2/contact.html, dezelfde tekst. -->
+  <script src="js/site-version.js" data-page="v1" data-v2="v2/contact.html"></script>
   <title>Contact - Bucky</title>
   <meta name="description" content="Get in touch with the Bucky team and support." />
   <link rel="stylesheet" href="css/fonts.css" />

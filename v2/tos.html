@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" class="v2">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https://cdn.discordapp.com; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <!-- De versieschakelaar (ADR 0011): onder v1 terug naar ../tos.html. -->
+  <script src="../js/site-version.js" data-page="v2" data-v1="../tos.html"></script>
+  <title>Terms of Service - Bucky</title>
+  <meta name="description" content="The terms that govern your use of Bucky." />
+  <link rel="canonical" href="https://buckybot.app/tos.html" />
+  <meta name="theme-color" content="#FAFAFC" />
+  <link rel="preload" href="fonts/inter-800.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/v2.css" />
+  <link rel="icon" type="image/webp" href="img/bucky-mark-96.webp" />
+  <script type="module" src="js/v2.js"></script>
+</head>
+<body class="legal-pagina">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <!-- B1. NAV, alleen van v2. Links naar wat bestaat; "Docs" ontbreekt met
+       opzet: de site heeft geen docs-pagina (alleen bucky://docs in de VM). -->
+  <header class="nav" data-nav>
+    <div class="nav-bar wrap">
+      <a class="brand" href="index.html">
+        <img class="brand-mark" src="img/bucky-mark-96.webp" width="34" height="34" alt="" />
+        <span class="brand-word">Bucky</span>
+      </a>
+
+      <nav class="nav-menu" id="nav-menu" aria-label="Main">
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="index.html#security">Security</a></li>
+          <li><a href="index.html#economy">Economy</a></li>
+          <li><a href="index.html#organisations">Organisations</a></li>
+          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-feature="premium"><a href="../premium.html">Premium</a></li>
+        </ul>
+        <ul class="nav-sheet-extra">
+          <li data-auth-uit><a href="https://api.buckybot.app/login" data-auth-login>Log in with Discord</a></li>
+          <li class="nav-sheet-user" data-auth-in hidden>
+            <img class="nav-avatar" data-auth-avatar src="img/bucky-mark-96.webp" width="28" height="28" alt="" />
+            <span data-auth-naam></span>
+          </li>
+          <li data-auth-in hidden><a href="../dashboard.html">Dashboard</a></li>
+          <li data-auth-in hidden><button type="button" class="nav-sheet-logout" data-auth-logout>Log out</button></li>
+          <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Bucky on Discord</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <!-- A. Inloggen en uitloggen met de bestaande sessie (js/nav-auth.js:
+             /api/me, de sessiecache en POST /logout). Uitgelogd: Log in;
+             ingelogd: avatar en naam, met Dashboard en Log out. -->
+        <div class="nav-auth">
+          <a class="nav-login" href="https://api.buckybot.app/login" data-auth-uit data-auth-login>Log in</a>
+          <div class="nav-user" data-auth-in hidden>
+            <button type="button" class="nav-user-knop" aria-expanded="false" aria-controls="nav-user-menu">
+              <img class="nav-avatar" data-auth-avatar src="img/bucky-mark-96.webp" width="28" height="28" alt="" />
+              <span class="nav-user-naam" data-auth-naam></span>
+            </button>
+            <ul class="nav-user-menu" id="nav-user-menu" hidden>
+              <li><a href="../dashboard.html">Dashboard</a></li>
+              <li><button type="button" data-auth-logout>Log out</button></li>
+            </ul>
+          </div>
+        </div>
+        <!-- Discord-logo: Font Awesome Free 6 (brands, "discord"), CC BY 4.0,
+             https://fontawesome.com/license/free -->
+        <a class="nav-discord" href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener" aria-label="Bucky on Discord (support server)">
+          <svg viewBox="-6 0 600 448" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M499.4 38Q498.4 37 498.4 37Q440.4 11 378.4 0Q377.4 0 376.4 1Q368.4 16 361.4 32Q294.4 21 227.4 32Q220.4 16 212.4 1Q211.4 0 210.4 0Q148.4 11 90.4 37Q90.4 37 89.4 38Q33.4 123 13.4 207Q-5.6 290 2.4 372Q3.4 373 3.4 374Q70.4 423 150.4 448Q151.4 448 152.4 447Q169.4 424 182.4 398Q182.4 398 182.4 397Q182.4 396 181.4 396Q157.4 387 135.4 374Q134.4 373 134.4 372Q134.4 371 135.4 371Q140.4 367 144.4 364Q145.4 363 146.4 363Q219.4 396 294.4 396Q370.4 396 442.4 363Q443.4 363 443.4 364Q448.4 367 453.4 371Q453.4 371 453.4 372Q453.4 373 452.4 374Q430.4 387 407.4 396Q406.4 396 405.4 397Q405.4 398 406.4 398Q419.4 424 436.4 447Q436.4 448 438.4 448Q517.4 423 585.4 374Q585.4 373 585.4 372Q601.4 183 499.4 38ZM196.4 306Q174.4 305 159.4 288Q144.4 271 144.4 246Q144.4 221 159.4 204Q174.4 188 196.4 187Q219.4 188 234.4 205Q249.4 221 249.4 246Q249.4 271 234.4 288Q219.4 305 196.4 306ZM392.4 306Q370.4 305 355.4 288Q340.4 271 339.4 246Q340.4 221 354.4 204Q369.4 188 392.4 187Q415.4 188 430.4 205Q444.4 221 445.4 246Q444.4 271 429.4 288Q415.4 305 392.4 306Z"/></svg>
+        </a>
+        <a class="btn btn-signal btn-nav" href="https://discord.com/oauth2/authorize?client_id=907664862493167680&amp;scope=bot%20applications.commands&amp;permissions=8">Invite Bucky</a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu">
+          <span class="sr-only">Menu</span>
+          <span class="nav-toggle-bars" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- D. DE TEKST, LETTERLIJK UIT ../tos.html. Alleen de vormgeving is van v2;
+       links naar een pagina zonder v2-versie wijzen naar ../, en de knoppen
+       dragen de v2-klassen. site/tests/test_v2_legal.py houdt de tekst gelijk. -->
+  <div id="main" class="legal">
+<header class="legal-hero">
+    <span class="eyebrow">Legal</span>
+    <h1>Terms of Service</h1>
+    <p class="updated">Last updated: 1 October 2026</p>
+  </header>
+
+  <div class="legal-body">
+    <aside class="legal-toc">
+      <h4>On this page</h4>
+      <a href="#accept">Acceptance</a>
+      <a href="#eligibility">Eligibility</a>
+      <a href="#service">The Service</a>
+      <a href="#purchases">Purchases</a>
+      <a href="#refunds">Refunds</a>
+      <a href="#virtual">Virtual items &amp; trading</a>
+      <a href="#acceptable">Acceptable use</a>
+      <a href="#community">The Bucky app</a>
+      <a href="#accounts">Accounts &amp; access</a>
+      <a href="#availability">Availability</a>
+      <a href="#thirdparty">Third parties</a>
+      <a href="#termination">Termination</a>
+      <a href="#disclaimer">Disclaimer</a>
+      <a href="#liability">Liability</a>
+      <a href="#law">Governing law</a>
+      <a href="#changes">Changes</a>
+      <a href="#contact">Contact</a>
+    </aside>
+
+    <main class="legal-content">
+      <h2 id="accept">Acceptance of these terms</h2>
+      <p>These Terms of Service ("Terms") govern your access to and use of the Bucky Discord bot, dashboard and related services (the "Service"), operated by Bucky ("we", "us" or "our"). By adding Bucky to a server or using the dashboard, you agree to these Terms and to our <a href="privacy.html">Privacy Policy</a>. If you do not agree, do not use the Service.</p>
+
+      <h2 id="eligibility">Eligibility</h2>
+      <p>You must be at least the minimum age required to use Discord in your country (at least 13), and you must comply with Discord's Terms of Service and Community Guidelines. If you use the Service on behalf of a server, you represent that you are authorised to configure that server.</p>
+
+      <h2 id="service">The Service</h2>
+      <p>Bucky provides server security (monitoring, detection, quarantine, snapshots and recovery), an economy system, player organisations, an arcade and related features. Features may be added, changed or removed over time. Some features are offered as part of a paid premium plan; see <a href="#purchases">Purchases</a>.</p>
+
+      <h2 id="purchases">Purchases</h2>
+      <p><strong>Discord sells it, not us.</strong> Every paid plan is sold through Discord's own store. Discord is the merchant of record: Discord takes the payment, holds the billing relationship with you and issues any receipt. We never see or handle your payment details. In the European Union and everywhere else Discord operates, this means your contract for the purchase is with Discord.</p>
+      <p><strong>Know what you are buying before you buy it.</strong> Everything a plan includes is listed on our <a data-feature="premium" href="../premium.html">Premium page</a> and on the Discord store page for that plan: the earnings multiplier, the challenge bonus and the full contents of the monthly cache. Please read it and buy on that basis. What is written there at the moment you buy is what you get.</p>
+      <p><strong>The contents are fixed in advance and are not negotiable afterwards.</strong> We do not add items, shards, boosts or exceptions to a plan after a purchase because a buyer would have preferred a different balance of value. This is not unwillingness to help; it is what keeps the listed contents meaningful for everyone who bought the same plan on the same terms.</p>
+      <p>We may change what a future plan contains. Any such change applies to purchases made after the change, and the page is updated before it takes effect. A change to a future plan is not a reason to revisit a completed purchase.</p>
+      <p id="boosts"><strong>Security Boosts are one-time purchases for a server, not a subscription.</strong> A boost is a licence to apply extended security limits to one Discord server for a fixed period (one month, three months, six months or one year): longer retention of security logs, more detection rules and more recovery snapshots, as listed on the Premium page at the moment you buy. It is not property, has no cash value and cannot be transferred to another Discord account. You choose the server in Discord, and you must hold Manage Server there; the period starts when you assign the boost, not when you buy it, and a boost kept in reserve does not run out. One boost is active per server at a time. After seven days you may move a boost to another server; the server it leaves keeps its extended limits for seven more days and then returns to the free limits, at which point data older than the free retention is deleted. A server's administrators may decline a boost; it then returns to your reserve with its period still running. If Bucky is removed from a server, or the server is deleted, the boost keeps running and you may move it after the seven days. Discord is the seller of a boost as of every other purchase, and Discord's refund policy applies: once a boost has been delivered to your reserve it is generally not refundable. If a boost is refunded while it is applied to a server, that server keeps its limits for the same seven days and then returns to the free limits.</p>
+
+      <h2 id="refunds">Refunds</h2>
+      <p><strong>Refunds are handled by Discord, under Discord's policy.</strong> Because Discord is the seller, refund decisions are Discord's to make and Discord's published <a href="https://support.discord.com/hc/en-us/articles/360022354131" target="_blank" rel="noopener">refund policy</a> applies. Nothing in these Terms limits, extends or overrides that policy, and nothing here removes any statutory right you have under the consumer law of your own country.</p>
+      <p>If you want a refund, request it from Discord. We cannot issue one, reverse a charge or credit a payment, because the money never reaches us.</p>
+      <p><strong>What Discord's documentation says to expect.</strong> Discord describes one-off purchases, including in-app purchases such as a cache or an item, as generally not refundable once delivered, and treats subscriptions separately. Discord decides each case and retains discretion, so please read their policy rather than relying on this summary. We describe it here so you are not surprised, not as a promise about what Discord will decide.</p>
+      <p>If a purchase did not arrive, tell us. That is a delivery problem rather than a refund question, and we will look into it and put it right.</p>
+
+      <h2 id="virtual">Virtual items &amp; trading</h2>
+      <p><strong>In-game things are not property and have no cash value.</strong> Shards, items, ranks, progression and anything else inside the Service are a licence to use a feature of the game. They are not currency, they are not an asset, and they cannot be redeemed, cashed out or exchanged for money or anything of real-world value.</p>
+      <p><strong>Do not trade with other players.</strong> Exchanging, selling, gifting or transferring anything from the Service between accounts is not permitted, in any form. That includes selling shards or items for real money, swapping them for goods or services, trading account access, and arranging any of it off-platform. Where the game offers a feature that moves something between players, it exists for play within a server and not as a market. We do not mediate, guarantee, reverse or compensate any exchange between players, and a loss that comes out of one is not something we can put right.</p>
+      <p>Accounts are personal. Do not sell, buy, rent or share an account, and do not use another person's account to obtain something that was bought on theirs.</p>
+
+      <h2 id="acceptable">Acceptable use</h2>
+      <p>You agree not to:</p>
+      <ul>
+        <li>Use the Service to break the law or to violate Discord's terms or policies.</li>
+        <li>Abuse, disrupt, overload, reverse-engineer or attempt to gain unauthorised access to the Service or its infrastructure.</li>
+        <li>Use security or recovery features to harm servers you do not own or lack permission to manage.</li>
+        <li>Resell, sublicense or misrepresent the Service as your own.</li>
+      </ul>
+      <p>We may suspend access that puts the Service, other users or Discord at risk.</p>
+
+      <h2 id="community">The Bucky app: community rules</h2>
+      <p>Posts, replies and messages in the Bucky app follow our <a href="rules.html">Community rules &amp; reporting</a>, which are part of these Terms. That page also explains how to report something, what happens after you report, and how to ask for a review of a decision.</p>
+      <p>Posting, replies, likes, follows and messages in the app are for people aged 16 or older, for now. You tell us your age yourself; anyone signed in can still look around.</p>
+
+      <h2 id="accounts">Accounts &amp; access</h2>
+      <p>Dashboard access uses Discord authentication. You are responsible for actions taken through your account and for maintaining appropriate permissions and roles within your server. Certain destructive actions (such as Full Restore) require explicit confirmation; you are responsible for reviewing previews before confirming.</p>
+
+      <h2 id="availability">Service availability</h2>
+      <p>We aim to keep the Service reliable but provide it on an "as available" basis. We do not guarantee uninterrupted or error-free operation, and we may perform maintenance, impose limits, or modify features. Security tooling assists your moderation but does not guarantee prevention of every attack.</p>
+
+      <h2 id="thirdparty">Links &amp; third-party services</h2>
+      <p>The Service runs on Discord and may link to third-party sites or services we do not control. We are not responsible for their content, policies or practices. Your use of Discord is governed by Discord's own terms.</p>
+
+      <h2 id="termination">Termination</h2>
+      <p>If we end your access while you hold a paid plan, any question of a refund for the unused part is still a matter for Discord under its policy, for the reason given in <a href="#refunds">Refunds</a>.</p>
+      <p>You may stop using the Service at any time by removing Bucky from your server. We may suspend or terminate access immediately, without prior notice, for any breach of these Terms or where necessary to protect the Service or its users. On termination, your right to use the Service ceases.</p>
+
+      <h2 id="disclaimer">Disclaimer of warranties</h2>
+      <p>The Service is provided "as is" and "as available", without warranties of any kind, whether express, implied or statutory, including implied warranties of merchantability, fitness for a particular purpose and non-infringement. We do not warrant that the Service will meet your requirements, be uninterrupted or error-free, or that defects will be corrected.</p>
+
+      <h2 id="liability">Limitation of liability</h2>
+      <p>To the maximum extent permitted by law, Bucky and its operators will not be liable for any indirect, incidental, special, consequential or punitive damages, or for any loss of data, servers, communities or profits, arising from or related to your use of (or inability to use) the Service. Some jurisdictions do not allow certain limitations, so some of the above may not apply to you.</p>
+
+      <h2 id="law">Governing law &amp; disputes</h2>
+      <p>These Terms are governed by the laws of the country in which the operator is established, excluding its conflict-of-laws rules. You agree to first attempt to resolve any dispute informally by contacting us. If any provision is held unenforceable, the remaining provisions remain in effect.</p>
+
+      <h2 id="changes">Changes to these terms</h2>
+      <p>We may modify these Terms at any time. When we make material changes, we will make reasonable efforts to provide notice (for example, by updating the date above). Continued use of the Service after changes take effect constitutes acceptance of the revised Terms.</p>
+
+      <h2 id="contact">Contact</h2>
+      <p>Questions about these Terms? Reach us through the <a href="contact.html">Contact</a> page or our Discord support server.</p>
+    </main>
+  </div>
+  </div>
+
+  <!-- B2. FOOTER, alleen van v2. Alleen echte, bestaande links. -->
+  <footer class="foot">
+    <div class="wrap foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="img/bucky-mark-96.webp" width="34" height="34" alt="" loading="lazy" />
+          <span class="brand-word">Bucky</span>
+        </a>
+        <p>Security, a living economy, four organisations and an arcade for your Discord server.</p>
+      </div>
+      <nav class="foot-col" aria-labelledby="foot-product">
+        <h2 class="label" id="foot-product">Product</h2>
+        <ul>
+          <li><a href="index.html#security">Security</a></li>
+          <li><a href="index.html#economy">Economy</a></li>
+          <li><a href="index.html#organisations">Organisations</a></li>
+          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-feature="premium"><a href="../premium.html">Premium</a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-labelledby="foot-community">
+        <h2 class="label" id="foot-community">Community</h2>
+        <ul>
+          <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Discord server</a></li>
+          <li><a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&amp;scope=bot%20applications.commands&amp;permissions=8">Invite Bucky</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-labelledby="foot-legal">
+        <h2 class="label" id="foot-legal">Legal</h2>
+        <ul>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+          <li><a href="tos.html">Terms of Service</a></li>
+          <li><a href="cookie.html">Cookie Policy</a></li>
+          <li><a href="rules.html">Community rules</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="wrap foot-base">
+      <p>&copy; 2026 Bucky Bot. All rights reserved.</p>
+      <p class="label">More than a bot.</p>
+    </div>
+  </footer>
+</body>
+</html>
