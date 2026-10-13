@@ -84,6 +84,34 @@ PAREN += [
 ]
 
 
+#: De orgpanelen (deel E, v2/organisations.html). Hun kleuren staan per org in
+#: `.v2 .op-<org>` en niet bij de tokens, dus worden ze per org nagerekend.
+#: (voorgrond, achtergrond, minimum, waar); een naam zonder "op-" is een token.
+ORG_PAREN: list[tuple[str, str, float, str]] = [
+    ("op-glow", "op-bg", 4.5, "motto en etiketten in het paneel"),
+    ("op-mark", "op-bg", 3.0, "crest en kader in het paneel"),
+    ("dark-ink", "op-bg", 4.5, "naam en lore in het paneel"),
+    ("dark-dim", "op-bg", 4.5, "filosofie, security, ledental"),
+]
+ORGS = ("null", "vanta", "aether", "cytek")
+
+
+def _org_kleuren(org: str) -> dict[str, str]:
+    tekst = CSS.read_text(encoding="utf-8")
+    blok = re.search(rf"^\.v2 \.op-{org} \{{(.*?)^\}}", tekst, re.S | re.M).group(1)
+    eigen = {n: w.upper() for n, w in re.findall(r"--([a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})\b", blok)}
+    return {**tokens(), **eigen}
+
+
+@pytest.mark.parametrize("org", ORGS)
+@pytest.mark.parametrize("voor,achter,minimum,waar", ORG_PAREN,
+                         ids=[f"{v}-op-{a}" for v, a, _, _ in ORG_PAREN])
+def test_het_orgpaneel_haalt_aa(org, voor, achter, minimum, waar):
+    k = _org_kleuren(org)
+    ratio = contrast(k[voor], k[achter])
+    assert ratio >= minimum, f"{org}: {voor} {k[voor]} op {achter} {k[achter]}: {ratio:.2f}:1 < {minimum} ({waar})"
+
+
 @pytest.mark.parametrize("voor,achter,minimum,waar", PAREN,
                          ids=[f"{v}-op-{a}" for v, a, _, _ in PAREN])
 def test_het_paar_haalt_aa(voor, achter, minimum, waar):
@@ -100,7 +128,7 @@ def test_elke_tekstkleur_in_de_css_staat_in_de_tabel():
     """
     css = CSS.read_text(encoding="utf-8")
     gebruikt = set(re.findall(r"(?<![-\w])color:\s*var\(--([a-z0-9-]+)\)", css))
-    in_tabel = {v for v, _, _, _ in PAREN}
+    in_tabel = {v for v, _, _, _ in PAREN} | {v for v, _, _, _ in ORG_PAREN}
     assert gebruikt, "geen enkele color: var(--...) gevonden; dan meet deze test niets"
     assert gebruikt <= in_tabel, f"niet nagerekend: {sorted(gebruikt - in_tabel)}"
 

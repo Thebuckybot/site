@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" class="v2">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https://cdn.discordapp.com; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <!-- De versieschakelaar (ADR 0011). Onder v1 het oude gedrag van
+       "Organisations": naar de VM in de arcade. -->
+  <script src="../js/site-version.js" data-page="v2" data-v1="../arcade.html#the-vm"></script>
+  <title>Bucky - The four organisations</title>
+  <meta name="description" content="Null Division, Vanta Collective, Aether Systems and CyTek Industries: the four organisations of the Grid, and the org app to open yours." />
+  <link rel="canonical" href="https://buckybot.app/v2/organisations.html" />
+  <meta name="theme-color" content="#FAFAFC" />
+  <link rel="preload" href="fonts/inter-800.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/v2.css" />
+  <link rel="icon" type="image/webp" href="img/bucky-mark-96.webp" />
+  <script type="module" src="js/v2.js"></script>
+  <script type="module" src="js/orgs.js"></script>
+</head>
+<body class="orgs-pagina">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <!-- B1. NAV, alleen van v2. Links naar wat bestaat; "Docs" ontbreekt met
+       opzet: de site heeft geen docs-pagina (alleen bucky://docs in de VM). -->
+  <header class="nav" data-nav>
+    <div class="nav-bar wrap">
+      <a class="brand" href="index.html">
+        <img class="brand-mark" src="img/bucky-mark-96.webp" width="34" height="34" alt="" />
+        <span class="brand-word">Bucky</span>
+      </a>
+
+      <nav class="nav-menu" id="nav-menu" aria-label="Main">
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="index.html#security">Security</a></li>
+          <li><a href="index.html#economy">Economy</a></li>
+          <li><a href="organisations.html" aria-current="page">Organisations</a></li>
+          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-feature="premium"><a href="../premium.html">Premium</a></li>
+        </ul>
+        <ul class="nav-sheet-extra">
+          <li data-auth-uit><a href="https://api.buckybot.app/login" data-auth-login>Log in with Discord</a></li>
+          <li class="nav-sheet-user" data-auth-in hidden>
+            <img class="nav-avatar" data-auth-avatar src="img/bucky-mark-96.webp" width="28" height="28" alt="" />
+            <span data-auth-naam></span>
+          </li>
+          <li data-auth-in hidden><a href="../dashboard.html">Dashboard</a></li>
+          <li data-auth-in hidden><button type="button" class="nav-sheet-logout" data-auth-logout>Log out</button></li>
+          <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Bucky on Discord</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <!-- A. Inloggen en uitloggen met de bestaande sessie (js/nav-auth.js:
+             /api/me, de sessiecache en POST /logout). Uitgelogd: Log in;
+             ingelogd: avatar en naam, met Dashboard en Log out. -->
+        <div class="nav-auth">
+          <a class="nav-login" href="https://api.buckybot.app/login" data-auth-uit data-auth-login>Log in</a>
+          <div class="nav-user" data-auth-in hidden>
+            <button type="button" class="nav-user-knop" aria-expanded="false" aria-controls="nav-user-menu">
+              <img class="nav-avatar" data-auth-avatar src="img/bucky-mark-96.webp" width="28" height="28" alt="" />
+              <span class="nav-user-naam" data-auth-naam></span>
+            </button>
+            <ul class="nav-user-menu" id="nav-user-menu" hidden>
+              <li><a href="../dashboard.html">Dashboard</a></li>
+              <li><button type="button" data-auth-logout>Log out</button></li>
+            </ul>
+          </div>
+        </div>
+        <!-- Discord-logo: Font Awesome Free 6 (brands, "discord"), CC BY 4.0,
+             https://fontawesome.com/license/free -->
+        <a class="nav-discord" href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener" aria-label="Bucky on Discord (support server)">
+          <svg viewBox="-6 0 600 448" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M499.4 38Q498.4 37 498.4 37Q440.4 11 378.4 0Q377.4 0 376.4 1Q368.4 16 361.4 32Q294.4 21 227.4 32Q220.4 16 212.4 1Q211.4 0 210.4 0Q148.4 11 90.4 37Q90.4 37 89.4 38Q33.4 123 13.4 207Q-5.6 290 2.4 372Q3.4 373 3.4 374Q70.4 423 150.4 448Q151.4 448 152.4 447Q169.4 424 182.4 398Q182.4 398 182.4 397Q182.4 396 181.4 396Q157.4 387 135.4 374Q134.4 373 134.4 372Q134.4 371 135.4 371Q140.4 367 144.4 364Q145.4 363 146.4 363Q219.4 396 294.4 396Q370.4 396 442.4 363Q443.4 363 443.4 364Q448.4 367 453.4 371Q453.4 371 453.4 372Q453.4 373 452.4 374Q430.4 387 407.4 396Q406.4 396 405.4 397Q405.4 398 406.4 398Q419.4 424 436.4 447Q436.4 448 438.4 448Q517.4 423 585.4 374Q585.4 373 585.4 372Q601.4 183 499.4 38ZM196.4 306Q174.4 305 159.4 288Q144.4 271 144.4 246Q144.4 221 159.4 204Q174.4 188 196.4 187Q219.4 188 234.4 205Q249.4 221 249.4 246Q249.4 271 234.4 288Q219.4 305 196.4 306ZM392.4 306Q370.4 305 355.4 288Q340.4 271 339.4 246Q340.4 221 354.4 204Q369.4 188 392.4 187Q415.4 188 430.4 205Q444.4 221 445.4 246Q444.4 271 429.4 288Q415.4 305 392.4 306Z"/></svg>
+        </a>
+        <a class="btn btn-signal btn-nav" href="https://discord.com/oauth2/authorize?client_id=907664862493167680&amp;scope=bot%20applications.commands&amp;permissions=8">Invite Bucky</a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu">
+          <span class="sr-only">Menu</span>
+          <span class="nav-toggle-bars" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- E. DE VIER ORGANISATIES (13-10-2026, ronde 2). De tekst staat letterlijk in
+       het register van de bot (bucky1.0/cogs/data/organizations.py), kleur en
+       materiaal in org_config.json (theme.<slug>); site/tests/test_v2_orgs.py
+       houdt alle drie gelijk. De crests zijn die van de app (Crest.tsx), de
+       banners die van Discord, als webp. -->
+  <main id="main">
+    <section class="oh" aria-labelledby="oh-title">
+      <div class="wrap oh-inner">
+        <p class="label oh-eyebrow">The Grid</p>
+        <h1 class="oh-title title-xl" id="oh-title"><span class="hero-line">Four organisations.</span> <span class="hero-line">Pick a side.</span></h1>
+        <p class="lead oh-lead">Each has its own philosophy and its own idea of what security means. You join one in Discord, and from then on your rank, reputation and contribution count for it.</p>
+        <div class="oc" data-org-flow>
+          <button type="button" class="btn btn-signal btn-lg" data-org-cta>Open the org app</button>
+          <p class="oc-hint">On a computer it opens in the Bucky VM. On a phone, Bucky sends it to your Discord DMs. You log in with Discord first.</p>
+          <div class="flow" data-flow data-staat="rust" role="status" aria-live="polite" hidden></div>
+        </div>
+        <nav class="oh-sprong" aria-label="The four organisations">
+          <ul>
+            <li><a class="oj op-null" href="#null-division"><svg class="crest" viewBox="0 0 128 128" width="28" height="28" aria-hidden="true" focusable="false"><path d="M8 64a56 56 0 1 0 112 0a56 56 0 1 0 -112 0" stroke-width="6" class="crest-rand"/><path d="M17 64a47 47 0 1 0 94 0a47 47 0 1 0 -94 0" stroke-width="2" class="crest-detail"/><path d="M93.63 68.69A30 30 0 0 1 68.69 93.63" stroke-width="12" class="crest-embleem" stroke-linecap="butt"/><path d="M59.31 93.63A30 30 0 0 1 34.37 68.69" stroke-width="12" class="crest-embleem" stroke-linecap="butt"/><path d="M34.37 59.31A30 30 0 0 1 59.31 34.37" stroke-width="12" class="crest-embleem" stroke-linecap="butt"/><path d="M68.69 34.37A30 30 0 0 1 93.63 59.31" stroke-width="12" class="crest-embleem" stroke-linecap="butt"/><path d="M50 78 78 50" stroke-width="6" class="crest-embleem"/></svg><span>Null Division</span></a></li>
+            <li><a class="oj op-vanta" href="#vanta-collective"><svg class="crest" viewBox="0 0 128 128" width="28" height="28" aria-hidden="true" focusable="false"><path d="M8 64a56 56 0 1 0 112 0a56 56 0 1 0 -112 0" stroke-width="6" class="crest-rand"/><path d="M17 64a47 47 0 1 0 94 0a47 47 0 1 0 -94 0" stroke-width="2" class="crest-detail"/><path d="M38 40h52L64 88Z" stroke-width="8" class="crest-embleem"/><path d="M48.8 60v12M75.9 66v14M64 88v10" stroke-width="4" class="crest-detail"/></svg><span>Vanta Collective</span></a></li>
+            <li><a class="oj op-aether" href="#aether-systems"><svg class="crest" viewBox="0 0 128 128" width="28" height="28" aria-hidden="true" focusable="false"><path d="M8 64a56 56 0 1 0 112 0a56 56 0 1 0 -112 0" stroke-width="6" class="crest-rand"/><path d="M17 64a47 47 0 1 0 94 0a47 47 0 1 0 -94 0" stroke-width="2" class="crest-detail"/><path d="M64 32 86 40v18c0 17-9 28-22 36-13-8-22-19-22-36V40l22-8Z" stroke-width="6" class="crest-embleem"/><path d="M64 42v8M52 50h24M64 50v28M59 78l5 8 5-8" stroke-width="6" class="crest-embleem"/><path d="M64 41a2.5 2.5 0 1 0 0-5a2.5 2.5 0 1 0 0 5" stroke-width="3" class="crest-detail"/><path d="M34 48c-6 15-2 31 13 41M94 48c6 15 2 31-13 41" stroke-width="3" class="crest-detail"/><path d="M33 60l-5-2M33 71l-5 1M38 81l-4 3M95 60l5-2M95 71l5 1M90 81l4 3" stroke-width="3" class="crest-detail"/><path d="M48 21L49.06 23.54 51.8 23.76 49.71 25.56 50.35 28.24 48 26.8 45.65 28.24 46.29 25.56 44.2 23.76 46.94 23.54ZM64 17L65.06 19.54 67.8 19.76 65.71 21.56 66.35 24.24 64 22.8 61.65 24.24 62.29 21.56 60.2 19.76 62.94 19.54ZM80 21L81.06 23.54 83.8 23.76 81.71 25.56 82.35 28.24 80 26.8 77.65 28.24 78.29 25.56 76.2 23.76 78.94 23.54Z" stroke-width="1.75" class="crest-detail"/></svg><span>Aether Systems</span></a></li>
+            <li><a class="oj op-cytek" href="#cytek-industries"><svg class="crest" viewBox="0 0 128 128" width="28" height="28" aria-hidden="true" focusable="false"><path d="M8 64a56 56 0 1 0 112 0a56 56 0 1 0 -112 0" stroke-width="6" class="crest-rand"/><path d="M17 64a47 47 0 1 0 94 0a47 47 0 1 0 -94 0" stroke-width="3" class="crest-detail" stroke-dasharray="6 7"/><path d="M86 40H54L42 52v24l12 12h32" stroke-width="8" class="crest-embleem"/><path d="M80 54H60l-4 4v12l4 4h20" stroke-width="6" class="crest-embleem"/></svg><span>CyTek Industries</span></a></li>
+          </ul>
+        </nav>
+      </div>
+    </section>
+
+    <section class="ops" aria-label="The organisations">
+      <div class="wrap ops-lijst">
+        <article class="op op-null" id="null-division" aria-labelledby="op-null-naam" data-reveal>
+          <div class="op-banner">
+            <img src="img/orgs/null-banner-1360.webp" srcset="img/orgs/null-banner-720.webp 720w, img/orgs/null-banner-1360.webp 1360w" sizes="(max-width: 1279px) 100vw, 1200px" width="1360" height="265" alt="" loading="lazy" decoding="async" />
+            <span class="op-laag op-raster" aria-hidden="true"></span>
+            <span class="op-laag op-scan" aria-hidden="true"></span>
+            <span class="op-laag op-ruis" aria-hidden="true"></span>
+          </div>
+          <div class="op-body">
+            <div class="op-head">
+              <svg class="crest" viewBox="0 0 128 128" width="72" height="72" aria-hidden="true" focusable="false"><path d="M8 64a56 56 0 1 0 112 0a56 56 0 1 0 -112 0" stroke-width="6" class="crest-rand"/><path d="M17 64a47 47 0 1 0 94 0a47 47 0 1 0 -94 0" stroke-width="2" class="crest-detail"/><path d="M93.63 68.69A30 30 0 0 1 68.69 93.63" stroke-width="12" class="crest-embleem" stroke-linecap="butt"/><path d="M59.31 93.63A30 30 0 0 1 34.37 68.69" stroke-width="12" class="crest-embleem" stroke-linecap="butt"/><path d="M34.37 59.31A30 30 0 0 1 59.31 34.37" stroke-width="12" class="crest-embleem" stroke-linecap="butt"/><path d="M68.69 34.37A30 30 0 0 1 93.63 59.31" stroke-width="12" class="crest-embleem" stroke-linecap="butt"/><path d="M50 78 78 50" stroke-width="6" class="crest-embleem"/></svg>
+              <div class="op-titels">
+                <h2 class="op-naam" id="op-null-naam" data-text="Null Division">Null Division</h2>
+                <p class="op-motto">Leave no trace. Trust no one. Move clean.</p>
+              </div>
+              <p class="op-leden" data-leden="nulldiv"></p>
+            </div>
+            <p class="op-lore">Null Division does not announce itself. It operates out of the unindexed sectors and recruits operators who value disappearance over influence. Membership is invitation-only on paper and deniable in practice. If a Null operator shows up on a leaderboard, they made a mistake.</p>
+            <dl class="op-spec">
+              <div><dt>Philosophy</dt><dd>The cleanest signature is no signature at all.</dd></div>
+              <div><dt>On security</dt><dd>Offensive minimalism. Anonymity is the only armor that scales. Reduce surface, route around the rest.</dd></div>
+            </dl>
+          </div>
+        </article>
+        <article class="op op-vanta" id="vanta-collective" aria-labelledby="op-vanta-naam" data-reveal>
+          <div class="op-banner">
+            <img src="img/orgs/vanta-banner-1360.webp" srcset="img/orgs/vanta-banner-720.webp 720w, img/orgs/vanta-banner-1360.webp 1360w" sizes="(max-width: 1279px) 100vw, 1200px" width="1360" height="262" alt="" loading="lazy" decoding="async" />
+            <span class="op-laag op-raster" aria-hidden="true"></span>
+            <span class="op-laag op-scan" aria-hidden="true"></span>
+            <span class="op-laag op-ruis" aria-hidden="true"></span>
+          </div>
+          <div class="op-body">
+            <div class="op-head">
+              <svg class="crest" viewBox="0 0 128 128" width="72" height="72" aria-hidden="true" focusable="false"><path d="M8 64a56 56 0 1 0 112 0a56 56 0 1 0 -112 0" stroke-width="6" class="crest-rand"/><path d="M17 64a47 47 0 1 0 94 0a47 47 0 1 0 -94 0" stroke-width="2" class="crest-detail"/><path d="M38 40h52L64 88Z" stroke-width="8" class="crest-embleem"/><path d="M48.8 60v12M75.9 66v14M64 88v10" stroke-width="4" class="crest-detail"/></svg>
+              <div class="op-titels">
+                <h2 class="op-naam" id="op-vanta-naam" data-text="Vanta Collective">Vanta Collective</h2>
+                <p class="op-motto">The Grid is no one&#x27;s property.</p>
+              </div>
+              <p class="op-leden" data-leden="vanta"></p>
+            </div>
+            <p class="op-lore">Vanta Collective is a loose, decentralised crew of operators who reject the corporate stack on principle. Recruitment is by signal, not credentials; pseudonymous by default. Vanta builds the open relays the megacorps would rather you didn&#x27;t have.</p>
+            <dl class="op-spec">
+              <div><dt>Philosophy</dt><dd>Resilience is a swarm property. There is no centre.</dd></div>
+              <div><dt>On security</dt><dd>Collective defense. Every member is a node, every node is expendable. Trust the mesh, not the keys.</dd></div>
+            </dl>
+          </div>
+        </article>
+        <article class="op op-aether" id="aether-systems" aria-labelledby="op-aether-naam" data-reveal>
+          <div class="op-banner">
+            <img src="img/orgs/aether-banner-1360.webp" srcset="img/orgs/aether-banner-720.webp 720w, img/orgs/aether-banner-1360.webp 1360w" sizes="(max-width: 1279px) 100vw, 1200px" width="1360" height="247" alt="" loading="lazy" decoding="async" />
+            <span class="op-laag op-raster" aria-hidden="true"></span>
+            <span class="op-laag op-scan" aria-hidden="true"></span>
+            <span class="op-laag op-ruis" aria-hidden="true"></span>
+          </div>
+          <div class="op-body">
+            <div class="op-head">
+              <svg class="crest" viewBox="0 0 128 128" width="72" height="72" aria-hidden="true" focusable="false"><path d="M8 64a56 56 0 1 0 112 0a56 56 0 1 0 -112 0" stroke-width="6" class="crest-rand"/><path d="M17 64a47 47 0 1 0 94 0a47 47 0 1 0 -94 0" stroke-width="2" class="crest-detail"/><path d="M64 32 86 40v18c0 17-9 28-22 36-13-8-22-19-22-36V40l22-8Z" stroke-width="6" class="crest-embleem"/><path d="M64 42v8M52 50h24M64 50v28M59 78l5 8 5-8" stroke-width="6" class="crest-embleem"/><path d="M64 41a2.5 2.5 0 1 0 0-5a2.5 2.5 0 1 0 0 5" stroke-width="3" class="crest-detail"/><path d="M34 48c-6 15-2 31 13 41M94 48c6 15 2 31-13 41" stroke-width="3" class="crest-detail"/><path d="M33 60l-5-2M33 71l-5 1M38 81l-4 3M95 60l5-2M95 71l5 1M90 81l4 3" stroke-width="3" class="crest-detail"/><path d="M48 21L49.06 23.54 51.8 23.76 49.71 25.56 50.35 28.24 48 26.8 45.65 28.24 46.29 25.56 44.2 23.76 46.94 23.54ZM64 17L65.06 19.54 67.8 19.76 65.71 21.56 66.35 24.24 64 22.8 61.65 24.24 62.29 21.56 60.2 19.76 62.94 19.54ZM80 21L81.06 23.54 83.8 23.76 81.71 25.56 82.35 28.24 80 26.8 77.65 28.24 78.29 25.56 76.2 23.76 78.94 23.54Z" stroke-width="1.75" class="crest-detail"/></svg>
+              <div class="op-titels">
+                <h2 class="op-naam" id="op-aether-naam" data-text="Aether Systems">Aether Systems</h2>
+                <p class="op-motto">Order through architecture.</p>
+              </div>
+              <p class="op-leden" data-leden="aether"></p>
+            </div>
+            <p class="op-lore">Aether Systems is the old establishment - the consortium that wrote the standards everyone else now follows. Members are long-game players: reputation is built across decades, not patches. Aether&#x27;s badge opens institutional doors and closes underground ones.</p>
+            <dl class="op-spec">
+              <div><dt>Philosophy</dt><dd>Well-defined process is the only durable defence.</dd></div>
+              <div><dt>On security</dt><dd>Governance. Standards, audits, signed change records. A boring incident is a successful one.</dd></div>
+            </dl>
+          </div>
+        </article>
+        <article class="op op-cytek" id="cytek-industries" aria-labelledby="op-cytek-naam" data-reveal>
+          <div class="op-banner">
+            <img src="img/orgs/cytek-banner-1360.webp" srcset="img/orgs/cytek-banner-720.webp 720w, img/orgs/cytek-banner-1360.webp 1360w" sizes="(max-width: 1279px) 100vw, 1200px" width="1360" height="330" alt="" loading="lazy" decoding="async" />
+            <span class="op-laag op-raster" aria-hidden="true"></span>
+            <span class="op-laag op-scan" aria-hidden="true"></span>
+            <span class="op-laag op-ruis" aria-hidden="true"></span>
+          </div>
+          <div class="op-body">
+            <div class="op-head">
+              <svg class="crest" viewBox="0 0 128 128" width="72" height="72" aria-hidden="true" focusable="false"><path d="M8 64a56 56 0 1 0 112 0a56 56 0 1 0 -112 0" stroke-width="6" class="crest-rand"/><path d="M17 64a47 47 0 1 0 94 0a47 47 0 1 0 -94 0" stroke-width="3" class="crest-detail" stroke-dasharray="6 7"/><path d="M86 40H54L42 52v24l12 12h32" stroke-width="8" class="crest-embleem"/><path d="M80 54H60l-4 4v12l4 4h20" stroke-width="6" class="crest-embleem"/></svg>
+              <div class="op-titels">
+                <h2 class="op-naam" id="op-cytek-naam" data-text="CyTek Industries">CyTek Industries</h2>
+                <p class="op-motto">Engineer the next layer of the Grid.</p>
+              </div>
+              <p class="op-leden" data-leden="cytek"></p>
+            </div>
+            <p class="op-lore">CyTek Industries is the Grid&#x27;s largest engineering conglomerate. They build the relays, the protocols and the tools every other operator depends on. Members are pragmatists - they ship more than they argue. CyTek&#x27;s badge buys credibility everywhere on the Grid, and a long list of people who&#x27;d like to see it scratched.</p>
+            <dl class="op-spec">
+              <div><dt>Philosophy</dt><dd>Build first, refine later. Tools beat manifestos.</dd></div>
+              <div><dt>On security</dt><dd>Pragmatic defense. Assume compromise, harden the next layer, ship the patch.</dd></div>
+            </dl>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="oslot" aria-labelledby="oslot-title">
+      <div class="wrap oslot-inner" data-reveal>
+        <h2 class="oslot-title title-l" id="oslot-title">Your organisation, in one app.</h2>
+        <p class="oslot-text">The feed, challenges, upgrades, treasury, elections and members of your organisation. Not in one yet? Choose with <code>/chooseorg</code> in Discord.</p>
+        <div class="oc" data-org-flow>
+          <button type="button" class="btn btn-signal btn-lg" data-org-cta>Open the org app</button>
+          <p class="oc-hint">On a computer it opens in the Bucky VM. On a phone, Bucky sends it to your Discord DMs. You log in with Discord first.</p>
+          <div class="flow" data-flow data-staat="rust" role="status" aria-live="polite" hidden></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- B2. FOOTER, alleen van v2. Alleen echte, bestaande links. -->
+  <footer class="foot">
+    <div class="wrap foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="index.html">
+          <img class="brand-mark" src="img/bucky-mark-96.webp" width="34" height="34" alt="" loading="lazy" />
+          <span class="brand-word">Bucky</span>
+        </a>
+        <p>Security, a living economy, four organisations and an arcade for your Discord server.</p>
+      </div>
+      <nav class="foot-col" aria-labelledby="foot-product">
+        <h2 class="label" id="foot-product">Product</h2>
+        <ul>
+          <li><a href="index.html#security">Security</a></li>
+          <li><a href="index.html#economy">Economy</a></li>
+          <li><a href="organisations.html">Organisations</a></li>
+          <li><a href="../arcade.html">Arcade</a></li>
+          <li data-feature="premium"><a href="../premium.html">Premium</a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-labelledby="foot-community">
+        <h2 class="label" id="foot-community">Community</h2>
+        <ul>
+          <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Discord server</a></li>
+          <li><a href="https://discord.com/oauth2/authorize?client_id=907664862493167680&amp;scope=bot%20applications.commands&amp;permissions=8">Invite Bucky</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <nav class="foot-col" aria-labelledby="foot-legal">
+        <h2 class="label" id="foot-legal">Legal</h2>
+        <ul>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+          <li><a href="tos.html">Terms of Service</a></li>
+          <li><a href="cookie.html">Cookie Policy</a></li>
+          <li><a href="rules.html">Community rules</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="wrap foot-base">
+      <p>&copy; 2026 Bucky Bot. All rights reserved.</p>
+      <p class="label">More than a bot.</p>
+    </div>
+  </footer>
+</body>
+</html>

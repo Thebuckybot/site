@@ -1356,3 +1356,333 @@ html.v2 {
   .v2 .contact-grid { grid-template-columns: 1fr; }
   .v2 .contact-card .btn { width: 100%; }
 }
+
+/* =========================================================================
+   E. De org-pagina (v2/organisations.html, 13-10-2026, ronde 2).
+
+   EEN CSS, VIER KARAKTERS. Zoals org_config.json het beschrijft: alle vier de
+   organisaties dragen dezelfde materiaalvelden (amplitudes 0..1, nul = uit),
+   en dezelfde regels hieronder lezen die. Null Division krijgt zo een kader dat
+   niet af is en een naam die hapert, Aether een rustig heel paneel, CyTek een
+   blueprintraster, Vanta ruis en een haperende rand. De waarden per org staan
+   in .op-<org> en site/tests/test_v2_orgs.py houdt ze gelijk aan de config.
+
+   AFGELEIDE KLEUREN, niet verzonnen:
+     --op-bg    het donker van de app (--dark-bg) met de orgkleur erdoor, voor
+                (1 - void) + 12 %: hoe minder leegte, hoe meer kleur;
+     --op-glow  de orgkleur, naar wit gemengd tot hij 4,7:1 haalt op --op-bg
+                (alleen Null en Aether hebben dat nodig);
+     --op-mark  hetzelfde voor streken, tot 3,2:1.
+   ========================================================================= */
+.v2 .op-null {
+  --org: #626C7E;
+  --m-edge-erase: 0.85; --m-glitch: 0.55; --m-grid: 0.22; --m-noise: 0.055;
+  --m-scan: 0.35; --m-void: 1.0; --m-img-sat: 0.35;
+  --op-bg: #18181D; --op-glow: #7D8594; --op-mark: #626C7E;
+  --banner-x: 8%;
+}
+.v2 .op-vanta {
+  --org: #2BE04A;
+  --m-edge-erase: 0.18; --m-glitch: 0.12; --m-grid: 0.5; --m-noise: 0.048;
+  --m-scan: 0.8; --m-void: 0.88; --m-img-sat: 1.1;
+  --op-bg: #15401E; --op-glow: #2BE04A; --op-mark: #2BE04A;
+  --banner-x: 12%;
+}
+.v2 .op-aether {
+  --org: #102A54;
+  --m-edge-erase: 0.0; --m-glitch: 0.0; --m-grid: 0.42; --m-noise: 0.022;
+  --m-scan: 0.45; --m-void: 0.72; --m-img-sat: 1.0;
+  --op-bg: #0F192B; --op-glow: #77869E; --op-mark: #586A87;
+  --banner-x: 10%;
+}
+.v2 .op-cytek {
+  --org: #E0A210;
+  --m-edge-erase: 0.0; --m-glitch: 0.0; --m-grid: 0.62; --m-noise: 0.03;
+  --m-scan: 0.55; --m-void: 0.85; --m-img-sat: 1.05;
+  --op-bg: #473510; --op-glow: #E0A210; --op-mark: #E0A210;
+  --banner-x: 4%;
+}
+
+/* ---- De kop van de pagina (licht) ---------------------------------------- */
+.v2 .oh { padding: calc(var(--nav-h) + 72px) 0 56px; }
+.v2 .oh-inner { max-width: calc(var(--wrap) + 2 * var(--gutter)); }
+.v2 .oh-eyebrow { color: var(--signal-text); }
+.v2 .oh-title { margin-top: 16px; max-width: 14ch; }
+.v2 .oh-title .hero-line { white-space: normal; }
+.v2 .oh-lead { margin-top: 24px; max-width: 52ch; }
+
+.v2 .oc { margin-top: 36px; max-width: 620px; }
+.v2 .oc-hint { margin-top: 14px; color: var(--ink-dim); font-size: 15px; line-height: 1.55; max-width: 52ch; }
+.v2 .oc .btn[aria-busy="true"] { cursor: progress; }
+
+.v2 .oh-sprong { margin-top: 56px; }
+.v2 .oh-sprong ul {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.v2 .oj {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: border-color 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+}
+.v2 .oj:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+.v2 .oj.op-null   { --mark: var(--null-mark);   --tint: var(--null-tint); }
+.v2 .oj.op-vanta  { --mark: var(--vanta-mark);  --tint: var(--vanta-tint); }
+.v2 .oj.op-aether { --mark: var(--aether-mark); --tint: var(--aether-tint); }
+.v2 .oj.op-cytek  { --mark: var(--cytek-mark);  --tint: var(--cytek-tint); }
+
+/* ---- Het statusvak van de knop ------------------------------------------- */
+.v2 .flow {
+  margin-top: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--signal);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
+.v2 .flow[data-staat="bezig"],
+.v2 .flow[data-staat="login"],
+.v2 .flow[data-staat="vm"] { border-left-color: var(--line-strong); }
+.v2 .flow-titel { font-weight: 800; font-size: 18px; line-height: 1.3; letter-spacing: -0.01em; }
+.v2 .flow-tekst { margin-top: 6px; font-size: 16px; line-height: 1.55; color: var(--ink); }
+.v2 .flow-titel + .flow-tekst { margin-top: 4px; }
+.v2 .flow-klein { font-size: 15px; color: var(--ink-dim); }
+.v2 .flow code,
+.v2 .oslot code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+}
+.v2 .flow-kaart {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.v2 .flow-kaart code { background: var(--surface); }
+.v2 .flow-kaart-titel { font-weight: 800; font-size: 17px; }
+.v2 .flow-feiten {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+}
+.v2 .flow-feiten dt { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-dim); }
+.v2 .flow-feiten dd { margin: 2px 0 0; font-weight: 600; font-size: 16px; color: var(--ink); }
+.v2 .flow-orgs { margin-top: 10px; display: grid; gap: 6px; }
+.v2 .flow-orgs li { font-size: 16px; color: var(--ink); }
+.v2 .flow-orgs a { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.v2 .flow-knop { margin-top: 14px; }
+
+/* ---- De vier panelen (donker) -------------------------------------------- */
+.v2 .ops { padding: 8px 0 96px; }
+.v2 .ops-lijst { display: grid; gap: 28px; }
+
+.v2 .op {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--op-bg);
+  color: var(--dark-ink);
+  scroll-margin-top: calc(var(--nav-h) + 20px);
+}
+/* Het kader. edge_erase = hoeveel ervan ontbreekt: bij 0 heel, bij 0,18 een
+   gat midden op elke zijde, bij 0,85 alleen nog de hoeken. Twee maskers die
+   elkaar snijden: alleen waar "dicht bij een zijkant" EN "dicht bij boven- of
+   onderkant" overlappen (bij 50 % dekken ze alles, dus een heel kader). */
+.v2 .op::after {
+  --rand: calc((1 - var(--m-edge-erase)) * 50% + 0.5px);
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 1px solid var(--op-mark);
+  border-radius: inherit;
+  opacity: 0.7;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(90deg, #000 var(--rand), transparent var(--rand), transparent calc(100% - var(--rand)), #000 calc(100% - var(--rand))),
+    linear-gradient(180deg, #000 var(--rand), transparent var(--rand), transparent calc(100% - var(--rand)), #000 calc(100% - var(--rand)));
+  -webkit-mask-composite: source-in;
+  mask:
+    linear-gradient(90deg, #000 var(--rand), transparent var(--rand), transparent calc(100% - var(--rand)), #000 calc(100% - var(--rand))),
+    linear-gradient(180deg, #000 var(--rand), transparent var(--rand), transparent calc(100% - var(--rand)), #000 calc(100% - var(--rand)));
+  mask-composite: intersect;
+}
+
+.v2 .op-banner {
+  position: relative;
+  aspect-ratio: 1360 / 262;
+  overflow: hidden;
+  background: #000;
+}
+.v2 .op-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--banner-x) 50%;
+  filter: saturate(var(--m-img-sat));
+}
+/* De lagen over de banner, op de amplitudes van de config. */
+.v2 .op-laag { position: absolute; inset: 0; pointer-events: none; }
+.v2 .op-raster {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / calc(var(--m-grid) * 0.16)) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / calc(var(--m-grid) * 0.16)) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.v2 .op-scan {
+  background-image: repeating-linear-gradient(to bottom, rgb(0 0 0 / calc(var(--m-scan) * 0.32)) 0 1px, transparent 1px 3px);
+}
+.v2 .op-ruis {
+  background-image: url("../img/ruis.svg");
+  background-size: 160px 160px;
+  opacity: calc(var(--m-noise) * 4);
+  mix-blend-mode: overlay;
+}
+/* De leegte: de banner lost onderaan op in het paneel, zoveel als void zegt. */
+.v2 .op-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 35%, var(--op-bg) 100%);
+  opacity: var(--m-void);
+}
+
+.v2 .op-body { position: relative; padding: 0 40px 40px; }
+.v2 .op-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 20px;
+  margin-top: -36px;
+  position: relative;
+  z-index: 2;
+}
+.v2 .op .crest path { stroke: var(--op-mark); }
+.v2 .op .crest .crest-rand { fill: var(--op-bg); }
+.v2 .op .crest .crest-detail { stroke-opacity: 0.75; }
+.v2 .op-head .crest { width: 72px; height: 72px; }
+.v2 .op-naam {
+  position: relative;
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: clamp(30px, 3.6vw, 46px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  color: var(--dark-ink);
+}
+/* De hapering: een kopie in de orgkleur, verschoven met glitch. Op nul staat
+   hij exact onder de tekst en is hij onzichtbaar. */
+.v2 .op-naam::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: var(--op-glow);
+  opacity: calc(var(--m-glitch) * 0.9);
+  transform: translateX(calc(var(--m-glitch) * 4px));
+  clip-path: inset(46% 0 30% 0);
+}
+.v2 .op-motto {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--op-glow);
+}
+.v2 .op-leden {
+  min-height: 1.5em;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--dark-dim);
+  white-space: nowrap;
+}
+.v2 .op-lore {
+  margin-top: 28px;
+  max-width: 66ch;
+  font-size: 18px;
+  line-height: 1.65;
+  color: var(--dark-ink);
+}
+.v2 .op-spec {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 40px;
+  padding-top: 24px;
+  border-top: 1px solid rgb(255 255 255 / 0.12);
+}
+.v2 .op-spec dt {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--op-glow);
+}
+.v2 .op-spec dd { margin: 6px 0 0; font-size: 16px; line-height: 1.6; color: var(--dark-dim); }
+.v2 .op :focus-visible { outline-color: var(--op-glow); }
+
+/* ---- Het slot (licht) ---------------------------------------------------- */
+.v2 .oslot { padding: 24px 0 120px; }
+.v2 .oslot-inner { max-width: calc(var(--wrap) + 2 * var(--gutter)); }
+.v2 .oslot-title { max-width: 16ch; }
+.v2 .oslot-text { margin-top: 18px; max-width: 52ch; color: var(--ink-dim); font-size: 18px; line-height: 1.6; }
+
+/* ---- Beweging: alleen de naam van wie hapert, en nooit bij minder beweging - */
+@media (prefers-reduced-motion: no-preference) {
+  .v2-motion .op-naam::before { animation: op-hapert 7s steps(1, end) infinite; }
+}
+@keyframes op-hapert {
+  0%, 91%, 100% { transform: translateX(calc(var(--m-glitch) * 4px)); clip-path: inset(46% 0 30% 0); }
+  92% { transform: translateX(calc(var(--m-glitch) * -10px)); clip-path: inset(10% 0 62% 0); }
+  94% { transform: translateX(calc(var(--m-glitch) * 12px)); clip-path: inset(60% 0 8% 0); }
+  96% { transform: translateX(calc(var(--m-glitch) * -6px)); clip-path: inset(30% 0 44% 0); }
+}
+
+/* ---- Smaller ------------------------------------------------------------- */
+@media (max-width: 899.98px) {
+  .v2 .oh-sprong ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2 .op-body { padding: 0 28px 32px; }
+  .v2 .op-head { grid-template-columns: auto minmax(0, 1fr); }
+  .v2 .op-leden { grid-column: 2; }
+}
+@media (max-width: 639.98px) {
+  .v2 .oh { padding-top: calc(var(--nav-h) + 44px); padding-bottom: 40px; }
+  .v2 .oc .btn { width: 100%; }
+  .v2 .oh-sprong { margin-top: 40px; }
+  .v2 .oh-sprong ul { gap: 8px; }
+  .v2 .oj { min-height: 52px; padding: 8px 10px; gap: 8px; font-size: 14px; }
+  .v2 .oj .crest { width: 24px; height: 24px; }
+  .v2 .ops-lijst { gap: 20px; }
+  .v2 .op { border-radius: var(--radius); }
+  .v2 .op-banner { aspect-ratio: 2.2 / 1; }
+  .v2 .op-body { padding: 0 20px 26px; }
+  .v2 .op-head { grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: -30px; }
+  .v2 .op-head .crest { width: 60px; height: 60px; }
+  .v2 .op-leden { grid-column: auto; }
+  .v2 .op-lore { margin-top: 20px; font-size: 17px; }
+  .v2 .op-spec { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+}
