@@ -9,7 +9,7 @@
        unpkg: alleen GSAP (het pad geldt voor het eerste verzoek; unpkg stuurt
        door naar een vaste versie, en na een doorverwijzing kijkt CSP alleen
        nog naar de host). -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://unpkg.com/gsap@3/dist/; style-src 'self'; font-src 'self'; img-src 'self'; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://unpkg.com/gsap@3/dist/; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self' https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <!-- De versieschakelaar v1/v2 (+ownerconfig, homepage.version): beslist voor de
        eerste paint welke voorpagina er staat. Hoort bij geen van beide versies;
        zie js/site-version.js. Verder is deze pagina v1 en blijft ze dat. -->
@@ -18,7 +18,7 @@
   <meta name="description" content="Bucky is an all-in-one Discord bot for server security, a living economy, four rival organisations and an arcade, all managed from one polished dashboard." />
 
   <!-- Canonical & theme -->
-  <link rel="canonical" href="https://thebuckybot.github.io/site/" />
+  <link rel="canonical" href="https://buckybot.app/" />
   <meta name="theme-color" content="#0b0f16" />
 
   <!-- Favicon -->
@@ -30,9 +30,9 @@
   <meta property="og:site_name" content="Bucky" />
   <meta property="og:title" content="Bucky - Security, economy &amp; organisations for your Discord server" />
   <meta property="og:description" content="All-in-one Discord bot: real-time server protection, a living economy, four rival organisations and an arcade, all managed from one polished dashboard." />
-  <meta property="og:url" content="https://thebuckybot.github.io/site/" />
-  <meta property="og:image" content="https://thebuckybot.github.io/site/pics/buckybanner.JPEG" />
-  <meta property="og:image:secure_url" content="https://thebuckybot.github.io/site/pics/buckybanner.JPEG" />
+  <meta property="og:url" content="https://buckybot.app/" />
+  <meta property="og:image" content="https://buckybot.app/pics/buckybanner.JPEG" />
+  <meta property="og:image:secure_url" content="https://buckybot.app/pics/buckybanner.JPEG" />
   <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="736" />
   <meta property="og:image:height" content="552" />
@@ -42,7 +42,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Bucky -- Security, economy &amp; organisations for your Discord server" />
   <meta name="twitter:description" content="All-in-one Discord bot: real-time server protection, a living economy, four rival organisations and an arcade, all managed from one polished dashboard." />
-  <meta name="twitter:image" content="https://thebuckybot.github.io/site/pics/buckybanner.JPEG" />
+  <meta name="twitter:image" content="https://buckybot.app/pics/buckybanner.JPEG" />
   <meta name="twitter:image:alt" content="Bucky -- Discord security, economy and organisations platform" />
 
   <link rel="stylesheet" href="css/fonts.css" />

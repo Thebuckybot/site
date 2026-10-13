@@ -37,12 +37,25 @@
  *      haalt de preview weer weg.
  *   2. De keuze uit de browser (localStorage), als die jonger is dan tien
  *      minuten: meteen, zonder verzoek.
- *   3. Een oudere keuze: meteen gebruiken, en op de achtergrond verversen voor
- *      het volgende bezoek. Een terugkerende bezoeker wacht dus nooit; een
- *      omschakeling bereikt hem een bezoek later.
- *   4. Geen keuze bekend (eerste bezoek): de pagina blijft heel kort leeg (de
- *      eigen achtergrond, geen inhoud) tot de backend antwoordt, hooguit
- *      WACHT_MS. Geen antwoord, een fout of een onzinwaarde: v1.
+ *   3. Anders (geen keuze, of een oudere): de pagina blijft heel kort leeg (de
+ *      eigen achtergrond, geen inhoud) en twee bronnen worden TEGELIJK gevraagd:
+ *        - de backend (/api/site/features): de baas, want daar zet de eigenaar
+ *          hem om. Antwoordt hij, dan beslist hij;
+ *        - /site-version.json op de site zelf: same-origin, dus zonder nieuwe
+ *          DNS, TLS of tunnel, en snel. De deploy houdt hem gelijk aan de config
+ *          (site/tests/test_site_versie.py). Is hij er eerder, dan krijgt de
+ *          backend nog GENADE_MS; zegt hij hetzelfde als de oudere keuze, dan
+ *          meteen.
+ *      Na WACHT_MS beslist wat er is: het bestand, dan de oudere keuze, dan v1.
+ *      De regels staan in `scheids`, los te testen.
+ *
+ * WAAROM HET BESTAND ER IS (13-10-2026). Vanuit Discord geopend (de in-app
+ * browser) kwam de site op v1 terwijl v2 aan stond. Zo'n browser heeft geen of
+ * vluchtige opslag: elk bezoek is een eerste bezoek, of draagt een keuze van
+ * voor de omschakeling. Alleen het cross-origin verzoek naar de backend kon dan
+ * nog beslissen, met 1,2 s over een koude mobiele verbinding, en te laat
+ * betekende v1. Een oudere keuze werd bovendien meteen getoond en pas het
+ * volgende bezoek ververst; voor een in-app browser is dat nooit.
  *
  * GEEN FLITS: de verkeerde versie wordt nooit getekend. Moet er gewisseld
  * worden, dan blijft deze pagina onzichtbaar tot de andere er staat.
@@ -60,7 +73,8 @@
     var PREVIEW_SLEUTEL = "bucky.site.preview";
     var SPRONG_SLEUTEL = "bucky.site.hop";
     var VERS_MS = 10 * 60 * 1000;   // zo lang telt een opgeslagen keuze als vers
-    var WACHT_MS = 1200;            // langer wacht een eerste bezoek niet op de backend
+    var WACHT_MS = 1200;            // langer blijft een pagina zonder verse keuze niet leeg
+    var GENADE_MS = 400;            // zo lang krijgt de backend nog na het eigen bestand
     var VANGNET_MS = 2500;          // nooit langer dan dit een lege pagina
     var LUS_MS = 2000;              // twee sprongen heen en terug binnen dit venster = een lus
     var POORT_MS = 2400;            // zo lang wacht de login-poort op /api/me (onder het vangnet)
@@ -111,11 +125,46 @@
         var c = invoer.cache;
         if (c && geldig(c.v)) {
             var leeftijd = invoer.nu - c.at;
-            var vers = leeftijd >= 0 && leeftijd < VERS_MS;
-            return { versie: c.v, bron: "cache", ophalen: vers ? "nee" : "achtergrond",
-                     preview: nieuwePreview };
+            if (leeftijd >= 0 && leeftijd < VERS_MS) {
+                return { versie: c.v, bron: "cache", ophalen: "nee", preview: nieuwePreview };
+            }
+            // Oud: niet meer blind tonen, alleen nog het laatste vangnet.
+            return { versie: null, bron: "oud", ophalen: "wachten", oud: c.v, preview: nieuwePreview };
         }
-        return { versie: null, bron: "geen", ophalen: "wachten", preview: nieuwePreview };
+        return { versie: null, bron: "geen", ophalen: "wachten", oud: null, preview: nieuwePreview };
+    }
+
+    /**
+     * De scheidsrechter voor een bezoek zonder verse keuze, zonder bijwerkingen.
+     *   staat:       { oud, bestand, apiFout, bestandFout }
+     *   gebeurtenis: { soort: "api"|"apiFout"|"bestand"|"bestandFout"|"genade"|"deadline", v }
+     *   uit:         { staat, besluit: "v1"|"v2"|null, genade: true = start de genadeklok }
+     * De backend is de baas; het eigen bestand de snelle tweede; de oude keuze en
+     * v1 zijn het vangnet.
+     */
+    function scheids(staat, g) {
+        var s = { oud: geldig(staat && staat.oud), bestand: geldig(staat && staat.bestand),
+                  apiFout: !!(staat && staat.apiFout), bestandFout: !!(staat && staat.bestandFout) };
+        function uit(besluit, genade) { return { staat: s, besluit: besluit || null, genade: !!genade }; }
+        var soort = g && g.soort;
+        if (soort === "api") return uit(geldig(g.v) || STANDAARD);
+        if (soort === "apiFout") {
+            s.apiFout = true;
+            if (s.bestand) return uit(s.bestand);
+            return uit(s.bestandFout ? (s.oud || STANDAARD) : null);
+        }
+        if (soort === "bestand" && geldig(g.v)) {
+            s.bestand = g.v;
+            if (s.apiFout || g.v === s.oud) return uit(g.v);
+            return uit(null, true);
+        }
+        if (soort === "bestand" || soort === "bestandFout") {
+            s.bestandFout = true;
+            return uit(s.apiFout ? (s.oud || STANDAARD) : null);
+        }
+        if (soort === "genade") return uit(s.bestand);
+        if (soort === "deadline") return uit(s.bestand || s.oud || STANDAARD);
+        return uit(null);
     }
 
     /** Vraagt de stand op. Geeft "v1"/"v2", of gooit bij een netwerk- of HTTP-fout. */
@@ -132,6 +181,23 @@
                 // onzinwaarde betekent v1: dat is wat de eigenaar dan ook ziet.
                 var v = geldig(body && body.site && body.site.version) || STANDAARD;
                 schrijf("localStorage", CACHE_SLEUTEL, JSON.stringify({ v: v, at: Date.now() }));
+                return v;
+            });
+    }
+
+    /** Het eigen bestand: /site-version.json, naast js/. Geeft "v1"/"v2" of gooit. */
+    function haalBestand() {
+        // `no-cache` = altijd even navragen (een 304 kost een rondje over een
+        // verbinding die al open staat), zodat een deploy meteen telt.
+        return fetch(new URL("../site-version.json", script.src).href,
+                     { credentials: "same-origin", cache: "no-cache" })
+            .then(function (res) {
+                if (!res.ok) throw new Error("HTTP " + res.status);
+                return res.json();
+            })
+            .then(function (body) {
+                var v = geldig(body && body.version);
+                if (!v) throw new Error("geen versie");
                 return v;
             });
     }
@@ -263,30 +329,40 @@
         besluit = { versie: STANDAARD, bron: "fout", ophalen: "nee" };
     }
 
-    window.BuckySiteVersion = { kies: kies, pagina: gedeeld ? "beide" : pagina, besluit: besluit,
-                                VERSIES: VERSIES, versie: null };
+    window.BuckySiteVersion = { kies: kies, scheids: scheids, pagina: gedeeld ? "beide" : pagina,
+                                besluit: besluit, VERSIES: VERSIES, versie: null };
 
     if (besluit.ophalen === "wachten") {
         verberg();
+        var staat = { oud: besluit.oud || null };
         var klaar = false;
-        var afronden = function (versie) {
+        var stap = function (g) {
             if (klaar) return;
+            var r;
+            try { r = scheids(staat, g); } catch (e) { r = { staat: staat, besluit: STANDAARD }; }
+            staat = r.staat;
+            if (r.genade) setTimeout(function () { stap({ soort: "genade" }); }, GENADE_MS);
+            if (!r.besluit) return;
             klaar = true;
-            try { ga(versie); } catch (e) { toon(); }
+            try { ga(r.besluit); } catch (e) { toon(); }
         };
-        setTimeout(function () { afronden(STANDAARD); }, WACHT_MS);
+        setTimeout(function () { stap({ soort: "deadline" }); }, WACHT_MS);
         try {
-            // Niet afgebroken bij de deadline: het antwoord komt dan nog in de
-            // cache, voor het volgende bezoek. Alleen deze pagina wacht niet meer.
-            haal().then(afronden, function () { afronden(STANDAARD); });
+            // Niet afgebroken na het besluit: het antwoord van de backend komt dan
+            // nog in de cache, voor het volgende bezoek.
+            haal().then(function (v) { stap({ soort: "api", v: v }); },
+                        function () { stap({ soort: "apiFout" }); });
         } catch (e) {
-            afronden(STANDAARD);
+            stap({ soort: "apiFout" });
+        }
+        try {
+            haalBestand().then(function (v) { stap({ soort: "bestand", v: v }); },
+                               function () { stap({ soort: "bestandFout" }); });
+        } catch (e) {
+            stap({ soort: "bestandFout" });
         }
         return;
     }
 
     try { ga(besluit.versie); } catch (e) { toon(); }
-    if (besluit.ophalen === "achtergrond") {
-        try { haal().catch(function () { /* volgende keer opnieuw */ }); } catch (e) { /* idem */ }
-    }
 }());

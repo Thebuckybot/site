@@ -16,7 +16,11 @@ WAT DIT BEWAAKT, in een echte browser met een onderschepte backend:
   * de backend faalt of hangt: v1 (of de laatst bekende), nooit een leeg scherm;
   * GEEN FLITS: bij een wissel wordt de verkeerde versie geen enkel frame
     zichtbaar getekend;
-  * een verse keuze in de browser kost geen verzoek.
+  * een verse keuze in de browser kost geen verzoek;
+  * DE IN-APP BROWSER VAN DISCORD (13-10-2026): geen of vluchtige opslag en een
+    koude, trage verbinding naar api.buckybot.app. Dan beslist het eigen bestand
+    /site-version.json (same-origin, geen DNS of TLS naar een tweede host) en
+    niet meer de terugval op v1. De API blijft de baas als hij op tijd is.
 
 DRAAIEN:  python -m pytest tests/test_site_versie.py
 """
@@ -89,9 +93,17 @@ class Opstelling:
     statuscode (int), "afbreken" of ("traag", seconden, dict).
     """
 
-    def __init__(self, browser, server, antwoord, *, opslag=None, frames=False):
+    def __init__(self, browser, server, antwoord, *, opslag=None, frames=False, bestand=404,
+                 geen_opslag=False):
+        """`bestand` is wat /site-version.json geeft: een dict, een statuscode,
+        "afbreken", ("traag", s, dict) of "echt" (het bestand uit de repo).
+        Standaard 404, zodat de oudere tests alleen over de API gaan.
+        `geen_opslag`: localStorage en sessionStorage gooien, zoals een webview
+        met DOM-opslag uit."""
         self.server = server
         self.verzoeken = []
+        self.bestand = bestand
+        self.bestand_verzoeken = 0
         self.ctx = browser.new_context(viewport={"width": 1280, "height": 900})
         if opslag:
             # localStorage zetten vóór het eerste script: via een init-script op
@@ -102,6 +114,10 @@ class Opstelling:
                 "  for (const [k, v] of Object.entries(o)) localStorage.setItem(k, v);"
                 "  sessionStorage.setItem('__opslag_gezet', '1');"
                 "}")
+        if geen_opslag:
+            self.ctx.add_init_script(
+                "for (const k of ['localStorage', 'sessionStorage'])"
+                "  Object.defineProperty(window, k, {get() { throw new Error('geen opslag'); }});")
         if frames:
             self.ctx.add_init_script(_FRAMESPOOR)
         self.page = self.ctx.new_page()
@@ -118,6 +134,21 @@ class Opstelling:
         # (op v1 en op v2) vraagt zonder. Alleen de eerste telt als verzoek
         # van de schakelaar.
         self.page.route(f"{API}/api/site/features*", self._features)
+        self.page.route("**/site-version.json*", self._bestand)
+
+    def _bestand(self, route):
+        self.bestand_verzoeken += 1
+        b = self.bestand
+        if b == "echt":
+            route.continue_()
+        elif b == "afbreken":
+            route.abort()
+        elif isinstance(b, int):
+            route.fulfill(status=b, content_type="text/html", body="niet gevonden")
+        elif isinstance(b, tuple) and b[0] == "traag":
+            self.uitgesteld.append((time.monotonic() + b[1], route, b[2]))
+        else:
+            self._geef(route, b)
 
     def _buiten(self, route):
         host = urlsplit(route.request.url).hostname
@@ -354,14 +385,14 @@ def test_een_verse_keuze_kost_geen_verzoek_en_geen_wachttijd(opstelling):
     assert o.verzoeken == []
 
 
-def test_een_oude_keuze_wordt_meteen_gebruikt_en_op_de_achtergrond_ververst(opstelling):
+def test_een_oude_keuze_wacht_op_de_stand_en_neemt_die_meteen_over(opstelling):
+    """Tot 13-10 kreeg een oude keuze (ouder dan tien minuten) meteen de oude
+    versie en pas het VOLGENDE bezoek de nieuwe. Voor een in-app browser die je
+    een keer opent, is "het volgende bezoek" nooit. Nu: even wachten, dan de stand."""
     oud = json.dumps({"v": "v1", "at": int(time.time() * 1000) - 60 * 60 * 1000})
     o = opstelling(stand("v2"), opslag={"bucky.site.version": oud}).open("/")
-    assert o.versie == "v1"                         # nu nog de oude, zonder wachten
-    o.page.wait_for_function(
-        "() => JSON.parse(localStorage.getItem('bucky.site.version')).v === 'v2'", timeout=4000)
-    o.open("/")
-    assert o.versie == "v2"                         # het volgende bezoek de nieuwe
+    assert o.versie == "v2"
+    assert json.loads(o.page.evaluate("() => localStorage.getItem('bucky.site.version')"))["v"] == "v2"
 
 
 def test_een_eerste_bezoek_slaat_de_keuze_op(opstelling):
@@ -383,6 +414,7 @@ def test_het_besluit_zonder_browserstaat(opstelling):
         onzin:     k({query: "v9", preview: "v7", cache: null, nu}),
         vers:      k({query: null, preview: null, cache: {v: "v2", at: nu - 1000}, nu}),
         oud:       k({query: null, preview: null, cache: {v: "v2", at: nu - 11 * 60 * 1000}, nu}),
+        geen:      k({query: null, preview: null, cache: null, nu}),
         toekomst:  k({query: null, preview: null, cache: {v: "v2", at: nu + 5000}, nu}),
       };
     }""")
@@ -391,9 +423,11 @@ def test_het_besluit_zonder_browserstaat(opstelling):
     assert uit["live"]["preview"] == ""
     assert uit["onzin"]["versie"] is None and uit["onzin"]["ophalen"] == "wachten"
     assert uit["vers"]["ophalen"] == "nee"
-    assert uit["oud"]["ophalen"] == "achtergrond"
+    # Een oude keuze wacht nu op de stand, en is alleen nog het laatste vangnet.
+    assert uit["oud"]["ophalen"] == "wachten" and uit["oud"]["oud"] == "v2"
+    assert uit["geen"]["ophalen"] == "wachten" and uit["geen"]["oud"] is None
     # Een klok die terugsprong maakt een keuze niet eeuwig vers.
-    assert uit["toekomst"]["ophalen"] == "achtergrond"
+    assert uit["toekomst"]["ophalen"] == "wachten"
 
 
 def test_de_api_url_is_dezelfde_als_in_config_js():
@@ -416,3 +450,147 @@ def test_beide_voorpaginas_laden_de_schakelaar_als_eerste_script():
         assert f'data-page="{naam}"' in eerste.group(0)
         assert "async" not in eerste.group(0) and "defer" not in eerste.group(0)
         assert 'type="module"' not in eerste.group(0)
+
+
+
+# --------------------------------------------------------------------------- #
+# De in-app browser van Discord (13-10-2026)
+#
+# OORZAAK. Vanuit Discord geopend kwam buckybot.app op v1 uit terwijl v2 aan
+# stond. Een in-app browser heeft geen of eigen, vaak vluchtige opslag: elk
+# bezoek is een eerste bezoek, of draagt een keuze van voor de omschakeling.
+# Zonder verse keuze wachtte de schakelaar hooguit 1,2 s op een CROSS-ORIGIN
+# verzoek (nieuwe DNS en TLS naar api.buckybot.app, dan de tunnel naar de
+# laptop), en te laat of mislukt betekende v1. Met een oude keuze kreeg je de
+# oude versie en pas het volgende bezoek de nieuwe.
+#
+# OPLOSSING. /site-version.json op de site zelf (same-origin, door de deploy
+# gelijk gehouden aan de config) en een scheidsrechter: de API is de baas als
+# hij op tijd is, anders het eigen bestand, dan de oude keuze, dan v1.
+# --------------------------------------------------------------------------- #
+def test_webview_zonder_opslag_en_trage_api_krijgt_de_versie_uit_het_eigen_bestand(opstelling):
+    o = opstelling(("traag", 4, stand("v2")), bestand={"version": "v2"}, geen_opslag=True)
+    begin = time.monotonic()
+    o.open("/")
+    assert o.versie == "v2" and o.pad == "/v2/"
+    assert time.monotonic() - begin < 2.5
+
+
+def test_webview_met_een_keuze_van_voor_de_omschakeling(opstelling):
+    oud = json.dumps({"v": "v1", "at": int(time.time() * 1000) - 3 * 60 * 60 * 1000})
+    o = opstelling(("traag", 4, stand("v2")), bestand={"version": "v2"},
+                   opslag={"bucky.site.version": oud})
+    o.open("/")
+    assert o.versie == "v2"
+
+
+def test_een_falende_api_met_het_eigen_bestand_geeft_die_versie(opstelling):
+    o = opstelling("afbreken", bestand={"version": "v2"}).open("/")
+    assert o.versie == "v2"
+
+
+def test_een_api_die_op_tijd_is_wint_van_het_bestand(opstelling):
+    """Terugdraaien naar v1 met +ownerconfig, nog zonder deploy: de API is de baas."""
+    o = opstelling(stand("v1"), bestand={"version": "v2"}).open("/")
+    assert o.versie == "v1"
+
+
+def test_bestand_en_oude_keuze_eens_beslist_zonder_op_de_api_te_wachten(opstelling):
+    oud = json.dumps({"v": "v2", "at": int(time.time() * 1000) - 60 * 60 * 1000})
+    o = opstelling(("traag", 4, stand("v2")), bestand={"version": "v2"},
+                   opslag={"bucky.site.version": oud})
+    begin = time.monotonic()
+    o.open("/")
+    assert o.versie == "v2"
+    assert time.monotonic() - begin < 1.5
+
+
+@pytest.mark.parametrize("bestand", [404, "afbreken", {"version": "v9"}, {"iets": 1}])
+def test_alles_faalt_dan_v1(opstelling, bestand):
+    o = opstelling("afbreken", bestand=bestand).open("/")
+    assert o.versie == "v1"
+
+
+def test_ook_een_v2_pagina_vindt_het_bestand(opstelling):
+    """De scripttag staat op v2 als ../js/site-version.js; het bestand blijft /site-version.json."""
+    o = opstelling(("traag", 4, stand("v2")), bestand={"version": "v2"}, geen_opslag=True)
+    o.open("/v2/")
+    assert o.versie == "v2" and o.pad == "/v2/"
+    assert o.bestand_verzoeken >= 1
+
+
+def test_geen_flits_ook_niet_als_het_bestand_beslist(opstelling):
+    o = opstelling(("traag", 4, stand("v2")), bestand=("traag", 0.4, {"version": "v2"}), frames=True)
+    o.open("/")
+    assert o.versie == "v2"
+    spoor = o.page.evaluate("() => JSON.parse(sessionStorage.getItem('__frames') || '[]')")
+    v1_frames = [f for f in spoor if f[0] in ("/", "/index.html")]
+    assert v1_frames and [f for f in v1_frames if f[1] != "hidden" and f[2]] == []
+
+
+def test_de_preview_blijft_boven_alles(opstelling):
+    o = opstelling(stand("v2"), bestand={"version": "v2"}).open("/?site=v1")
+    assert o.versie == "v1"
+
+
+def test_de_scheidsrechter_los(opstelling):
+    o = opstelling(stand("v1")).open("/")
+    uit = o.page.evaluate("""() => {
+      const s = window.BuckySiteVersion.scheids;
+      const loop = (oud, gebeurtenissen) => {
+        let staat = {oud}, r = null;
+        for (const g of gebeurtenissen) { r = s(staat, g); staat = r.staat; if (r.besluit) return r; }
+        return r;
+      };
+      return {
+        api:            loop(null, [{soort: "api", v: "v2"}]).besluit,
+        apiOnzin:       loop(null, [{soort: "api", v: "v7"}]).besluit,
+        bestandEerst:   loop(null, [{soort: "bestand", v: "v2"}]),
+        genade:         loop(null, [{soort: "bestand", v: "v2"}, {soort: "genade"}]).besluit,
+        apiNaBestand:   loop(null, [{soort: "bestand", v: "v2"}, {soort: "api", v: "v1"}]).besluit,
+        eens:           loop("v2", [{soort: "bestand", v: "v2"}]).besluit,
+        apiFoutBestand: loop(null, [{soort: "apiFout"}, {soort: "bestand", v: "v2"}]).besluit,
+        beideFoutOud:   loop("v2", [{soort: "apiFout"}, {soort: "bestandFout"}]).besluit,
+        beideFout:      loop(null, [{soort: "bestandFout"}, {soort: "apiFout"}]).besluit,
+        deadlineOud:    loop("v2", [{soort: "deadline"}]).besluit,
+        deadlineNiets:  loop(null, [{soort: "deadline"}]).besluit,
+        deadlineBest:   loop("v1", [{soort: "bestand", v: "v2"}, {soort: "deadline"}]).besluit,
+      };
+    }""")
+    assert uit["api"] == "v2" and uit["apiOnzin"] == "v1"
+    assert uit["bestandEerst"]["besluit"] is None and uit["bestandEerst"]["genade"] is True
+    assert uit["genade"] == "v2" and uit["apiNaBestand"] == "v1"
+    assert uit["eens"] == "v2" and uit["apiFoutBestand"] == "v2"
+    assert uit["beideFoutOud"] == "v2" and uit["beideFout"] == "v1"
+    assert uit["deadlineOud"] == "v2" and uit["deadlineNiets"] == "v1" and uit["deadlineBest"] == "v2"
+
+
+def test_het_eigen_bestand_is_gelijk_aan_de_config():
+    """DE DEPLOY HOUDT ZE GELIJK. Zet de eigenaar site.version om, dan is dit rood
+    tot site-version.json mee is; en zonder groene suites gaat er niets live.
+    Tot dan beslist de API (als hij op tijd is) en klopt het voor bijna iedereen."""
+    config = SITE.parent / "bucky1.0" / "cogs" / "data" / "currency" / "datacurrency" / "site_features.json"
+    if not config.exists():
+        pytest.skip("de bot-boom staat niet naast site/")
+    verwacht = json.loads(config.read_text(encoding="utf-8"))["site"]["version"]
+    bestand = json.loads((SITE / "site-version.json").read_text(encoding="utf-8"))
+    assert bestand["version"] == verwacht
+
+
+def test_het_echte_bestand_wordt_gelezen(opstelling):
+    echt = json.loads((SITE / "site-version.json").read_text(encoding="utf-8"))["version"]
+    o = opstelling("afbreken", bestand="echt").open("/")
+    assert o.versie == echt
+
+
+def test_elke_pagina_met_de_schakelaar_mag_het_eigen_bestand_ophalen():
+    """Zonder 'self' in connect-src blokkeert de CSP het verzoek stil, en zit je
+    weer op de oude terugval."""
+    paginas = [p for p in list(SITE.glob("*.html")) + list((SITE / "v2").glob("*.html"))
+               if "site-version.js" in p.read_text(encoding="utf-8")]
+    assert len(paginas) >= 10
+    for p in paginas:
+        csp = re.search(r'http-equiv="Content-Security-Policy" content="([^"]*)"', p.read_text(encoding="utf-8"))
+        assert csp, p.name
+        connect = re.search(r"connect-src ([^;]*)", csp.group(1))
+        assert connect and "'self'" in connect.group(1).split(), (p.name, connect and connect.group(1))

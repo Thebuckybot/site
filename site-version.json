@@ -1,0 +1,4 @@
+{
+  "_comment": "De actieve versie van de site, SAME-ORIGIN voor js/site-version.js (13-10-2026). De baas is site_features.json (site.version, +ownerconfig) via /api/site/features; dit bestand is de snelle terugval als dat cross-origin verzoek te laat is, zoals in de in-app browser van Discord. Bij elke omschakeling meenemen in de volgende deploy: site/tests/test_site_versie.py is rood zolang ze verschillen.",
+  "version": "v2"
+}
