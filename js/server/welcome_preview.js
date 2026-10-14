@@ -40,6 +40,23 @@ export const VOORBEELD = {
   accountage: "142 days",
 };
 
+// HET AFSCHEID HEEFT EEN EIGEN VOORBEELDLID (14-10-2026). Op de Goodbye-tab een
+// bericht voorvertonen over "New Member" is dezelfde fout als een nieuw
+// tekstblok dat daar "Welcome" zegt: de woorden komen van het andere bericht.
+// Dezelfde sleutels, want het zijn dezelfde placeholders - de bot vult voor
+// beide berichten één set (welcome_render.waarden_voor).
+export const VOORBEELD_LEAVE = {
+  ...VOORBEELD,
+  user: "@LeavingMember",
+  username: "leavingmember",
+  displayname: "Leaving Member",
+};
+
+/** De voorbeeldwaarden van dit bericht: "welcome" of "leave". */
+export function voorbeeldVoor(kind) {
+  return kind === "leave" ? VOORBEELD_LEAVE : VOORBEELD;
+}
+
 // Eén ronde vervangen, net als aan de botkant: een waarde die zelf een
 // placeholder bevat wordt niet opnieuw ontleed.
 export function vulIn(tekst, waarden) {
@@ -115,7 +132,7 @@ function inlineStukken(tekst) {
 
 // Een mention (`<@123>`) wordt een pil, zoals Discord hem toont. Het GETAL komt
 // uit de tekst, dus dat wordt gecontroleerd voor het wordt gebruikt.
-function mentionStukken(tekst) {
+function mentionStukken(tekst, waarden = VOORBEELD) {
   const uit = [];
   let rest = String(tekst || "");
   const MENTION = /<@!?(\d{1,25})>/;
@@ -123,20 +140,20 @@ function mentionStukken(tekst) {
     const m = MENTION.exec(rest);
     if (!m) break;
     if (m.index > 0) uit.push(...inlineStukken(rest.slice(0, m.index)));
-    uit.push(el("span", { class: "dc-mention", text: VOORBEELD.user }));
+    uit.push(el("span", { class: "dc-mention", text: waarden.user || VOORBEELD.user }));
     rest = rest.slice(m.index + m[0].length);
   }
   uit.push(...inlineStukken(rest));
   return uit;
 }
 
-function tekstNaarKnopen(tekst) {
+function tekstNaarKnopen(tekst, waarden = VOORBEELD) {
   // Regels apart, want een `<br>` is layout en geen inhoud.
   const uit = [];
   const regels = String(tekst || "").split("\n");
   regels.forEach((regel, i) => {
     if (i) uit.push(el("br"));
-    uit.push(...mentionStukken(ontdoeVanLeidendeOpmaak(regel)));
+    uit.push(...mentionStukken(ontdoeVanLeidendeOpmaak(regel), waarden));
   });
   return uit;
 }
@@ -147,7 +164,8 @@ function blokNaarElement(blok, waarden, opties = {}) {
   const soort = blok && blok.type;
 
   if (soort === "text") {
-    return el("div", { class: "dc-text" }, tekstNaarKnopen(vulIn(blok.content, waarden)));
+    return el("div", { class: "dc-text" },
+              tekstNaarKnopen(vulIn(blok.content, waarden), waarden));
   }
 
   if (soort === "separator") {
@@ -160,7 +178,7 @@ function blokNaarElement(blok, waarden, opties = {}) {
   if (soort === "section") {
     const kinderen = [
       el("div", { class: "dc-section-text" },
-         tekstNaarKnopen(vulIn(blok.content, waarden))),
+         tekstNaarKnopen(vulIn(blok.content, waarden), waarden)),
     ];
     if (blok.accessory && blok.accessory.url) {
       kinderen.push(magTonen(blok.accessory.url, hosts)
@@ -289,7 +307,7 @@ export function tekenPreview(doc, opties = {}) {
   const losseTekst = String((doc && doc.text) || "");
   const los = losseTekst.trim()
     ? el("div", { class: "dc-text dc-los", "data-part": "text" },
-         tekstNaarKnopen(vulIn(losseTekst, waarden)))
+         tekstNaarKnopen(vulIn(losseTekst, waarden), waarden))
     : el("div", { class: "dc-los dc-empty", "data-part": "text",
                   text: "No message text yet. Write it on the left." });
 

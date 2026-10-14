@@ -23,7 +23,7 @@
 // dan elders, en bucky1.0/tests/test_site_html_injectie.py voor de vangrail.
 import { api } from "../api.js";
 import { el, clear, toast, confirmDialog } from "../../security/ui.js";
-import { tekenPreview, gewicht, tekens, VOORBEELD, vorm as vormVan, vormFout,
+import { tekenPreview, gewicht, tekens, voorbeeldVoor, vorm as vormVan, vormFout,
          MAX_LOSSE_TEKST } from "../welcome_preview.js";
 import { urlFout, bestandFout } from "../welcome_checks.js";
 
@@ -35,15 +35,33 @@ const UITLEG = {
 
 // Een nieuw blok begint niet leeg. Een leeg tekstvak vraagt "en nu?"; een
 // voorbeeldregel laat zien wat er kan en is in één keer weg te halen.
-const NIEUW = {
-  text: () => ({ type: "text", content: "Welcome {user} to **{server}**!" }),
-  separator: () => ({ type: "separator", divider: true, spacing: "small" }),
-  section: () => ({ type: "section", content: "You are member #{membercount}.",
-                    accessory: null }),
-  image: () => ({ type: "image", url: "" }),
-  buttons: () => ({ type: "buttons",
-                    items: [{ label: "Read the rules", url: "https://", style: "link" }] }),
+//
+// DE VOORBEELDREGEL HANGT AAN HET BERICHT (14-10-2026). Tot vandaag kreeg een
+// nieuw tekstblok op de Goodbye-tab "Welcome {user} to {server}!" - de tekst van
+// het andere bericht, en precies de tekst die iemand verstuurt als hij hem laat
+// staan. Elke container met tekst erin heeft daarom twee versies.
+const BLOKSOORTEN = ["text", "separator", "section", "image", "buttons"];
+
+const VOORBEELDREGEL = {
+  welcome: { text: "Welcome {user} to **{server}**!",
+             section: "You are member #{membercount}.",
+             knop: "Read the rules" },
+  leave: { text: "**{displayname}** just left {server}.",
+           section: "We are down to {membercount} members.",
+           knop: "Come back any time" },
 };
+
+function nieuwBlok(soort, kind) {
+  const regel = VOORBEELDREGEL[kind] || VOORBEELDREGEL.welcome;
+  if (soort === "separator") return { type: "separator", divider: true, spacing: "small" };
+  if (soort === "section") return { type: "section", content: regel.section, accessory: null };
+  if (soort === "image") return { type: "image", url: "" };
+  if (soort === "buttons") {
+    return { type: "buttons",
+             items: [{ label: regel.knop, url: "https://", style: "link" }] };
+  }
+  return { type: "text", content: regel.text };
+}
 
 // De vier vormen van het bericht (14-10-2026). Volgorde = volgorde op het scherm.
 const VORMEN = [
@@ -211,6 +229,8 @@ export default {
       previewHost.appendChild(tekenPreview(huidig().layout, {
         hosts: state.limieten.image_hosts || [],
         kanalen: state.kanalen, kanalenBekend: state.kanalenBekend,
+        // HET VOORBEELDLID VAN DIT BERICHT: wie weggaat is geen nieuw lid.
+        waarden: voorbeeldVoor(state.kind),
       }));
       tellers();
     }
@@ -218,7 +238,7 @@ export default {
     function tellers() {
       const doc = huidig().layout;
       const g = gewicht(doc);
-      const t = tekens(doc, VOORBEELD);
+      const t = tekens(doc, voorbeeldVoor(state.kind));
       const n = (doc.blocks || []).length;
       const zet = (id, waarde, max) => {
         const node = document.getElementById(id);
@@ -412,7 +432,7 @@ export default {
       function toevoegknoppen() {
         clear(addhost);
         const alleenTekst = vormVan(bericht.layout) === "text";
-        const soorten = Object.keys(NIEUW)
+        const soorten = BLOKSOORTEN
           .filter((soort) => !alleenTekst || soort === "buttons");
         for (const soort of soorten) {
           addhost.appendChild(el("button", {
@@ -423,7 +443,8 @@ export default {
                 toast(`A message holds at most ${max} blocks.`, "err");
                 return;
               }
-              bericht.layout.blocks = (bericht.layout.blocks || []).concat([NIEUW[soort]()]);
+              bericht.layout.blocks = (bericht.layout.blocks || [])
+                .concat([nieuwBlok(soort, state.kind)]);
               vuil(); blokken(); ververs();
             },
           }));

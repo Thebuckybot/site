@@ -35,6 +35,12 @@ GID = wp.GID
 FOUTEN = []
 TAB = {"welcome": "Welcome", "leave": "Goodbye"}
 
+# Het voorbeeldlid van de preview, per bericht (14-10-2026, zie
+# `voorbeeldVoor` in js/server/welcome_preview.js): op de Goodbye-tab gaat er
+# iemand weg, en die heet daar geen New Member.
+LID = {"welcome": ("@NewMember", "New Member"),
+       "leave": ("@LeavingMember", "Leaving Member")}
+
 
 def eis(voorwaarde, melding):
     print(("  ok   " if voorwaarde else "  FOUT ") + melding)
@@ -108,8 +114,10 @@ def main():
             veld.fill("Hi {user}, welcome to {server}")
             page.wait_for_timeout(150)
             eis(delen(page) == ["text", "buttons"], f"Text only: tekst, knoppen ({delen(page)})")
+            mention, naam = LID[soort]
             los = page.locator(".dc-surface [data-part=text]").inner_text()
-            eis(los == "Hi @NewMember, welcome to Your Server", f"placeholders in de tekst ({los!r})")
+            eis(los == f"Hi {mention}, welcome to Your Server",
+                f"placeholders in de tekst ({los!r})")
             veld.fill("Changed {membercount}")
             page.wait_for_timeout(150)
             eis(page.locator(".dc-surface [data-part=text]").inner_text() == "Changed 142",
@@ -119,7 +127,7 @@ def main():
             eis(delen(page) == ["text", "embed", "buttons"], f"tekst boven ({delen(page)})")
             eis(knoppen_in_kaart(page) == 0, "de knoppen staan onder het bericht, niet in de kaart")
             kaart = page.locator(".dc-surface .dc-container").inner_text()
-            eis("Card for New Member" in kaart, f"placeholders in de kaart ({kaart!r})")
+            eis(f"Card for {naam}" in kaart, f"placeholders in de kaart ({kaart!r})")
 
             kies(page, "Embed above text")
             eis(delen(page) == ["embed", "text", "buttons"], f"kaart boven ({delen(page)})")
