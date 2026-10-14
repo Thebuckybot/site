@@ -298,7 +298,10 @@ export default {
               keuze.addEventListener("change", () => {
                 if (m === "embed") delete bericht.layout.mode;
                 else bericht.layout.mode = m;
-                vuil(); ververs(); toetsVorm();
+                // OOK DE BOUWER OPNIEUW: bij "Text only" gaat de kaart niet
+                // mee, en dan horen de kaart-containers niet te blijven staan
+                // als velden waarin je voor niets typt (blokken()).
+                vuil(); blokken(); ververs(); toetsVorm();
               });
               return el("label", { class: "srv-vorm" }, [keuze, el("span", { text: naam })]);
             })),
@@ -336,22 +339,11 @@ export default {
 
       // 4. De blokken.
       const blokhost = el("div");
+      const addhost = el("div", { class: "srv-add-row" });
       links.appendChild(kaart("Blocks", "Every block becomes a piece of the card. "
                               + "Drag order with the arrows.", [
         blokhost,
-        el("div", { class: "srv-add-row" },
-          Object.keys(NIEUW).map((soort) => el("button", {
-            class: "sec-btn sec-btn-sm", type: "button", text: "+ " + BLOKNAAM[soort],
-            onclick: () => {
-              const max = state.limieten.max_blocks || 20;
-              if ((bericht.layout.blocks || []).length >= max) {
-                toast(`A message holds at most ${max} blocks.`, "err");
-                return;
-              }
-              bericht.layout.blocks = (bericht.layout.blocks || []).concat([NIEUW[soort]()]);
-              vuil(); blokken(); ververs();
-            },
-          }))),
+        addhost,
         el("div", { class: "srv-meters" }, [
           el("span", { class: "sec-muted" }, [
             document.createTextNode("Blocks "), el("span", { id: "m-blocks" })]),
@@ -366,9 +358,43 @@ export default {
                         + "the block count." }),
       ]));
 
+      // DE KNOPPEN OM EEN BLOK TOE TE VOEGEN. Bij "Text only" alleen die voor de
+      // knoppenrij: een kaart-container toevoegen aan een bericht dat de kaart
+      // niet verstuurt, levert een blok op dat je direct daarna niet meer ziet.
+      function toevoegknoppen() {
+        clear(addhost);
+        const alleenTekst = vormVan(bericht.layout) === "text";
+        const soorten = Object.keys(NIEUW)
+          .filter((soort) => !alleenTekst || soort === "buttons");
+        for (const soort of soorten) {
+          addhost.appendChild(el("button", {
+            class: "sec-btn sec-btn-sm", type: "button", text: "+ " + BLOKNAAM[soort],
+            onclick: () => {
+              const max = state.limieten.max_blocks || 20;
+              if ((bericht.layout.blocks || []).length >= max) {
+                toast(`A message holds at most ${max} blocks.`, "err");
+                return;
+              }
+              bericht.layout.blocks = (bericht.layout.blocks || []).concat([NIEUW[soort]()]);
+              vuil(); blokken(); ververs();
+            },
+          }));
+        }
+      }
+
       function blokken() {
         clear(blokhost);
+        toevoegknoppen();
         const lijst = bericht.layout.blocks || [];
+        // BIJ "TEXT ONLY" GAAT DE KAART NIET MEE, en dus ook geen van de
+        // containers erin - alleen de knoppenrij, die de bot dan onder het
+        // bericht zet (welcome_render.bouw). De containers worden daarom
+        // VERBORGEN en niet weggegooid: het document houdt ze, en bij een vorm
+        // met een kaart staan ze er weer, met hun inhoud.
+        const alleenTekst = vormVan(bericht.layout) === "text";
+        const zichtbaar = lijst
+          .map((blok, i) => [blok, i])
+          .filter(([blok]) => !alleenTekst || blok.type === "buttons");
         // BIJ HET LADEN GEMELD, BOVENAAN: een knop naar een verdwenen kanaal
         // gaat niet mee in het bericht. Dat hoort iemand te lezen voordat hij
         // op Save drukt, niet pas te merken als er een lid binnenkomt.
@@ -382,33 +408,51 @@ export default {
                   + `. ${dood.length === 1 ? "It is" : "They are"} left out of the message `
                   + "until you pick another channel." }));
         }
-        if (!lijst.length) {
+        if (alleenTekst) {
+          blokhost.appendChild(el("p", { class: "sec-muted", id: "srv-kaart-verborgen",
+            style: "margin:0 0 12px",
+            text: "Text only does not send the card, so its blocks are hidden "
+                  + "here. They are kept: pick a layout with an embed to work on "
+                  + "them again. Buttons do go out, under the message text." }));
+        }
+        if (!zichtbaar.length) {
           blokhost.appendChild(el("p", { class: "sec-muted",
-            text: "No blocks yet. Add one below and it appears in the preview." }));
+            text: alleenTekst
+              ? "No buttons yet. Add a buttons block below and it appears under "
+                + "the message text."
+              : "No blocks yet. Add one below and it appears in the preview." }));
           return;
         }
-        lijst.forEach((blok, i) => blokhost.appendChild(blokKaart(blok, i, lijst)));
+        zichtbaar.forEach(([blok, i]) =>
+          blokhost.appendChild(blokKaart(blok, i, lijst, alleenTekst)));
       }
 
-      function blokKaart(blok, i, lijst) {
+      function blokKaart(blok, i, lijst, alleenTekst = false) {
         const verplaats = (naar) => {
           if (naar < 0 || naar >= lijst.length) return;
           const [eruit] = lijst.splice(i, 1);
           lijst.splice(naar, 0, eruit);
           vuil(); blokken(); ververs();
         };
-        return el("div", { class: "srv-block" }, [
+        // `data-soort` is waar de vangrail op kijkt: welk blok staat er, en bij
+        // "Text only" welke er NIET staan (tests/test_welcome_alleen_tekst.py).
+        return el("div", { class: "srv-block", "data-soort": blok.type }, [
           el("div", { class: "srv-block-head" }, [
             el("span", { class: "srv-block-kind", text: BLOKNAAM[blok.type] || blok.type }),
             el("div", { class: "srv-block-actions" }, [
-              el("button", { class: "srv-iconbtn", type: "button", text: "↑",
-                             title: "Move up", "aria-label": "Move up",
-                             disabled: i === 0 ? "disabled" : null,
-                             onclick: () => verplaats(i - 1) }),
-              el("button", { class: "srv-iconbtn", type: "button", text: "↓",
-                             title: "Move down", "aria-label": "Move down",
-                             disabled: i === lijst.length - 1 ? "disabled" : null,
-                             onclick: () => verplaats(i + 1) }),
+              // GEEN PIJLEN BIJ "TEXT ONLY": de buren staan dan niet op het
+              // scherm, dus een stap omhoog zou een sprong zijn naar een plek
+              // die je niet ziet.
+              alleenTekst ? null
+                : el("button", { class: "srv-iconbtn", type: "button", text: "↑",
+                                 title: "Move up", "aria-label": "Move up",
+                                 disabled: i === 0 ? "disabled" : null,
+                                 onclick: () => verplaats(i - 1) }),
+              alleenTekst ? null
+                : el("button", { class: "srv-iconbtn", type: "button", text: "↓",
+                                 title: "Move down", "aria-label": "Move down",
+                                 disabled: i === lijst.length - 1 ? "disabled" : null,
+                                 onclick: () => verplaats(i + 1) }),
               el("button", { class: "srv-iconbtn", type: "button", text: "✕",
                              title: "Remove", "aria-label": "Remove this block",
                              onclick: () => {
