@@ -136,7 +136,7 @@ async function terugval(vak, uit) {
     else if (me && !soort) soort = "chooseorg";
 
     const delen = [
-        el("p", { class: "flow-titel" }, "We couldn't DM you — open Discord"),
+        el("p", { class: "flow-titel" }, "We couldn't DM you. Open Discord"),
         el("p", { class: "flow-tekst" }, REDEN[uit.reason] || REDEN.failed, " Here is what Bucky would have sent."),
     ];
 

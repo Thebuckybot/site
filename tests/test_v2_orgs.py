@@ -373,7 +373,7 @@ def test_dms_dicht_toont_de_myorg_info_op_de_pagina(tab):
             dm=({"delivered": False, "kind": "myorg", "reason": "dms_closed"}, 200)).open()
     t.klik()
     tekst = t.staat("dm-fallback").inner_text()
-    assert "We couldn't DM you" in tekst and "open Discord" in tekst
+    assert "We couldn't DM you" in tekst and "Open Discord" in tekst
     assert "Vanta Collective" in tekst and "specialist" in tekst and "infiltrator" in tekst
     assert t.page.locator('[data-flow][data-staat="dm-fallback"] a[href^="https://discord.com"]').count() >= 1
 
