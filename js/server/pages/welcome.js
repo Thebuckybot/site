@@ -88,6 +88,21 @@ function veld(label, control, hint) {
   ].filter(Boolean));
 }
 
+// EEN PLACEHOLDER OP DE CURSORPLEK. Niet aan het eind: wie midden in een zin
+// `{user}` nodig heeft, wil hem daar - en de selectie wordt vervangen, zoals
+// typen dat ook doet.
+function plakPlaceholder(vak, naam) {
+  const p = "{" + naam + "}";
+  const start = vak.selectionStart ?? vak.value.length;
+  const eind = vak.selectionEnd ?? start;
+  vak.value = vak.value.slice(0, start) + p + vak.value.slice(eind);
+  // `input` en niet alleen de waarde zetten: het scherm hangt aan dat event
+  // (de preview, de tellers, de "er is iets gewijzigd"-stip).
+  vak.dispatchEvent(new Event("input"));
+  vak.focus();
+  vak.selectionStart = vak.selectionEnd = start + p.length;
+}
+
 // Een schakelaar is de bestaande `sec-switch`: een input MET een `.track`
 // ernaast. Een kale checkbox met die klasse erop is onzichtbaar gestyled.
 function schakelaar(aan, onChange) {
@@ -219,6 +234,33 @@ export default {
       zet("m-text", t, state.limieten.max_text_total || 3400);
     }
 
+    // DE PLACEHOLDERS DIE ECHT WERKEN, bij een tekstveld. De namen komen uit
+    // het antwoord van de API (`welcome_layout.PLACEHOLDERS`), dus hier staat
+    // geen tweede lijst die kan gaan afwijken van wat de bot invult.
+    //
+    // ÉÉN SET VOOR BEIDE BERICHTEN, en dat is geen vergeetpunt: de bot vult
+    // voor welcome en voor leave dezelfde waarden in (`waarden_voor` in
+    // bucky1.0/cogs/welcome_render.py), dus een eigen lijst per tabblad zou
+    // placeholders beloven of verzwijgen die er allebei zijn.
+    function placeholderHint(vak) {
+      const namen = Object.keys(data.placeholders || {});
+      if (!namen.length) return null;
+      const labelId = "srv-tekst-placeholders-label";
+      return el("div", { class: "srv-placeholderhint", id: "srv-tekst-placeholders" }, [
+        el("span", { class: "srv-field-hint", id: labelId,
+                     text: "Placeholders you can use here. Click one to insert it:" }),
+        el("div", { class: "srv-chips", role: "group", "aria-labelledby": labelId },
+          namen.map((naam) => el("button", {
+            class: "srv-chip", type: "button", text: "{" + naam + "}",
+            title: data.placeholders[naam],
+            // De zichtbare tekst staat IN de naam (WCAG 2.5.3), met de uitleg
+            // erachter - die staat anders alleen in een tooltip.
+            "aria-label": `Insert {${naam}}: ${data.placeholders[naam]}`,
+            onclick: () => plakPlaceholder(vak, naam),
+          }))),
+      ]);
+    }
+
     function teken() {
       clear(scherm);
       const bericht = huidig();
@@ -306,8 +348,14 @@ export default {
               return el("label", { class: "srv-vorm" }, [keuze, el("span", { text: naam })]);
             })),
           veld("Message text", losTekst,
-               "Plain message text, separate from the card. Placeholders work here "
-               + "too. Not sent with Embed only."),
+               "Plain message text, separate from the card. Not sent with Embed only."),
+          // DE PLACEHOLDERS BIJ HET VELD ZELF, en niet alleen in de kaart
+          // onderaan: dit is het veld waar je ze intypt, en een lijst die je
+          // moet gaan zoeken is een lijst die je uit je hoofd gaat doen.
+          //
+          // BUITEN het `<label>` van het veld: een knop binnen een label maakt
+          // de naam van het tekstvak langer en laat een klik twee dingen doen.
+          placeholderHint(losTekst),
           el("div", { class: "srv-meters", style: "margin-top:4px" }, [
             el("span", { class: "sec-muted" }, [document.createTextNode("Characters "), teller]),
           ]),
@@ -745,12 +793,7 @@ export default {
               onclick: () => {
                 const vak = state.laatsteVeld;
                 if (!vak) { toast("Click in a text box first.", "err"); return; }
-                const p = "{" + naam + "}";
-                const start = vak.selectionStart ?? vak.value.length;
-                vak.value = vak.value.slice(0, start) + p + vak.value.slice(vak.selectionEnd ?? start);
-                vak.dispatchEvent(new Event("input"));
-                vak.focus();
-                vak.selectionStart = vak.selectionEnd = start + p.length;
+                plakPlaceholder(vak, naam);
               },
             }))),
           el("dl", { class: "sec-muted", style: "font-size:12px;margin:12px 0 0;"

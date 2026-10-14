@@ -540,7 +540,14 @@ html { background: var(--sec-bg1); }
   font-family: var(--font-mono); font-size: 12px; cursor: pointer;
   background: var(--srv-state-soft); color: var(--sec-text);
   border: 1px solid transparent; border-radius: 6px; padding: 3px 8px;
+  /* 24 px hoog, ook met deze kleine letter: een chip van 20 px is op een
+     telefoon te klein om te raken (WCAG 2.5.8). Geen andere kleuren dan de
+     chips die er al stonden - het contrast blijft dus wat het was. */
+  display: inline-flex; align-items: center; min-height: 24px;
 }
+/* De hint onder het tekstvak: de uitleg boven, de chips eronder, en op een
+   smal scherm wikkelen ze (srv-chips doet dat zelf). */
+.srv-placeholderhint { display: grid; gap: 6px; margin-top: 7px; }
 .srv-chip:hover { border-color: var(--srv-state); }
 .srv-chip:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 2px; }
 
