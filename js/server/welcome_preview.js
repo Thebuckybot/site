@@ -210,6 +210,46 @@ function blokNaarElement(blok, waarden, opties = {}) {
   return null;
 }
 
+// --- de vorm van het bericht (14-10-2026) -----------------------------------
+// Dezelfde vier als `welcome_layout.MODI` in de backend en `welcome_render.MODI`
+// in de bot. Een document zonder vorm is de kaart, zoals het altijd was.
+export const MODI = ["embed", "text", "text_embed", "embed_text"];
+export const MAX_LOSSE_TEKST = 2000;
+
+export function vorm(doc) {
+  const m = doc && doc.mode;
+  return MODI.includes(m) ? m : "embed";
+}
+
+/** De blokken die in het bericht komen: bij alleen tekst alleen de knoppen. */
+function getoond(doc) {
+  const blokken = (doc && doc.blocks) || [];
+  return vorm(doc) === "text" ? blokken.filter((b) => b.type === "buttons") : blokken;
+}
+
+/**
+ * Wat er mis is met de vorm en de losse tekst, of `null`. Dezelfde regels en
+ * dezelfde zinnen als `welcome_layout.valideer`; de server houdt het laatste
+ * woord, dit is zodat je het ziet voordat je op Save drukt.
+ */
+export function vormFout(doc, max = MAX_LOSSE_TEKST) {
+  const m = vorm(doc);
+  const tekst = String((doc && doc.text) || "").trim();
+  if (tekst.length > max) {
+    return `The message text is too long (${tekst.length} of ${max} characters).`;
+  }
+  if (m !== "embed" && !tekst) {
+    return "This layout shows message text, but the text is empty. Write the "
+           + "message text, or pick Embed only.";
+  }
+  if ((m === "text_embed" || m === "embed_text")
+      && !((doc && doc.blocks) || []).some((b) => b.type !== "buttons")) {
+    return "This layout shows a card, but the card is empty. Add a block, or "
+           + "pick Text only. Buttons alone go under the message, not in a card.";
+  }
+  return null;
+}
+
 /**
  * Teken het document als een Discord-bericht.
  *
@@ -219,9 +259,10 @@ function blokNaarElement(blok, waarden, opties = {}) {
  */
 export function tekenPreview(doc, opties = {}) {
   const waarden = opties.waarden || VOORBEELD;
-  const blokken = (doc && doc.blocks) || [];
+  const m = vorm(doc);
+  const blokken = getoond(doc);
 
-  const kaart = el("div", { class: "dc-container" });
+  const kaart = el("div", { class: "dc-container", "data-part": "embed" });
   // De accentkleur als CSS-variabele op het element zelf. Een getal uit het
   // document, dus eerst klemmen: `setAttribute` met rommel erin zou een
   // ongeldige stijl opleveren, en in het ergste geval meer dan dat.
@@ -229,15 +270,34 @@ export function tekenPreview(doc, opties = {}) {
     ? Math.max(0, Math.min(0xFFFFFF, doc.accent)) : 0x5865F2;
   kaart.style.setProperty("--dc-accent", "#" + accent.toString(16).padStart(6, "0"));
 
-  if (!blokken.length) {
+  // BUITEN "EMBED ONLY" STAAN DE KNOPPEN ONDER HET BERICHT, als eigen rij,
+  // precies zoals de bot ze zet (welcome_render.bouw).
+  const onder = [];
+  for (const blok of blokken) {
+    const node = blokNaarElement(blok, waarden, opties);
+    if (!node) continue;
+    if (m !== "embed" && blok.type === "buttons") onder.push(node);
+    else kaart.appendChild(node);
+  }
+  if (!kaart.childNodes.length) {
     kaart.appendChild(el("div", { class: "dc-empty", text:
       "Nothing here yet. Add a block on the left and it appears here." }));
-  } else {
-    for (const blok of blokken) {
-      const node = blokNaarElement(blok, waarden, opties);
-      if (node) kaart.appendChild(node);
-    }
   }
+
+  // DE LOSSE TEKST, buiten de kaart. Leeg is een zichtbare lege plek, zodat de
+  // volgorde in de preview klopt terwijl je nog moet beginnen met typen.
+  const losseTekst = String((doc && doc.text) || "");
+  const los = losseTekst.trim()
+    ? el("div", { class: "dc-text dc-los", "data-part": "text" },
+         tekstNaarKnopen(vulIn(losseTekst, waarden)))
+    : el("div", { class: "dc-los dc-empty", "data-part": "text",
+                  text: "No message text yet. Write it on the left." });
+
+  const delen = m === "text" ? [los]
+    : m === "text_embed" ? [los, kaart]
+    : m === "embed_text" ? [kaart, los]
+    : [kaart];
+  if (onder.length) delen.push(el("div", { class: "dc-onder", "data-part": "buttons" }, onder));
 
   return el("div", { class: "dc-msg" }, [
     el("div", { class: "dc-avatar", text: "B" }),
@@ -247,7 +307,7 @@ export function tekenPreview(doc, opties = {}) {
         el("span", { class: "dc-tag", text: "APP" }),
         el("span", { class: "dc-when", text: "Today at 14:02" }),
       ]),
-      kaart,
+      ...delen,
     ]),
   ]);
 }
@@ -264,8 +324,9 @@ export function gewicht(doc) {
   // Discords 40), en ze hier NOG een keer meetellen gaf een teller die "9 / 39"
   // zei terwijl de serverfout het over 38 had. Twee getallen voor hetzelfde is
   // erger dan geen teller.
-  let som = 0;
-  for (const blok of (doc && doc.blocks) || []) {
+  // De losse tekst is een eigen component, buiten "Embed only".
+  let som = vorm(doc) !== "embed" && String((doc && doc.text) || "").trim() ? 1 : 0;
+  for (const blok of getoond(doc)) {
     if (blok.type === "section") som += blok.accessory ? 3 : 2;
     else if (blok.type === "image") som += 2;
     else if (blok.type === "buttons") som += 1 + ((blok.items || []).length);
@@ -276,8 +337,10 @@ export function gewicht(doc) {
 
 /** Het aantal zichtbare tekens, over alle blokken samen geteld. */
 export function tekens(doc, waarden) {
-  let som = 0;
-  for (const blok of (doc && doc.blocks) || []) {
+  // Eén bericht, één budget: de losse tekst telt mee.
+  let som = vorm(doc) !== "embed"
+    ? vulIn(String((doc && doc.text) || "").trim(), waarden || VOORBEELD).length : 0;
+  for (const blok of getoond(doc)) {
     if (blok.type === "text" || blok.type === "section") {
       som += vulIn(blok.content || "", waarden || VOORBEELD).length;
     }

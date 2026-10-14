@@ -23,7 +23,8 @@
 // dan elders, en bucky1.0/tests/test_site_html_injectie.py voor de vangrail.
 import { api } from "../api.js";
 import { el, clear, toast, confirmDialog } from "../../security/ui.js";
-import { tekenPreview, gewicht, tekens, VOORBEELD } from "../welcome_preview.js";
+import { tekenPreview, gewicht, tekens, VOORBEELD, vorm as vormVan, vormFout,
+         MAX_LOSSE_TEKST } from "../welcome_preview.js";
 import { urlFout, bestandFout } from "../welcome_checks.js";
 
 const LABEL = { welcome: "Welcome", leave: "Goodbye" };
@@ -43,6 +44,14 @@ const NIEUW = {
   buttons: () => ({ type: "buttons",
                     items: [{ label: "Read the rules", url: "https://", style: "link" }] }),
 };
+
+// De vier vormen van het bericht (14-10-2026). Volgorde = volgorde op het scherm.
+const VORMEN = [
+  ["embed", "Embed only"],
+  ["text", "Text only"],
+  ["text_embed", "Text above embed"],
+  ["embed_text", "Embed above text"],
+];
 
 const BLOKNAAM = {
   text: "Text", separator: "Divider", section: "Text with image",
@@ -252,7 +261,58 @@ export default {
              "Only text and announcement channels are listed."),
       ]));
 
-      // 2. De kleur van de kaart.
+      // 2. De vorm: kaart, tekst, of allebei (14-10-2026). De tekst is een
+      // eigen veld, los van de blokken van de kaart; dezelfde placeholders.
+      const maxLos = state.limieten.max_message_text || MAX_LOSSE_TEKST;
+      const vormfout = el("p", { class: "srv-fout", role: "alert", id: "srv-vorm-fout",
+                                 hidden: true });
+      const teller = el("span", { class: "srv-meter" });
+      function toetsVorm() {
+        const f = vormFout(bericht.layout, maxLos);
+        vormfout.textContent = f || "";
+        vormfout.hidden = !f;
+        const n = String(bericht.layout.text || "").trim().length;
+        clear(teller);
+        teller.appendChild(el("b", { text: String(n) }));
+        teller.appendChild(document.createTextNode(` / ${maxLos}`));
+        teller.className = "srv-meter" + (n > maxLos ? " over" : n > maxLos * 0.85 ? " warn" : "");
+      }
+      // GEEN maxlength: een te lange tekst (geplakt, of al opgeslagen) hoort
+      // een melding met het getal te geven, niet stil te worden afgekapt.
+      const losTekst = el("textarea", { class: "sec-input", rows: "3",
+                                        "aria-label": "Message text" });
+      losTekst.value = bericht.layout.text || "";
+      losTekst.addEventListener("input", () => {
+        bericht.layout.text = losTekst.value;
+        vuil(); ververs(); toetsVorm();
+      });
+      losTekst.addEventListener("focus", () => { state.laatsteVeld = losTekst; });
+      const gekozen = vormVan(bericht.layout);
+      links.appendChild(kaart("Layout",
+        "Send the card, plain message text, or both, in the order you pick.", [
+          el("fieldset", { class: "srv-vormen", "aria-label": "Message layout" },
+            VORMEN.map(([m, naam]) => {
+              const keuze = el("input", { type: "radio", name: `srv-vorm-${state.kind}`,
+                                          value: m });
+              keuze.checked = m === gekozen;
+              keuze.addEventListener("change", () => {
+                if (m === "embed") delete bericht.layout.mode;
+                else bericht.layout.mode = m;
+                vuil(); ververs(); toetsVorm();
+              });
+              return el("label", { class: "srv-vorm" }, [keuze, el("span", { text: naam })]);
+            })),
+          veld("Message text", losTekst,
+               "Plain message text, separate from the card. Placeholders work here "
+               + "too. Not sent with Embed only."),
+          el("div", { class: "srv-meters", style: "margin-top:4px" }, [
+            el("span", { class: "sec-muted" }, [document.createTextNode("Characters "), teller]),
+          ]),
+          vormfout,
+        ]));
+      toetsVorm();
+
+      // 3. De kleur van de kaart.
       const kleur = el("input", { type: "color" });
       kleur.value = hex(bericht.layout.accent || 0x5865F2);
       kleur.addEventListener("input", () => {
@@ -274,7 +334,7 @@ export default {
         ]),
       ]));
 
-      // 3. De blokken.
+      // 4. De blokken.
       const blokhost = el("div");
       links.appendChild(kaart("Blocks", "Every block becomes a piece of the card. "
                               + "Drag order with the arrows.", [
@@ -631,7 +691,7 @@ export default {
 
       blokken();
 
-      // 4. De placeholders.
+      // 5. De placeholders.
       links.appendChild(kaart("Placeholders",
         "Click one to drop it into the text box you were typing in.", [
           el("div", { class: "srv-chips" },
@@ -695,6 +755,15 @@ export default {
     // Opslaan en testen
     // ---------------------------------------------------------------------
     async function bewaar() {
+      // DE VORM EERST HIER: een lege of te lange tekst hoort de server niet te
+      // bereiken, en de melding blijft onder het tekstvak staan.
+      const fout = vormFout(huidig().layout, state.limieten.max_message_text || MAX_LOSSE_TEKST);
+      if (fout) {
+        const vak = document.getElementById("srv-vorm-fout");
+        if (vak) { vak.textContent = fout; vak.hidden = false; }
+        toast(fout, "err");
+        return;
+      }
       const knop = document.getElementById("srv-welcome-save");
       if (knop) { knop.disabled = true; knop.textContent = "Saving…"; }
       try {

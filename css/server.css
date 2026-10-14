@@ -462,6 +462,17 @@ html { background: var(--sec-bg1); }
 }
 
 .dc-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+/* De vorm van het bericht (14-10-2026): de losse tekst en de knoppenrij staan
+   BUITEN de kaart, zoals Discord ze toont. */
+.dc-los { margin: 4px 0; }
+.dc-los + .dc-container, .dc-container + .dc-los { margin-top: 8px; }
+.dc-onder .dc-buttons { margin-top: 8px; }
+.srv-vormen { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 14px; border: 0; padding: 0; }
+.srv-vorm { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--sec-border); border-radius: 8px; cursor: pointer; font-size: 14px; }
+.srv-vorm:has(input:checked) { border-color: var(--srv-state); background: var(--srv-state-soft); }
+.srv-vorm input { margin: 0; }
+.srv-vorm input:focus-visible { outline: 2px solid var(--bucky-red-light); outline-offset: 2px; }
+@media (max-width: 520px) { .srv-vormen { grid-template-columns: 1fr; } }
 .dc-btn {
   display: inline-flex; align-items: center; gap: 6px;
   background: #4e5058; color: #fff; border-radius: 6px;
