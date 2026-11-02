@@ -136,6 +136,85 @@ export default {
         el("div", { class: "sec-row", style: "margin-top:10px" }, [opslaan, teller])]);
     }
 
+    // DE VRAAGRONDE PER TYPE. Hoogstens vijf vragen (een modal draagt er vijf).
+    // De antwoorden staan bovenaan het ticket, in codeblokken: een lid kan er
+    // geen opmaak, links of pings mee maken (cogs/tickets/views.py).
+    let vragen = null;              // {type_key: [vraag, ...]}, geladen bij openen
+    let vraagLimieten = {};
+    let vraagType = (data.types || [])[0] ? data.types[0].key : null;
+    function vragenKaart() {
+      const kaartNode = kaart("Questions per type",
+        "A short round of questions when someone opens this type of ticket. The answers appear at the top of the ticket for your team. Leave it empty to open tickets straight away.",
+        [el("div", { class: "sec-loading", text: "Loading questions…" })]);
+      const laad = vragen ? Promise.resolve() : api.get("/tickets/questions").then((uit) => {
+        vragen = uit.questions || {};
+        vraagLimieten = uit.limits || {};
+      });
+      laad.then(() => vul(kaartNode)).catch((err) => {
+        kaartNode.appendChild(el("p", { class: "sec-muted", text: err.message }));
+      });
+      return kaartNode;
+    }
+
+    function vul(kaartNode) {
+      kaartNode.querySelectorAll(".sec-loading, .srv-questions").forEach((n) => n.remove());
+      const max = vraagLimieten.max_questions || 5;
+      const typeKeuze = el("select", { class: "sec-select", "aria-label": "Ticket type for questions" },
+        (data.types || []).map((t) => el("option", { value: t.key, text: t.label })));
+      typeKeuze.value = vraagType || "";
+      const lijst = el("div");
+      const wrap = el("div", { class: "srv-questions" }, [
+        el("div", { class: "srv-list" }, [rij("Ticket type", typeKeuze, null)]), lijst]);
+      kaartNode.appendChild(wrap);
+
+      let werk = [];
+      function laadType() {
+        vraagType = typeKeuze.value;
+        werk = (vragen[vraagType] || []).map((v) => ({ ...v }));
+        tekenLijst();
+      }
+      function tekenLijst() {
+        clear(lijst);
+        werk.forEach((v, i) => {
+          const label = el("input", { class: "sec-input", value: v.label, maxlength: String(vraagLimieten.max_label || 45),
+                                      placeholder: "Question", "aria-label": `Question ${i + 1}` });
+          label.addEventListener("input", () => { v.label = label.value; });
+          const hint = el("input", { class: "sec-input", value: v.placeholder || "", maxlength: String(vraagLimieten.max_placeholder || 100),
+                                     placeholder: "Hint (optional)", "aria-label": `Hint for question ${i + 1}` });
+          hint.addEventListener("input", () => { v.placeholder = hint.value; });
+          const stijl = el("select", { class: "sec-select", "aria-label": `Answer type for question ${i + 1}` }, [
+            el("option", { value: "short", text: "Short" }), el("option", { value: "paragraph", text: "Long" })]);
+          stijl.value = v.style || "short";
+          stijl.addEventListener("change", () => { v.style = stijl.value; });
+          const nodig = el("input", { type: "checkbox", checked: v.required ? "checked" : null,
+                                      "aria-label": `Question ${i + 1} required` });
+          nodig.addEventListener("change", () => { v.required = nodig.checked; });
+          lijst.appendChild(el("div", { class: "srv-question" }, [
+            label, hint, stijl,
+            el("label", { class: "srv-field-hint" }, [nodig, document.createTextNode(" Required")]),
+            el("button", { class: "sec-btn sec-btn-ghost sec-btn-sm", type: "button", text: "Remove",
+                           onclick: () => { werk.splice(i, 1); tekenLijst(); } }),
+          ]));
+        });
+        lijst.appendChild(el("div", { class: "sec-row", style: "margin-top:12px;gap:8px" }, [
+          el("button", { class: "sec-btn sec-btn-sm", type: "button", text: "Add question",
+                         disabled: werk.length >= max ? "disabled" : null,
+                         onclick: () => { werk.push({ label: "", placeholder: "", style: "short", required: true, max_length: 300 }); tekenLijst(); } }),
+          el("button", { class: "sec-btn sec-btn-primary sec-btn-sm", type: "button", text: "Save questions",
+                         onclick: async () => {
+                           try {
+                             const uit = await api.put(`/tickets/questions/${encodeURIComponent(vraagType)}`, { questions: werk });
+                             vragen[vraagType] = uit.questions;
+                             toast("Questions saved.");
+                           } catch (err) { toast(err.message, "err"); }
+                         } }),
+          el("span", { class: "srv-field-hint", text: `${werk.length} of ${max}` }),
+        ]));
+      }
+      typeKeuze.addEventListener("change", laadType);
+      laadType();
+    }
+
     function teken() {
       clear(host);
 
@@ -264,6 +343,8 @@ export default {
       // 4b. Per type: de welkomsttekst bovenaan het ticket (tickets v2). Alleen
       // als de backend `v2` meestuurt; uit bestaat deze kaart niet.
       if (data.v2) host.appendChild(perTypeKaart());
+      // 4c. De vraagronde per type (vlag ticket_forms).
+      if (data.forms) host.appendChild(vragenKaart());
 
       // 5. Wat er open staat
       const open = data.open || [];

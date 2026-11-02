@@ -19,6 +19,11 @@ export const NAV = [
   // binnen de bouwer: beslissen over een aanvraag is ander werk dan een vraag
   // schrijven, en het gebeurt door andere mensen.
   { key: "submissions", label: "Waiting" },
+  // De serverhulpmiddelen (2-11-2026). Alleen zichtbaar als de vlag aan staat
+  // EN je Server beheren hebt (`tools` en `can_manage_server` uit /me); de
+  // routes toetsen beide opnieuw.
+  { key: "autorole", label: "Autorole", tool: "autorole" },
+  { key: "verify", label: "Verify", tool: "verify" },
 ];
 
 const LABEL = {};
@@ -28,9 +33,12 @@ for (const item of NAV) { LABEL[item.key] = item.label; INTERNAL.add(item.key); 
 export function sectionLabel(key) { return LABEL[key] || key; }
 export function isInternal(key) { return INTERNAL.has(key); }
 
-export function buildSidebar(navEl, onNavigate) {
+export function buildSidebar(navEl, onNavigate, me = null) {
   clear(navEl);
+  const tools = (me && me.tools) || {};
+  const beheer = !!(me && me.can_manage_server);
   for (const item of NAV) {
+    if (item.tool && !(tools[item.tool] && beheer)) continue;
     navEl.appendChild(el("button", {
       class: "sec-nav-item", "data-key": item.key, type: "button",
       onclick: () => onNavigate(item.key),

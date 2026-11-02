@@ -114,6 +114,9 @@ async function boot() {
   setServerChip();
   wireDepartments();
   buildSidebar(nav, navigate);
+  // Na /me opnieuw: de zijbalk weet dan welke serverhulpmiddelen aan staan.
+  api.me().then((me) => { buildSidebar(nav, navigate, me); setActive(nav, currentKey()); })
+    .catch(() => { /* de foutkaart hieronder vertelt het al */ });
 
   document.getElementById("sec-refresh").addEventListener("click", () => loadSection(currentKey()));
   document.getElementById("sec-burger").addEventListener("click", () => appEl.classList.toggle("nav-open"));

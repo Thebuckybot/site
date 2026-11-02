@@ -62,6 +62,7 @@ export const api = {
   get: async (path) => (await call("GET", path)).data,
   post: async (path, body) => (await call("POST", path, body || {})).data,
   patch: async (path, body) => (await call("PATCH", path, body || {})).data,
+  put: async (path, body) => (await call("PUT", path, body || {})).data,
   del: async (path) => (await call("DELETE", path)).data,
   // Een bestand, en dus GEEN `Content-Type` die wij zetten: de browser moet er
   // zelf de multipart-grens in zetten, en die kent hij pas als hij de FormData

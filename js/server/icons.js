@@ -17,6 +17,10 @@ export const ICONS = {
   botprofile: [["rect", {x: "3", y: "3", width: "18", height: "18", rx: "4"}], ["circle", {cx: "12", cy: "10", r: "3"}], ["path", {d: "M7 18c1.2-2.4 3-3.5 5-3.5s3.8 1.1 5 3.5"}]],
   // Een postvak met iets erin: wat ligt te wachten op een beslissing.
   submissions: [["path", {d: "M4 13l2.5-8h11L20 13v6H4z"}], ["path", {d: "M4 13h5l1 2h4l1-2h5"}]],
+  // Een persoon met een plusje: een rol die je krijgt bij binnenkomst.
+  autorole: [["circle", {cx: "10", cy: "8", r: "3.5"}], ["path", {d: "M3.5 19c1.3-3 3.7-4.5 6.5-4.5s5.2 1.5 6.5 4.5"}], ["path", {d: "M18 7v6M15 10h6"}]],
+  // Een schild met een vinkje: verifieren.
+  verify: [["path", {d: "M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"}], ["path", {d: "M9 12l2 2 4-4"}]],
 };
 
 const SVG_ATTRS = {
