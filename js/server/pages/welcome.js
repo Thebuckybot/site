@@ -49,7 +49,18 @@ const VOORBEELDREGEL = {
   leave: { text: "**{displayname}** just left {server}.",
            section: "We are down to {membercount} members.",
            knop: "Come back any time" },
+  dm: { text: "Hi {displayname}, welcome to **{server}**!",
+        section: "Start in the rules channel, then say hi.",
+        knop: "Read the rules" },
 };
+
+// DE DERDE TAB (2-11-2026, vlag server_tools.welcome_dm): een privebericht aan
+// het nieuwe lid. Hij verschijnt alleen als de backend `dm: true` meestuurt;
+// zonder vlag bestaat hij niet, ook niet als knop die een 503 oplevert.
+const DM_LABEL = "Direct message";
+const DM_UITLEG = "Sent privately to somebody who joins, apart from the welcome "
+  + "message in your server. People with closed DMs do not get it, and at most "
+  + "10 go out per minute, so a raid does not turn into a DM flood.";
 
 function nieuwBlok(soort, kind) {
   const regel = VOORBEELDREGEL[kind] || VOORBEELDREGEL.welcome;
@@ -173,6 +184,14 @@ export default {
       laatsteVeld: null,
     };
     for (const bericht of data.messages || []) state.berichten[bericht.kind] = bericht;
+    // LABEL leeft in de module en blijft tussen bezoeken staan: eerst weg, dan
+    // alleen terug als de backend de DM nu meestuurt.
+    delete LABEL.dm; delete UITLEG.dm;
+    if (data.dm && state.berichten.dm) {
+      LABEL.dm = DM_LABEL;
+      UITLEG.dm = DM_UITLEG;
+      state.vuil.dm = false;
+    }
 
     clear(host);
     const tabhost = el("div");
@@ -316,12 +335,17 @@ export default {
         }
       });
 
-      links.appendChild(kaart(LABEL[state.kind] + " message", UITLEG[state.kind], [
-        veld("Switched on", aan.node,
-             "Off means nothing is sent. You can still use Send test below."),
-        veld("Channel", kanaal,
-             "Only text and announcement channels are listed."),
-      ]));
+      // De DM heeft geen kanaal: hij gaat naar het lid zelf.
+      links.appendChild(kaart(
+        state.kind === "dm" ? DM_LABEL : LABEL[state.kind] + " message",
+        UITLEG[state.kind],
+        state.kind === "dm"
+          ? [veld("Switched on", aan.node,
+                  "Off means nobody gets a DM. Send test sends it to you.")]
+          : [veld("Switched on", aan.node,
+                  "Off means nothing is sent. You can still use Send test below."),
+             veld("Channel", kanaal,
+                  "Only text and announcement channels are listed.")]));
 
       // 2. De vorm: kaart, tekst, of allebei (14-10-2026). De tekst is een
       // eigen veld, los van de blokken van de kaart; dezelfde placeholders.
@@ -904,7 +928,7 @@ export default {
       }
       try {
         await api.post(`/welcome/${state.kind}/test`, {});
-        toast("Sent. Have a look in the channel.");
+        toast(state.kind === "dm" ? "Sent. Check your DMs." : "Sent. Have a look in the channel.");
       } catch (err) {
         toast((err && err.message) || "It did not send.", "err");
       }

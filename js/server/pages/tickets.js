@@ -82,6 +82,60 @@ export default {
       }
     }
 
+    // Welkomsttekst per type. Een keuzelijst en een tekstvak, en niet zes
+    // tekstvakken onder elkaar: je werkt aan een type tegelijk.
+    let gekozenType = (data.types || [])[0] ? data.types[0].key : null;
+    function perTypeKaart() {
+      const types = data.types || [];
+      const max = data.max_welcome_text || 1000;
+      const keuze = el("select", { class: "sec-select", "aria-label": "Ticket type" },
+        types.map((t) => el("option", { value: t.key, text: t.label })));
+      keuze.value = gekozenType || "";
+      const huidig = () => types.find((t) => t.key === keuze.value) || {};
+      const vak = el("textarea", {
+        class: "sec-input srv-textarea", rows: "5", maxlength: String(max),
+        "aria-label": "Welcome text for this ticket type",
+        placeholder: "Thanks {user}! Tell us what happened and add screenshots if you have them.",
+      });
+      vak.value = huidig().welcome_text || "";
+      const teller = el("span", { class: "srv-field-hint", "aria-live": "polite" });
+      const tel = () => { teller.textContent = `${vak.value.length} / ${max}`; };
+      tel();
+      vak.addEventListener("input", tel);
+      keuze.addEventListener("change", () => {
+        gekozenType = keuze.value;
+        vak.value = huidig().welcome_text || "";
+        tel();
+      });
+      const opslaan = el("button", {
+        class: "sec-btn sec-btn-primary sec-btn-sm", type: "button", text: "Save welcome text",
+        onclick: async () => {
+          opslaan.disabled = true;
+          try {
+            const uit = await api.patch("/tickets/types/welcome", { key: keuze.value, welcome_text: vak.value });
+            huidig().welcome_text = uit.welcome_text;
+            vak.value = uit.welcome_text;
+            tel();
+            toast("Welcome text saved.");
+          } catch (err) {
+            toast(err.message, "err");
+          } finally {
+            opslaan.disabled = false;
+          }
+        },
+      });
+      const placeholders = (data.welcome_placeholders || []).map((p) => "{" + p + "}").join(", ");
+      return kaart(
+        "Welcome text per type",
+        "Shown at the top of a new ticket, above the Close button. Empty means Bucky's standard line. "
+          + (placeholders ? `You can use ${placeholders}.` : ""),
+        [el("div", { class: "srv-list" }, [
+          rij("Ticket type", keuze, "Pick the type you want to write for."),
+        ]),
+        vak,
+        el("div", { class: "sec-row", style: "margin-top:10px" }, [opslaan, teller])]);
+    }
+
     function teken() {
       clear(host);
 
@@ -206,6 +260,10 @@ export default {
         "Ticket types",
         "What a member can pick when they open a ticket. The prefix is the channel name Bucky uses.",
         [el("div", { class: "srv-list srv-stagger" }, typeRijen)]));
+
+      // 4b. Per type: de welkomsttekst bovenaan het ticket (tickets v2). Alleen
+      // als de backend `v2` meestuurt; uit bestaat deze kaart niet.
+      if (data.v2) host.appendChild(perTypeKaart());
 
       // 5. Wat er open staat
       const open = data.open || [];

@@ -13,7 +13,7 @@
 // krijgt als hij een uitgezet commando probeert. Dezelfde zin als de bot stuurt
 // (cogs/Help.py), zodat dit scherm laat zien in plaats van beweert.
 import { api } from "../api.js";
-import { el, clear, toast } from "../../security/ui.js";
+import { el, clear, toast, confirmDialog } from "../../security/ui.js";
 
 const FILTERS = [
   { key: "all", label: "All" },
@@ -104,6 +104,44 @@ export default {
         }),
       ]));
       return;
+    }
+
+    // DISABLE ALL / ENABLE ALL (vlag server_tools.disable_all). Alleen als de
+    // backend zegt dat het aan staat; uit geeft de route toch een 503.
+    if (state.data.bulk) {
+      const waarKeuze = el("select", { class: "sec-select", "aria-label": "Where to apply" }, [
+        el("option", { value: "", text: "Whole server" }),
+        ...state.kanalen.filter((k) => k.type === 0 || k.type === 5)
+          .map((k) => el("option", { value: k.id, text: "#" + k.name })),
+      ]);
+      async function bulk(action) {
+        const waar = waarKeuze.value ? "this channel" : "the whole server";
+        const ok = await confirmDialog({
+          title: action === "disable_all" ? "Disable every category?" : "Enable everything?",
+          message: action === "disable_all"
+            ? `Every category goes off in ${waar}. help, enable, disable and listdisabled keep working, so you can always switch things back on.`
+            : `Every command and category comes back on in ${waar}, including ones you switched off one by one.`,
+          danger: action === "disable_all",
+          confirmLabel: action === "disable_all" ? "Disable all" : "Enable all",
+        });
+        if (!ok) return;
+        try {
+          await api.post("/commands/bulk", { action, channel_id: waarKeuze.value || null });
+          state.data = await api.get("/commands");
+          state.kanalen = state.data.channels || [];
+          toast(action === "disable_all" ? "Everything is switched off." : "Everything is available again.");
+          teken();
+        } catch (err) {
+          toast(err.message, "err");
+        }
+      }
+      controls.appendChild(el("div", { class: "sec-row", role: "group", "aria-label": "Switch everything" }, [
+        waarKeuze,
+        el("button", { class: "sec-btn sec-btn-danger sec-btn-sm", type: "button", text: "Disable all",
+                       onclick: () => bulk("disable_all") }),
+        el("button", { class: "sec-btn sec-btn-sm", type: "button", text: "Enable all",
+                       onclick: () => bulk("enable_all") }),
+      ]));
     }
 
     async function schakel(rij, naam, isCog, uit, knop) {

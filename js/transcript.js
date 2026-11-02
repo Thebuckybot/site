@@ -288,6 +288,26 @@ function kop(data) {
   return el("section", { class: "tr-card tr-head", "aria-label": "Ticket details" }, [titel, plaats, feiten, deelnemers, bewaar]);
 }
 
+// DE OPENING VAN HET TICKET (snapshot versie 2, tickets v2): de welkomsttekst
+// die de opener zag en de antwoorden van het ticketformulier. Alles als tekst;
+// een antwoord is wat een lid typte en krijgt dus geen opmaak, ook geen links.
+function opening(data) {
+  const o = data.opening;
+  if (!o || (!o.welcome_text && !(o.answers || []).length)) return null;
+  const delen = [el("h2", { text: "How the ticket opened" })];
+  if (o.welcome_text) {
+    delen.push(el("p", { class: "tr-opening-welcome", text: o.welcome_text }));
+  }
+  const antwoorden = (o.answers || []).filter((a) => a && typeof a === "object");
+  if (antwoorden.length) {
+    delen.push(el("dl", { class: "tr-answers" }, antwoorden.flatMap((a) => [
+      el("dt", { text: String(a.label || "Question") }),
+      el("dd", { text: String(a.answer || "(no answer)") }),
+    ])));
+  }
+  return el("section", { class: "tr-card tr-opening", "aria-label": "How the ticket opened" }, delen);
+}
+
 function notities(data) {
   if (data.view !== "staff") return null;
   const lijst = (data.notes || []).map((n) => el("li", { class: "tr-note" }, [
@@ -347,6 +367,8 @@ function toon(data) {
   for (const b of data.messages || []) if (b.author_id && !namen.has(String(b.author_id))) namen.set(String(b.author_id), b.display_name || b.author_name || "user");
 
   main.appendChild(kop(data));
+  const o = opening(data);
+  if (o) main.appendChild(o);
   const n = notities(data);
   if (n) main.appendChild(n);
   main.appendChild(el("section", { class: "tr-card tr-conversation", "aria-label": "Conversation" }, [

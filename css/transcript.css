@@ -85,6 +85,14 @@ a:hover { color: #a9d7ff; }
 .tr-notes { padding: var(--space-5) var(--space-6); border-color: rgba(224, 165, 58, 0.35); border-left: 4px solid var(--bk-amber); }
 .tr-notes h2 { margin: 0; font-size: var(--fs-md); }
 .tr-notes-warn { margin: 2px 0 var(--space-3); color: #f3c877; font-size: var(--fs-sm); }
+
+/* De opening van een ticket (tickets v2): welkomsttekst en formulierantwoorden. */
+.tr-opening { padding: var(--space-5) var(--space-6); border-left: 4px solid var(--bk-red, #e2334a); }
+.tr-opening h2 { margin: 0 0 var(--space-3); font-size: var(--fs-md); }
+.tr-opening-welcome { margin: 0 0 var(--space-3); white-space: pre-wrap; overflow-wrap: anywhere; }
+.tr-answers { margin: 0; display: grid; gap: 4px var(--space-4); }
+.tr-answers dt { font-weight: 700; font-size: var(--fs-sm); }
+.tr-answers dd { margin: 0 0 var(--space-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .tr-note-list { list-style: none; margin: 0; padding: 0; }
 .tr-note { padding: var(--space-3) 0; border-top: 1px solid var(--bk-border); }
 .tr-note-head { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
