@@ -60,7 +60,7 @@ export default {
       root.appendChild(pageHeader("Incidents", "Every detection, newest first. Filter and page server-side."));
       const modIn = el("input", { class: "sec-input", placeholder: "module key…" });
       const actIn = el("input", { class: "sec-input", placeholder: "executor id…" });
-      const sevSel = el("select", { class: "sec-select" }, [el("option", { value: "", text: "Any severity" }), 1, 2, 3, 4, 5].map((s) => typeof s === "string" ? s : el("option", { value: s, text: "sev " + s })));
+      const sevSel = el("select", { class: "sec-select" }, [el("option", { value: "", text: "Any severity" }), 1, 2, 3, 4, 5].map((s) => s instanceof Node ? s : el("option", { value: s, text: "sev " + s })));
       const apply = debounce(() => { filters = { module: modIn.value.trim(), actor: actIn.value.trim(), severity: sevSel.value }; page = 0; load(); });
       modIn.addEventListener("input", apply); actIn.addEventListener("input", apply); sevSel.addEventListener("change", apply);
       root.appendChild(el("div", { class: "sec-toolbar" }, [modIn, actIn, sevSel]));

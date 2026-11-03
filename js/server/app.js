@@ -8,7 +8,8 @@
 // "reduce motion" aan heeft, krijgt de sprong zonder beweging.
 import { guildId, api } from "./api.js";
 import { el, clear, toast } from "../security/ui.js";
-import { buildSidebar, setActive, sectionLabel, isInternal } from "./router.js";
+import { buildSidebar, setActive, sectionLabel, isInternal, zetTellers, groepVan } from "./router.js";
+import { zoekveld, gebruiker, boventitel, serverKop, serverWissel } from "../dashboard_zij.js";
 
 const appEl = document.getElementById("sec-app");
 const nav = document.getElementById("sec-nav");
@@ -25,7 +26,7 @@ function currentKey() {
 
 function setBreadcrumb(key) {
   clear(breadcrumb);
-  breadcrumb.appendChild(el("span", { class: "crumb-root", text: "Server" }));
+  breadcrumb.appendChild(el("a", { class: "crumb-root crumb-link", href: "#overview", text: "Server" }));
   breadcrumb.appendChild(el("span", { class: "sep crumb-root", text: "/" }));
   breadcrumb.appendChild(el("span", { text: sectionLabel(key) }));
 }
@@ -65,11 +66,15 @@ async function loadSection(key) {
     if (beurt !== bezig) return;
     clear(content);
     await mod.default.render(content, { navigate });
+    boventitel(content, groepVan(key));
+    // Een nieuw scherm begint bovenaan; de focus gaat naar de inhoud zonder dat
+    // de browser zelf scrolt (die zette de kop anders onder de balk).
+    window.scrollTo(0, 0);
     content.focus({ preventScroll: true });
   } catch (err) {
     if (beurt !== bezig) return;
     clear(content);
-    content.appendChild(el("div", { class: "sec-card" }, [
+    content.appendChild(el("div", { class: "sec-card dv2-foutkaart", role: "alert" }, [
       el("div", { class: "sec-page-title", text: "This page did not load" }),
       el("p", { class: "sec-muted", text: (err && err.message) || String(err) }),
       el("button", {
@@ -82,27 +87,7 @@ async function loadSection(key) {
   appEl.classList.remove("nav-open");
 }
 
-// De servernaam boven in beeld. Komt uit de keuze op dashboard.html, die hem in
-// localStorage zet; zonder die cache staat er het id, en dat is eerlijker dan
-// een extra netwerkverzoek voor een naam.
-function setServerChip() {
-  const host = document.getElementById("sec-guild-name");
-  if (!host) return;
-  const id = guildId();
-  let g = null;
-  try { g = JSON.parse(localStorage.getItem("bucky_active_guild") || "null"); } catch (_) { /* uit */ }
-  clear(host);
-  if (g && String(g.id) === String(id) && g.name) {
-    const img = document.createElement("img");
-    img.className = "sec-server-ic"; img.alt = "";
-    img.src = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64`
-                     : "https://cdn.discordapp.com/embed/avatars/0.png";
-    host.append(img, el("span", { class: "sec-server-nm", text: g.name, title: g.name }));
-    host.classList.add("has-server");
-  } else {
-    host.textContent = "Server " + (id || "");
-  }
-}
+function setServerChip() { serverKop(guildId()); }
 
 function wireDepartments() {
   const naarSecurity = document.getElementById("srv-to-security");
@@ -117,6 +102,14 @@ async function boot() {
   // Na /me opnieuw: de zijbalk weet dan welke serverhulpmiddelen aan staan.
   api.me().then((me) => { buildSidebar(nav, navigate, me); setActive(nav, currentKey()); })
     .catch(() => { /* de foutkaart hieronder vertelt het al */ });
+  zoekveld(nav);
+  serverWissel("server.html", guildId());
+  gebruiker();
+  // De tellers in het zijpaneel: dezelfde getallen als op het overzicht.
+  api.get("/overview").then((d) => zetTellers(nav, {
+    tickets: d && d.tickets && d.tickets.open_tickets,
+    submissions: d && d.applications && d.applications.pending,
+  })).catch(() => { /* geen tellers: het paneel werkt gewoon */ });
 
   document.getElementById("sec-refresh").addEventListener("click", () => loadSection(currentKey()));
   document.getElementById("sec-burger").addEventListener("click", () => appEl.classList.toggle("nav-open"));
@@ -134,7 +127,7 @@ async function boot() {
     await api.me();
   } catch (err) {
     clear(content);
-    content.appendChild(el("div", { class: "sec-card" }, [
+    content.appendChild(el("div", { class: "sec-card dv2-foutkaart", role: "alert" }, [
       el("div", { class: "sec-page-title", text: "You cannot manage this server" }),
       el("p", { class: "sec-muted", text: (err && err.message) || "Ask an administrator of this server for access." }),
       el("a", { class: "sec-btn sec-btn-primary sec-btn-sm", href: "dashboard.html", text: "Pick another server" }),

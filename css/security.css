@@ -964,7 +964,7 @@ html.glas-vervorming .sec-modal { backdrop-filter: url(#dv2-vervorm) saturate(17
   .sec-burger, .sec-scrim { display: none !important; }
   .sec-brand { justify-content: center; padding: 16px 0 12px; }
   /* Visueel weg, maar elke knop houdt zijn naam voor een schermlezer. */
-  .sec-brand > span:not(.sec-brand-mark), .sec-nav-item > span:not(.ic), .sec-group-head > span:not(.ic) {
+  .sec-brand > span:not(.sec-brand-mark), .sec-nav-item > span:not(.ic):not(.dv2-teller), .sec-group-head > span:not(.ic) {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   .sec-group-head .chev { display: none; }
   .sec-nav { padding: 4px 8px 10px; }
@@ -1058,3 +1058,372 @@ html.glas-vervorming .sec-modal { backdrop-filter: url(#dv2-vervorm) saturate(17
 .sec-skel { background: linear-gradient(90deg, var(--dv2-vlak-2) 25%, var(--dv2-vlak-3) 37%, var(--dv2-vlak-2) 63%); background-size: 400% 100%; }
 .sec-loading, .sec-empty { color: var(--dv2-tekst-2); }
 .sec-warn-banner { border-radius: 16px; }
+
+
+/* =====================================================================
+   DASHBOARD V2 - INDELING (stap 3 en 4, 3-11-2026)
+   Wisselen gebeurt in het zijpaneel, zoals in preview B: bovenaan de server
+   met een keuzepijl, onderin het andere centrum en de gebruiker met Log out.
+   De balk erboven is op desktop en tablet KAAL (geen vlak, geen glas): alleen
+   broodkruimel, zoekveld en Refresh. Op een telefoon blijft een glazen balk op
+   een regel over: menuknop, titel, Refresh.
+
+   Daarna de bouwstenen, overgenomen uit docs/previews/dashboard-v2/gedeeld/
+   opbouw.css en b/stijl.css: pilknoppen (de hoofdknop rood met een zachte
+   gloed), schakelaars, chips, het zoekveld, de grote titel met de kopzin.
+   Overal hetzelfde, ook in vensters en op een telefoon.
+   ===================================================================== */
+.dv2-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.dv2-ico { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; }
+.dv2-ico-sm { width: 16px; height: 16px; }
+
+/* ---- zijpaneel: de server bovenaan ---------------------------------------- */
+.sec-brand.dv2-server {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr) 30px; grid-template-rows: auto auto;
+  column-gap: 12px; align-items: center; padding: 16px 14px 12px; margin: 0 6px;
+  text-decoration: none; color: var(--dv2-kop); border-radius: 22px;
+}
+.dv2-server .sec-guild, .dv2-server .sec-guild.has-server { display: contents; }
+.dv2-server .sec-server-ic { grid-row: 1 / 3; width: 40px; height: 40px; border-radius: 13px; border: 0;
+  background: var(--dv2-vlak-3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 14px -6px rgba(0, 0, 0, 0.7); }
+.dv2-initialen { display: inline-grid; place-items: center; color: #fff; font-size: 14px; font-weight: 700;
+  background: linear-gradient(135deg, #E8102E, #7A0A1E) !important; }
+.dv2-server .sec-server-nm { grid-column: 2; align-self: end; max-width: none; font-size: 15px; font-weight: 700; color: var(--dv2-kop); }
+.dv2-centrum-naam { grid-column: 2; align-self: start; font-size: 12px; font-weight: 600; color: var(--dv2-tekst-3); }
+.dv2-server-pijl { grid-column: 3; grid-row: 1 / 3; justify-self: center; width: 30px; height: 30px; padding: 7px;
+  border-radius: 9px; color: var(--dv2-tekst-2); }
+.dv2-server:hover .dv2-server-pijl { background: rgba(255, 255, 255, 0.12); color: var(--dv2-kop); }
+.dv2-server:focus-visible { outline: 2px solid var(--dv2-focus); outline-offset: -2px; }
+
+/* ---- zijpaneel: groepen met een kop, en tellers --------------------------- */
+.sec-nav > * + .dv2-groep, .dv2-groep + * { margin-top: 14px; }
+.dv2-groep-naam { margin: 0 0 4px; padding: 0 14px; font-size: 11px; font-weight: 650; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--dv2-tekst-3); }
+.dv2-groep.sec-group { margin-bottom: 0; }
+.dv2-groep .sec-group-items { max-height: none; overflow: visible; padding-left: 0; transition: none; }
+.dv2-groep .sec-group-items .sec-nav-item { padding-left: 14px; font-size: 14px; }
+.dv2-groep .sec-group-items .sec-nav-item::before { display: none; }
+.sec-nav-item { position: relative; }
+.dv2-nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv2-teller { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center;
+  font-size: 11px; font-weight: 700; line-height: 1; background: var(--dv2-accent-vul); color: #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25); }
+.sec-nav-item[hidden], .dv2-groep[hidden] { display: none; }
+
+/* ---- zijpaneel: het andere centrum en de gebruiker ------------------------ */
+.sec-sidebar-foot { display: grid; gap: 8px; padding: 10px; border-top: 1px solid var(--dv2-rand); }
+.dv2-ander { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  font-size: 13px; font-weight: 600; color: var(--dv2-tekst); text-decoration: none; }
+.dv2-ander > span { flex: 1; min-width: 0; }
+.dv2-ander:hover { background: rgba(255, 255, 255, 0.12); color: var(--dv2-kop); }
+.dv2-ander:focus-visible { outline: 2px solid var(--dv2-focus); outline-offset: 2px; }
+.dv2-ik { display: flex; align-items: center; gap: 10px; padding: 4px 6px; font-size: 13px; min-width: 0; }
+.dv2-avatar { display: inline-grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 50%;
+  overflow: hidden; background: #3A3A44; color: #fff; font-size: 13px; font-weight: 700; }
+.dv2-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dv2-ik-naam { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--dv2-tekst); }
+.dv2-ik .sec-link { font-size: 12px; font-weight: 600; color: var(--dv2-tekst-3); }
+.dv2-ik .sec-link:hover { color: var(--dv2-kop); }
+.dv2-ik .sec-link:focus-visible { outline: 2px solid var(--dv2-focus); outline-offset: 2px; border-radius: 6px; }
+
+/* ---- de balk: kaal op desktop en tablet ----------------------------------- */
+/* Geen vlak en geen glas, en hij schuift mee weg: een doorzichtige balk die
+   blijft staan, zou over de tekst eronder heen lezen. Het zoekveld blijft met
+   "/" altijd bereikbaar. */
+@media (min-width: 700px) {
+  .sec-topbar, html.glas-vervorming .sec-topbar {
+    position: relative; top: auto; min-height: 60px; margin: var(--dv2-marge) var(--dv2-marge) 0 12px; padding: 0 0 0 28px;
+    background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  .sec-topbar::before { display: none; }
+  .sec-content { scroll-margin-top: 0; }
+}
+.sec-breadcrumb { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 400; color: var(--dv2-tekst-3);
+  white-space: nowrap; overflow: hidden; }
+.sec-breadcrumb .sep { margin: 0; color: var(--dv2-tekst-3); }
+.sec-breadcrumb > span:last-child { color: var(--dv2-kop); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.sec-top-actions { gap: 10px; margin-left: auto; }
+
+.dv2-zoek { display: flex; align-items: center; gap: 8px; width: 300px; height: 38px; padding: 0 12px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid var(--dv2-rand); color: var(--dv2-tekst-3); min-width: 0; cursor: text; }
+.dv2-zoek input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--dv2-tekst);
+  font: inherit; font-size: 14px; -webkit-appearance: none; appearance: none; }
+.dv2-zoek input::placeholder { color: var(--dv2-tekst-3); opacity: 1; }
+.dv2-zoek input::-webkit-search-cancel-button { display: none; }
+.dv2-zoek:focus-within { border-color: var(--dv2-focus); box-shadow: 0 0 0 1px var(--dv2-focus); }
+.dv2-zoek kbd { font: 600 11px/1 ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; padding: 3px 6px; border-radius: 6px;
+  border: 1px solid var(--dv2-rand-sterk); color: var(--dv2-tekst-3); }
+.sec-topbar #sec-refresh { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); min-height: 38px; }
+.sec-topbar #sec-refresh:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* ---- de kop van een pagina: boventitel, grote titel, kopzin ------------------- */
+.dv2-boven { margin: 12px 0 6px; font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--dv2-tekst-3); }
+h1.sec-page-title, .srv-hero h1 { margin: 0; font-size: 38px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; color: var(--dv2-kop); }
+.sec-page-sub, .srv-hero p { margin: 10px 0 28px; max-width: 620px; font-size: 16px; line-height: 1.5; color: var(--dv2-tekst-2); }
+.sec-page-sub strong, .srv-hero p strong { color: var(--dv2-kop); }
+.srv-hero { margin-bottom: 28px; }
+.srv-hero p { margin-bottom: 0; }
+/* Een titel IN een kaart (div.sec-page-title, h2): de maat van een kaartkop. */
+div.sec-page-title, h2.sec-page-title, h3.sec-page-title { font-size: 17px; font-weight: 650; letter-spacing: -.005em; margin: 0 0 8px; }
+
+/* ---- knoppen: pillen, overal hetzelfde -------------------------------------- */
+.sec-btn, .srv-modal-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px;
+  border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); color: var(--dv2-tekst);
+  font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.2; white-space: nowrap; text-decoration: none;
+  transition: background .15s, border-color .15s, box-shadow .15s;
+}
+.sec-btn:hover, .srv-modal-btn:hover { transform: none; background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.16); }
+.sec-btn-sm { min-height: 34px; padding: 0 12px; font-size: 13px; }
+.sec-btn-primary, .sec-btn-primary:hover {
+  background: linear-gradient(180deg, #DE1431, #BE0A25); border-color: transparent; color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 20px -8px rgba(232, 16, 46, 0.7);
+}
+.sec-btn-primary:hover { background: linear-gradient(180deg, #E8102E, #C40D27); }
+.sec-btn-danger, .sec-btn-danger:hover { background: var(--dv2-gevaar-vul); border-color: transparent; color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+.sec-btn-danger:hover { background: #D10F2B; }
+.sec-btn-ghost { background: transparent; border-color: rgba(255, 255, 255, 0.1); box-shadow: none; }
+.sec-btn-ghost:hover { background: rgba(255, 255, 255, 0.07); }
+.sec-btn:disabled, .sec-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.sec-btn:disabled:hover { background: rgba(255, 255, 255, 0.07); }
+.sec-btn-primary:disabled:hover { background: linear-gradient(180deg, #DE1431, #BE0A25); }
+.sec-btn .dv2-ico { margin: 0 -2px; }
+
+/* Een filterkeuze (Security | Server was hier ooit; nu de filters op Commands en
+   Submissions): de keuze als gevulde pil, zoals het actieve menu-item. */
+.srv-dept { display: inline-flex; padding: 4px; gap: 4px; border-radius: 999px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--dv2-rand); }
+.srv-dept-btn { min-height: 32px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--dv2-tekst-2); }
+.srv-dept-btn.is-active { background: rgba(255, 255, 255, 0.14); color: var(--dv2-kop);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24); }
+
+/* ---- schakelaar: 44 x 26, aan is groen met een witte knop -------------------- */
+.sec-switch { width: 44px; height: 26px; flex: none; vertical-align: middle; }
+.sec-switch .track { border: 0; background: rgba(255, 255, 255, 0.16); transition: background .2s; }
+.sec-switch .track::before { top: 3px; left: 3px; width: 20px; height: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); transition: transform .2s; }
+.sec-switch input:checked + .track { background: var(--dv2-goed-vul); }
+.sec-switch input:checked + .track::before { transform: translateX(18px); }
+.sec-switch input:disabled + .track { opacity: .5; }
+
+/* ---- chips: 24 hoog, een pil ---------------------------------------------- */
+.sec-badge, .srv-chip, .srv-state { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; letter-spacing: 0; text-transform: none; }
+.sec-badge.muted, .sec-badge:not(.ok):not(.warn):not(.bad):not(.brand) { background: rgba(255, 255, 255, 0.08); color: var(--dv2-tekst-2); }
+.sec-badge.ok { background: var(--dv2-goed-bg); color: var(--dv2-goed); }
+.sec-badge.warn { background: var(--dv2-let-bg); color: var(--dv2-let); }
+.sec-badge.bad { background: rgba(255, 122, 138, 0.12); color: var(--dv2-gevaar); }
+.sec-badge.brand { background: var(--dv2-accent-bg); color: var(--dv2-accent); }
+.sec-pill { min-height: 28px; padding: 0 12px; border: 0; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  background: rgba(255, 255, 255, 0.08); color: var(--dv2-tekst); }
+.sec-pill .dot { width: 7px; height: 7px; flex-basis: 7px; box-shadow: none !important; }
+.sec-pill.ok .dot { background: var(--dv2-goed); }
+.sec-pill.warn .dot { background: var(--dv2-let); }
+.sec-pill.bad .dot { background: var(--dv2-gevaar); }
+
+/* ---- invoer ------------------------------------------------------------------ */
+.sec-input, .sec-select, .srv-modal-input, .srv-modal-select, .srv-textarea {
+  min-height: 40px; border-radius: 12px; border: 1px solid var(--dv2-rand); background: rgba(0, 0, 0, 0.28);
+  color: var(--dv2-tekst); font-family: inherit; font-size: 14px; }
+.sec-input:focus, .sec-select:focus, .srv-modal-input:focus, .srv-modal-select:focus, .srv-textarea:focus {
+  outline: 2px solid var(--dv2-focus); outline-offset: 0; border-color: transparent; }
+.sec-select option { background: var(--dv2-vlak-3); color: var(--dv2-tekst); }
+
+/* ---- het venster: dezelfde knoppen, de voet als in de preview ------------------ */
+.sec-modal h3, .srv-modal-title { font-size: 20px; font-weight: 700; letter-spacing: -.01em; color: var(--dv2-kop); }
+.sec-modal-actions, .srv-modal-actions { gap: 10px; }
+
+/* ---- tablet (700-1099): rail ---------------------------------------------- */
+@media (min-width: 700px) and (max-width: 1099px) {
+  .sec-brand.dv2-server { grid-template-columns: 40px; justify-content: center; padding: 14px 0 10px; margin: 0; }
+  .dv2-server .sec-guild, .dv2-server .sec-guild.has-server { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  .dv2-server .sec-server-nm, .dv2-centrum-naam { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .dv2-server-pijl, .dv2-groep-naam, .dv2-ander .dv2-ico-sm { display: none; }
+  .sec-nav > * + .dv2-groep, .dv2-groep + * { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--dv2-rand); }
+  .dv2-groep .sec-group-items .sec-nav-item { padding-left: 0; }
+  .dv2-teller { position: absolute; top: 4px; right: 6px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; }
+  .sec-sidebar-foot { display: grid; justify-items: center; gap: 8px; padding: 10px 6px; }
+  .dv2-ander { justify-content: center; padding: 0; width: 44px; }
+  .dv2-ander > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .dv2-ik { flex-direction: column; gap: 6px; padding: 4px 0; text-align: center; }
+  .dv2-ik-naam { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .dv2-ik .sec-link { font-size: 11px; }
+  .dv2-zoek { width: 220px; }
+}
+
+/* ---- telefoon (< 700): een glazen balk op een regel; de lade heeft alles ------ */
+@media (max-width: 699px) {
+  .sec-topbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; min-height: 56px; padding: 8px 8px 8px 6px; }
+  .sec-burger { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border: 0; border-radius: 12px; background: transparent; }
+  .sec-burger .dv2-ico { width: 22px; height: 22px; }
+  .sec-breadcrumb, .sec-breadcrumb:only-child { display: flex; flex: 1; font-size: 15px; }
+  .sec-breadcrumb .crumb-root { display: inline; }
+  .sec-top-actions { flex: none; gap: 6px; }
+  .dv2-zoek { display: none; }
+  .sec-topbar #sec-refresh { min-height: 40px; width: 40px; padding: 0; }
+  .sec-topbar #sec-refresh > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  h1.sec-page-title, .srv-hero h1 { font-size: 28px; }
+  .sec-page-sub, .srv-hero p { font-size: 15px; margin-bottom: 20px; }
+  .dv2-boven { margin-top: 4px; }
+  .sec-modal-actions .sec-btn, .srv-modal-actions .sec-btn, .srv-modal-actions .srv-modal-btn { flex: 1 1 auto; }
+}
+/* De broodkruimel verdween onder 400 px om ruimte te maken voor de serverchip;
+   die staat nu in de lade, dus de titel blijft. */
+@media (max-width: 400px) { .sec-breadcrumb { display: flex; } }
+@media (max-width: 379px) { .sec-breadcrumb .crumb-root { display: none; } }
+
+/* ---- geen witte ring na een tik ----------------------------------------------
+   Alleen toetsenbordfocus krijgt een ring (:focus-visible). Een knop die met de
+   muis of een vinger is ingedrukt, houdt niets over. */
+.sec-body :focus:not(:focus-visible) { outline: none; }
+.sec-body button, .sec-body a { -webkit-tap-highlight-color: transparent; }
+
+/* ---- de serverwisselaar (onder de servernaam) --------------------------------
+   Effen, geen glas: het blijft bij drie blurvlakken per scherm. Staat buiten
+   het zijpaneel (dat knipt af); js/dashboard_zij.js zet hem op zijn plek. */
+.dv2-wissel { position: fixed; z-index: 55; display: flex; flex-direction: column; gap: 4px; padding: 8px;
+  border-radius: 20px; background: var(--dv2-vlak-3); border: 1px solid var(--dv2-rand-sterk);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px -20px rgba(0, 0, 0, 0.9); overflow: hidden; }
+.dv2-wissel[hidden] { display: none; }
+.dv2-wissel-kop { margin: 4px 10px 4px; font-size: 11px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--dv2-tekst-3); }
+.dv2-wissel-lijst { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; overflow-y: auto; min-height: 0; scrollbar-width: thin; }
+.dv2-wissel-lijst[hidden] { display: none; }
+.dv2-wissel-lijst > li { min-width: 0; }
+.dv2-wissel-item { min-width: 0; }
+.dv2-wissel-item, .dv2-wissel-alle { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: 14px;
+  color: var(--dv2-tekst); text-decoration: none; font-size: 14px; font-weight: 600; }
+.dv2-wissel-item:hover, .dv2-wissel-alle:hover { background: rgba(255, 255, 255, 0.07); color: var(--dv2-kop); }
+.dv2-wissel-item:focus-visible, .dv2-wissel-alle:focus-visible { outline: 2px solid var(--dv2-focus); outline-offset: -2px; }
+.dv2-wissel-item.is-nu { background: rgba(255, 255, 255, 0.12); color: var(--dv2-kop);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+.dv2-wissel-item.is-nu::after { content: ""; width: 16px; height: 16px; margin-left: auto; flex: none; background: var(--dv2-goed);
+  -webkit-mask: url("../assets/ui/status-goed.svg") center / contain no-repeat; mask: url("../assets/ui/status-goed.svg") center / contain no-repeat; }
+.dv2-wissel-naam { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv2-wissel-ic { width: 28px; height: 28px; border-radius: 9px; flex: none; object-fit: cover; font-size: 11px; }
+.dv2-wissel-alle { margin-top: 2px; border-top: 1px solid var(--dv2-rand); border-radius: 0 0 14px 14px; padding-top: 2px; color: var(--dv2-kop); }
+.dv2-wissel-lijst[hidden] + .dv2-wissel-alle { border-top: 0; border-radius: 14px; }
+.dv2-wissel-alle .dv2-ico { width: 18px; height: 18px; margin: 0 5px; color: var(--dv2-tekst-2); }
+button.dv2-server { width: calc(100% - 12px); border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+button.dv2-server[aria-expanded="true"] .dv2-server-pijl { transform: rotate(180deg); background: rgba(255, 255, 255, 0.12); }
+@media (min-width: 700px) and (max-width: 1099px) { button.dv2-server { width: 100%; } }
+
+/* De eerste schakel van de broodkruimel leidt naar het overzicht. */
+.sec-breadcrumb .crumb-link { color: var(--dv2-tekst-3); text-decoration: none; border-radius: 6px; }
+.sec-breadcrumb .crumb-link:hover { color: var(--dv2-kop); text-decoration: underline; text-underline-offset: 3px; }
+.sec-breadcrumb .crumb-link:focus-visible { outline: 2px solid var(--dv2-focus); outline-offset: 2px; }
+
+/* =====================================================================
+   DASHBOARD V2 - MELDINGEN EN LEGE TOESTANDEN (3-11-2026)
+   Geen gekleurde streep langs een kant en geen stippellijn. Een zachte tint in
+   de kleur van de stand (oranje waarschuwing, rood fout, blauw info, groen
+   gelukt), een dunne rand in dezelfde kleur op lage dekking, een lichte
+   binnenglans en een klein pictogram. De kleur is nooit het enige signaal: het
+   pictogram heeft een eigen vorm per stand en de tekst blijft staan.
+   --dv2-t is de stand als "r, g, b"; de tekstkleur blijft de gewone tekst, dus
+   het contrast is dat van tekst op een donker vlak (ruim boven AA).
+   ===================================================================== */
+.sec-body { --dv2-t-let: 245, 178, 98; --dv2-t-fout: 255, 122, 138; --dv2-t-info: 125, 160, 255; --dv2-t-goed: 95, 214, 154; }
+
+.sec-body .srv-warn, .sec-body .sec-warn-card, .sec-body .sec-warn-banner, .sec-body .sec-alert.warn, .sec-body .sec-alert.premium { --dv2-t: var(--dv2-t-let); --dv2-ic: url("../assets/ui/status-let.svg"); }
+.sec-body .srv-fout, .sec-body .sec-alert.danger, .sec-body .sec-toast.err, .sec-body .dv2-foutkaart { --dv2-t: var(--dv2-t-fout); --dv2-ic: url("../assets/ui/status-fout.svg"); }
+.sec-body .sec-alert, .sec-body .sec-alert.info, .sec-body .sec-toast { --dv2-t: var(--dv2-t-info); --dv2-ic: url("../assets/ui/status-info.svg"); }
+.sec-body .sec-alert.ok, .sec-body .sec-toast.ok { --dv2-t: var(--dv2-t-goed); --dv2-ic: url("../assets/ui/status-goed.svg"); }
+.sec-body .srv-empty, .sec-body .sec-empty, .sec-body .sec-empty-card { --dv2-t: var(--dv2-t-info); --dv2-ic: url("../assets/ui/status-leeg.svg"); }
+
+.sec-body .srv-warn, .sec-body .sec-warn-card, .sec-body .sec-warn-banner, .sec-body .sec-alert, .sec-body .srv-fout,
+.sec-body .sec-toast, .sec-body .dv2-foutkaart, .sec-body .srv-empty, .sec-body .sec-empty, .sec-body .sec-empty-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(var(--dv2-t), 0.15), rgba(var(--dv2-t), 0.04) 65%), var(--dv2-vlak);
+  border: 1px solid rgba(var(--dv2-t), 0.26); border-left-width: 1px; border-style: solid;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: var(--dv2-tekst);
+}
+/* Het pictogram. */
+.sec-body .srv-warn::before, .sec-body .sec-warn-card::before, .sec-body .sec-warn-banner::before,
+.sec-body .sec-alert:not(:has(> .sec-alert-ic))::before, .sec-body .srv-fout::before, .sec-body .sec-toast::before,
+.sec-body .dv2-foutkaart::before, .sec-body .srv-empty::before, .sec-body .sec-empty::before, .sec-body .sec-empty-card::before {
+  content: ""; position: absolute; width: 18px; height: 18px; left: 16px; top: 13px; pointer-events: none;
+  background: rgb(var(--dv2-t));
+  -webkit-mask: var(--dv2-ic) center / contain no-repeat; mask: var(--dv2-ic) center / contain no-repeat;
+}
+.sec-body .sec-alert .sec-alert-ic { color: rgb(var(--dv2-t)); }
+
+/* Kleine meldingen (een regel of twee): 12/16 rondom, ruimte voor het pictogram. */
+.sec-body .sec-warn-banner, .sec-body .sec-alert:not(:has(> .sec-alert-ic)), .sec-body .srv-fout, .sec-body .sec-toast {
+  padding: 12px 16px 12px 44px; border-radius: 16px; }
+.sec-body .sec-alert:has(> .sec-alert-ic) { padding: 12px 16px; border-radius: 16px; }
+.sec-body .sec-warn-banner .ic { display: none; }
+.sec-body .sec-toast { background: linear-gradient(135deg, rgba(var(--dv2-t), 0.18), rgba(var(--dv2-t), 0.06) 65%), var(--dv2-vlak-3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 40px -16px rgba(0, 0, 0, 0.85); }
+.sec-body .srv-fout { color: #FFD3D9; }
+
+/* Kaarten: een melding als kaart, en lege toestanden. */
+.sec-body .srv-warn, .sec-body .sec-warn-card, .sec-body .dv2-foutkaart { padding-left: 58px; border-radius: 22px; }
+.sec-body .srv-warn::before, .sec-body .sec-warn-card::before, .sec-body .dv2-foutkaart::before { width: 20px; height: 20px; left: 24px; top: 23px; }
+.sec-body .srv-empty, .sec-body .sec-empty, .sec-body .sec-empty-card { padding: 24px 26px 24px 62px; border-radius: var(--dv2-r-kaart); }
+.sec-body .srv-empty::before, .sec-body .sec-empty::before, .sec-body .sec-empty-card::before { width: 22px; height: 22px; left: 24px; top: 25px; }
+.sec-body .srv-empty h3, .sec-body .sec-empty-title, .sec-body .srv-warn strong { color: var(--dv2-kop); }
+.sec-body .srv-empty p, .sec-body .sec-empty-card p, .sec-body .srv-warn p { color: var(--dv2-tekst-2); }
+
+/* De blokken van de Rule Builder (When / If / Then): dezelfde tint, geen streep. */
+.sec-body .sec-rb-block { border: 1px solid rgba(var(--dv2-t, 255, 255, 255), 0.22); border-radius: 18px;
+  background: linear-gradient(135deg, rgba(var(--dv2-t, 255, 255, 255), 0.12), rgba(var(--dv2-t, 255, 255, 255), 0.03) 65%), var(--dv2-vlak);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); padding: 16px 18px; }
+.sec-body .sec-rb-block.when { --dv2-t: var(--dv2-t-let); }
+.sec-body .sec-rb-block.if { --dv2-t: 255, 112, 133; }
+.sec-body .sec-rb-block.then { --dv2-t: var(--dv2-t-goed); }
+.sec-body .sec-rb-add { border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); color: var(--dv2-tekst-2); min-height: 36px; }
+.sec-body .sec-rb-add:hover { border-color: rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.08); color: var(--dv2-kop); }
+
+/* Overige strepen en stippels in de schermen zelf. */
+.sec-body .srv-answers { border: 1px solid var(--dv2-rand); border-radius: 16px; background: rgba(255, 255, 255, 0.03); }
+.sec-body .srv-banner-klein.leeg { border: 1px solid rgba(255, 255, 255, 0.1); }
+
+@media (max-width: 699px) {
+  .sec-body .srv-empty, .sec-body .sec-empty, .sec-body .sec-empty-card { padding: 20px 18px 20px 54px; }
+  .sec-body .srv-empty::before, .sec-body .sec-empty::before, .sec-body .sec-empty-card::before { left: 18px; top: 21px; }
+  .sec-body .srv-warn, .sec-body .sec-warn-card, .sec-body .dv2-foutkaart { padding-left: 50px; }
+  .sec-body .srv-warn::before, .sec-body .sec-warn-card::before, .sec-body .dv2-foutkaart::before { left: 18px; }
+}
+
+/* Een lege tabel: de melding over de hele breedte, niet als smal blokje. */
+.sec-body .sec-table td > .sec-empty { max-width: none; margin: 4px 0; }
+/* De labels When / If / Then: leesbaar op hun eigen tint (If was rood op rood). */
+.sec-body .sec-rb-tag { background: rgba(var(--dv2-t, 255, 255, 255), 0.2); color: rgb(var(--dv2-t, 230, 230, 236)); }
+
+/* Vinkjes, keuzerondjes en het bestandsveld in de taal van B. */
+.sec-body { accent-color: var(--dv2-accent-vul); }
+.sec-body input[type="file"] { font: inherit; font-size: 13px; color: var(--dv2-tekst-2); }
+.sec-body input[type="file"]::file-selector-button {
+  margin-right: 10px; min-height: 34px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.07); color: var(--dv2-tekst);
+  font: inherit; font-size: 13px; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.sec-body input[type="file"]::file-selector-button:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* ---- het venster: rand en voet blijven staan bij scrollen ----------------------
+   De lichtrand (::before, absoluut) scrolde mee met de inhoud van een lang venster
+   (Edit-venster van Tickets: op een telefoon een halve rand halverwege). Een
+   gewone rand blijft op de rand van het vak. De knoppenrij is een vaste voet,
+   zoals in B: Cancel en Save zijn altijd in beeld. */
+.sec-modal { max-height: calc(100vh - 40px); overflow-y: auto; border: 1px solid var(--dv2-glas-rand); padding: 24px; }
+.sec-modal::before { display: none; }
+.sec-modal > .sec-modal-actions {
+  position: sticky; bottom: -24px; z-index: 2; justify-content: flex-end;
+  margin: 18px -24px -24px; padding: 14px 24px; background: #1B1B22; border-top: 1px solid var(--dv2-rand);
+}
+@media (max-width: 640px) {
+  .sec-modal { padding: 20px; max-height: 88vh; }
+  .sec-modal > .sec-modal-actions { bottom: -20px; margin: 16px -20px -20px; padding: 12px 20px; }
+}
+@media (prefers-reduced-transparency: reduce) { .sec-modal > .sec-modal-actions { background: var(--dv2-glas-effen); } }
+
+/* Lange woorden zonder breekpunt (registerteksten als users+roles+@everyone, ids)
+   duwden op 360 px de pagina breder dan het scherm (Thresholds, 3-11-2026). */
+.sec-card p, .sec-card .sec-muted, .sec-card li { overflow-wrap: anywhere; }
+/* Een lege tabel op een telefoon: de melding over de hele rij, zonder kolomlabel. */
+.sec-body .sec-table-responsive td:has(> .sec-empty) { display: block; }
+.sec-body .sec-table-responsive td:has(> .sec-empty)::before { display: none; }
+.sec-body .sec-table-responsive tr:has(> td > .sec-empty) { border: 0; padding: 0; background: none; }

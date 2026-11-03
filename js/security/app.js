@@ -4,7 +4,8 @@
 // it never leaves the Security Center.
 import { guildId, api } from "./api.js";
 import { el, clear } from "./ui.js";
-import { buildSidebar, setActive, sectionLabel, isInternal, verbergSecties } from "./router.js";
+import { buildSidebar, setActive, sectionLabel, isInternal, verbergSecties, kopVan } from "./router.js";
+import { zoekveld, gebruiker, boventitel, serverKop, serverWissel } from "../dashboard_zij.js";
 import { haalFeatures } from "../features.js";
 
 // One place renders the read-only INDICATOR, driven by the server's /me tier. It
@@ -46,7 +47,7 @@ function currentKey() {
 
 function setBreadcrumb(key) {
   clear(breadcrumb);
-  breadcrumb.appendChild(el("span", { class: "crumb-root", text: "Security" }));
+  breadcrumb.appendChild(el("a", { class: "crumb-root crumb-link", href: "#overview", text: "Security" }));
   breadcrumb.appendChild(el("span", { class: "sep crumb-root", text: "/" }));
   breadcrumb.appendChild(el("span", { text: sectionLabel(key) }));
 }
@@ -66,10 +67,14 @@ async function loadSection(key) {
     const mod = await import(`./pages/${key}.js`);
     clear(content);
     await mod.default.render(content);
-    content.focus();
+    boventitel(content, kopVan(key));
+    // Een nieuw scherm begint bovenaan; de focus gaat naar de inhoud zonder dat
+    // de browser zelf scrolt (die zette de kop anders onder de balk).
+    window.scrollTo(0, 0);
+    content.focus({ preventScroll: true });
   } catch (err) {
     clear(content);
-    content.appendChild(el("div", { class: "sec-card" }, [
+    content.appendChild(el("div", { class: "sec-card dv2-foutkaart", role: "alert" }, [
       el("div", { class: "sec-page-title", text: "Failed to load this page" }),
       el("p", { class: "sec-muted", text: (err && err.message) || String(err) }),
     ]));
@@ -78,30 +83,8 @@ async function loadSection(key) {
   appEl.classList.remove("nav-open");
 }
 
-// Show the ACTIVE SERVER (icon + name) in the top bar so it is always obvious
-// which server is being managed. The picker caches name/icon in localStorage
-// (frontend-only); a deep link with no cache falls back to the id.
-function setServerChip() {
-  const host = document.getElementById("sec-guild-name");
-  if (!host) return;
-  const id = guildId();
-  let g = null;
-  try { g = JSON.parse(localStorage.getItem("bucky_active_guild") || "null"); } catch (_) { /* ignore */ }
-  host.innerHTML = "";
-  host.classList.remove("has-server");
-  if (g && String(g.id) === String(id) && g.name) {
-    host.classList.add("has-server");
-    const img = document.createElement("img");
-    img.className = "sec-server-ic"; img.alt = "";
-    img.src = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64`
-                     : "https://cdn.discordapp.com/embed/avatars/0.png";
-    const nm = document.createElement("span");
-    nm.className = "sec-server-nm"; nm.textContent = g.name; nm.title = g.name;
-    host.append(img, nm);
-  } else {
-    host.textContent = "Server " + (id || "");
-  }
-}
+// De server bovenaan het zijpaneel (gedeeld met het Server Center).
+function setServerChip() { serverKop(guildId()); }
 
 // De wissel naar het Server Center. De guild moet mee in de URL, anders stuurt
 // die pagina je meteen terug naar de serverkiezer.
@@ -115,6 +98,9 @@ function boot() {
   setServerChip();
   wireDepartments();
   buildSidebar(nav, navigate);
+  zoekveld(nav);
+  serverWissel("security.html", guildId());
+  gebruiker();
   document.getElementById("sec-refresh").addEventListener("click", () => loadSection(currentKey()));
   document.getElementById("sec-burger").addEventListener("click", () => appEl.classList.toggle("nav-open"));
   // Mobile drawer: tap the scrim or press Escape to close it.

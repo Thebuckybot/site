@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { el, statCard, badge, pageHeader, errorState, toast, fmtTime } from "../ui.js";
+import { el, statCard, badge, errorState, toast, fmtTime } from "../ui.js";
 import { boostCard } from "./settings.js";
 
 export default {
@@ -27,7 +27,21 @@ export default {
       const grade = score == null ? "muted" : score >= 75 ? "ok" : score >= 50 ? "warn" : "bad";
       const protectedOk = score != null && score >= 60 && !(health.checks || []).some((c) => c.key === "anti_nuke" && !c.ok);
 
-      root.appendChild(pageHeader("Security Center", "Your server's protection at a glance."));
+      // DASHBOARD V2 (3-11-2026): de kop zegt de stand in een woord, en de kopzin
+      // vat samen wat de kaarten hieronder tonen. Niets wat daar niet ook staat:
+      // een onbekende waarde valt weg in plaats van een verzonnen nul.
+      const modus = String(ov.mode || "normal");
+      const zin = [`${modus.charAt(0).toUpperCase()}${modus.slice(1)} mode.`];
+      if (ov.incidents_today != null) {
+        const n = Number(ov.incidents_today);
+        zin.push(n === 0 ? "No incidents today." : `${n} incident${n === 1 ? "" : "s"} today.`);
+      }
+      if (ov.quarantined) zin.push(`${ov.quarantined} in quarantine.`);
+      root.appendChild(el("div", {}, [
+        el("p", { class: "dv2-boven", text: score == null ? "Overview" : "Security Center" }),
+        el("h1", { class: "sec-page-title", text: score == null ? "Security Center" : protectedOk ? "Protected" : "At risk" }),
+        el("p", { class: "sec-page-sub", text: zin.join(" ") }),
+      ]));
 
       // Row 1 — headline status
       root.appendChild(el("div", { class: "sec-grid sec-grid-4" }, [

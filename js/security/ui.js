@@ -94,7 +94,7 @@ export function errorState(root, err, retry) {
     : "Could not load";
   const msg = is401 ? "Your session has expired. Reload the page to sign in again."
     : (err.message || "Something went wrong.");
-  const card = el("div", { class: "sec-card" }, [
+  const card = el("div", { class: "sec-card dv2-foutkaart", role: "alert" }, [
     el("div", { class: "sec-page-title", text: title }),
     el("p", { class: "sec-muted", text: msg }),
   ]);

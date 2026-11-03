@@ -14,6 +14,17 @@ Stap 1, de schil (security.css "DASHBOARD V2 - BASIS", tokens.css --dv2-*, js/gl
     hoogstens 2 % gemiste frames (zie snelheid(): de oude versie haalt 'nul boven 33 ms'
     op deze laptop ook niet).
 
+Stap 2 tot en met 4 (serverkeuze, Server Center, Security Center), met gevulde
+gegevens uit dashboard_v2_data.py:
+  * elke pagina (9 + 20) op 1440, 820, 390 en 360: niet te breed, hoogstens drie
+    glasvlakken, geen paginafout of CSP-melding, het juiste actieve menu-item;
+    desktop en tablet een kale balk en een titel van 38 px met boventitel;
+    telefoon een balk op een regel en een titel van 28 px;
+  * meldingen en lege toestanden: een tint met pictogram, geen zijstreep of stippellijn;
+  * de serverwisselaar (muis, toetsenbord, lade), de klikbare broodkruimel, het
+    zoekveld met "/", geen focusring na een muisklik;
+  * de serverkeuze met veel servers en een lange naam; contrast AA van de kleurparen.
+
 DRAAIEN (een script, zoals de andere browsertests):
     cd site && python -m http.server 8899
     python tests/test_dashboard_v2.py [map-voor-schermafdrukken]
@@ -113,7 +124,8 @@ def stap1_schil(browser):
                 eis(zij["w"] == 76, f"{label}: rail van 76 px ({zij})")
                 namen = page.evaluate("""() => [...document.querySelectorAll('.sec-nav-item')].map(b => b.innerText.trim())""")
                 zichtbaar = page.evaluate("""() => [...document.querySelectorAll('.sec-nav-item')].filter(b =>
-                  [...b.children].some(c => !c.classList.contains('ic') && c.getBoundingClientRect().width > 2)).length""")
+                  [...b.children].some(c => !c.classList.contains('ic') && !c.classList.contains('dv2-teller')
+                    && c.getBoundingClientRect().width > 2)).length""")
                 eis(namen and all(namen) and zichtbaar == 0,
                     f"{label}: de rail toont alleen pictogrammen, elke knop houdt zijn naam ({len(namen)} knoppen)")
                 eis(page.get_by_role("button", name="Overview").first.count() == 1, f"{label}: 'Overview' is als knop te vinden")
@@ -174,6 +186,241 @@ def stap1_schil(browser):
     page.close()
 
 
+# ---------------------------------------------------------------------------
+# Stap 2 tot en met 4 (3-11-2026): elke pagina in de taal van preview B
+# ---------------------------------------------------------------------------
+import dashboard_v2_data as dd                          # noqa: E402
+
+SERVER_PAGINAS = ["overview", "commands", "tickets", "welcome", "applications", "submissions",
+                  "autorole", "verify", "botprofile"]
+SECURITY_PAGINAS = ["overview", "modules", "thresholds", "punishments", "protection", "ignore", "quarantine",
+                    "incidents", "audit", "analytics", "health", "soc", "rulebuilder", "rules", "liveevents",
+                    "snapshots", "rollback", "emergency", "settings", "advanced"]
+SERVERS = [{"id": GID, "name": "Bucky HQ", "icon": None}, {"id": "222222222222222222", "name": "Design Guild", "icon": None},
+           {"id": "333333333333333333", "name": "A very long server name that keeps going and going", "icon": None}]
+# Meldingen en lege toestanden: een tint, geen streep en geen stippellijn.
+MELDINGEN = ".srv-empty, .sec-empty, .sec-empty-card, .srv-warn, .sec-warn-card, .sec-alert, .srv-fout, .sec-warn-banner, .sec-toast, .sec-rb-block, .dv2-foutkaart"
+
+
+def ingelogd(page, servers=SERVERS):
+    page.add_init_script("localStorage.setItem('bucky_active_guild', JSON.stringify({id: '%s', name: 'Bucky HQ', icon: null}));" % GID)
+    page.route("**/api/me", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps(
+        {"logged_in": True, "user": {"id": "123456789012345678", "username": "tommy", "global_name": "tommy", "avatar": None},
+         "guilds": servers})))
+
+
+def open_gevuld(browser, soort, key, breed, servers=SERVERS):
+    w, h = BREEDTES[breed]
+    page = browser.new_page(viewport={"width": w, "height": h})
+    fouten = []
+    page.on("pageerror", lambda e: fouten.append(str(e)))
+    page.on("console", lambda m: fouten.append(m.text) if "Content Security Policy" in m.text else None)
+    if soort == "security":
+        security_stub(page); dd.stub_security(page, GID)
+    else:
+        server_stub(page); dd.stub_server(page, GID)
+    zonder_tour(page)
+    ingelogd(page, servers)
+    page.goto(f"{BASIS}/{soort}.html?guild_id={GID}#{key}", wait_until="networkidle")
+    page.wait_for_timeout(350)
+    return page, fouten
+
+
+def alle_paginas(browser):
+    for soort, paginas in (("server", SERVER_PAGINAS), ("security", SECURITY_PAGINAS)):
+        for key in paginas:
+            for breed in BREEDTES:
+                page, fouten = open_gevuld(browser, soort, key, breed)
+                label = f"{soort}#{key} {breed}"
+                st = page.evaluate("""(sel) => {
+                  const r = (q) => { const n = document.querySelector(q); return n ? n.getBoundingClientRect() : null; };
+                  const h1 = document.querySelector('#sec-content h1');
+                  const balk = document.querySelector('.sec-topbar'); const bcs = getComputedStyle(balk);
+                  const actief = document.querySelector('.sec-nav-item[aria-current="page"]');
+                  const strepen = [...document.querySelectorAll(sel)].filter(n => n.getBoundingClientRect().width > 0).map(n => {
+                    const cs = getComputedStyle(n);
+                    return {c: n.className, links: parseFloat(cs.borderLeftWidth), stijl: cs.borderLeftStyle + ' ' + cs.borderTopStyle};
+                  }).filter(x => x.links > 1.5 || x.stijl.includes('dashed') || x.stijl.includes('dotted'));
+                  const tops = ['#sec-burger', '#sec-breadcrumb', '#sec-refresh'].map(q => r(q)).filter(Boolean)
+                    .filter(b => b.width > 0).map(b => Math.round(b.top + b.height / 2));
+                  return {breder: document.documentElement.scrollWidth - innerWidth,
+                          h1: h1 ? getComputedStyle(h1).fontSize : null, fout: !!document.querySelector('.dv2-foutkaart'),
+                          boven: !!document.querySelector('#sec-content .dv2-boven'),
+                          balkBg: bcs.backgroundColor, balkBlur: bcs.backdropFilter, balkH: balk.getBoundingClientRect().height,
+                          actief: actief ? actief.dataset.key : null, strepen, tops};
+                }""", MELDINGEN)
+                eis(st["breder"] <= 0, f"{label}: niet breder dan het scherm ({st['breder']})")
+                blur = tel_blur(page)
+                eis(len(blur) <= 3, f"{label}: hoogstens drie glasvlakken ({len(blur)})")
+                eis(not st["fout"], f"{label}: de pagina laadt met gevulde gegevens (geen foutkaart)")
+                eis(st["actief"] == (key if key != "advanced" else "overview") or (soort == "security" and key == "advanced"),
+                    f"{label}: het actieve menu-item is {key} ({st['actief']})")
+                eis(not st["strepen"], f"{label}: meldingen zonder zijstreep of stippellijn ({st['strepen'][:2]})")
+                if breed in ("desktop", "tablet"):
+                    eis(st["balkBg"] == "rgba(0, 0, 0, 0)" and st["balkBlur"] == "none",
+                        f"{label}: de balk is kaal, zonder vlak en zonder glas")
+                    eis(st["h1"] == "38px" and st["boven"], f"{label}: grote titel (38 px) met boventitel ({st['h1']}, {st['boven']})")
+                else:
+                    eis(st["balkH"] <= 64 and len(st["tops"]) >= 3 and max(st["tops"]) - min(st["tops"]) <= 6,
+                        f"{label}: de telefoonbalk staat op een regel (menu, titel, Refresh) ({st['balkH']:.0f} px, {st['tops']})")
+                    eis(st["h1"] == "28px", f"{label}: titel 28 px op een telefoon ({st['h1']})")
+                eis(not fouten, f"{label}: geen paginafout of CSP-melding ({fouten[:2]})")
+                if breed in ("desktop", "tablet", "telefoon"):
+                    schiet(page, f"pagina-{soort}-{key}-{breed}")
+                page.close()
+
+
+def wisselaar(browser):
+    for soort in ("server", "security"):
+        for breed in ("desktop", "tablet", "telefoon"):
+            page, fouten = open_gevuld(browser, soort, "overview", breed)
+            label = f"wisselaar {soort} {breed}"
+            if breed == "telefoon":
+                page.locator("#sec-burger").click(); page.wait_for_timeout(400)
+            knop = page.locator("#dv2-server-knop")
+            knop.focus()
+            page.keyboard.press("Enter")
+            page.wait_for_timeout(300)
+            st = page.evaluate("""() => { const p = document.getElementById('dv2-wissel'); const r = p.getBoundingClientRect();
+              const items = [...p.querySelectorAll('.dv2-wissel-item')];
+              return {open: !p.hidden, exp: document.getElementById('dv2-server-knop').getAttribute('aria-expanded'),
+                      n: items.length, nu: items.filter(a => a.getAttribute('aria-current') === 'page').map(a => a.textContent),
+                      alle: (document.getElementById('dv2-wissel-alle') || {}).getAttribute ? document.getElementById('dv2-wissel-alle').getAttribute('href') : null,
+                      focus: document.activeElement.className, binnen: r.left >= 0 && r.right <= innerWidth + 1 && r.top >= 0,
+                      links: items.map(a => a.getAttribute('href'))}; }""")
+            eis(st["open"] and st["exp"] == "true", f"{label}: Enter opent de wisselaar")
+            eis(st["n"] == 3 and len(st["nu"]) == 1 and "Bucky HQ" in st["nu"][0], f"{label}: drie servers, de huidige gemarkeerd ({st['nu']})")
+            eis(st["alle"] == "dashboard.html", f"{label}: onderaan 'All servers' naar de serverkeuze")
+            eis(all(l.startswith(f"{soort}.html?guild_id=") for l in st["links"]), f"{label}: een server opent hetzelfde centrum")
+            eis("is-nu" in st["focus"], f"{label}: de focus staat op de huidige server")
+            eis(st["binnen"], f"{label}: de lijst staat binnen het scherm")
+            page.keyboard.press("ArrowDown")
+            eis(page.evaluate("document.activeElement.classList.contains('dv2-wissel-item') || document.activeElement.id === 'dv2-wissel-alle'"),
+                f"{label}: pijl omlaag loopt door de lijst")
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(200)
+            eis(page.evaluate("document.getElementById('dv2-wissel').hidden && document.activeElement.id === 'dv2-server-knop'"),
+                f"{label}: Esc sluit en zet de focus terug op de knop")
+            if breed == "telefoon":
+                eis(page.evaluate("document.querySelector('.sec-sidebar').getBoundingClientRect().left >= 0"),
+                    f"{label}: Esc in de wisselaar laat de lade open")
+            eis(not fouten, f"{label}: geen paginafout ({fouten[:2]})")
+            page.close()
+    # Een server: de regel naar alle servers blijft.
+    page, _ = open_gevuld(browser, "server", "overview", "desktop", servers=SERVERS[:1])
+    page.locator("#dv2-server-knop").click(); page.wait_for_timeout(300)
+    eis(page.locator(".dv2-wissel-item").count() == 1 and page.locator("#dv2-wissel-alle").is_visible(),
+        "wisselaar met een server: die server en 'All servers'")
+    page.mouse.click(900, 600); page.wait_for_timeout(200)
+    eis(page.evaluate("document.getElementById('dv2-wissel').hidden"), "wisselaar: klik ernaast sluit hem")
+    page.close()
+
+
+def kruimel_en_zoeken(browser):
+    for soort, doel in (("server", "tickets"), ("security", "modules")):
+        page, _ = open_gevuld(browser, soort, doel, "desktop")
+        eerste = page.locator("#sec-breadcrumb a.crumb-link")
+        eis(eerste.count() == 1 and eerste.get_attribute("href") == "#overview", f"kruimel {soort}: het eerste deel is een link naar het overzicht")
+        eerste.click(); page.wait_for_timeout(500)
+        eis(page.evaluate("location.hash") == "#overview", f"kruimel {soort}: klikken opent het overzicht")
+        page.locator("body").click(position={"x": 700, "y": 600})
+        page.keyboard.press("/")
+        eis(page.evaluate("document.activeElement.id") == "dv2-zoek", f"zoeken {soort}: '/' zet de focus in het zoekveld")
+        page.keyboard.type(doel[:4])
+        zichtbaar = page.evaluate("[...document.querySelectorAll('.sec-nav-item')].filter(b => !b.hidden && b.offsetParent).map(b => b.dataset.key)")
+        eis(doel in zichtbaar and len(zichtbaar) < 5, f"zoeken {soort}: het menu filtert ({zichtbaar})")
+        page.keyboard.press("Enter"); page.wait_for_timeout(500)
+        eis(page.evaluate("location.hash") == "#" + doel, f"zoeken {soort}: Enter opent de eerste treffer")
+        # Geen witte ring na een tik met de muis.
+        page.locator(".sec-nav-item[data-key='overview']").click(); page.wait_for_timeout(300)
+        ring = page.evaluate("""() => { const a = document.activeElement; return a && a !== document.body ? getComputedStyle(a).outlineStyle : 'none'; }""")
+        eis(ring == "none", f"tik {soort}: geen blijvende focusring na een muisklik ({ring})")
+        page.close()
+
+
+def incidenten_filter(browser):
+    page, _ = open_gevuld(browser, "security", "incidents", "desktop")
+    eerste = page.evaluate("document.querySelector('.sec-toolbar select option').textContent")
+    eis(eerste == "Any severity", f"incidenten: de eerste keuze van de ernstfilter heet 'Any severity' ({eerste})")
+    page.close()
+
+
+def meldingen(browser):
+    """Lege toestand en waarschuwing: tint, een klein pictogram, de tekst blijft."""
+    page, _ = open_gevuld(browser, "server", "verify", "desktop")
+    page.evaluate("""() => { const c = document.getElementById('sec-content');
+      const e = document.createElement('div'); e.className = 'srv-empty'; e.id = 't-leeg'; e.textContent = 'No panels yet';
+      const w = document.createElement('div'); w.className = 'sec-card srv-warn'; w.id = 't-let'; w.textContent = 'Bucky cannot give roles here yet.';
+      c.prepend(e, w); }""")
+    for sel, naam in (("#t-leeg", "lege toestand"), ("#t-let", "waarschuwing")):
+        st = page.evaluate("""(q) => { const n = document.querySelector(q); const cs = getComputedStyle(n); const v = getComputedStyle(n, '::before');
+          return {bg: cs.backgroundImage, rand: cs.borderTopColor, ic: v.maskImage || v.webkitMaskImage, w: v.width, radius: cs.borderTopLeftRadius}; }""", sel)
+        eis("gradient" in st["bg"] and "url(" in (st["ic"] or "") and st["w"] in ("18px", "20px", "22px") and float(st["radius"][:-2]) >= 16,
+            f"melding {naam}: zachte tint, pictogram en ronde hoeken ({st})")
+    page.close()
+
+
+def kiezer(browser):
+    for breed in ("desktop", "telefoon", "smal"):
+        w, h = BREEDTES[breed]
+        page = browser.new_page(viewport={"width": w, "height": h})
+        fouten = []
+        page.on("pageerror", lambda e: fouten.append(str(e)))
+        page.on("console", lambda m: fouten.append(m.text) if "Content Security Policy" in m.text else None)
+        page.route("**/api/**", lambda r: r.fulfill(status=200, content_type="application/json", body='{"ok": true, "data": {}}'))
+        zonder_tour(page)
+        page.route("**/api/site/features", lambda r: r.fulfill(status=200, content_type="application/json", body='{"features": {}}'))
+        ingelogd(page, SERVERS + [{"id": str(500000000000000000 + i), "name": f"Server {i}", "icon": None} for i in range(12)])
+        page.goto(f"{BASIS}/dashboard.html", wait_until="networkidle")
+        page.wait_for_timeout(500)
+        st = page.evaluate("""() => { const k = [...document.querySelectorAll('#guilds-container .server-card')];
+          const naam = document.querySelector('.server-card .s-name');
+          return {n: k.length, breder: document.documentElement.scrollWidth - innerWidth,
+                  links: k.every(c => c.querySelector('a[href^="server.html?guild_id="]') && c.querySelector('a[href^="security.html?guild_id="]')),
+                  knal: naam.scrollWidth > naam.clientWidth ? getComputedStyle(naam).textOverflow : 'past',
+                  zoek: !document.getElementById('picker-search').hidden, h1: getComputedStyle(document.querySelector('.picker-title h1')).fontSize}; }""")
+        label = f"serverkeuze {breed}"
+        eis(st["n"] == 15 and st["links"], f"{label}: elke kaart heeft Open Server Center en Security ({st['n']})")
+        eis(st["breder"] <= 0, f"{label}: niet breder dan het scherm ({st['breder']})")
+        eis(st["knal"] in ("ellipsis", "past"), f"{label}: een lange naam wordt afgekapt ({st['knal']})")
+        eis(st["zoek"], f"{label}: bij veel servers staat het zoekveld er")
+        eis(st["h1"] == ("38px" if breed == "desktop" else "28px"), f"{label}: titel als in B ({st['h1']})")
+        eis(len(tel_blur(page)) <= 3, f"{label}: hoogstens drie glasvlakken")
+        eis(not fouten, f"{label}: geen paginafout of CSP-melding ({fouten[:2]})")
+        schiet(page, f"kiezer-{breed}")
+        page.close()
+
+
+def _lum(hexkleur):
+    r, g, b = (int(hexkleur[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    f = lambda c: c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+
+
+def _meng(voor, achter, a):
+    v = [int(voor[i:i + 2], 16) for i in (1, 3, 5)]; w = [int(achter[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(a * x + (1 - a) * y):02X}" for x, y in zip(v, w))
+
+
+def contrast():
+    """AA voor de kleurparen van de nieuwe look, op het lichtste vlak waar ze staan.
+    Getinte meldingen: de tint (hoogstens 15 %) over het kaartvlak."""
+    vlak, glas = "#141418", "#1E1E26"
+    paren = [
+        ("tekst op kaart", "#E6E6EC", vlak), ("tekst-2 op kaart", "#BDBDC6", vlak), ("tekst-3 op kaart", "#A2A2AC", vlak),
+        ("groepsnaam op paneel", "#A2A2AC", glas), ("kop op paneel", "#F7F7FA", glas),
+        ("wit op hoofdknop (onderkant)", "#FFFFFF", "#BE0A25"), ("wit op teller", "#FFFFFF", "#E8102E"),
+        ("link op kaart", "#FF8A9A", vlak), ("groen chip", "#5FD69A", _meng("#5FD69A", vlak, 0.14)),
+        ("oranje chip", "#F5B262", _meng("#F5B262", vlak, 0.15)), ("rood chip", "#FF7A8A", _meng("#FF7A8A", vlak, 0.12)),
+        ("tekst in oranje melding", "#E6E6EC", _meng("#F5B262", vlak, 0.15)), ("tekst-2 in blauwe lege toestand", "#BDBDC6", _meng("#7DA0FF", vlak, 0.15)),
+        ("tekst in rode fout", "#FFD3D9", _meng("#FF7A8A", vlak, 0.15)),
+    ]
+    for naam, v, a in paren:
+        l1, l2 = sorted((_lum(v), _lum(a)), reverse=True)
+        verhouding = (l1 + 0.05) / (l2 + 0.05)
+        eis(verhouding >= 4.5, f"contrast {naam}: {verhouding:.2f}:1 (AA 4,5)")
+
+
 FRAMES = """async () => {
   const tijden = []; let vorige = performance.now(); let loopt = true;
   const tel = (t) => { tijden.push(t - vorige); vorige = t; if (loopt) requestAnimationFrame(tel); };
@@ -218,6 +465,13 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         print("Stap 1: de schil"); stap1_schil(browser)
+        print("Stap 2-4: elke pagina, gevuld, op vier breedtes"); alle_paginas(browser)
+        print("De serverwisselaar"); wisselaar(browser)
+        print("Broodkruimel, zoeken, tikken"); kruimel_en_zoeken(browser)
+        print("Incidenten: de ernstfilter"); incidenten_filter(browser)
+        print("Meldingen en lege toestanden"); meldingen(browser)
+        print("De serverkeuze"); kiezer(browser)
+        print("Contrast"); contrast()
         print("Snelheid"); snelheid(browser, [("server", "#overview"), ("security", "#overview")])
         browser.close()
     if FOUTEN:

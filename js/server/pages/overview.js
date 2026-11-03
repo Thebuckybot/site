@@ -11,9 +11,12 @@
 import { api } from "../api.js";
 import { el, clear } from "../../security/ui.js";
 import { icon } from "../icons.js";
+import { serverNaam } from "../../dashboard_zij.js";
 
+// DASHBOARD V2 (3-11-2026): de opbouw van een tegel in preview B. Kop met de
+// stand als chip rechts, het getal groot, een zin, en onderaan waar je heen gaat.
 function figure(n, unit) {
-  return el("span", { class: "srv-figure" }, [
+  return el("p", { class: "srv-figure" }, [
     el("span", { class: "n", text: String(n) }),
     el("span", { class: "unit", text: unit }),
   ]);
@@ -24,7 +27,7 @@ function state(tekst, soort) {
   return el("span", { class: `srv-state ${soort || ""}`.trim(), text: tekst });
 }
 
-function tile({ key, title, body, foot, navigate }) {
+function tile({ key, title, body, chip, getal, link, navigate }) {
   return el("button", {
     class: "srv-tile", type: "button",
     onclick: () => navigate(key),
@@ -33,10 +36,26 @@ function tile({ key, title, body, foot, navigate }) {
     el("div", { class: "srv-tile-head" }, [
       el("span", { class: "ic" }, [icon(key)]),   // vaste SVG-knoop, geen serverdata
       el("h2", { text: title }),
+      chip,
     ]),
+    getal,
     el("div", { class: "srv-tile-body", text: body }),
-    el("div", { class: "srv-tile-foot" }, foot),
+    el("span", { class: "srv-tile-foot dv2-tegel-link" }, [link, el("span", { "aria-hidden": "true", text: " ›" })]),
   ]);
+}
+
+// De kopzin: wat er op je team wacht, in een zin. Alleen getallen die de tegels
+// hieronder ook tonen.
+function kopzin(p, tickets, aanvragen) {
+  clear(p);
+  const deel = (n, enkel, meer) => el("strong", { text: `${n} ${n === 1 ? enkel : meer}` });
+  if (!tickets && !aanvragen) { p.textContent = "Nothing is waiting for your team right now."; return; }
+  const stukken = [];
+  if (tickets) stukken.push(deel(tickets, "ticket", "tickets"));
+  if (aanvragen) stukken.push(deel(aanvragen, "application", "applications"));
+  p.appendChild(stukken[0]);
+  if (stukken[1]) { p.appendChild(document.createTextNode(" and ")); p.appendChild(stukken[1]); }
+  p.appendChild(document.createTextNode((tickets + aanvragen === 1 ? " is" : " are") + " waiting for your team."));
 }
 
 function skeleton(root) {
@@ -52,9 +71,12 @@ function skeleton(root) {
 
 export default {
   async render(root, { navigate }) {
+    const zin = el("p", { text: "Everything Bucky does on this server that is not security: which commands members can use, the ticket system, and the applications people fill in." });
+    const naam = serverNaam();
     root.appendChild(el("div", { class: "srv-hero" }, [
-      el("h1", { text: "Server Center" }),
-      el("p", { text: "Everything Bucky does on this server that is not security: which commands members can use, the ticket system, and the applications people fill in." }),
+      el("p", { class: "dv2-boven", text: naam ? "Server Center" : "Overview" }),
+      el("h1", { text: naam || "Server Center" }),
+      zin,
     ]));
     const host = el("div");
     root.appendChild(host);
@@ -82,44 +104,43 @@ export default {
     const uitgezet = (c.disabled_commands || 0) + (c.disabled_cogs || 0);
 
     clear(host);
+    kopzin(zin, t.open_tickets || 0, a.pending || 0);
     const cards = el("div", { class: "srv-cards srv-stagger" }, [
       tile({
         key: "commands", navigate,
         title: "Commands",
+        chip: c.channels_with_overrides
+          ? state(`${c.channels_with_overrides} channel${c.channels_with_overrides === 1 ? "" : "s"} differ`, "")
+          : state("Same everywhere", "is-on"),
+        getal: figure(uitgezet, "switched off"),
         body: uitgezet
           ? "Some commands are switched off here."
           : "Every command Bucky has is available on this server.",
-        foot: [
-          figure(uitgezet, uitgezet === 1 ? "switched off" : "switched off"),
-          c.channels_with_overrides
-            ? state(`${c.channels_with_overrides} channel${c.channels_with_overrides === 1 ? "" : "s"} differ`, "")
-            : state("Same everywhere", "is-on"),
-        ],
+        link: "Manage commands",
       }),
       tile({
         key: "tickets", navigate,
         title: "Tickets",
+        chip: t.enabled
+          ? (t.panel_published ? state("On", "is-on") : state("Panel not published", ""))
+          : state("Off", "is-off"),
+        getal: figure(t.open_tickets || 0, (t.open_tickets === 1 ? "ticket" : "tickets") + " open"),
         body: t.enabled
           ? "Members can open a ticket and your team picks it up."
           : "Set up a place where members can ask for help in private.",
-        foot: [
-          figure(t.open_tickets || 0, (t.open_tickets === 1 ? "ticket" : "tickets") + " open"),
-          t.enabled ? state("On", "is-on") : state("Off", "is-off"),
-          t.enabled && !t.panel_published ? state("Panel not published", "") : null,
-        ].filter(Boolean),
+        link: "View tickets",
       }),
       tile({
         key: "applications", navigate,
         title: "Applications",
+        chip: a.pending
+          ? state(`${a.pending} waiting`, "is-let")
+          : state("Nothing waiting", "is-on"),
+        getal: figure(a.enabled_forms || 0, `of ${a.forms || 0} live`),
         body: a.forms
           ? "People apply through a form you wrote, and your team decides."
           : "Write a form people fill in to apply, for staff or anything else.",
-        foot: [
-          figure(a.enabled_forms || 0, `of ${a.forms || 0} live`),
-          a.pending
-            ? state(`${a.pending} waiting for a decision`, "")
-            : state("Nothing waiting", "is-on"),
-        ],
+        link: "Open applications",
       }),
     ]);
     host.appendChild(cards);
@@ -127,7 +148,7 @@ export default {
     // De rustige voetregel: waar dit vandaan komt. Geen uitleg die niemand
     // vroeg, wel het antwoord op "verandert dit ook in Discord".
     host.appendChild(el("p", {
-      class: "sec-page-sub", style: "margin-top:22px",
+      class: "sec-page-sub dv2-voetzin",
       text: "Changes here take effect in Discord straight away. The same settings can be changed with commands in the server.",
     }));
   },

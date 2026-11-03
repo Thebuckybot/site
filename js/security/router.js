@@ -37,11 +37,13 @@ export const NAV = [
 // section is internal (a lazily-imported page module under pages/<key>.js).
 const LABEL = {};
 const GROUP_OF = {};
+// De naam van een groep apart: "soc" is zowel een groep als een item ("Overview").
+const GROEP_LABEL = {};
 const INTERNAL = new Set();
 for (const entry of NAV) {
   if (entry.type === "item") { LABEL[entry.key] = entry.label; INTERNAL.add(entry.key); }
   else {
-    LABEL[entry.key] = entry.label;
+    LABEL[entry.key] = entry.label; GROEP_LABEL[entry.key] = entry.label;
     for (const it of entry.items) {
       LABEL[it.key] = it.label; GROUP_OF[it.key] = entry.key;
       INTERNAL.add(it.key);
@@ -79,38 +81,70 @@ export function groupOf(key) { return GROUP_OF[key]; }
 function navButton(item, onNavigate) {
   return el("button", { class: "sec-nav-item", "data-key": item.key, onclick: () => onNavigate(item.key) }, [
     el("span", { class: "ic" }, [icon(item.key)]),
-    el("span", { text: item.label }),
+    el("span", { class: "dv2-nav-label", text: item.label }),
+  ]);
+}
+
+// DASHBOARD V2 (3-11-2026): vaste groepskoppen zoals in de preview, in plaats
+// van uitklapbare groepen; elk scherm staat altijd in beeld. De losse items
+// krijgen ook een kop (Protect, Setup), zodat het paneel leest als een lijst
+// met hoofdstukken. Overview staat bovenaan, zonder kop. De `.sec-group` met
+// `data-group` blijft bestaan (de rail op een tablet en setActive gebruiken hem).
+const ITEM_KOP = {
+  modules: "Protect", thresholds: "Protect", punishments: "Protect",
+  protection: "Protect", ignore: "Protect", quarantine: "Protect",
+  settings: "Setup",
+};
+
+/** De kop waar een scherm onder staat, voor de boventitel boven de paginatitel. */
+export function kopVan(key) {
+  if (GROUP_OF[key]) return GROEP_LABEL[GROUP_OF[key]];
+  return ITEM_KOP[key] || "Security Center";
+}
+
+function groepMetKop(naam, sleutel, knoppen) {
+  return el("div", { class: "sec-group dv2-groep open", "data-group": sleutel, role: "group", "aria-label": naam }, [
+    el("p", { class: "dv2-groep-naam", text: naam, "aria-hidden": "true" }),
+    el("div", { class: "sec-group-items" }, knoppen),
   ]);
 }
 
 export function buildSidebar(navEl, onNavigate) {
   clear(navEl);
+  let kop = null;
+  let knoppen = [];
+  const sluit = () => {
+    if (!knoppen.length) return;
+    if (kop) navEl.appendChild(groepMetKop(kop, kop.toLowerCase(), knoppen));
+    else knoppen.forEach((k) => navEl.appendChild(k));
+    knoppen = [];
+  };
   for (const entry of NAV) {
     if (entry.type === "item") {
       if (VERBORGEN.has(entry.key)) continue;
-      navEl.appendChild(navButton(entry, onNavigate));
+      const k = ITEM_KOP[entry.key] || null;
+      if (k !== kop) { sluit(); kop = k; }
+      knoppen.push(navButton(entry, onNavigate));
       continue;
     }
+    sluit(); kop = null;
     const zichtbaar = entry.items.filter((it) => !VERBORGEN.has(it.key));
     // Een groep zonder overgebleven items is een kop naar niets. Blijft er één
     // over, dan blijft de groep staan - de indeling is geen gevolg van hoeveel
     // er toevallig aan staat.
     if (!zichtbaar.length) continue;
-    const items = el("div", { class: "sec-group-items" }, zichtbaar.map((it) => navButton(it, onNavigate)));
-    const head = el("button", { class: "sec-group-head", type: "button" }, [
-      el("span", { class: "ic" }, [icon(entry.key)]),
-      el("span", { text: entry.label }),
-      el("span", { class: "chev", text: "›" }),   // ›
-    ]);
-    const group = el("div", { class: "sec-group", "data-group": entry.key }, [head, items]);
-    head.addEventListener("click", () => group.classList.toggle("open"));
-    navEl.appendChild(group);
+    navEl.appendChild(groepMetKop(entry.label, entry.key, zichtbaar.map((it) => navButton(it, onNavigate))));
   }
+  sluit();
 }
 
 export function setActive(navEl, key) {
-  navEl.querySelectorAll(".sec-nav-item").forEach((b) =>
-    b.classList.toggle("active", b.getAttribute("data-key") === key));
+  navEl.querySelectorAll(".sec-nav-item").forEach((b) => {
+    const actief = b.getAttribute("data-key") === key;
+    b.classList.toggle("active", actief);
+    if (actief) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
   // auto-open the group that contains the active section
   const g = GROUP_OF[key];
   navEl.querySelectorAll(".sec-group").forEach((grp) => {

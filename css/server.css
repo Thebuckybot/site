@@ -712,9 +712,11 @@ html { background: var(--sec-bg1); }
 .srv-mark { border-radius: 12px; background: linear-gradient(180deg, #4A5568, #2D3542);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 14px -6px rgba(0, 0, 0, 0.7); }
 
-.srv-hero { gap: 8px; margin-bottom: 28px; }
-.srv-hero h1 { font-size: 30px; font-weight: 750; letter-spacing: -.02em; color: var(--dv2-kop); }
-.srv-hero p { font-size: 15px; line-height: 1.5; color: var(--dv2-tekst-2); max-width: 66ch; }
+.srv-hero { gap: 0; margin-bottom: 28px; }
+.srv-hero h1 { margin: 0; font-size: 38px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; color: var(--dv2-kop); }
+.srv-hero p { margin: 10px 0 0; font-size: 16px; line-height: 1.5; color: var(--dv2-tekst-2); max-width: 620px; }
+.srv-hero p.dv2-boven { margin: 12px 0 6px; font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--dv2-tekst-3); }
+.srv-hero p strong { color: var(--dv2-kop); font-weight: 700; }
 
 .srv-cards { gap: 18px; }
 .srv-tile {
@@ -724,7 +726,23 @@ html { background: var(--sec-bg1); }
 }
 .srv-tile:hover { transform: none; border-color: var(--dv2-rand-sterk); background: var(--dv2-vlak-2); }
 .srv-tile:focus-visible { outline: 2px solid var(--dv2-focus); outline-offset: 2px; }
-.srv-tile h2 { font-size: 15px; font-weight: 700; color: var(--dv2-kop); }
+.srv-tile h2 { font-size: 15px; font-weight: 650; color: var(--dv2-kop); flex: 1; min-width: 0; text-align: left; }
+.srv-tile { padding: 24px; gap: 10px; border-radius: 26px; text-align: left; }
+.srv-tile .srv-tile-head { flex-wrap: wrap; }
+.srv-figure { margin: 4px 0 0; display: flex; align-items: baseline; gap: 6px; }
+.srv-figure .n { font-size: 40px; font-weight: 700; letter-spacing: -.03em; line-height: 1;
+  background: linear-gradient(180deg, #FFFFFF, #C9C9D2); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.srv-figure .unit { font-size: 14px; color: var(--dv2-tekst-2); }
+.srv-tile .srv-tile-body { font-size: 14px; color: var(--dv2-tekst); }
+.srv-tile .dv2-tegel-link { margin-top: auto; display: inline-flex; gap: 4px; font-size: 13px; font-weight: 600; color: #FF8A9A; }
+.srv-tile:hover .dv2-tegel-link { text-decoration: underline; text-underline-offset: 3px; }
+.srv-state.is-let { color: var(--dv2-let); background: var(--dv2-let-bg); }
+.sec-page-sub.dv2-voetzin { margin-top: 22px; font-size: 14px; color: var(--dv2-tekst-3); }
+@media (max-width: 699px) {
+  .srv-hero h1 { font-size: 28px; }
+  .srv-hero p { font-size: 15px; }
+  .srv-figure .n { font-size: 34px; }
+}
 .srv-tile .srv-tile-head .ic { color: var(--dv2-tekst-2); opacity: 1; }
 .srv-tile .srv-tile-body { color: var(--dv2-tekst-2); font-size: 13.5px; line-height: 1.5; }
 
