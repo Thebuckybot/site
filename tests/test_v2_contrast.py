@@ -147,16 +147,33 @@ def test_het_rood_is_exact_het_merkrood():
     assert tokens()["signal"] == "#FF465C"
 
 
+#: HET SITE-ROOD IS BEWUST ANDERS DAN HET APP-ROOD (besluit van de eigenaar,
+#: 3-11-2026). De app kreeg op 20-10-2026 het Buckyverse-merkrood #E8102E
+#: (app/src/theme/tokens.ts, `acfill` donker, commit 61187fa); de site houdt
+#: #FF465C. Deze test bewaakt nu dat besluit in plaats van gelijkheid: wie een van
+#: de twee verandert, ziet hem rood worden en moet hier kiezen of het verschil
+#: blijft. Tot dat besluit eiste hij dat ze gelijk waren.
+SITE_ROOD = "#FF465C"
+APP_ROOD = "#E8102E"
+SITE_TEKSTROOD = "#D00019"
+APP_TEKSTROOD = "#CB0E28"
+
+
 def test_het_rood_is_ook_het_rood_van_de_app():
-    """Niet een getal dat toevallig klopt: hetzelfde als in de app zelf."""
+    """Het rood van de site en dat van de app zijn allebei vastgelegd, en het
+    verschil is een keuze: geen getal dat stilletjes wegdrijft."""
+    assert tokens()["signal"] == SITE_ROOD
     app = WORTEL / "app" / "src" / "theme" / "tokens.ts"
     if not app.exists():
         pytest.skip("app/ staat niet naast site/ in deze checkout")
     bron = app.read_text(encoding="utf-8")
     donker = re.search(r"dark:\s*\{(.*?)\n  \}", bron, re.S).group(1)
-    assert re.search(r'acfill:\s*"([^"]+)"', donker).group(1).upper() == tokens()["signal"]
+    assert re.search(r'acfill:\s*"([^"]+)"', donker).group(1).upper() == APP_ROOD
+    assert SITE_ROOD != APP_ROOD
+    # Het lichte tekstrood hoort bij dezelfde keuze: app #CB0E28, site #D00019.
+    assert tokens()["signal-text"] == SITE_TEKSTROOD
     licht = re.search(r"light:\s*\{(.*?)\n  \}", bron, re.S).group(1)
-    assert re.search(r'\bac:\s*"([^"]+)"', licht).group(1).upper() == tokens()["signal-text"]
+    assert re.search(r'\bac:\s*"([^"]+)"', licht).group(1).upper() == APP_TEKSTROOD
 
 
 def test_de_orgkleuren_zijn_die_van_org_config():
