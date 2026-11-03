@@ -699,3 +699,46 @@ html { background: var(--sec-bg1); }
   .srv-type-row { grid-template-columns: 1fr; }
   .srv-form-q { grid-template-columns: 1fr; }
 }
+
+
+/* =====================================================================
+   DASHBOARD V2 - GEDEELDE KAARTEN EN KOPPEN (stap 1, 3-11-2026)
+   De kaart- en kopstijl van de nieuwe look voor de Server Center-klassen die
+   op meer pagina's terugkomen: de kop (srv-hero), de tegels van het overzicht,
+   rijen, statuschips en lege toestanden. Effen kaarten, geen lift of gloed.
+   De schil zelf staat in security.css ("DASHBOARD V2 - BASIS"). Terugdraaien:
+   dit blok weghalen.
+   ===================================================================== */
+.srv-mark { border-radius: 12px; background: linear-gradient(180deg, #4A5568, #2D3542);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 14px -6px rgba(0, 0, 0, 0.7); }
+
+.srv-hero { gap: 8px; margin-bottom: 28px; }
+.srv-hero h1 { font-size: 30px; font-weight: 750; letter-spacing: -.02em; color: var(--dv2-kop); }
+.srv-hero p { font-size: 15px; line-height: 1.5; color: var(--dv2-tekst-2); max-width: 66ch; }
+
+.srv-cards { gap: 18px; }
+.srv-tile {
+  gap: 12px; padding: 22px; background: var(--dv2-vlak);
+  border: 1px solid var(--dv2-rand); border-radius: var(--dv2-r-kaart);
+  box-shadow: var(--dv2-kaart-schaduw);
+}
+.srv-tile:hover { transform: none; border-color: var(--dv2-rand-sterk); background: var(--dv2-vlak-2); }
+.srv-tile:focus-visible { outline: 2px solid var(--dv2-focus); outline-offset: 2px; }
+.srv-tile h2 { font-size: 15px; font-weight: 700; color: var(--dv2-kop); }
+.srv-tile .srv-tile-head .ic { color: var(--dv2-tekst-2); opacity: 1; }
+.srv-tile .srv-tile-body { color: var(--dv2-tekst-2); font-size: 13.5px; line-height: 1.5; }
+
+.srv-row { background: transparent; border-radius: 14px; }
+.srv-row:hover { background: var(--dv2-hover); border-color: var(--dv2-rand); }
+.srv-row.is-off { background: rgba(255, 122, 138, 0.05); }
+.srv-name code { background: var(--dv2-vlak-2); border-color: var(--dv2-rand); color: var(--dv2-tekst); }
+
+.srv-state { background: var(--dv2-vlak-2); color: var(--dv2-tekst-2); }
+.srv-state.is-on { color: var(--dv2-goed); background: var(--dv2-goed-bg); }
+.srv-state.is-off { color: var(--dv2-gevaar); background: rgba(255, 122, 138, 0.12); }
+
+.srv-empty { border-color: var(--dv2-rand-sterk); border-radius: var(--dv2-r-kaart); background: transparent; }
+.srv-empty h3 { color: var(--dv2-kop); font-weight: 700; }
+.srv-empty p { color: var(--dv2-tekst-2); }
+
+.srv-sticky { background: linear-gradient(180deg, var(--dv2-bg) 72%, transparent); }

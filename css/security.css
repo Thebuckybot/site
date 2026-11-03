@@ -978,6 +978,9 @@ html.glas-vervorming .sec-modal { backdrop-filter: url(#dv2-vervorm) saturate(17
 
 /* ---- telefoon (< 700): de bestaande lade, nu als zwevend paneel ---------------- */
 @media (max-width: 699px) {
+  /* Een kolom: het paneel is een lade. (Zonder deze regel gold de tweekoloms schil van
+     desktop ook hier en kreeg de inhoud maar 270 van de 390 px; gevonden 3-11-2026.) */
+  .sec-app { grid-template-columns: minmax(0, 1fr); }
   .sec-sidebar { position: fixed; left: 0; top: 0; margin: 10px; height: calc(100vh - 20px); width: min(290px, calc(100vw - 20px));
     transform: translateX(calc(-100% - 20px)); z-index: 40; }
   .sec-app.nav-open .sec-sidebar { transform: translateX(0); }
@@ -992,3 +995,66 @@ html.glas-vervorming .sec-modal { backdrop-filter: url(#dv2-vervorm) saturate(17
 }
 @media (max-width: 920px) { .sec-sidebar { box-shadow: var(--dv2-glans), var(--dv2-zweef); } }
 @media (prefers-reduced-motion: reduce) { .sec-sidebar { transition: none !important; } }
+
+/* ---- correcties na de eerste schil (3-11-2026) ---------------------------------
+   1. DE ACHTERGROND WAS EFFEN ZWART. body had een eigen ondoorzichtige achtergrond,
+      en die wordt BOVEN de lagen met z-index -1 (gloed en golf) getekend. De
+      basiskleur staat op html (html:has hierboven); body is doorzichtig.
+   2. DE ONDERTITEL VIEL ACHTER DE BALK. De app geeft #sec-content na elke
+      navigatie de focus, en de browser scrolt hem dan tot bovenaan het venster,
+      onder de zwevende balk. scroll-margin houdt de balk vrij.
+   3. HET ACTIEVE ITEM IS EEN GEVULDE PIL. Een oude regel zette bij hover weer het
+      rode verloop; en de focusring staat nu BUITEN de pil, zodat een item met
+      toetsenbordfocus niet leest als een rand om het actieve item. */
+.sec-body, .sec-body.srv-body { background: transparent; }
+.sec-content { scroll-margin-top: calc(60px + 2 * var(--dv2-marge) + 8px); }
+.sec-nav-item.active, .sec-nav-item.active:hover {
+  background: rgba(255, 255, 255, 0.14); color: var(--dv2-kop);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 6px 16px -10px rgba(0, 0, 0, 0.8);
+}
+.sec-nav-item:focus-visible, .sec-group-head:focus-visible { outline-offset: 2px; }
+@media (prefers-color-scheme: light) {
+  .dv2-licht .sec-nav-item.active, .dv2-licht .sec-nav-item.active:hover {
+    background: #FFFFFF; box-shadow: 0 1px 2px rgba(20, 20, 28, 0.08), 0 6px 16px -10px rgba(20, 20, 28, 0.3); }
+}
+@media (max-width: 699px) { .sec-content { scroll-margin-top: 84px; } }
+
+/* ---- gedeelde kaart- en kopstijl (B met de rust van A) ----------------------
+   Voor elke pagina met deze klassen, in beide centra. Effen kaarten, rustige
+   koppen in zinsletters, geen lift of gloed bij hover. Pagina-eigen opbouw (de
+   kopzin, tegels per pagina) volgt in stap 3 en 4. */
+.sec-page-title { font-size: 28px; font-weight: 750; color: var(--dv2-kop); margin-bottom: 6px; }
+.sec-page-sub { font-size: 15px; line-height: 1.5; color: var(--dv2-tekst-2); max-width: 66ch; margin-bottom: 26px; }
+.sec-grid { gap: 18px; }
+.sec-card h2, .sec-card h3, .sec-card h4 { color: var(--dv2-kop); font-weight: 700; letter-spacing: -.005em; }
+.sec-stat { gap: 8px; }
+.sec-stat .label { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 600; color: var(--dv2-tekst-2); }
+.sec-stat .value { font-size: 30px; font-weight: 700; letter-spacing: -.03em; color: var(--dv2-kop); }
+.sec-score .num { background: linear-gradient(180deg, #FFFFFF, #C9C9D2); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; font-weight: 750; }
+.sec-score .grade { color: var(--dv2-tekst-2); }
+
+.sec-quick { gap: 14px; }
+.sec-quick a, .sec-quick button {
+  background: var(--dv2-vlak); border: 1px solid var(--dv2-rand); border-radius: 18px; padding: 16px 18px;
+  box-shadow: var(--dv2-kaart-schaduw); color: var(--dv2-tekst);
+}
+.sec-quick a:hover, .sec-quick button:hover { transform: none; box-shadow: var(--dv2-kaart-schaduw); border-color: var(--dv2-rand-sterk); background: var(--dv2-vlak-2); }
+.sec-quick a:focus-visible, .sec-quick button:focus-visible { outline: 2px solid var(--dv2-focus); outline-offset: 2px; }
+.sec-quick .qa-t { font-weight: 700; color: var(--dv2-kop); }
+.sec-quick .qa-d { color: var(--dv2-tekst-2); font-size: 12.5px; }
+
+.sec-pill { background: var(--dv2-vlak-2); border-color: var(--dv2-rand); color: var(--dv2-tekst); }
+.sec-check { border-bottom-color: var(--dv2-rand); }
+.sec-tabs { border-bottom-color: var(--dv2-rand); }
+.sec-tab { color: var(--dv2-tekst-2); }
+.sec-tab:hover { color: var(--dv2-kop); }
+.sec-tab[aria-selected="true"] { color: var(--dv2-kop); border-bottom-color: var(--dv2-accent-vul); }
+.sec-tab:focus-visible { outline-color: var(--dv2-focus); }
+.sec-menu { background: var(--dv2-vlak-3); border-color: var(--dv2-rand-sterk); border-radius: 16px; }
+.sec-table-wrap { border-radius: var(--dv2-r-kaart); }
+.sec-table th { text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 600; }
+.sec-table td { color: var(--dv2-tekst); }
+.sec-skel { background: linear-gradient(90deg, var(--dv2-vlak-2) 25%, var(--dv2-vlak-3) 37%, var(--dv2-vlak-2) 63%); background-size: 400% 100%; }
+.sec-loading, .sec-empty { color: var(--dv2-tekst-2); }
+.sec-warn-banner { border-radius: 16px; }

@@ -118,6 +118,10 @@ def stap1_schil(browser):
                     f"{label}: de rail toont alleen pictogrammen, elke knop houdt zijn naam ({len(namen)} knoppen)")
                 eis(page.get_by_role("button", name="Overview").first.count() == 1, f"{label}: 'Overview' is als knop te vinden")
             if breed in ("telefoon", "smal"):
+                hoofd = page.evaluate("document.querySelector('.sec-main').getBoundingClientRect().width")
+                eis(hoofd >= BREEDTES[breed][0] - 2, f"{label}: de inhoud gebruikt de hele breedte ({hoofd:.0f} px)")
+                balk = page.evaluate("document.querySelector('.sec-topbar').getBoundingClientRect().height")
+                eis(balk <= 64, f"{label}: de balk past op een regel ({balk:.0f} px hoog)")
                 page.locator("#sec-burger").click()
                 page.wait_for_timeout(400)
                 open_ = page.evaluate("document.querySelector('.sec-sidebar').getBoundingClientRect().left >= 0")
@@ -125,6 +129,26 @@ def stap1_schil(browser):
                 page.wait_for_timeout(400)
                 dicht = page.evaluate("document.querySelector('.sec-sidebar').getBoundingClientRect().right <= 0")
                 eis(open_ and dicht, f"{label}: de lade gaat open en met Esc dicht")
+            if breed == "desktop":
+                # De drie punten van 3-11-2026: achtergrond, ruimte boven de inhoud, de actieve pil.
+                eis(page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgba(0, 0, 0, 0)",
+                    f"{label}: body is doorzichtig, zodat gloed en golf zichtbaar zijn")
+                import io
+                from PIL import Image
+                beeld = Image.open(io.BytesIO(page.screenshot())).convert("RGB")
+                r, g, b_ = beeld.getpixel((620, 6))
+                eis(r > g + 8 and r > b_ + 4, f"{label}: bovenaan kleurt de rode gloed ({(r, g, b_)})")
+                ruimte = page.evaluate("""() => {
+                  const balk = document.querySelector('.sec-topbar').getBoundingClientRect().bottom;
+                  const tekst = [...document.querySelectorAll('#sec-content *')].find(n => n.children.length === 0
+                    && n.textContent.trim() && n.getBoundingClientRect().height > 0);
+                  return {balk, tekst: tekst ? tekst.getBoundingClientRect().top : 999}; }""")
+                eis(ruimte["tekst"] >= ruimte["balk"] + 8, f"{label}: de inhoud begint onder de balk ({ruimte})")
+                pil = page.evaluate("""() => { const a = document.querySelector('.sec-nav-item.active'); const cs = getComputedStyle(a);
+                  return {bg: cs.backgroundColor, img: cs.backgroundImage, outline: cs.outlineStyle}; }""")
+                eis(pil["bg"] != "rgba(0, 0, 0, 0)" and pil["img"] == "none" and pil["outline"] == "none",
+                    f"{label}: het actieve item is een gevulde pil zonder rand ({pil})")
+            schiet(page, f"stap1-{soort}-{breed}")
             if breed == "desktop":
                 page.keyboard.press("Tab")
                 for _ in range(8):
@@ -134,7 +158,6 @@ def stap1_schil(browser):
                 ring = page.evaluate("""() => { const a = document.activeElement; const cs = getComputedStyle(a);
                   return a.classList.contains('sec-nav-item') && cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2; }""")
                 eis(ring, f"{label}: Tab komt op een menu-item met een zichtbare focusring")
-            schiet(page, f"stap1-{soort}-{breed}")
             eis(not fouten, f"{label}: geen paginafout of CSP-melding ({fouten[:2]})")
             page.close()
 
