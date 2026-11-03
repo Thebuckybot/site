@@ -113,3 +113,114 @@
   .server-card .s-icon { width: 62px; height: 62px; border-radius: 18px; }
 }
 @media (max-width: 400px) { .server-grid { grid-template-columns: 1fr 1fr; } }
+
+/* =====================================================================
+   DASHBOARD V2 - SERVERKEUZE (stap 2, 3-11-2026)
+   De serverkeuze van preview B (docs/previews/dashboard-v2/b-serverkeuze-*).
+   ALLES HIERONDER HANGT AAN body.dv2-kiezer, en dit bestand laadt alleen op
+   dashboard.html: public.css en de rest van de site veranderen niet, ook niet
+   de balk en de voet die deze pagina met de site deelt. Terugdraaien: dit blok
+   weghalen en de klasse van body.
+   ===================================================================== */
+html:has(> body.dv2-kiezer) { background: var(--dv2-bg); }
+body.dv2-kiezer { background: transparent; color: var(--dv2-tekst); font-family: var(--dv2-font); -webkit-font-smoothing: antialiased; }
+/* De achtergrond van het dashboard: twee gloeden en de golf, vast. */
+body.dv2-kiezer::before, body.dv2-kiezer::after { content: ""; position: fixed; z-index: -1; pointer-events: none; }
+body.dv2-kiezer::before { inset: 0;
+  background: radial-gradient(42vw 42vw at 42% -12%, var(--dv2-gloed-1), transparent 70%),
+              radial-gradient(40vw 40vw at 104% 112%, var(--dv2-gloed-2), transparent 70%); }
+body.dv2-kiezer::after { left: 0; right: 0; bottom: 0; height: 36vh; opacity: var(--dv2-golf-sterkte);
+  background: url("assets/ui/dashboard-golf.svg") bottom / 100% 100% no-repeat; }
+.dv2-kiezer .picker::before, .dv2-kiezer .picker::after { display: none; }
+
+/* De balk van de site, hier kaal zoals in B. */
+.dv2-kiezer .site-nav, .dv2-kiezer .site-nav.scrolled { background: transparent; box-shadow: none; border-bottom-color: transparent;
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+.dv2-kiezer #nav-menu li a, .dv2-kiezer #nav-menu li button { border-radius: 999px; font-weight: 600; font-size: 14px; }
+.dv2-kiezer #nav-menu li a#dashboard-link { background: rgba(255, 255, 255, 0.07); color: var(--dv2-kop); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+/* Het dichte uitklapmenu op een smal scherm liet zijn rand zien als een lijn onder de balk. */
+.dv2-kiezer #nav-menu:not(.open) { border-color: transparent; box-shadow: none; }
+.dv2-kiezer #nav-menu li #logout-btn { background: transparent; color: var(--dv2-tekst-2); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: none; }
+
+/* De kop. */
+.dv2-kiezer .picker { max-width: 1180px; padding: 110px 24px 90px; }
+.dv2-kiezer .picker-head { margin: 12px 0 28px; align-items: flex-end; }
+.dv2-kiezer .picker-title .eyebrow { color: var(--dv2-tekst-3); font-size: 12px; font-weight: 650; letter-spacing: .08em; }
+.dv2-kiezer .picker-title h1 { margin: 6px 0 0; font-size: 38px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; color: var(--dv2-kop); }
+.dv2-kiezer .picker-title p { margin: 10px 0 0; max-width: 560px; font-size: 16px; line-height: 1.5; color: var(--dv2-tekst-2); }
+.dv2-kiezer .picker-user { padding: 0; background: none; border: 0; gap: 10px; }
+.dv2-kiezer .picker-user img { width: 30px; height: 30px; border: 0; }
+.dv2-kiezer .picker-user .u-name { color: var(--dv2-kop); font-weight: 600; }
+.dv2-kiezer .picker-user .u-role { color: var(--dv2-tekst-3); }
+
+/* De werkbalk: zoekveld, telling, knoppen. */
+.dv2-kiezer .picker-toolbar { gap: 10px; margin-bottom: 20px; }
+.dv2-kiezer .picker-search { flex: 0 1 320px; }
+.dv2-kiezer .picker-search input { height: 40px; padding: 0 14px 0 38px; border-radius: 999px; background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--dv2-rand); color: var(--dv2-tekst); font-size: 14px; }
+.dv2-kiezer .picker-search input::placeholder { color: var(--dv2-tekst-3); opacity: 1; }
+.dv2-kiezer .picker-search input:focus { border-color: var(--dv2-focus); box-shadow: 0 0 0 1px var(--dv2-focus); }
+.dv2-kiezer .picker-search svg { width: 16px; height: 16px; left: 14px; color: var(--dv2-tekst-3); }
+.dv2-kiezer .picker-count { color: var(--dv2-tekst-3); font-weight: 600; }
+
+/* Knoppen: de pillen van B. */
+.dv2-kiezer .btn { min-height: 40px; padding: 0 16px; gap: 8px; border-radius: 999px; font-size: 14px; font-weight: 600; line-height: 1.2;
+  white-space: nowrap; transition: background .15s, border-color .15s; }
+.dv2-kiezer .btn svg { width: 16px; height: 16px; flex: none; }
+.dv2-kiezer .btn:hover { transform: none; }
+.dv2-kiezer .btn-primary { background: linear-gradient(180deg, #DE1431, #BE0A25); color: #fff; border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 20px -8px rgba(232, 16, 46, 0.7); }
+.dv2-kiezer .btn-primary:hover { background: linear-gradient(180deg, #E8102E, #C40D27);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 20px -8px rgba(232, 16, 46, 0.7); }
+.dv2-kiezer .btn-ghost { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--dv2-tekst);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.dv2-kiezer .btn-ghost:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.16); }
+.dv2-kiezer .btn:focus-visible { outline: 2px solid var(--dv2-focus); outline-offset: 2px; border-radius: 999px; }
+.dv2-kiezer :focus:not(:focus-visible) { outline: none; }
+
+/* De kaarten. */
+.dv2-kiezer .server-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+.dv2-kiezer .server-card { display: flex; flex-direction: column; align-items: stretch; text-align: left; gap: 14px; min-width: 0;
+  padding: 24px; border-radius: 26px; cursor: default; color: var(--dv2-tekst);
+  background: var(--dv2-vlak); border: 1px solid var(--dv2-rand); box-shadow: var(--dv2-kaart-schaduw); transition: border-color .15s; }
+.dv2-kiezer .server-card:hover { transform: none; border-color: var(--dv2-rand-sterk); box-shadow: var(--dv2-kaart-schaduw); }
+.dv2-kiezer .server-card .s-kop { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.dv2-kiezer .server-card .s-icon { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 13px;
+  object-fit: cover; font-size: 14px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #E8102E, #7A0A1E);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 14px -6px rgba(0, 0, 0, 0.7); }
+.dv2-kiezer .server-card .s-name { margin: 0; min-width: 0; font-size: 17px; font-weight: 650; line-height: 1.3; color: var(--dv2-kop);
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv2-kiezer .server-card .s-meta { margin: 0; gap: 8px; font-size: 13px; font-weight: 600; color: var(--dv2-goed); }
+.dv2-kiezer .server-card .s-meta .dot { width: 7px; height: 7px; background: currentColor; box-shadow: none; }
+.dv2-kiezer .server-card .s-acties { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+.dv2-kiezer .server-card .s-alt { display: inline-flex; text-align: center; }
+
+/* Laden en leeg. */
+.dv2-kiezer .server-card.skeleton { flex-direction: row; align-items: center; min-height: 168px; }
+.dv2-kiezer .server-card.skeleton .sk { background: linear-gradient(90deg, var(--dv2-vlak-2) 25%, var(--dv2-vlak-3) 37%, var(--dv2-vlak-2) 63%); background-size: 400% 100%; }
+.dv2-kiezer .server-card.skeleton .sk-icon { width: 40px; height: 40px; border-radius: 13px; flex: none; }
+.dv2-kiezer .picker-empty { position: relative; max-width: 620px; margin: 8px 0; text-align: left; padding: 28px 28px 28px 70px; border-radius: 26px;
+  background: linear-gradient(135deg, rgba(125, 160, 255, 0.15), rgba(125, 160, 255, 0.04) 65%), var(--dv2-vlak);
+  border: 1px solid rgba(125, 160, 255, 0.26); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07); }
+.dv2-kiezer .picker-empty .e-mark { position: absolute; left: 24px; top: 28px; width: 28px; height: 28px; margin: 0; border-radius: 9px;
+  background: none; color: rgb(125, 160, 255); }
+.dv2-kiezer .picker-empty .e-mark svg { width: 24px; height: 24px; }
+.dv2-kiezer .picker-empty h2 { font-size: 20px; font-weight: 700; color: var(--dv2-kop); }
+.dv2-kiezer .picker-empty p { color: var(--dv2-tekst-2); line-height: 1.6; }
+.dv2-kiezer .picker-empty .e-actions { justify-content: flex-start; }
+
+@media (max-width: 640px) {
+  .dv2-kiezer .picker { padding: 90px 16px 64px; }
+  .dv2-kiezer .picker-title h1 { font-size: 28px; }
+  .dv2-kiezer .picker-title p { font-size: 15px; }
+  .dv2-kiezer .picker-toolbar .spacer, .dv2-kiezer .picker-count { display: none; }
+  .dv2-kiezer .picker-search { flex: 1 1 100%; max-width: none; order: -1; }
+  .dv2-kiezer .picker-toolbar .btn { flex: 1 1 auto; justify-content: center; }
+  .dv2-kiezer .server-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .dv2-kiezer .server-card { padding: 20px; }
+  .dv2-kiezer .server-card .s-acties .btn { flex: 1 1 auto; justify-content: center; }
+  .dv2-kiezer .picker-empty { padding: 22px 20px 22px 58px; }
+  .dv2-kiezer .picker-empty .e-mark { left: 18px; top: 22px; }
+}
+@media (max-width: 400px) { .dv2-kiezer .server-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .dv2-kiezer .server-card.skeleton .sk { animation: none; } }

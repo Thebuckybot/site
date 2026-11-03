@@ -247,72 +247,79 @@ if (inviteButton) {
 }
 
 
-// Premium server card: icon + name + status + reveal CTA. Rendered as a <button>
-// so keyboard/Enter selection and focus states work for free.
+// DASHBOARD V2 (3-11-2026): de kaart van preview B. Icoon en naam naast elkaar,
+// de stand ("Bucky is here"), en twee knoppen: Open Server Center (de hoofdknop)
+// en Security. Dezelfde twee bestemmingen als de kaart en "Server settings"
+// eerder; nu twee echte links, dus ook middelklik en een nieuw tabblad werken.
+// Geen innerHTML: de naam komt van Discord.
+function initialenVan(naam) {
+  const woorden = String(naam || "").trim().split(/\s+/).filter(Boolean);
+  return (woorden.slice(0, 2).map((w) => Array.from(w)[0] || "").join("") || "?").toUpperCase();
+}
+
+function onthoud(guild) {
+  try {
+    localStorage.setItem("bucky_active_guild", JSON.stringify({ id: guild.id, name: guild.name, icon: guild.icon || null }));
+  } catch (_) { /* opslag uit: het centrum valt terug op het id */ }
+}
+
 function createGuildCard(guild, guildContainer) {
-  const card = document.createElement("button");
-  card.type = "button";
+  const naam = guild.name || "Unnamed server";
+  const card = document.createElement("div");
   card.className = "server-card";
   card.setAttribute("data-name", (guild.name || "").toLowerCase());
-  card.setAttribute("aria-label", `Open ${guild.name || "server"} dashboard`);
 
-  const img = document.createElement("img");
-  img.className = "s-icon";
-  img.loading = "lazy";
-  img.src = guild.icon
-    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
-    : "https://cdn.discordapp.com/embed/avatars/0.png";
-  img.alt = "";
+  let icoon;
+  if (guild.icon && /^(a_)?[a-f0-9]{8,64}$/.test(String(guild.icon))) {
+    icoon = document.createElement("img");
+    icoon.loading = "lazy";
+    icoon.src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`;
+    icoon.alt = "";
+  } else {
+    icoon = document.createElement("span");
+    icoon.setAttribute("aria-hidden", "true");
+    icoon.textContent = initialenVan(naam);
+  }
+  icoon.classList.add("s-icon");
 
-  const name = document.createElement("div");
-  name.className = "s-name";
-  name.textContent = guild.name || "Unnamed server";
-  name.title = guild.name || "";
+  const kop = document.createElement("div");
+  kop.className = "s-kop";
+  const titel = document.createElement("h2");
+  titel.className = "s-name";
+  titel.textContent = naam;
+  titel.title = naam;
+  kop.append(icoon, titel);
 
-  const meta = document.createElement("div");
+  const meta = document.createElement("p");
   meta.className = "s-meta";
-  const dot = document.createElement("span"); dot.className = "dot";
-  const mtext = document.createElement("span"); mtext.textContent = "Bucky active";
-  meta.append(dot, mtext);
+  const dot = document.createElement("span"); dot.className = "dot"; dot.setAttribute("aria-hidden", "true");
+  meta.append(dot, "Bucky is here");
 
-  const cta = document.createElement("div");
-  cta.className = "s-cta";
-  cta.textContent = "Open dashboard →";
+  const id = encodeURIComponent(guild.id);
+  const server = document.createElement("a");
+  server.className = "btn btn-primary s-alt";
+  server.href = `server.html?guild_id=${id}`;
+  server.textContent = "Open Server Center";
+  server.setAttribute("aria-label", `Open Server Center for ${naam}`);
+  server.addEventListener("click", () => onthoud(guild));
 
-  card.append(img, name, meta, cta);
+  const security = document.createElement("a");
+  security.className = "btn btn-ghost s-sec";
+  security.href = `security.html?guild_id=${id}`;
+  security.setAttribute("aria-label", `Open Security Center for ${naam}`);
+  security.appendChild(svgIcon(
+    { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.8",
+      "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" },
+    [["path", { d: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" }]]));
+  security.append("Security");
+  security.addEventListener("click", () => onthoud(guild));
 
-  // TWEE AFDELINGEN, DUS TWEE INGANGEN (17 september 2026). De kaart zelf blijft
-  // naar het Security Center gaan - dat is waar hij altijd heen ging, en de
-  // gewoonte van iedereen die dit dashboard al gebruikt. Daarnaast staat een
-  // tweede knop naar het Server Center. Buiten de kaartknop, want een knop in
-  // een knop is geen geldige HTML en op een telefoon een gok welk van de twee
-  // je raakt.
-  const shell = document.createElement("div");
-  shell.className = "server-card-shell";
-  const alt = document.createElement("a");
-  alt.className = "s-alt";
-  alt.href = `server.html?guild_id=${guild.id}`;
-  alt.textContent = "Server settings";
-  alt.setAttribute("aria-label", `Open server settings for ${guild.name || "this server"}`);
-  alt.addEventListener("click", () => {
-    try {
-      localStorage.setItem("bucky_active_guild", JSON.stringify({ id: guild.id, name: guild.name, icon: guild.icon || null }));
-    } catch (_) { /* storage disabled */ }
-  });
+  const acties = document.createElement("div");
+  acties.className = "s-acties";
+  acties.append(server, security);
 
-  card.addEventListener("click", () => {
-    // Remember the chosen server (name + icon) so the dashboard top bar can show
-    // it without another round-trip. Frontend-only; no backend/SQL involved.
-    try {
-      localStorage.setItem("bucky_active_guild", JSON.stringify({ id: guild.id, name: guild.name, icon: guild.icon || null }));
-    } catch (_) { /* storage disabled - dashboard falls back to the id */ }
-    guildContainer.querySelectorAll(".server-card.selected").forEach((c) => c.classList.remove("selected"));
-    card.classList.add("selected");
-    setTimeout(() => { window.location.href = `security.html?guild_id=${guild.id}`; }, 160);
-  });
-
-  shell.append(card, alt);
-  guildContainer.appendChild(shell);
+  card.append(kop, meta, acties);
+  guildContainer.appendChild(card);
 }
 
 
