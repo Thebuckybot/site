@@ -6,7 +6,10 @@ WAT HIER WORDT VASTGEHOUDEN
    erbij; Opslaan stuurt alleen gekozen ids.
 3. VERIFY: een paneel opslaan stuurt alle velden; kanalen zijn niet te kiezen
    zonder Kanalen beheren; "Import from link" gaat naar /images/import.
-4. VRAGEN PER TYPE: toevoegen en opslaan stuurt PUT met de vragen.
+4. TICKETTYPES: per type Edit; het venster heeft standaard geen formulier, "Add form"
+   maakt er een, hoogstens vijf vragen, volgorde, en opslaan stuurt PUT.
+6. DE KIEZER: alleen wat de bot kan geven, de rest ingeklapt; chips; zoeken;
+   vaste hoogte bij honderden rollen.
 5. Een rolnaam met markup wordt tekst, geen HTML.
 En nergens een paginafout.
 
@@ -91,13 +94,20 @@ def autorole(browser):
     page, fouten, dialogen = pagina(browser, {"autorole": True}, True,
                                     [(f"**/api/server/{GID}/autorole", handler)])
     page.goto(f"{BASIS}/server.html?guild_id={GID}#autorole", wait_until="networkidle")
-    page.wait_for_selector(".srv-rolelist", timeout=15000)
+    page.wait_for_selector(".srv-picker", timeout=15000)
     geblokt = page.locator(".srv-role.is-blocked input")
     eis(geblokt.is_disabled(), "een onveilige rol is niet aan te vinken")
     eis(page.get_by_text("has moderator or admin permissions").count() == 1, "de reden staat erbij")
+    eis(page.locator(".srv-picker-blocked").get_attribute("open") is None
+        and page.get_by_text("Not available (1)").count() == 1,
+        "de rol die niet kan staat in een ingeklapte groep 'Not available'")
+    eis(page.locator(".srv-picker-list:not(.srv-picker-blocked-list) .srv-role").count() == 1,
+        "de gewone lijst toont alleen wat de bot kan geven")
     eis(page.get_by_text("<img src=x onerror=alert(1)>", exact=False).count() == 1,
         "een rolnaam met markup staat er als tekst")
     page.locator(".srv-role:not(.is-blocked) input").check()
+    eis(page.locator(".srv-chip").count() == 1 and "@Member" in page.locator(".srv-chip").first.inner_text(),
+        "de gekozen rol staat als chip bovenaan")
     page.get_by_role("button", name="Save roles").click()
     page.wait_for_timeout(400)
     eis(verzonden == [{"role_ids": ["111111111111111111"]}], f"opslaan stuurt alleen de gekozen rol ({verzonden})")
@@ -111,7 +121,7 @@ def autorole_zonder_rollenrecht(browser):
     page, fouten, _ = pagina(browser, {"autorole": True}, True,
                              [(f"**/api/server/{GID}/autorole", lambda r: wp.antwoord(r, data))])
     page.goto(f"{BASIS}/server.html?guild_id={GID}#autorole", wait_until="networkidle")
-    page.wait_for_selector(".srv-rolelist", timeout=15000)
+    page.wait_for_selector(".srv-picker", timeout=15000)
     eis(page.locator(".srv-rolelist input:not([disabled])").count() == 0,
         "zonder Rollen beheren is geen enkele rol te kiezen")
     eis(page.get_by_text("You need the Manage Roles permission").count() == 1, "en dat staat er")
@@ -153,11 +163,11 @@ def verify(browser, kanalen_recht):
     ])
     page.goto(f"{BASIS}/server.html?guild_id={GID}#verify", wait_until="networkidle")
     page.wait_for_selector("text=Roles to give", timeout=15000)
-    kanaalvakjes = page.get_by_role("group", name="Channels this panel opens").locator("input")
+    kanaalvakjes = page.get_by_role("group", name="Channels this panel opens", exact=True).locator("input")
     eis(kanaalvakjes.first.is_disabled() != kanalen_recht,
         f"kanalen {'wel' if kanalen_recht else 'niet'} te kiezen met Kanalen beheren={kanalen_recht}")
-    page.get_by_label("Channel for the panel").select_option("900000000000000001")
-    page.get_by_role("group", name="Roles to give").locator(".srv-role:not(.is-blocked) input").check()
+    page.get_by_role("group", name="Channel for the panel", exact=True).locator("input").first.check()
+    page.get_by_role("group", name="Roles to give", exact=True).locator(".srv-role:not(.is-blocked) input").check()
     page.get_by_label("Image address").fill("https://example.com/cat.gif")
     hoogte = page.evaluate("document.querySelector('.srv-verify-preview').getBoundingClientRect().height")
     page.get_by_role("button", name="Import from link").click()
@@ -179,31 +189,97 @@ def verify(browser, kanalen_recht):
     page.close()
 
 
-def vragen(browser):
-    types = [{"key": "bug", "label": "Bug Report", "default_label": "Bug Report", "description": "d",
-              "prefix": "bug", "enabled": True, "position": 0}]
+def tickettype_venster(browser):
+    """Per type een Edit-knop; het venster heeft standaard geen formulier, met
+    "Add form" een, hoogstens vijf vragen, volgorde, en opslaan stuurt PUT."""
+    types = [{"key": "bug", "label": "Bug Report", "default_label": "Bug Report", "description": "Report a bug",
+              "prefix": "bug", "enabled": True, "position": 0},
+             {"key": "support", "label": "Support", "default_label": "Support", "description": "Help",
+              "prefix": "support", "enabled": True, "position": 1}]
     data = {"settings": {"enabled": True, "max_open_tickets": 3, "close_delay": 10},
             "types": types, "channels": [], "roles": [], "open": [], "v2": False, "forms": True}
-    gezet = []
+    gezet, patches = [], []
 
     def put(route):
         body = json.loads(route.request.post_data or "{}")
         gezet.append((route.request.method, body))
         wp.antwoord(route, {"type": "bug", "questions": body["questions"]})
 
+    def patch(route):
+        body = json.loads(route.request.post_data or "{}")
+        patches.append(body)
+        wp.antwoord(route, {"key": body["key"], "label": body["label"], "enabled": body["enabled"], "position": 0})
+
     page, fouten, _ = pagina(browser, {"ticket_forms": True}, True, [
         (f"**/api/server/{GID}/tickets", lambda r: wp.antwoord(r, data)),
-        (f"**/api/server/{GID}/tickets/questions", lambda r: wp.antwoord(r, {"questions": {}, "limits": {"max_questions": 5}})),
+        (f"**/api/server/{GID}/tickets/types", patch),
+        (f"**/api/server/{GID}/tickets/questions", lambda r: wp.antwoord(r, {
+            "questions": {"support": [{"label": "Topic", "placeholder": "", "style": "short",
+                                       "required": True, "max_length": 300}]},
+            "limits": {"max_questions": 5, "max_label": 45, "max_placeholder": 100, "max_answer": 1000}})),
         (f"**/api/server/{GID}/tickets/questions/bug", put),
     ])
     page.goto(f"{BASIS}/server.html?guild_id={GID}#tickets", wait_until="networkidle")
-    page.wait_for_selector("text=Questions per type", timeout=15000)
-    page.get_by_role("button", name="Add question").click()
-    page.get_by_label("Question 1", exact=True).fill("What happened?")
-    page.get_by_role("button", name="Save questions").click()
-    page.wait_for_timeout(400)
-    eis(gezet and gezet[0][0] == "PUT" and gezet[0][1]["questions"][0]["label"] == "What happened?",
-        f"opslaan stuurt PUT met de vraag ({gezet})")
+    page.wait_for_selector("text=Ticket types", timeout=15000)
+    eis(page.get_by_text("Form: 1 question", exact=True).count() == 1 and page.get_by_text("No form", exact=True).count() == 1,
+        "elke rij zegt of het type een formulier heeft")
+    eis(page.get_by_text("Questions per type").count() == 0, "de losse vragenkaart is weg")
+    page.get_by_role("button", name="Edit Bug Report").click()
+    venster = page.get_by_role("dialog", name="Edit Bug Report")
+    eis(venster.is_visible(), "Edit opent het venster van dat type")
+    eis(venster.get_by_text("Without a form, the ticket opens straight away").count() == 1,
+        "standaard geen formulier, met de uitleg")
+    venster.get_by_role("button", name="Add form").click()
+    venster.get_by_label("Question 1", exact=True).fill("What happened?")
+    for _ in range(4):
+        venster.get_by_role("button", name="Add question").click()
+    eis(venster.get_by_role("button", name="Add question").is_disabled(), "bij vijf vragen kan er geen bij")
+    eis(venster.get_by_text("Discord allows no more in one form").count() == 1, "en dat staat er")
+    for i in range(2, 6):
+        venster.get_by_label(f"Question {i}", exact=True).fill(f"V{i}")
+    venster.get_by_role("button", name="Remove question 5").click()
+    venster.get_by_role("button", name="Remove question 4").click()
+    venster.get_by_role("button", name="Remove question 3").click()
+    venster.get_by_label("Answer type for question 2").select_option("paragraph")
+    venster.get_by_role("button", name="Move question 2 up").click()
+    labels = [t.upper().replace("\n", "") for t in venster.locator(".srv-form-preview-label").all_inner_texts()]
+    eis(labels == ["V2*", "WHAT HAPPENED?*"], f"de voorvertoning volgt de volgorde ({labels})")
+    eis(venster.locator(".srv-form-preview-box.is-long").count() == 1, "een lang antwoord is een hoog vak")
+    venster.get_by_label("Name", exact=True).fill("Bugs")
+    venster.get_by_role("button", name="Save", exact=True).click()
+    page.wait_for_timeout(500)
+    eis(gezet and gezet[0][0] == "PUT" and [v["label"] for v in gezet[0][1]["questions"]] == ["V2", "What happened?"]
+        and gezet[0][1]["questions"][0]["style"] == "paragraph",
+        f"opslaan stuurt PUT met de vragen in volgorde ({gezet})")
+    eis(patches and patches[0]["label"] == "Bugs", f"en de nieuwe naam ({patches})")
+    eis(page.locator("#sec-modal-host.open").count() == 0, "het venster sluit")
+    eis(page.get_by_text("Form: 2 questions", exact=True).count() == 1, "de rij telt nu twee vragen")
+    eis(not fouten, f"geen paginafouten ({fouten})")
+    page.close()
+
+
+def veel_rollen(browser):
+    """Honderden rollen: vaste hoogte, zoeken, chips, de rest ingeklapt."""
+    rollen = [{"id": str(100000000000000000 + i), "name": f"role-{i}", "color": 0, "position": i,
+               "allowed": i % 7 != 0, "reason": None if i % 7 else "is at or above Bucky's highest role",
+               "reason_code": None if i % 7 else "too_high"} for i in range(1, 351)]
+    data = {"enabled": False, "role_ids": [rollen[1]["id"]], "include_bots": False, "roles": rollen,
+            "bot_can_manage_roles": True, "can_manage_roles": True, "limits": {"max_roles": 5}}
+    page, fouten, _ = pagina(browser, {"autorole": True}, True,
+                             [(f"**/api/server/{GID}/autorole", lambda r: wp.antwoord(r, data))])
+    page.goto(f"{BASIS}/server.html?guild_id={GID}#autorole", wait_until="networkidle")
+    page.wait_for_selector(".srv-picker", timeout=15000)
+    hoogte = page.evaluate("document.querySelector('.srv-picker-list').getBoundingClientRect().height")
+    eis(200 <= hoogte <= 260, f"de lijst heeft een vaste hoogte ({hoogte})")
+    eis(page.get_by_text("Not available (50)").count() == 1, "50 rollen ingeklapt onder Not available")
+    eis(page.locator(".srv-chip").count() == 1, "de opgeslagen rol staat als chip")
+    page.get_by_label("Search roles (Roles to give)").fill("role-34")
+    zichtbaar = sorted(t.strip() for t in page.locator(
+        ".srv-picker-list:not(.srv-picker-blocked-list) .srv-role:visible").all_inner_texts())
+    verwacht = sorted(f"@role-{n}" for n in [34] + list(range(340, 351)) if n % 7)
+    eis(zichtbaar == verwacht, f"zoeken filtert ({zichtbaar})")
+    page.get_by_label("Search roles (Roles to give)").fill("zzz")
+    eis(page.get_by_text("No matches.").is_visible(), "geen treffer staat er")
     eis(not fouten, f"geen paginafouten ({fouten})")
     page.close()
 
@@ -216,7 +292,8 @@ def main():
         print("Autorole zonder Rollen beheren"); autorole_zonder_rollenrecht(browser)
         print("Verify met Kanalen beheren"); verify(browser, True)
         print("Verify zonder Kanalen beheren"); verify(browser, False)
-        print("Vragen per type"); vragen(browser)
+        print("Tickettype: het bewerkvenster"); tickettype_venster(browser)
+        print("Honderden rollen"); veel_rollen(browser)
         browser.close()
     if FOUTEN:
         print(f"\n{len(FOUTEN)} FOUT(EN)")

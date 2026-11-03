@@ -200,6 +200,31 @@ function _modalKeydown(modal, { onEscape, onEnter }) {
   };
 }
 
+// Een eigen dialoog in de modale host, met dezelfde toetsenbordregels als
+// confirmDialog (Escape sluit, Tab blijft binnen, focus terug bij sluiten),
+// maar zonder Enter-bevestiging: een bewerkvenster heeft velden waarin Enter
+// gewoon Enter is. Geeft de sluitfunctie terug.
+export function openModal(modal, { onClose } = {}) {
+  const host = document.getElementById("sec-modal-host");
+  if (!host) return () => {};
+  const prevFocus = document.activeElement;
+  let dicht = false;
+  const close = () => {
+    if (dicht) return;
+    dicht = true;
+    document.removeEventListener("keydown", keyHandler, true);
+    host.classList.remove("open"); host.setAttribute("aria-hidden", "true"); clear(host);
+    if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (_) { /* detached */ } }
+    if (onClose) onClose();
+  };
+  const keyHandler = _modalKeydown(modal, { onEscape: close });
+  document.addEventListener("keydown", keyHandler, true);
+  clear(host); host.appendChild(modal); host.classList.add("open"); host.setAttribute("aria-hidden", "false");
+  const eerste = modal.querySelector("input, select, textarea, button");
+  if (eerste) eerste.focus();
+  return close;
+}
+
 export function confirmDialog({ title, message, danger = false, confirmLabel = "Confirm" }) {
   return new Promise((resolve) => {
     const host = document.getElementById("sec-modal-host");

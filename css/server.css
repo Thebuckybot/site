@@ -654,3 +654,48 @@ html { background: var(--sec-bg1); }
 .srv-question { display: grid; grid-template-columns: 1fr 1fr auto auto auto; gap: 8px; align-items: center; margin-top: 8px; }
 @media (max-width: 760px) { .srv-question { grid-template-columns: 1fr; } }
 .srv-verify-preview { display: block; width: 100%; max-width: 720px; aspect-ratio: 3 / 1; object-fit: cover; border-radius: 10px; margin-top: 8px; background: rgba(255, 255, 255, 0.04); }
+
+/* De kiezer voor rollen en kanalen (3-11-2026, js/server/kiezer.js): chips
+   bovenaan, een zoekveld, een lijst met vaste hoogte die scrolt, en wat niet
+   kan in een ingeklapte groep. */
+.srv-picker { display: grid; gap: 8px; margin-top: 6px; }
+/* `.srv-role` is flex, en dat wint van het hidden-attribuut: zonder deze regel
+   verborg het zoekveld niets (gevonden door test_server_tools_fase2.py). */
+.srv-picker [hidden] { display: none !important; }
+.srv-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; align-items: center; }
+.srv-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 999px;
+  background: rgba(88, 101, 242, 0.16); border: 1px solid rgba(88, 101, 242, 0.45); font-size: 13px; max-width: 100%; }
+.srv-chip > span:nth-child(2) { overflow-wrap: anywhere; }
+.srv-chip.is-blocked { background: rgba(224, 165, 58, 0.14); border-color: rgba(224, 165, 58, 0.55); }
+.srv-chip-x { border: 0; background: transparent; color: inherit; font-size: 16px; line-height: 1; width: 24px; height: 24px;
+  border-radius: 50%; cursor: pointer; }
+.srv-chip-x:hover, .srv-chip-x:focus-visible { background: rgba(255, 255, 255, 0.12); }
+.srv-picker-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.srv-picker-search { flex: 1; min-width: 180px; }
+.srv-picker-list { height: 240px; max-height: none; border: 1px solid var(--sec-border, rgba(255, 255, 255, 0.08));
+  border-radius: 10px; align-content: start; }
+.srv-picker-blocked-list { height: auto; max-height: 200px; margin-top: 6px; }
+.srv-picker-blocked > summary { cursor: pointer; font-size: 13px; color: var(--sec-muted); padding: 4px 0; }
+.srv-picker-none { margin: 0; }
+
+/* Tickets (3-11-2026): per type een rij met een Edit-knop, en het bewerkvenster. */
+.srv-type-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; }
+.srv-type-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.srv-type-editor { max-width: 760px; max-height: calc(100vh - 40px); overflow: auto; }
+.srv-type-editor h3 { margin-bottom: 4px; }
+.srv-editor-sec { border-top: 1px solid var(--sec-border, rgba(255, 255, 255, 0.08)); margin-top: 18px; padding-top: 14px; }
+.srv-editor-sec > h4 { margin: 0 0 6px; font-size: 15px; }
+.srv-form-q { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; margin-top: 8px;
+  border: 1px solid var(--sec-border, rgba(255, 255, 255, 0.08)); border-radius: 10px; }
+.srv-form-q-head { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.srv-form-q-head strong { margin-right: auto; }
+.srv-form-preview { margin-top: 12px; padding: 14px; border-radius: 10px; background: #313338; color: #dbdee1; max-width: 440px; }
+.srv-form-preview-title { font-weight: 700; font-size: 16px; margin-bottom: 10px; color: #f2f3f5; }
+.srv-form-preview-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: #b5bac1; margin-top: 10px; }
+.srv-form-preview-label .ster { color: #f23f42; margin-left: 3px; }
+.srv-form-preview-box { margin-top: 6px; background: #1e1f22; border-radius: 4px; padding: 8px 10px; color: #87898c; font-size: 14px; min-height: 18px; overflow-wrap: anywhere; }
+.srv-form-preview-box.is-long { min-height: 64px; }
+@media (max-width: 760px) {
+  .srv-type-row { grid-template-columns: 1fr; }
+  .srv-form-q { grid-template-columns: 1fr; }
+}

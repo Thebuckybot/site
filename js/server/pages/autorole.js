@@ -9,6 +9,7 @@
 // Geen `html:` en geen innerHTML: rolnamen zijn tekst van de server.
 import { api } from "../api.js";
 import { el, clear, toast } from "../../security/ui.js";
+import { kiezer } from "../kiezer.js";
 
 function kaart(titel, uitleg, inhoud) {
   return el("div", { class: "sec-card", style: "margin-top:16px" }, [
@@ -23,38 +24,12 @@ function schakelaar(aan, label) {
   return { input, node: el("label", { class: "sec-switch" }, [input, el("span", { class: "track" })]) };
 }
 
-// Een rollenlijst met vinkjes. Gedeeld met verify.js.
+// De rollenkiezer, gedeeld met verify.js: zoeken, chips, een scrollende lijst
+// met alleen wat de bot kan geven, en de rest ingeklapt met de reden
+// (js/server/kiezer.js).
 export function rollenKiezer(rollen, gekozen, max, label, magKiezen = true) {
-  const kies = new Set(gekozen.map(String));
-  const teller = el("span", { class: "srv-field-hint", "aria-live": "polite" });
-  const tel = () => { teller.textContent = `${kies.size} of ${max} picked`; };
-  const lijst = el("div", { class: "srv-rolelist", role: "group", "aria-label": label },
-    rollen.map((r) => {
-      const input = el("input", {
-        type: "checkbox", value: r.id,
-        checked: kies.has(r.id) ? "checked" : null,
-        // Zonder Rollen beheren is niets te kiezen (de backend weigert het ook).
-        disabled: magKiezen && (r.allowed || kies.has(r.id)) ? null : "disabled",
-      });
-      input.addEventListener("change", () => {
-        if (input.checked && kies.size >= max) {
-          input.checked = false;
-          toast(`At most ${max} roles.`, "err");
-          return;
-        }
-        if (input.checked) kies.add(r.id); else kies.delete(r.id);
-        tel();
-      });
-      const kleur = r.color ? "#" + r.color.toString(16).padStart(6, "0") : "var(--sec-muted, #8b8b9a)";
-      return el("label", { class: "srv-role" + (r.allowed ? "" : " is-blocked") }, [
-        input,
-        el("span", { class: "srv-role-dot", style: `background:${kleur}`, "aria-hidden": "true" }),
-        el("span", { class: "srv-role-name", text: "@" + r.name }),
-        r.allowed ? null : el("span", { class: "srv-role-why", text: r.reason || "Not allowed" }),
-      ].filter(Boolean));
-    }));
-  tel();
-  return { node: el("div", {}, [lijst, teller]), waarde: () => Array.from(kies) };
+  return kiezer({ items: rollen, gekozen, max, label, teken: (r) => "@" + r.name,
+                  zoekLabel: "Search roles", magKiezen, leeg: "No roles picked yet." });
 }
 
 export default {
@@ -118,14 +93,14 @@ export default {
         ]),
       ]));
 
-      const kiezer = rollenKiezer(data.roles || [], data.role_ids || [], (data.limits || {}).max_roles || 5,
+      const rolKiezer = rollenKiezer(data.roles || [], data.role_ids || [], (data.limits || {}).max_roles || 5,
                                   "Roles to give", data.can_manage_roles !== false);
       const opslaan = el("button", {
         class: "sec-btn sec-btn-primary sec-btn-sm", type: "button", text: "Save roles",
         onclick: async () => {
           opslaan.disabled = true;
           try {
-            data = await api.patch("/autorole", { role_ids: kiezer.waarde() });
+            data = await api.patch("/autorole", { role_ids: rolKiezer.waarde() });
             toast("Roles saved.");
             teken();
           } catch (err) {
@@ -137,8 +112,8 @@ export default {
       host.appendChild(kaart("Roles",
         data.can_manage_roles === false
           ? "You need the Manage Roles permission to pick roles."
-          : "Greyed-out roles cannot be given by a bot: they sit above Bucky or above your own highest role, belong to another app or the Security Center, or carry moderator or admin permissions.",
-        [kiezer.node, el("div", { class: "sec-row", style: "margin-top:12px" }, [opslaan])]));
+          : "Only roles Bucky can give are listed. The others are under Not available, each with the reason: above Bucky or above your own highest role, managed by another app, the Security Center's quarantine role, or moderator or admin permissions.",
+        [rolKiezer.node, el("div", { class: "sec-row", style: "margin-top:12px" }, [opslaan])]));
     }
     teken();
   },

@@ -11,7 +11,7 @@
 // zegt dat met zoveel woorden in plaats van een knop te tonen die stilletjes
 // niets doet.
 import { api } from "../api.js";
-import { el, clear, toast } from "../../security/ui.js";
+import { el, clear, toast, openModal } from "../../security/ui.js";
 
 function kaart(titel, uitleg, inhoud) {
   return el("div", { class: "sec-card", style: "margin-top:16px" }, [
@@ -31,6 +31,13 @@ function rij(label, control, hint) {
     ]),
     control,
   ]);
+}
+
+function veld(label, control, hint) {
+  return el("label", { class: "srv-field" }, [
+    el("span", { text: label }), control,
+    hint ? el("span", { class: "srv-field-hint", text: hint }) : null,
+  ].filter(Boolean));
 }
 
 function keuzelijst(opties, waarde, leeg, onChange) {
@@ -82,137 +89,222 @@ export default {
       }
     }
 
-    // Welkomsttekst per type. Een keuzelijst en een tekstvak, en niet zes
-    // tekstvakken onder elkaar: je werkt aan een type tegelijk.
-    let gekozenType = (data.types || [])[0] ? data.types[0].key : null;
-    function perTypeKaart() {
-      const types = data.types || [];
-      const max = data.max_welcome_text || 1000;
-      const keuze = el("select", { class: "sec-select", "aria-label": "Ticket type" },
-        types.map((t) => el("option", { value: t.key, text: t.label })));
-      keuze.value = gekozenType || "";
-      const huidig = () => types.find((t) => t.key === keuze.value) || {};
-      const vak = el("textarea", {
-        class: "sec-input srv-textarea", rows: "5", maxlength: String(max),
-        "aria-label": "Welcome text for this ticket type",
-        placeholder: "Thanks {user}! Tell us what happened and add screenshots if you have them.",
-      });
-      vak.value = huidig().welcome_text || "";
-      const teller = el("span", { class: "srv-field-hint", "aria-live": "polite" });
-      const tel = () => { teller.textContent = `${vak.value.length} / ${max}`; };
-      tel();
-      vak.addEventListener("input", tel);
-      keuze.addEventListener("change", () => {
-        gekozenType = keuze.value;
-        vak.value = huidig().welcome_text || "";
-        tel();
-      });
-      const opslaan = el("button", {
-        class: "sec-btn sec-btn-primary sec-btn-sm", type: "button", text: "Save welcome text",
-        onclick: async () => {
-          opslaan.disabled = true;
-          try {
-            const uit = await api.patch("/tickets/types/welcome", { key: keuze.value, welcome_text: vak.value });
-            huidig().welcome_text = uit.welcome_text;
-            vak.value = uit.welcome_text;
-            tel();
-            toast("Welcome text saved.");
-          } catch (err) {
-            toast(err.message, "err");
-          } finally {
-            opslaan.disabled = false;
-          }
-        },
-      });
-      const placeholders = (data.welcome_placeholders || []).map((p) => "{" + p + "}").join(", ");
-      return kaart(
-        "Welcome text per type",
-        "Shown at the top of a new ticket, above the Close button. Empty means Bucky's standard line. "
-          + (placeholders ? `You can use ${placeholders}.` : ""),
-        [el("div", { class: "srv-list" }, [
-          rij("Ticket type", keuze, "Pick the type you want to write for."),
-        ]),
-        vak,
-        el("div", { class: "sec-row", style: "margin-top:10px" }, [opslaan, teller])]);
-    }
-
-    // DE VRAAGRONDE PER TYPE. Hoogstens vijf vragen (een modal draagt er vijf).
-    // De antwoorden staan bovenaan het ticket, in codeblokken: een lid kan er
-    // geen opmaak, links of pings mee maken (cogs/tickets/views.py).
-    let vragen = null;              // {type_key: [vraag, ...]}, geladen bij openen
+    // HET BEWERKVENSTER PER TYPE (3-11-2026). Alles van een type op een plek:
+    // naam, aan/uit, welkomsttekst en het formulier. Daarvoor stonden de
+    // welkomsttekst en de vragen in twee losse kaarten onderaan de pagina, met
+    // elk een eigen keuzelijst voor het type, en vond niemand het formulier.
+    //
+    // HET FORMULIER IS EEN DISCORD-MODAL: hoogstens vijf vragen, een vraag van
+    // hoogstens 45 tekens. De antwoorden komen bovenaan het ticket in een kaart,
+    // in codeblokken: een lid kan er geen opmaak, links of pings mee maken
+    // (bucky1.0/cogs/tickets/views.py, answers_card).
+    let vragen = {};                // {type_key: [vraag, ...]}
     let vraagLimieten = {};
-    let vraagType = (data.types || [])[0] ? data.types[0].key : null;
-    function vragenKaart() {
-      const kaartNode = kaart("Questions per type",
-        "A short round of questions when someone opens this type of ticket. The answers appear at the top of the ticket for your team. Leave it empty to open tickets straight away.",
-        [el("div", { class: "sec-loading", text: "Loading questions…" })]);
-      const laad = vragen ? Promise.resolve() : api.get("/tickets/questions").then((uit) => {
+    let vragenGeladen = false;
+
+    async function laadVragen() {
+      if (!data.forms || vragenGeladen) return;
+      try {
+        const uit = await api.get("/tickets/questions");
         vragen = uit.questions || {};
         vraagLimieten = uit.limits || {};
-      });
-      laad.then(() => vul(kaartNode)).catch((err) => {
-        kaartNode.appendChild(el("p", { class: "sec-muted", text: err.message }));
-      });
-      return kaartNode;
+        vragenGeladen = true;
+      } catch (err) {
+        toast(`The forms did not load: ${err.message}`, "err");
+      }
     }
 
-    function vul(kaartNode) {
-      kaartNode.querySelectorAll(".sec-loading, .srv-questions").forEach((n) => n.remove());
-      const max = vraagLimieten.max_questions || 5;
-      const typeKeuze = el("select", { class: "sec-select", "aria-label": "Ticket type for questions" },
-        (data.types || []).map((t) => el("option", { value: t.key, text: t.label })));
-      typeKeuze.value = vraagType || "";
-      const lijst = el("div");
-      const wrap = el("div", { class: "srv-questions" }, [
-        el("div", { class: "srv-list" }, [rij("Ticket type", typeKeuze, null)]), lijst]);
-      kaartNode.appendChild(wrap);
+    function vraagTelling(t) {
+      const n = (vragen[t.key] || []).length;
+      return n ? `Form: ${n} question${n === 1 ? "" : "s"}` : "No form";
+    }
 
-      let werk = [];
-      function laadType() {
-        vraagType = typeKeuze.value;
-        werk = (vragen[vraagType] || []).map((v) => ({ ...v }));
-        tekenLijst();
+    function bewerkType(t) {
+      const maxVragen = vraagLimieten.max_questions || 5;
+      const maxLabel = vraagLimieten.max_label || 45;
+      const maxHint = vraagLimieten.max_placeholder || 100;
+      const maxAntwoord = vraagLimieten.max_answer || 1000;
+      const maxWelkom = data.max_welcome_text || 1000;
+      let werk = (vragen[t.key] || []).map((v) => ({ ...v }));
+      let formulierAan = werk.length > 0;
+
+      const naam = el("input", { class: "sec-input", value: t.label, maxlength: "45",
+                                 placeholder: t.default_label, "aria-label": "Name" });
+      const aanInput = el("input", { type: "checkbox", checked: t.enabled ? "checked" : null,
+                                     "aria-label": "Members can pick this type" });
+
+      // Welkomsttekst (tickets v2).
+      let welkom = null;
+      const welkomSectie = el("div", { class: "srv-editor-sec" }, [el("h4", { text: "Welcome text" })]);
+      if (data.v2) {
+        welkom = el("textarea", { class: "sec-input srv-textarea", rows: "4", maxlength: String(maxWelkom),
+                                  "aria-label": "Welcome text",
+                                  placeholder: "Thanks {user}! Tell us what happened and add screenshots if you have them." });
+        welkom.value = t.welcome_text || "";
+        const teller = el("span", { class: "srv-field-hint", "aria-live": "polite" });
+        const tel = () => { teller.textContent = `${welkom.value.length} / ${maxWelkom}`; };
+        welkom.addEventListener("input", tel);
+        tel();
+        const ph = (data.welcome_placeholders || []).map((x) => "{" + x + "}").join(", ");
+        welkomSectie.append(
+          el("p", { class: "sec-muted", style: "margin:0", text: "Shown at the top of a new ticket of this type. Empty means Bucky's standard line." + (ph ? ` You can use ${ph}.` : "") }),
+          welkom, teller);
+      } else {
+        welkomSectie.append(el("p", { class: "sec-muted", style: "margin:0",
+          text: "A welcome text per type comes with the new ticket panel, which is not switched on for this server yet." }));
       }
-      function tekenLijst() {
-        clear(lijst);
+
+      // Het formulier.
+      const formSectie = el("div", { class: "srv-editor-sec" });
+      const voorbeeld = el("div", { class: "srv-form-preview", "aria-label": "Preview of the form", role: "img" });
+      function tekenVoorbeeld() {
+        clear(voorbeeld);
+        voorbeeld.appendChild(el("div", { class: "srv-form-preview-title", text: `Ticket: ${naam.value.trim() || t.default_label}`.slice(0, 45) }));
+        werk.forEach((v) => {
+          voorbeeld.appendChild(el("div", { class: "srv-form-preview-label" }, [
+            document.createTextNode(v.label || "Question"),
+            v.required ? el("span", { class: "ster", text: "*", "aria-hidden": "true" }) : null,
+          ].filter(Boolean)));
+          voorbeeld.appendChild(el("div", { class: "srv-form-preview-box" + (v.style === "paragraph" ? " is-long" : ""),
+                                            text: v.placeholder || "" }));
+        });
+      }
+      function tekenFormulier() {
+        clear(formSectie);
+        formSectie.appendChild(el("h4", { text: "Form" }));
+        if (!data.forms) {
+          formSectie.appendChild(el("p", { class: "sec-muted", style: "margin:0", text: "Ticket forms are switched off right now." }));
+          return;
+        }
+        if (!formulierAan) {
+          formSectie.append(
+            el("p", { class: "sec-muted", style: "margin:0 0 10px", text: "This type has no form. Without a form, the ticket opens straight away." }),
+            el("button", { class: "sec-btn sec-btn-sm", type: "button", text: "Add form",
+                           onclick: () => {
+                             formulierAan = true;
+                             if (!werk.length) werk.push({ label: "", placeholder: "", style: "short", required: true, max_length: 300 });
+                             tekenFormulier();
+                             const eerste = formSectie.querySelector("input");
+                             if (eerste) eerste.focus();
+                           } }));
+          return;
+        }
+        formSectie.appendChild(el("p", { class: "sec-muted", style: "margin:0",
+          text: `Only for this type. A member answers these before the ticket opens; the answers are the first card in the ticket. At most ${maxVragen} questions: that is the most Discord allows in one form.` }));
+        const lijst = el("div");
         werk.forEach((v, i) => {
-          const label = el("input", { class: "sec-input", value: v.label, maxlength: String(vraagLimieten.max_label || 45),
+          const label = el("input", { class: "sec-input", value: v.label, maxlength: String(maxLabel),
                                       placeholder: "Question", "aria-label": `Question ${i + 1}` });
-          label.addEventListener("input", () => { v.label = label.value; });
-          const hint = el("input", { class: "sec-input", value: v.placeholder || "", maxlength: String(vraagLimieten.max_placeholder || 100),
-                                     placeholder: "Hint (optional)", "aria-label": `Hint for question ${i + 1}` });
-          hint.addEventListener("input", () => { v.placeholder = hint.value; });
+          label.addEventListener("input", () => { v.label = label.value; tekenVoorbeeld(); });
+          const hint = el("input", { class: "sec-input", value: v.placeholder || "", maxlength: String(maxHint),
+                                     placeholder: "Hint inside the box (optional)", "aria-label": `Hint for question ${i + 1}` });
+          hint.addEventListener("input", () => { v.placeholder = hint.value; tekenVoorbeeld(); });
           const stijl = el("select", { class: "sec-select", "aria-label": `Answer type for question ${i + 1}` }, [
-            el("option", { value: "short", text: "Short" }), el("option", { value: "paragraph", text: "Long" })]);
+            el("option", { value: "short", text: "Short answer" }), el("option", { value: "paragraph", text: "Long answer" })]);
           stijl.value = v.style || "short";
-          stijl.addEventListener("change", () => { v.style = stijl.value; });
+          stijl.addEventListener("change", () => { v.style = stijl.value; tekenVoorbeeld(); });
           const nodig = el("input", { type: "checkbox", checked: v.required ? "checked" : null,
                                       "aria-label": `Question ${i + 1} required` });
-          nodig.addEventListener("change", () => { v.required = nodig.checked; });
-          lijst.appendChild(el("div", { class: "srv-question" }, [
+          nodig.addEventListener("change", () => { v.required = nodig.checked; tekenVoorbeeld(); });
+          const lengte = el("input", { class: "sec-input sec-input-num", type: "number", min: "1", max: String(maxAntwoord),
+                                       value: String(v.max_length || 300), "aria-label": `Longest answer for question ${i + 1}` });
+          lengte.addEventListener("change", () => {
+            v.max_length = Math.max(1, Math.min(maxAntwoord, Number(lengte.value) || 300));
+            lengte.value = String(v.max_length);
+          });
+          const schuif = (stap) => { const j = i + stap; [werk[i], werk[j]] = [werk[j], werk[i]]; tekenFormulier(); };
+          lijst.appendChild(el("div", { class: "srv-form-q" }, [
+            el("div", { class: "srv-form-q-head" }, [
+              el("strong", { text: `Question ${i + 1}` }),
+              el("button", { class: "sec-btn sec-btn-ghost sec-btn-sm", type: "button", text: "Up",
+                             "aria-label": `Move question ${i + 1} up`, disabled: i === 0 ? "disabled" : null,
+                             onclick: () => schuif(-1) }),
+              el("button", { class: "sec-btn sec-btn-ghost sec-btn-sm", type: "button", text: "Down",
+                             "aria-label": `Move question ${i + 1} down`, disabled: i === werk.length - 1 ? "disabled" : null,
+                             onclick: () => schuif(1) }),
+              el("button", { class: "sec-btn sec-btn-ghost sec-btn-sm", type: "button", text: "Remove",
+                             "aria-label": `Remove question ${i + 1}`,
+                             onclick: () => { werk.splice(i, 1); if (!werk.length) formulierAan = false; tekenFormulier(); } }),
+            ]),
             label, hint, stijl,
-            el("label", { class: "srv-field-hint" }, [nodig, document.createTextNode(" Required")]),
-            el("button", { class: "sec-btn sec-btn-ghost sec-btn-sm", type: "button", text: "Remove",
-                           onclick: () => { werk.splice(i, 1); tekenLijst(); } }),
+            el("div", { class: "sec-row", style: "gap:12px;flex-wrap:wrap;align-items:center" }, [
+              el("label", { class: "srv-field-hint" }, [nodig, document.createTextNode(" Required")]),
+              el("label", { class: "srv-field-hint" }, [document.createTextNode("Longest answer "), lengte]),
+            ]),
           ]));
         });
-        lijst.appendChild(el("div", { class: "sec-row", style: "margin-top:12px;gap:8px" }, [
+        const vol = werk.length >= maxVragen;
+        formSectie.append(lijst, el("div", { class: "sec-row", style: "margin-top:10px;gap:10px;flex-wrap:wrap" }, [
           el("button", { class: "sec-btn sec-btn-sm", type: "button", text: "Add question",
-                         disabled: werk.length >= max ? "disabled" : null,
-                         onclick: () => { werk.push({ label: "", placeholder: "", style: "short", required: true, max_length: 300 }); tekenLijst(); } }),
-          el("button", { class: "sec-btn sec-btn-primary sec-btn-sm", type: "button", text: "Save questions",
-                         onclick: async () => {
-                           try {
-                             const uit = await api.put(`/tickets/questions/${encodeURIComponent(vraagType)}`, { questions: werk });
-                             vragen[vraagType] = uit.questions;
-                             toast("Questions saved.");
-                           } catch (err) { toast(err.message, "err"); }
-                         } }),
-          el("span", { class: "srv-field-hint", text: `${werk.length} of ${max}` }),
+                         disabled: vol ? "disabled" : null,
+                         onclick: () => { werk.push({ label: "", placeholder: "", style: "short", required: true, max_length: 300 }); tekenFormulier(); } }),
+          el("span", { class: "srv-field-hint", "aria-live": "polite",
+                       text: vol ? `${werk.length} of ${maxVragen} questions: Discord allows no more in one form.` : `${werk.length} of ${maxVragen} questions` }),
+          el("button", { class: "sec-btn sec-btn-ghost sec-btn-sm", type: "button", text: "Remove form",
+                         onclick: () => { werk = []; formulierAan = false; tekenFormulier(); } }),
         ]));
+        formSectie.append(el("div", { class: "srv-field-hint", style: "margin-top:12px", text: "Preview" }), voorbeeld);
+        tekenVoorbeeld();
       }
-      typeKeuze.addEventListener("change", laadType);
-      laadType();
+      naam.addEventListener("input", tekenVoorbeeld);
+      tekenFormulier();
+
+      const steun = (data.roles || []).find((r) => r.id === s.support_role_id);
+      const opslaan = el("button", { class: "sec-btn sec-btn-primary", type: "button", text: "Save" });
+      const modal = el("div", { class: "sec-modal srv-type-editor", role: "dialog", "aria-modal": "true",
+                                "aria-label": `Edit ${t.label}` }, [
+        el("h3", { text: `Edit ${t.label}` }),
+        el("p", { class: "sec-muted", style: "margin:0",
+                  text: `${t.description}. Channels are named ${t.prefix}-<member>.` }),
+        el("div", { class: "srv-grid2", style: "margin-top:14px" }, [
+          veld("Name", naam, "What members see in the list."),
+          veld("Available", el("label", { class: "sec-switch" }, [aanInput, el("span", { class: "track" })]),
+               "Off: members cannot pick this type."),
+        ]),
+        el("div", { class: "srv-editor-sec" }, [
+          el("h4", { text: "Staff" }),
+          el("p", { class: "sec-muted", style: "margin:0",
+                    text: steun ? `Every ticket is handled by @${steun.name}. Change it under Channels and roles.`
+                                : "No support role yet. Pick one under Channels and roles." }),
+        ]),
+        welkomSectie,
+        formSectie,
+        el("div", { class: "sec-modal-actions" }, [
+          el("button", { class: "sec-btn sec-btn-ghost", type: "button", text: "Cancel", onclick: () => sluit() }),
+          opslaan,
+        ]),
+      ]);
+
+      opslaan.addEventListener("click", async () => {
+        if (formulierAan && werk.some((v) => !String(v.label || "").trim())) {
+          toast("Every question needs a text, or remove it.", "err");
+          return;
+        }
+        opslaan.disabled = true;
+        try {
+          if (naam.value.trim() !== t.label || aanInput.checked !== !!t.enabled) {
+            const uit = await api.patch("/tickets/types", { key: t.key, label: naam.value, enabled: aanInput.checked, position: t.position });
+            t.label = uit.label || t.default_label;
+            t.enabled = aanInput.checked;
+          }
+          if (welkom && welkom.value !== (t.welcome_text || "")) {
+            const uit = await api.patch("/tickets/types/welcome", { key: t.key, welcome_text: welkom.value });
+            t.welcome_text = uit.welcome_text;
+          }
+          const nieuw = formulierAan ? werk : [];
+          if (data.forms && JSON.stringify(nieuw) !== JSON.stringify(vragen[t.key] || [])) {
+            const uit = await api.put(`/tickets/questions/${encodeURIComponent(t.key)}`, { questions: nieuw });
+            vragen[t.key] = uit.questions;
+          }
+          toast(`${t.label} saved.`);
+          sluit();
+          teken();
+        } catch (err) {
+          toast(err.message, "err");
+          opslaan.disabled = false;
+        }
+      });
+      const sluit = openModal(modal);
     }
 
     function teken() {
@@ -294,57 +386,30 @@ export default {
         ]),
       ]));
 
-      // 4. Soorten
-      const typeRijen = (data.types || []).map((t) => {
-        const input = el("input", {
-          type: "checkbox", checked: t.enabled ? "checked" : null,
-          "aria-label": `${t.label} available`,
-        });
-        input.addEventListener("change", async () => {
-          try {
-            await api.patch("/tickets/types", {
-              key: t.key, label: t.label, enabled: input.checked, position: t.position,
-            });
-            t.enabled = input.checked;
-            toast(`${t.label} ${input.checked ? "is available" : "is hidden"}.`);
-          } catch (err) {
-            toast(err.message, "err");
-            input.checked = t.enabled;
-          }
-        });
-        const naamveld = el("input", {
-          class: "sec-input", value: t.label, maxlength: "45",
-          "aria-label": `Label for ${t.default_label}`, style: "max-width:190px",
-        });
-        naamveld.addEventListener("change", async () => {
-          try {
-            const uit = await api.patch("/tickets/types", {
-              key: t.key, label: naamveld.value, enabled: t.enabled, position: t.position,
-            });
-            t.label = uit.label || t.default_label;
-            naamveld.value = t.label;
-            toast("Label saved.");
-          } catch (err) {
-            toast(err.message, "err");
-            naamveld.value = t.label;
-          }
-        });
-        return el("div", { class: "srv-row" + (t.enabled ? "" : " is-off") }, [
-          el("div", { class: "srv-name" }, [el("code", { text: t.prefix }), naamveld]),
-          el("span", { class: "srv-state", text: t.description }),
-          el("div", { class: "srv-actions" }, [el("label", { class: "sec-switch" }, [input, el("span", { class: "track" })])]),
-        ]);
-      });
+      // 4. Soorten: per type een rij met de stand en een Edit-knop. Alles van
+      // een type (naam, aan/uit, welkomsttekst, formulier) staat in het venster.
+      const typeRijen = (data.types || []).map((t) => el("div", { class: "srv-row srv-type-row" + (t.enabled ? "" : " is-off") }, [
+        el("div", { class: "srv-name" }, [
+          el("div", {}, [
+            el("div", { style: "font-weight:700", text: t.label }),
+            el("div", { class: "srv-type-meta" }, [
+              el("code", { text: `${t.prefix}-` }),
+              el("span", { class: `srv-state ${t.enabled ? "is-on" : ""}`, text: t.enabled ? "Available" : "Hidden" }),
+              data.forms ? el("span", { class: `srv-state ${(vragen[t.key] || []).length ? "is-on" : ""}`, text: vraagTelling(t) }) : null,
+              data.v2 && t.welcome_text ? el("span", { class: "srv-state is-on", text: "Welcome text" }) : null,
+            ].filter(Boolean)),
+          ]),
+        ]),
+        el("span", { class: "srv-field-hint", text: t.description }),
+        el("button", { class: "sec-btn sec-btn-sm", type: "button", text: "Edit",
+                       "aria-label": `Edit ${t.label}`, onclick: () => bewerkType(t) }),
+      ]));
       host.appendChild(kaart(
         "Ticket types",
-        "What a member can pick when they open a ticket. The prefix is the channel name Bucky uses.",
+        data.forms
+          ? "What a member can pick when they open a ticket. Edit a type to rename it, switch it off, write its welcome text or give it a form."
+          : "What a member can pick when they open a ticket. Edit a type to rename it or switch it off.",
         [el("div", { class: "srv-list srv-stagger" }, typeRijen)]));
-
-      // 4b. Per type: de welkomsttekst bovenaan het ticket (tickets v2). Alleen
-      // als de backend `v2` meestuurt; uit bestaat deze kaart niet.
-      if (data.v2) host.appendChild(perTypeKaart());
-      // 4c. De vraagronde per type (vlag ticket_forms).
-      if (data.forms) host.appendChild(vragenKaart());
 
       // 5. Wat er open staat
       const open = data.open || [];
@@ -380,6 +445,7 @@ export default {
         ]));
     }
 
+    await laadVragen();
     teken();
   },
 };

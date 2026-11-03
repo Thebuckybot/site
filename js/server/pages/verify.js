@@ -15,6 +15,7 @@
 import { api } from "../api.js";
 import { el, clear, toast, confirmDialog } from "../../security/ui.js";
 import { rollenKiezer } from "./autorole.js";
+import { kiezer } from "../kiezer.js";
 
 const STIJLEN = [["success", "Green"], ["primary", "Blurple"], ["secondary", "Grey"], ["danger", "Red"]];
 const STANDAARDKAART = "pics/verify-default.png";
@@ -90,11 +91,10 @@ export default {
       const lim = data.limits || {};
       const naam = el("input", { class: "sec-input", value: p.name, maxlength: "45", "aria-label": "Panel name" });
       const aan = el("input", { type: "checkbox", checked: p.enabled ? "checked" : null, "aria-label": "Panel switched on" });
-      const kanaal = el("select", { class: "sec-select", "aria-label": "Channel for the panel" }, [
-        el("option", { value: "", text: "Pick a channel…" }),
-        ...(data.panel_channels || []).map((k) => el("option", { value: k.id, text: "#" + k.name })),
-      ]);
-      kanaal.value = p.channel_id || "";
+      const kanaalNaam = (k) => (k.type === 4 ? "▸ " : "#") + k.name;
+      const kanaal = kiezer({ items: data.panel_channels || [], gekozen: [p.channel_id], enkel: true,
+                              label: "Channel for the panel", teken: kanaalNaam,
+                              zoekLabel: "Search channels", leeg: "No channel picked yet." });
       const vorm = el("select", { class: "sec-select", "aria-label": "Message style" }, [
         el("option", { value: "1", text: "Components V2 card" }),
         el("option", { value: "0", text: "Classic embed" }),
@@ -161,29 +161,22 @@ export default {
       const magRollen = data.can_manage_roles !== false;
       const geven = rollenKiezer(data.roles || [], p.add_role_ids || [], lim.max_add || 5, "Roles to give", magRollen);
       const nemen = rollenKiezer(data.roles || [], p.remove_role_ids || [], lim.max_remove || 5, "Roles to take away", magRollen);
-      const kanaalKeuze = new Set(p.channel_ids || []);
-      const kanalen = el("div", { class: "srv-rolelist", role: "group", "aria-label": "Channels this panel opens" },
-        (data.access_channels || []).map((k) => {
-          const input = el("input", { type: "checkbox", value: k.id,
-                                      checked: kanaalKeuze.has(k.id) ? "checked" : null,
-                                      disabled: data.can_manage_channels || kanaalKeuze.has(k.id) ? null : "disabled" });
-          input.addEventListener("change", () => {
-            if (input.checked && kanaalKeuze.size >= (lim.max_channels || 10)) {
-              input.checked = false; toast(`At most ${lim.max_channels || 10} channels.`, "err"); return;
-            }
-            if (input.checked) kanaalKeuze.add(k.id); else kanaalKeuze.delete(k.id);
-          });
-          return el("label", { class: "srv-role" }, [input, el("span", { class: "srv-role-name", text: (k.type === 4 ? "▸ " : "#") + k.name })]);
-        }));
+      // Kanaaltoegang: zonder Kanalen beheren is er niets bij te zetten, maar een
+      // kanaal eraf halen mag wel (server_tools._valideer).
+      const kanalen = kiezer({ items: data.access_channels || [], gekozen: p.channel_ids || [],
+                               max: lim.max_channels || 10, label: "Channels this panel opens",
+                               teken: kanaalNaam, zoekLabel: "Search channels",
+                               magKiezen: !!data.can_manage_channels, magWeghalen: true,
+                               leeg: "No channels picked." });
 
       async function bewaar() {
         const uit = await api.patch(`/verify/${p.id}`, {
-          name: naam.value, enabled: aan.checked, channel_id: kanaal.value || null,
+          name: naam.value, enabled: aan.checked, channel_id: kanaal.waarde(),
           use_v2: vorm.value === "1", title: titel.value, body: tekst.value,
           button_label: knop.value, button_emoji: emoji.value, button_style: stijl.value,
           accent: parseInt(kleur.value.slice(1), 16), image_url: beeld.value.trim(),
           add_role_ids: geven.waarde(), remove_role_ids: nemen.waarde(),
-          channel_ids: Array.from(kanaalKeuze),
+          channel_ids: kanalen.waarde(),
         });
         Object.assign(p, uit);
         return uit;
@@ -212,6 +205,12 @@ export default {
                        } }),
       ]);
 
+      const sectie = (titel, uitleg, inhoud) => el("div", { class: "srv-editor-sec" }, [
+        el("h4", { text: titel }),
+        uitleg ? el("p", { class: "sec-muted", style: "margin:0 0 8px", text: uitleg }) : null,
+        ...inhoud,
+      ].filter(Boolean));
+
       return el("div", { class: "sec-card", style: "margin-top:16px" }, [
         el("div", { class: "srv-panel-head" }, [
           el("div", { class: "sec-page-title", text: p.name || `Panel ${p.id}` }),
@@ -221,30 +220,35 @@ export default {
           veld("Name", naam, "Only you see this."),
           veld("Switched on", el("label", { class: "sec-switch" }, [aan, el("span", { class: "track" })]),
                "Off: the button answers that the panel is off."),
-          veld("Channel", kanaal, "Where the panel is posted."),
-          veld("Style", vorm, "If Discord refuses the V2 card, Bucky posts a classic embed."),
-          veld("Title", titel, null),
-          veld("Button label", knop, null),
-          veld("Button emoji", emoji, "Optional."),
-          veld("Button colour", stijl, null),
-          veld("Accent colour", kleur, null),
         ]),
-        veld("Text", tekst, null),
-        el("div", { style: "margin-top:14px" }, [
-          el("div", { style: "font-weight:700", text: "Image or gif" }),
-          el("div", { class: "sec-row", style: "gap:8px;flex-wrap:wrap;margin-top:6px" }, [beeld, importeer, bestand]),
-          el("span", { class: "srv-field-hint", text: "https only, PNG, JPEG, GIF or WebP, at most 2 MB. Links are fetched once and kept as Bucky's own copy." }),
-          voorbeeld,
+        sectie("Where it goes", "The channel the panel is posted in. Members can also type +verify there.",
+               [kanaal.node]),
+        sectie("Roles", magRollen
+          ? "Only roles Bucky can give are listed; the others are under Not available, with the reason."
+          : "You need the Manage Roles permission to pick roles.", [
+          el("div", { style: "font-weight:700", text: "Roles to give" }), geven.node,
+          el("div", { style: "font-weight:700;margin-top:12px", text: "Roles to take away" }), nemen.node,
         ]),
-        el("div", { style: "margin-top:16px" }, [el("div", { style: "font-weight:700", text: "Roles to give" }), geven.node]),
-        el("div", { style: "margin-top:16px" }, [el("div", { style: "font-weight:700", text: "Roles to take away" }), nemen.node]),
-        el("div", { style: "margin-top:16px" }, [
-          el("div", { style: "font-weight:700", text: "Channels this opens" }),
-          el("p", { class: "sec-muted", style: "margin:2px 0 6px",
-                    text: data.can_manage_channels
-                      ? "On publish, the first role to give can see these channels. Bucky only adds view access; taking a channel off this list does not remove it again."
-                      : "You need the Manage Channels and Manage Roles permissions to give access to channels." }),
-          kanalen,
+        sectie("Channels this opens", data.can_manage_channels
+          ? "On publish, the first role to give can see these channels. Bucky only adds view access; taking a channel off this list does not remove it again."
+          : "You need the Manage Channels and Manage Roles permissions to give access to channels. You can still take channels off the list.",
+          [kanalen.node]),
+        sectie("Message", null, [
+          el("div", { class: "srv-grid2" }, [
+            veld("Style", vorm, "If Discord refuses the V2 card, Bucky posts a classic embed."),
+            veld("Title", titel, null),
+            veld("Button label", knop, null),
+            veld("Button emoji", emoji, "Optional."),
+            veld("Button colour", stijl, null),
+            veld("Accent colour", kleur, null),
+          ]),
+          veld("Text", tekst, null),
+          el("div", { style: "margin-top:14px" }, [
+            el("div", { style: "font-weight:700", text: "Image or gif" }),
+            el("div", { class: "sec-row", style: "gap:8px;flex-wrap:wrap;margin-top:6px" }, [beeld, importeer, bestand]),
+            el("span", { class: "srv-field-hint", text: "https only, PNG, JPEG, GIF or WebP, at most 2 MB. Links are fetched once and kept as Bucky's own copy." }),
+            voorbeeld,
+          ]),
         ]),
         knoppen,
       ]);

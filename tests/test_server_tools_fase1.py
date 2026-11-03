@@ -134,17 +134,22 @@ def ticket_welkomst(browser):
         (f"**/api/server/{GID}/tickets/types/welcome", opslaan),
     ])
     page.goto(f"{BASIS}/server.html?guild_id={GID}#tickets", wait_until="networkidle")
-    page.wait_for_selector("text=Welcome text per type", timeout=15000)
-    vak = page.get_by_label("Welcome text for this ticket type")
-    page.get_by_label("Ticket type", exact=True).select_option("bug")
-    eis(vak.input_value() == "Hoi {user}", "het tekstvak volgt het gekozen type")
+    # Sinds 3-11-2026 staat de welkomsttekst in het bewerkvenster van het type.
+    page.wait_for_selector("text=Ticket types", timeout=15000)
+    page.get_by_role("button", name="Edit Bug Report").click()
+    venster = page.get_by_role("dialog", name="Edit Bug Report")
+    vak = venster.get_by_label("Welcome text", exact=True)
+    eis(vak.input_value() == "Hoi {user}", "het venster toont de tekst van dit type")
     vak.fill("Thanks {user}, add a screenshot.")
-    page.get_by_role("button", name="Save welcome text").click()
+    venster.get_by_role("button", name="Save", exact=True).click()
     page.wait_for_timeout(400)
     eis(verzonden == [{"key": "bug", "welcome_text": "Thanks {user}, add a screenshot."}],
         f"opslaan stuurt type en tekst ({verzonden})")
+    page.get_by_role("button", name="Edit Bug Report").click()
+    vak = page.get_by_role("dialog", name="Edit Bug Report").get_by_label("Welcome text", exact=True)
     breedte = vak.bounding_box()["width"]
     eis(breedte > 400, f"het tekstvak is breed genoeg ({breedte:.0f}px)")
+    eis(vak.input_value() == "Thanks {user}, add a screenshot.", "na opslaan staat de nieuwe tekst erin")
     eis(not fouten, f"geen paginafouten ({fouten})")
     page.close()
 
