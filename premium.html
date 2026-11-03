@@ -11,6 +11,27 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https://buckybot.app; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <title>Bucky Premium</title>
   <meta name="description" content="The four Bucky premium tiers: what each boost does, and exactly what is in the monthly cache." />
+  <!-- Open Graph en Twitter/X: titel en beschrijving zijn die van deze pagina. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Bucky" />
+  <meta property="og:title" content="Bucky Premium" />
+  <meta property="og:description" content="The four Bucky premium tiers: what each boost does, and exactly what is in the monthly cache." />
+  <meta name="twitter:title" content="Bucky Premium" />
+  <meta name="twitter:description" content="The four Bucky premium tiers: what each boost does, and exactly what is in the monthly cache." />
+  <!-- Linkvoorvertoning (4-11-2026): de BuckyBot-banner. De brede versie
+       (1600x703, de verhouding van het origineel) voor og:image, die Discord en
+       Slack tonen zonder te knippen; de bijsnede van 1200x630 (1,91:1, mascotte
+       en tekst in het midden) voor twitter:image en wie op die verhouding knipt.
+       test_link_metadata.py houdt beide gelijk aan de bestanden. -->
+  <meta property="og:image" content="https://buckybot.app/pics/og/bucky-banner-1600x703.jpg" />
+  <meta property="og:image:secure_url" content="https://buckybot.app/pics/og/bucky-banner-1600x703.jpg" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1600" />
+  <meta property="og:image:height" content="703" />
+  <meta property="og:image:alt" content="The red Bucky mascot next to the BuckyBot logo and the line: The all-in-one Discord bot" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://buckybot.app/pics/og/bucky-banner-1200x630.jpg" />
+  <meta name="twitter:image:alt" content="The red Bucky mascot next to the BuckyBot logo and the line: The all-in-one Discord bot" />
   <link rel="stylesheet" href="css/fonts.css" />
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="public.css" />
@@ -18,7 +39,7 @@
   <script src="js/nav-auth.js" type="module"></script>
 <script type="module" src="js/features.js"></script>
 </head>
-<body class="pr-body">
+<body class="pr-body dv2-premium pr-laden">
   <!--
     DE NAV EN DE FOOTER ZIJN DE GEDEELDE, NIET EEN EIGEN KOPIE. De eerste versie
     van deze pagina had een eigen pr-nav en pr-foot, en zag er daardoor uit alsof
@@ -52,6 +73,14 @@
   </nav>
 
   <main class="pr-main" id="pr-main" tabindex="-1">
+    <!-- De vier tierbadges als boog boven de titel (4-11-2026). Boven de vouw, dus
+         direct geladen; de maten staan vast, zodat de titel niet verspringt. -->
+    <div class="pr-held" role="img" aria-label="The four premium tier badges">
+      <img src="assets/images/premium/badge-bucky_plus-192.webp" alt="" width="96" height="96" decoding="async" />
+      <img src="assets/images/premium/badge-bucky_plusplus-192.webp" alt="" width="96" height="96" decoding="async" />
+      <img src="assets/images/premium/badge-overclock-192.webp" alt="" width="96" height="96" decoding="async" />
+      <img src="assets/images/premium/badge-elite-192.webp" alt="" width="96" height="96" decoding="async" />
+    </div>
     <h1 class="pr-title">Bucky Premium</h1>
     <p class="pr-lede">
       Four tiers. Each one multiplies what you earn by playing, adds a bonus to
@@ -78,6 +107,14 @@
       store page for that tier.
     </p>
 
+    <!-- DASHBOARD V2 (4-11-2026): de vergelijking van de tiers naast elkaar. Uit
+         dezelfde gegevens als de kaarten erboven (premium.js), met dezelfde
+         woorden; geen eigen lijst. Verborgen tot er twee tiers of meer zijn. -->
+    <section class="pr-vergelijk" id="pr-vergelijk" hidden aria-labelledby="pr-vergelijk-title">
+      <h2 id="pr-vergelijk-title" class="pr-section-title">Compare the tiers</h2>
+      <div class="pr-vergelijk-wrap" id="pr-vergelijk-wrap" tabindex="0" role="region" aria-labelledby="pr-vergelijk-title"></div>
+    </section>
+
     <!--
       DE VIER SECURITY BOOSTS. Dezelfde bron als de tiers hierboven: de bot
       schrijft ze in premium_catalog (kind = boost), /api/premium/tiers geeft ze
@@ -85,13 +122,18 @@
       in deze HTML. Verborgen tot er boostrijen binnenkomen.
     -->
     <section class="pr-boosts" id="pr-boosts" hidden aria-labelledby="pr-boosts-title">
-      <h2 id="pr-boosts-title" class="pr-section-title">Security Boosts</h2>
-      <p class="pr-lede">
-        A boost is for a <strong>server</strong>, not for you. Buy one, then give it to a
-        server where you have Manage Server: for the time it runs, that server keeps its
-        security logs for a year instead of two weeks, holds more detection rules and more
-        recovery snapshots. One boost per server; after seven days you can move it.
-      </p>
+      <div class="pr-sectiekop">
+        <div class="pr-sectie-tekst">
+        <h2 id="pr-boosts-title" class="pr-section-title">Security Boosts</h2>
+        <p class="pr-lede">
+          A boost is for a <strong>server</strong>, not for you. Buy one, then give it to a
+          server where you have Manage Server: for the time it runs, that server keeps its
+          security logs for a year instead of two weeks, holds more detection rules and more
+          recovery snapshots. One boost per server; after seven days you can move it.
+        </p>
+        </div>
+        <img class="pr-sectie-beeld" src="assets/images/premium/security-360.webp" alt="A blue shield badge, the mark of a Security Boost" width="180" height="180" loading="lazy" decoding="async" />
+      </div>
       <ul class="pr-grid pr-grid-boosts" id="pr-boost-grid" aria-describedby="pr-boost-note"></ul>
       <p class="pr-note" id="pr-boost-note">
         One-time purchases, not a subscription. The clock starts when you assign a boost,
@@ -108,13 +150,18 @@
       Verborgen tot er cipherrijen binnenkomen.
     -->
     <section class="pr-cipher" id="pr-cipher" hidden aria-labelledby="pr-cipher-title">
-      <h2 id="pr-cipher-title" class="pr-section-title">Cipher</h2>
-      <p class="pr-lede">
-        Cipher is the premium currency. It lands on your profile the moment the purchase goes
-        through, and you spend it in the Cipher section of <code>+shop</code>: XP boosts that run
-        for a few hours, and the two titles on sale each week. It never expires and is never
-        transferable.
-      </p>
+      <div class="pr-sectiekop">
+        <div class="pr-sectie-tekst">
+        <h2 id="pr-cipher-title" class="pr-section-title">Cipher</h2>
+        <p class="pr-lede">
+          Cipher is the premium currency. It lands on your profile the moment the purchase goes
+          through, and you spend it in the Cipher section of <code>+shop</code>: XP boosts that run
+          for a few hours, and the two titles on sale each week. It never expires and is never
+          transferable.
+        </p>
+        </div>
+        <img class="pr-sectie-beeld" src="assets/images/premium/cipher-360.webp" alt="A golden key, the Cipher icon" width="180" height="180" loading="lazy" decoding="async" />
+      </div>
       <ul class="pr-grid pr-grid-boosts" id="pr-cipher-grid" aria-describedby="pr-cipher-note"></ul>
       <p class="pr-note" id="pr-cipher-note">
         One-time purchases. Sold by Discord; Cipher is credited once and is not refundable once
@@ -123,45 +170,60 @@
     </section>
 
     <section class="pr-faq" aria-labelledby="pr-faq-title">
-      <h2 id="pr-faq-title">How the monthly cache works</h2>
+      <div class="pr-sectiekop pr-sectiekop-kort">
+        <h2 id="pr-faq-title">How the monthly cache works</h2>
+        <img class="pr-sectie-beeld" src="assets/images/premium/shard-360.webp" alt="A glowing blue shard, the currency in the monthly cache" width="180" height="180" loading="lazy" decoding="async" />
+      </div>
       <dl class="pr-dl">
-        <dt>You claim it, it is never dropped on you</dt>
-        <dd>
-          A new cache appears once per calendar month while your subscription is
-          running. It waits until you run <code>premium</code> and press claim.
-        </dd>
-        <dt>An unclaimed cache cannot be stolen</dt>
-        <dd>
-          It is not part of your balance and not part of your net worth, so it is
-          out of reach of robberies by construction - there is nothing there to
-          take.
-        </dd>
-        <dt>One cache per month</dt>
-        <dd>
-          Subscribing twice in the same month still gives one cache. Upgrading
-          mid-month lifts the waiting cache to the higher tier.
-        </dd>
-        <dt>What is a Security Boost, and who is it for?</dt>
-        <dd>
-          A boost is a one-time purchase for a <em>server</em>: you buy it, then give it to a
-          server where you have Manage Server. While it runs, that server keeps its security
-          logs for a year instead of two weeks, holds 30 detection rules instead of 10 and 25
-          recovery snapshots instead of 10. It changes nothing about your own account.
-        </dd>
-        <dt>When does the clock start, and can I move it?</dt>
-        <dd>
-          The clock starts when you assign the boost, not when you buy it, so a boost in
-          reserve does not run out. After seven days you can move it to another server; the
-          server it leaves keeps its limits for seven more days. A server's admins can decline
-          a boost; it then goes back to your reserve with its clock still running.
-        </dd>
-        <dt>What happens when a boost ends?</dt>
-        <dd>
-          The server keeps its extended logs, rules and snapshots for seven days. Assign a new
-          boost in that window and nothing changes; otherwise the limits fall back to the free
-          ones and older data is removed on the next hourly sweep. The server and its members
-          are told in the server's #b-boost channel.
-        </dd>
+        <div>
+          <dt>You claim it, it is never dropped on you</dt>
+          <dd>
+            A new cache appears once per calendar month while your subscription is
+            running. It waits until you run <code>premium</code> and press claim.
+          </dd>
+        </div>
+        <div>
+          <dt>An unclaimed cache cannot be stolen</dt>
+          <dd>
+            It is not part of your balance and not part of your net worth, so it is
+            out of reach of robberies by construction - there is nothing there to
+            take.
+          </dd>
+        </div>
+        <div>
+          <dt>One cache per month</dt>
+          <dd>
+            Subscribing twice in the same month still gives one cache. Upgrading
+            mid-month lifts the waiting cache to the higher tier.
+          </dd>
+        </div>
+        <div>
+          <dt>What is a Security Boost, and who is it for?</dt>
+          <dd>
+            A boost is a one-time purchase for a <em>server</em>: you buy it, then give it to a
+            server where you have Manage Server. While it runs, that server keeps its security
+            logs for a year instead of two weeks, holds 30 detection rules instead of 10 and 25
+            recovery snapshots instead of 10. It changes nothing about your own account.
+          </dd>
+        </div>
+        <div>
+          <dt>When does the clock start, and can I move it?</dt>
+          <dd>
+            The clock starts when you assign the boost, not when you buy it, so a boost in
+            reserve does not run out. After seven days you can move it to another server; the
+            server it leaves keeps its limits for seven more days. A server's admins can decline
+            a boost; it then goes back to your reserve with its clock still running.
+          </dd>
+        </div>
+        <div>
+          <dt>What happens when a boost ends?</dt>
+          <dd>
+            The server keeps its extended logs, rules and snapshots for seven days. Assign a new
+            boost in that window and nothing changes; otherwise the limits fall back to the free
+            ones and older data is removed on the next hourly sweep. The server and its members
+            are told in the server's #b-boost channel.
+          </dd>
+        </div>
       </dl>
     </section>
   </main>

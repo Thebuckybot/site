@@ -44,6 +44,27 @@ function el(tag, className, text) {
   return node;
 }
 
+// DE BADGE IN EEN LICHTE VERSIE (4-11-2026). badge_url wijst naar de PNG van
+// 600x600 in assets/badges/ (200-450 KB per stuk). Voor elke bekende badge staat
+// er een WebP van 192 px in assets/images/premium/ (6-12 KB). Is er voor een
+// badge geen WebP (een nieuwe tier), dan valt de img terug op badge_url zelf, en
+// pas als ook die niet laadt verdwijnt hij - zoals voorheen.
+function badgeImg(url, maat, lazy) {
+  const badge = el("img", "pr-badge");
+  const m = /\/assets\/badges\/([a-z0-9_]+)\.png$/.exec(String(url || ""));
+  badge.src = m ? `assets/images/premium/badge-${m[1]}-192.webp` : url;
+  badge.alt = "";                 // decoratief: de naam ernaast zegt hetzelfde
+  badge.width = maat;
+  badge.height = maat;
+  badge.decoding = "async";
+  if (lazy) badge.loading = "lazy";
+  badge.addEventListener("error", () => {
+    if (m && badge.getAttribute("src") !== url) badge.src = url;
+    else badge.remove();
+  });
+  return badge;
+}
+
 function formatBoost(boost) {
   const n = Number(boost);
   if (!Number.isFinite(n)) return "";
@@ -88,17 +109,8 @@ function card(tier, mine) {
   // plaat. Hier staat geen pad: als het bestand er niet is stuurt de bot
   // `null`, en dan blijft de kaart gewoon staan zonder plaatje.
   if (tier.badge_url) {
-    const badge = el("img", "pr-badge");
-    badge.src = tier.badge_url;
-    badge.alt = "";                 // decoratief: de naam ernaast zegt hetzelfde
-    badge.loading = "lazy";
-    badge.width = 40;
-    badge.height = 40;
-    // EEN PLAAT DIE NIET LAADT VERDWIJNT, en laat geen gebroken icoon achter.
-    // Het bestand kan tussen publiceren en bezoeken zijn weggehaald; de kaart
-    // hoort dan hetzelfde te doen als wanneer hij er nooit was.
-    badge.addEventListener("error", () => badge.remove());
-    title.appendChild(badge);
+    // Boven de vouw op een desktop, dus niet lazy; de maat staat vast (geen sprong).
+    title.appendChild(badgeImg(tier.badge_url, 72, false));
   }
   title.appendChild(document.createTextNode(tier.name || tier.tier_key || ""));
   head.appendChild(title);
@@ -131,7 +143,15 @@ function card(tier, mine) {
   for (const [label, value] of rows) {
     if (!value) continue;
     stats.appendChild(el("dt", null, label));
-    stats.appendChild(el("dd", null, value));
+    const dd = el("dd", null, value);
+    if (label === "Monthly shards") {
+      // Het pictogram van de shard; decoratief, het label zegt het al.
+      const ic = el("img", "pr-shard-ic");
+      ic.src = "assets/images/premium/shard-48.webp"; ic.alt = ""; ic.width = 18; ic.height = 18;
+      ic.addEventListener("error", () => ic.remove());
+      dd.prepend(ic);
+    }
+    stats.appendChild(dd);
   }
   item.appendChild(stats);
 
@@ -236,6 +256,7 @@ async function load() {
   }
 
   grid.replaceChildren(...tiers.map((tier) => card(tier, tier.tier_key === mine)));
+  renderVergelijk(tiers, mine);
   renderBoosts(boosts);
   renderCipher(cipher);
   status.hidden = true;
@@ -264,14 +285,7 @@ function boostCard(row) {
   const head = el("div", "pr-card-head");
   const title = el("h3", "pr-card-title");
   if (row.badge_url) {
-    const badge = el("img", "pr-badge");
-    badge.src = row.badge_url;
-    badge.alt = "";
-    badge.loading = "lazy";
-    badge.width = 40;
-    badge.height = 40;
-    badge.addEventListener("error", () => badge.remove());
-    title.appendChild(badge);
+    title.appendChild(badgeImg(row.badge_url, 56, true));
   }
   title.appendChild(document.createTextNode(row.name || row.tier_key || "Security Boost"));
   head.appendChild(title);
@@ -344,14 +358,7 @@ function cipherCard(row) {
   const head = el("div", "pr-card-head");
   const title = el("h3", "pr-card-title");
   if (row.badge_url) {
-    const badge = el("img", "pr-badge");
-    badge.src = row.badge_url;
-    badge.alt = "";
-    badge.loading = "lazy";
-    badge.width = 40;
-    badge.height = 40;
-    badge.addEventListener("error", () => badge.remove());
-    title.appendChild(badge);
+    title.appendChild(badgeImg(row.badge_url, 56, true));
   }
   title.appendChild(document.createTextNode(row.name || row.tier_key || "Cipher"));
   head.appendChild(title);
@@ -408,4 +415,61 @@ function renderCipher(packs) {
   section.hidden = false;
 }
 
-load();
+/**
+ * DE VERGELIJKING (dashboard v2, 4-11-2026): de tiers naast elkaar, rij voor rij.
+ * Uit DEZELFDE rijen als de kaarten en met dezelfde woorden en omzettingen
+ * (formatBoost, formatShards, "N items"), dus nooit een tweede bron en nooit
+ * een bewering die niet ook op een kaart staat. Een waarde die ontbreekt wordt
+ * een streepje, geen verzonnen nul. Pas vanaf twee tiers; een vergelijking van
+ * een is er geen.
+ */
+function renderVergelijk(tiers, mine) {
+  const section = document.getElementById("pr-vergelijk");
+  const wrap = document.getElementById("pr-vergelijk-wrap");
+  if (!section || !wrap) return;
+  if (tiers.length < 2) { section.hidden = true; return; }
+
+  const table = el("table");
+  const caption = el("caption", "pr-sr", "What each tier gives, side by side");
+  table.appendChild(caption);
+  const thead = el("thead");
+  const kop = el("tr");
+  const hoek = el("th"); hoek.scope = "col";
+  hoek.appendChild(el("span", "pr-sr", "Tier"));
+  kop.appendChild(hoek);
+  for (const tier of tiers) {
+    const th = el("th"); th.scope = "col";
+    if (tier.featured === true) { th.classList.add("is-aanrader"); th.appendChild(el("span", "pr-featured-flag", "Recommended")); }
+    th.appendChild(document.createTextNode(tier.name || tier.tier_key || ""));
+    if (tier.price) th.appendChild(el("span", "pr-v-prijs", tier.price));
+    if (tier.tier_key === mine) th.appendChild(el("span", "pr-v-prijs", "Your tier"));
+    kop.appendChild(th);
+  }
+  thead.appendChild(kop);
+  table.appendChild(thead);
+
+  const rijen = [
+    ["Earnings boost", (t) => formatBoost(t.boost)],
+    ["Challenge bonus", (t) => `+${Number(t.challenge_bonus) || 0}% on shards`],
+    ["Monthly shards", (t) => formatShards(t.shards_monthly)],
+    ["What's in the monthly cache", (t) => (Array.isArray(t.contents) && t.contents.length ? `${t.contents.length} items` : "")],
+  ];
+  const tbody = el("tbody");
+  for (const [label, waarde] of rijen) {
+    const tr = el("tr");
+    const th = el("th", null, label); th.scope = "row";
+    tr.appendChild(th);
+    for (const tier of tiers) {
+      const td = el("td", tier.featured === true ? "is-aanrader" : null, waarde(tier) || "–");
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  wrap.replaceChildren(table);
+  section.hidden = false;
+}
+
+// Klaar met laden (gelukt of niet): de noot en de uitleg mogen erbij. Zie
+// premium.css "niets springt terwijl de tiers laden".
+load().finally(() => document.body.classList.remove("pr-laden"));
