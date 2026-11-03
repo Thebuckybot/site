@@ -94,3 +94,88 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* =====================================================================
+   DASHBOARD V2 (3-11-2026): de "Liquid"-look van het dashboard (serverkeuze,
+   Server Center, Security Center), gekozen uit docs/previews/dashboard-v2 (B,
+   met de rust van A). ALLEEN TOEGEVOEGD, met een eigen voorvoegsel: geen enkele
+   bestaande variabele verandert, dus de rest van de site merkt hier niets van.
+   Donker is de standaard; het lichte palet staat onder `.dv2-licht` en geldt
+   alleen bij prefers-color-scheme: light (de site heeft geen eigen themakeuze).
+   ===================================================================== */
+:root {
+  --dv2-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Manrope", sans-serif;
+
+  --dv2-bg: #08080A;
+  --dv2-vlak: #141418;           /* effen kaart: geen blur op kaarten */
+  --dv2-vlak-2: #1B1B21;         /* invoer, een vak in een kaart */
+  --dv2-vlak-3: #24242B;         /* hover, een menu */
+  --dv2-rand: rgba(255, 255, 255, 0.08);
+  --dv2-rand-sterk: rgba(255, 255, 255, 0.16);
+  --dv2-kop: #F7F7FA;
+  --dv2-tekst: #E6E6EC;
+  --dv2-tekst-2: #BDBDC6;
+  --dv2-tekst-3: #A2A2AC;
+
+  --dv2-accent: #FF7085;         /* rood als TEKST op donker */
+  --dv2-accent-vul: #E8102E;     /* rood als VLAK (wit erop: 4,7:1) */
+  --dv2-accent-vul-2: #BE0A25;   /* onderkant van het knopverloop */
+  --dv2-accent-bg: rgba(232, 16, 46, 0.16);
+  --dv2-goed: #5FD69A;  --dv2-goed-bg: rgba(95, 214, 154, 0.14);  --dv2-goed-vul: #17784A;
+  --dv2-let: #F5B262;   --dv2-let-bg: rgba(245, 178, 98, 0.15);
+  --dv2-gevaar: #FF7A8A; --dv2-gevaar-vul: #C40D27;
+  --dv2-focus: #FF8A9A;
+
+  /* Glas: alleen zijpaneel, balk en venster (hoogstens drie blurvlakken). */
+  --dv2-glas: rgba(30, 30, 38, 0.46);
+  --dv2-glas-effen: #17171D;     /* zonder backdrop-filter of met minder transparantie */
+  --dv2-glas-blur: 30px;
+  --dv2-glas-rand: rgba(255, 255, 255, 0.14);
+  --dv2-glans: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  --dv2-zweef: 0 40px 80px -30px rgba(0, 0, 0, 0.9);
+  --dv2-kaart-schaduw: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 30px -14px rgba(0, 0, 0, 0.7);
+
+  /* Achtergrond: twee gloeden en de golf uit de app; vast, nooit bewegend. */
+  --dv2-gloed-1: rgba(232, 16, 46, 0.28);
+  --dv2-gloed-2: rgba(44, 91, 216, 0.24);
+  --dv2-golf-sterkte: 0.85;
+
+  --dv2-r-paneel: 30px;
+  --dv2-r-kaart: 24px;
+  --dv2-r-venster: 30px;
+  --dv2-r-knop: 999px;
+  --dv2-zij: 252px;
+  --dv2-rail: 76px;
+  --dv2-marge: 16px;
+}
+
+@media (prefers-color-scheme: light) {
+  .dv2-licht {
+    --dv2-bg: #EEF0F5;
+    --dv2-vlak: #FFFFFF;
+    --dv2-vlak-2: #F5F6F9;
+    --dv2-vlak-3: #ECEDF2;
+    --dv2-rand: rgba(15, 16, 22, 0.09);
+    --dv2-rand-sterk: rgba(15, 16, 22, 0.2);
+    --dv2-kop: #0F1016;
+    --dv2-tekst: #1C1D24;
+    --dv2-tekst-2: #4C4D57;
+    --dv2-tekst-3: #5C5D67;
+    --dv2-accent: #B00C24;
+    --dv2-accent-bg: rgba(232, 16, 46, 0.09);
+    --dv2-goed: #13703F;  --dv2-goed-bg: #E7F1EC;
+    --dv2-let: #8A4E08;   --dv2-let-bg: #FDF1E2;
+    --dv2-gevaar: #B00C24;
+    --dv2-focus: #CB0E28;
+    --dv2-glas: rgba(255, 255, 255, 0.5);
+    --dv2-glas-effen: #F7F8FB;
+    --dv2-glas-rand: rgba(255, 255, 255, 0.85);
+    --dv2-glans: inset 0 1px 0 #FFFFFF;
+    --dv2-zweef: 0 40px 80px -36px rgba(30, 30, 60, 0.35);
+    --dv2-kaart-schaduw: 0 1px 2px rgba(20, 20, 28, 0.05), 0 12px 30px -16px rgba(20, 20, 28, 0.18);
+    --dv2-gloed-1: rgba(255, 111, 134, 0.35);
+    --dv2-gloed-2: rgba(110, 149, 245, 0.32);
+    --dv2-golf-sterkte: 0.45;
+    color-scheme: light;
+  }
+}

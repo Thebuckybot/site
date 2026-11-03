@@ -13,8 +13,20 @@
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/security.css" />
 <script type="module" src="js/features.js"></script>
+  <script src="js/glas.js"></script>
 </head>
 <body class="sec-body" data-tour="security">
+  <!-- Dashboard v2: het filter voor de vervorming van het glas. Alleen gebruikt
+       als js/glas.js de klasse glas-vervorming zet (Chromium). Neemt geen ruimte in. -->
+  <svg class="dv2-filters" aria-hidden="true" focusable="false">
+    <filter id="dv2-vervorm" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="ruis"/>
+      <feGaussianBlur in="ruis" stdDeviation="2" result="zacht"/>
+      <feDisplacementMap in="SourceGraphic" in2="zacht" scale="38" xChannelSelector="R" yChannelSelector="G" result="verbogen"/>
+      <feGaussianBlur in="verbogen" stdDeviation="9"/>
+    </filter>
+  </svg>
+
   <div id="sec-app" class="sec-app" aria-busy="true">
     <!-- Sidebar -->
     <aside class="sec-sidebar" id="sec-sidebar">
