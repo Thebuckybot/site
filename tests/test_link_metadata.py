@@ -1,8 +1,18 @@
-"""De linkvoorvertoning (OG-tags): een lage banner die bestaat en klopt met de tags.
+"""De linkvoorvertoning (OG- en Twitter-tags) op elke publieke pagina.
 
-Waarom: de oude afbeelding was 736x552 en rees in Discord hoog op. De vraag was
-een lage banner. Deze test houdt de verhouding laag, de afmetingen in de tags
-gelijk aan het echte bestand, en de twee voorpagina's op dezelfde afbeelding.
+Geschiedenis: de oude afbeelding was 736x552 en rees in Discord hoog op; daarna
+kwam een lage banner van 1200x400 op de twee voorpagina's. Sinds 4-11-2026 (vraag
+van de eigenaar) is het de BuckyBot-banner op ALLE publieke pagina's:
+
+  * og:image is de brede versie (1600x703, de verhouding van het origineel), die
+    Discord en Slack tonen zonder te knippen;
+  * twitter:image is een bijsnede van 1200x630 (1,91:1) met de mascotte en de tekst
+    binnen het midden, voor wie op die verhouding knipt;
+  * twitter:card is summary_large_image; breedte, hoogte en alt-tekst staan erbij
+    en kloppen met de bestanden; beide ruim onder 500 KB;
+  * og:title is de <title> van de pagina, og:description de meta description
+    (een pagina zonder beschrijving krijgt er geen verzonnen bij);
+  * geen enkele tag wijst buiten buckybot.app.
 """
 
 from __future__ import annotations
@@ -11,8 +21,14 @@ import os
 import re
 import struct
 
+import pytest
+
 SITE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAGINAS = ("index.html", os.path.join("v2", "index.html"))
+PAGINAS = ["index.html", "arcade.html", "premium.html", "contact.html", "cookie.html", "privacy.html", "rules.html",
+           "tos.html", "dashboard.html"] + [os.path.join("v2", f) for f in (
+           "index.html", "contact.html", "cookie.html", "privacy.html", "rules.html", "tos.html", "organisations.html")]
+BREED = "https://buckybot.app/pics/og/bucky-banner-1600x703.jpg"
+SMAL = "https://buckybot.app/pics/og/bucky-banner-1200x630.jpg"
 
 
 def _meta(html: str, prop: str) -> str | None:
@@ -42,27 +58,45 @@ def _lees(pagina: str) -> str:
         return fh.read()
 
 
-def test_beide_voorpaginas_wijzen_naar_dezelfde_lage_banner():
-    urls = {_meta(_lees(p), "og:image") for p in PAGINAS}
-    assert len(urls) == 1
-    url = urls.pop()
-    assert url.startswith("https://buckybot.app/pics/og/")
+def _pad(url: str) -> str:
+    return os.path.join(SITE, url.replace("https://buckybot.app/", "").replace("/", os.sep))
 
 
-def test_de_banner_bestaat_en_is_laag_en_de_tags_kloppen():
-    html = _lees("index.html")
-    url = _meta(html, "og:image")
-    pad = os.path.join(SITE, url.replace("https://buckybot.app/", "").replace("/", os.sep))
+@pytest.mark.parametrize("pagina", PAGINAS)
+def test_elke_publieke_pagina_draagt_de_banner(pagina):
+    html = _lees(pagina)
+    assert _meta(html, "og:image") == BREED
+    assert _meta(html, "og:image:secure_url") == BREED
+    assert (_meta(html, "og:image:width"), _meta(html, "og:image:height")) == ("1600", "703")
+    assert _meta(html, "twitter:card") == "summary_large_image"
+    assert _meta(html, "twitter:image") == SMAL
+    alt = _meta(html, "og:image:alt")
+    assert alt and "Bucky" in alt and alt == _meta(html, "twitter:image:alt")
+
+
+@pytest.mark.parametrize("pagina", PAGINAS)
+def test_titel_en_beschrijving_zijn_die_van_de_pagina(pagina):
+    html = _lees(pagina)
+    assert _meta(html, "og:title"), "geen og:title"
+    beschrijving = _meta(html, "description")
+    if pagina not in ("index.html", os.path.join("v2", "index.html")):
+        # De voorpagina's hadden al eigen OG-teksten; de rest neemt ze letterlijk over.
+        titel = re.search(r"<title>(.*?)</title>", html, re.S).group(1).strip()
+        assert _meta(html, "og:title") == titel
+        assert _meta(html, "og:description") == beschrijving
+
+
+@pytest.mark.parametrize("pagina", PAGINAS)
+def test_geen_tag_wijst_buiten_de_site(pagina):
+    html = _lees(pagina)
+    for m in re.finditer(r'<meta (?:property|name)="(?:og|twitter):[^"]*" content="(https?://[^"]*)"', html):
+        assert m.group(1).startswith("https://buckybot.app/"), m.group(1)
+
+
+@pytest.mark.parametrize("url,maat", [(BREED, (1600, 703)), (SMAL, (1200, 630))])
+def test_de_bestanden_bestaan_kloppen_en_zijn_licht(url, maat):
+    pad = _pad(url)
     assert os.path.exists(pad), pad
-    w, h = _jpeg_afmetingen(pad)
-    assert (str(w), str(h)) == (_meta(html, "og:image:width"), _meta(html, "og:image:height"))
-    assert w / h >= 2.5, f"{w}x{h} is niet laag"
-    # Discord haalt tot 8 MB; ruim eronder blijft de voorvertoning snel.
-    assert os.path.getsize(pad) < 300 * 1024
-
-
-def test_groot_formaat_kaart_en_twitter_wijst_naar_dezelfde_afbeelding():
-    for p in PAGINAS:
-        html = _lees(p)
-        assert _meta(html, "twitter:card") == "summary_large_image"
-        assert _meta(html, "twitter:image") == _meta(html, "og:image")
+    assert _jpeg_afmetingen(pad) == maat
+    assert maat[0] >= 1200
+    assert os.path.getsize(pad) < 500 * 1024
