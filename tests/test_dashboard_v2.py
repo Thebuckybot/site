@@ -24,6 +24,12 @@ gegevens uit dashboard_v2_data.py:
   * de serverwisselaar (muis, toetsenbord, lade), de klikbare broodkruimel, het
     zoekveld met "/", geen focusring na een muisklik;
   * de serverkeuze met veel servers en een lange naam; contrast AA van de kleurparen.
+4-11-2026, na een melding van de eigenaar (de wisselaar reageerde niet):
+  * de wisselaar met de echte vorm van /api/me, geklikt op icoon, naam en pijltje,
+    met muis, aanraking en toetsenbord, ook met het klikgedrag van Safari en Firefox
+    op macOS (SAFARI_KLIK); open, dicht (tweede klik, Esc, ernaast), vier servers in
+    beeld, All servers en Home navigeren echt;
+  * niets springt bij het laden (CLS), menu en lade ketenen niet door bij scrollen.
 
 DRAAIEN (een script, zoals de andere browsertests):
     cd site && python -m http.server 8899
@@ -222,7 +228,13 @@ def open_gevuld(browser, soort, key, breed, servers=SERVERS):
     zonder_tour(page)
     ingelogd(page, servers)
     page.goto(f"{BASIS}/{soort}.html?guild_id={GID}#{key}", wait_until="networkidle")
-    page.wait_for_timeout(350)
+    # Wachten op de pagina zelf, niet op een vaste tijd: bij een volle laptop liep
+    # een laadbeurt soms over de 350 ms heen en mat de test een halve pagina.
+    try:
+        page.wait_for_function("document.querySelector('#sec-content h1, #sec-content .dv2-foutkaart')", timeout=10000)
+    except Exception:
+        pass
+    page.wait_for_timeout(250)
     return page, fouten
 
 
@@ -421,6 +433,187 @@ def contrast():
         eis(verhouding >= 4.5, f"contrast {naam}: {verhouding:.2f}:1 (AA 4,5)")
 
 
+# ---------------------------------------------------------------------------
+# De wisselaar met echte gegevens en echt klikgedrag (4-11-2026)
+# ---------------------------------------------------------------------------
+# DE FOUT DIE DIT VASTHOUDT. De wisselaar sloot op focusout. Safari en Firefox op
+# macOS geven een aangeklikte knop of link geen focus: het actieve element verliest
+# zijn focus naar niets bij het INDRUKKEN. Een tweede klik op de server sloot dan
+# (indrukken) en opende (loslaten) weer, en "All servers" verdween onder de muis.
+# Chromium op Windows doet dat niet, dus de eerste test zag het niet. SAFARI_KLIK
+# bootst dat gedrag na in Chromium.
+SAFARI_KLIK = """document.addEventListener('mousedown', (e) => {
+  if (e.target.closest && e.target.closest('a, button')) { e.preventDefault();
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); }
+}, true);"""
+
+# De vorm van GET /api/me (backend/api/auth.py): de ruwe Discord-guilds.
+ECHTE_SERVERS = [
+    {"id": GID, "name": "Bucky HQ", "icon": "a_0123456789abcdef0123456789abcdef", "owner": True,
+     "permissions": "2251799813685247", "features": ["COMMUNITY"]},
+    {"id": "1100000000000000002", "name": "Pixel Harbour", "icon": None, "owner": False, "permissions": "8", "features": []},
+    {"id": "1100000000000000003", "name": "Een heel lange servernaam die maar doorgaat en doorgaat \U0001F3AE",
+     "icon": "0123456789abcdef0123456789abcdef", "owner": False, "permissions": "32", "features": []},
+    {"id": "1100000000000000004", "name": "Night Owls", "icon": None, "owner": False, "permissions": "8", "features": []},
+    {"id": "1100000000000000005", "name": "CyTek Ops", "icon": None, "owner": True, "permissions": "2251799813685247", "features": []},
+    {"id": "1100000000000000006", "name": "Vanta Crew", "icon": None, "owner": False, "permissions": "8", "features": []},
+    {"id": "1100000000000000007", "name": "Zebra Lounge", "icon": None, "owner": False, "permissions": "8", "features": []},
+]
+DOELEN = {"icoon": ".dv2-server .sec-server-ic", "naam": ".dv2-server .sec-server-nm", "pijltje": ".dv2-server-pijl"}
+
+
+def _wissel_staat(page):
+    return page.evaluate("""() => { const p = document.getElementById('dv2-wissel'); const l = document.getElementById('dv2-wissel-lijst');
+      const nu = l.querySelector('.is-nu'); const lr = l.getBoundingClientRect(); const nr = nu ? nu.getBoundingClientRect() : null;
+      return {open: !p.hidden, exp: document.getElementById('dv2-server-knop').getAttribute('aria-expanded'),
+              n: l.querySelectorAll('.dv2-wissel-item').length, hoogte: Math.round(lr.height), scroll: l.scrollHeight > l.clientHeight + 2,
+              meer: l.classList.contains('heeft-meer'), nuInBeeld: !!nr && nr.top >= lr.top - 1 && nr.bottom <= lr.bottom + 1,
+              overflow: getComputedStyle(l).overflowY}; }""")
+
+
+def _tik(page, sel, aanraking):
+    box = page.locator(sel).first.bounding_box()
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    if aanraking:
+        page.touchscreen.tap(x, y)
+    else:
+        page.mouse.click(x, y)
+    page.wait_for_timeout(350)
+
+
+def open_echt(browser, soort, breed, *, safari=False, cache=True):
+    w, h = BREEDTES[breed]
+    kw = dict(viewport={"width": w, "height": h})
+    if breed in ("telefoon", "smal"):
+        kw.update(is_mobile=True, has_touch=True)
+    page = browser.new_page(**kw)
+    fouten = []
+    page.on("pageerror", lambda e: fouten.append(str(e)))
+    page.on("console", lambda m: fouten.append(m.text) if m.type == "error" else None)
+    if safari:
+        page.add_init_script(SAFARI_KLIK)
+    if soort == "security":
+        security_stub(page); dd.stub_security(page, GID)
+    else:
+        server_stub(page); dd.stub_server(page, GID)
+    zonder_tour(page)
+    page.add_init_script("localStorage.setItem('bucky_active_guild', JSON.stringify({id: '%s', name: 'Bucky HQ', icon: null}));" % GID)
+    if cache:
+        page.add_init_script("sessionStorage.setItem('user_guilds', %s);" % json.dumps(json.dumps(ECHTE_SERVERS)))
+
+    def me(r):
+        r.fulfill(status=200, content_type="application/json", body=json.dumps(
+            {"logged_in": True, "user": {"id": "1200000000000000001", "username": "tommy", "discriminator": "0", "avatar": None},
+             "guilds": ECHTE_SERVERS}))
+    page.route("**/api/me", me)
+    page.goto(f"{BASIS}/{soort}.html?guild_id={GID}#overview", wait_until="networkidle")
+    page.wait_for_timeout(300)
+    return page, fouten
+
+
+def wisselaar_echt(browser):
+    for soort in ("server", "security"):
+        for breed, safari in (("desktop", False), ("desktop", True), ("tablet", True), ("telefoon", True)):
+            aanraking = breed == "telefoon"
+            label = f"wisselaar {soort} {breed}{' safari' if safari else ''}{' aanraking' if aanraking else ''}"
+            page, fouten = open_echt(browser, soort, breed, safari=safari)
+            if breed == "telefoon":
+                _tik(page, "#sec-burger", True)
+            # In de rail (tablet) zijn naam en pijltje verborgen: alleen het icoon.
+            doelen = {"icoon": DOELEN["icoon"]} if breed == "tablet" else DOELEN
+            for naam, sel in doelen.items():
+                _tik(page, sel, aanraking)
+                st = _wissel_staat(page)
+                eis(st["open"] and st["exp"] == "true", f"{label}: klik op het {naam} klapt uit")
+                _tik(page, sel, aanraking)
+                st = _wissel_staat(page)
+                eis(not st["open"] and st["exp"] == "false", f"{label}: tweede klik op het {naam} klapt in")
+            # Vier tegelijk, de rest scrolt, de huidige in beeld.
+            _tik(page, doelen.get("pijltje", DOELEN["icoon"]), aanraking)
+            st = _wissel_staat(page)
+            eis(st["n"] == 7 and 176 <= st["hoogte"] <= 188 and st["scroll"] and st["overflow"] == "auto",
+                f"{label}: zeven servers, vier in beeld (lijst {st['hoogte']} px), de rest scrolt")
+            eis(st["nuInBeeld"], f"{label}: de huidige server staat in beeld bij het openen")
+            eis(st["meer"], f"{label}: vervaging onderaan zolang er meer is")
+            page.wait_for_timeout(300)
+            kapot = page.evaluate("[...document.querySelectorAll('#dv2-wissel img, .dv2-server img')].filter(i => i.complete && !i.naturalWidth).length")
+            eis(kapot == 0, f"{label}: een icoon dat niet laadt wordt initialen, geen kapot plaatje ({kapot})")
+            # Klik buiten de lijst sluit.
+            if aanraking:
+                _tik(page, ".sec-sidebar-foot .dv2-ik-naam", True)   # een plek in de lade zonder actie
+                eis(not _wissel_staat(page)["open"], f"{label}: tik buiten de lijst sluit hem")
+            else:
+                page.mouse.click(BREEDTES[breed][0] - 200, BREEDTES[breed][1] - 120)
+                page.wait_for_timeout(250)
+                eis(not _wissel_staat(page)["open"], f"{label}: klik buiten de lijst sluit hem")
+            # Esc sluit.
+            _tik(page, DOELEN["icoon"], aanraking)
+            page.keyboard.press("Escape"); page.wait_for_timeout(200)
+            eis(not _wissel_staat(page)["open"], f"{label}: Esc sluit")
+            # All servers gaat echt naar de serverkeuze.
+            _tik(page, DOELEN["icoon"], aanraking)
+            with page.expect_navigation(timeout=5000):
+                _tik(page, "#dv2-wissel-alle", aanraking)
+            eis(page.url.split("?")[0].endswith("/dashboard.html"), f"{label}: 'All servers' gaat naar de serverkeuze ({page.url})")
+            eis(not fouten, f"{label}: geen fout in de console ({fouten[:2]})")
+            page.close()
+        # Home naar de voorpagina; toetsenbord met Enter en Spatie.
+        page, _ = open_echt(browser, soort, "desktop", safari=True)
+        page.locator("#dv2-server-knop").focus(); page.keyboard.press("Enter"); page.wait_for_timeout(300)
+        eis(_wissel_staat(page)["open"] and page.evaluate("document.activeElement.classList.contains('is-nu')"),
+            f"wisselaar {soort} toetsenbord: Enter opent, de focus staat op de huidige server")
+        page.keyboard.press("Escape"); page.wait_for_timeout(150)
+        page.keyboard.press(" "); page.wait_for_timeout(300)
+        eis(_wissel_staat(page)["open"], f"wisselaar {soort} toetsenbord: Spatie opent")
+        page.keyboard.press("End"); page.wait_for_timeout(100)
+        eis(page.evaluate("document.activeElement.classList.contains('dv2-wissel-item')"), f"wisselaar {soort} toetsenbord: End blijft in de lijst")
+        eis(page.locator("#dv2-wissel-home").get_attribute("href") == "index.html" and page.locator("#dv2-wissel-home").is_visible(),
+            f"wisselaar {soort}: onder All servers staat Home naar de voorpagina")
+        with page.expect_navigation(timeout=5000):
+            page.locator("#dv2-wissel-home").click()
+        eis(page.url.split("?")[0].endswith("/index.html"), f"wisselaar {soort}: Home opent de voorpagina ({page.url})")
+        page.close()
+    # Geen cache in dit tabblad (nieuw tabblad): de lijst opent meteen met Loading, en vult zich.
+    page, _ = open_echt(browser, "server", "desktop", cache=False)
+    page.evaluate("sessionStorage.removeItem('user_guilds')")
+    _tik(page, DOELEN["naam"], False)
+    eis(_wissel_staat(page)["open"], "wisselaar zonder cache: opent bij de eerste klik")
+    page.wait_for_timeout(800)
+    eis(_wissel_staat(page)["n"] == 7, "wisselaar zonder cache: de servers komen uit /api/me")
+    page.close()
+
+
+CLS_WAARNEMER = """window.__ls = 0; new PerformanceObserver(l => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__ls += e.value; })
+  .observe({type: 'layout-shift', buffered: true});"""
+
+
+def stil_scrollen(browser):
+    """Punt 3 van 4-11-2026: niets springt bij het laden, scrollen ketent niet door."""
+    for soort, key in (("server", "overview"), ("server", "autorole"), ("security", "overview"), ("security", "modules")):
+        for breed in ("desktop", "telefoon"):
+            w, h = BREEDTES[breed]
+            page = browser.new_page(viewport={"width": w, "height": h})
+            page.add_init_script(CLS_WAARNEMER)
+            if soort == "security":
+                security_stub(page); dd.stub_security(page, GID)
+            else:
+                server_stub(page); dd.stub_server(page, GID)
+            zonder_tour(page); ingelogd(page)
+            page.goto(f"{BASIS}/{soort}.html?guild_id={GID}#{key}", wait_until="networkidle")
+            page.wait_for_timeout(600)
+            cls = page.evaluate("window.__ls")
+            eis(cls < 0.001, f"verschuiving {soort}#{key} {breed}: niets springt bij het laden (CLS {cls:.4f})")
+            page.close()
+    page, _ = open_gevuld(browser, "server", "overview", "telefoon")
+    st = page.evaluate("() => ({nav: getComputedStyle(document.querySelector('.sec-nav')).overscrollBehaviorY, zij: getComputedStyle(document.querySelector('.sec-sidebar')).overscrollBehaviorY})")
+    eis(st["nav"] == "contain" and st["zij"] == "contain", f"scrollen: menu en lade ketenen niet door naar de pagina ({st})")
+    page.locator("#sec-burger").click(); page.wait_for_timeout(300)
+    eis(page.evaluate("getComputedStyle(document.documentElement).overflowY") == "hidden", "scrollen: de pagina staat vast zolang de lade open is")
+    hoog = page.evaluate("Math.round(document.querySelector('.sec-sidebar').getBoundingClientRect().bottom)")
+    eis(hoog <= BREEDTES["telefoon"][1], f"scrollen: de lade past binnen het zichtbare deel ({hoog} px)")
+    page.close()
+
+
 FRAMES = """async () => {
   const tijden = []; let vorige = performance.now(); let loopt = true;
   const tel = (t) => { tijden.push(t - vorige); vorige = t; if (loopt) requestAnimationFrame(tel); };
@@ -467,6 +660,8 @@ def main():
         print("Stap 1: de schil"); stap1_schil(browser)
         print("Stap 2-4: elke pagina, gevuld, op vier breedtes"); alle_paginas(browser)
         print("De serverwisselaar"); wisselaar(browser)
+        print("De wisselaar met echte gegevens en echt klikgedrag"); wisselaar_echt(browser)
+        print("Stil scrollen"); stil_scrollen(browser)
         print("Broodkruimel, zoeken, tikken"); kruimel_en_zoeken(browser)
         print("Incidenten: de ernstfilter"); incidenten_filter(browser)
         print("Meldingen en lege toestanden"); meldingen(browser)

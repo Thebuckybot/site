@@ -71,7 +71,11 @@ function skeleton(root) {
 
 export default {
   async render(root, { navigate }) {
-    const zin = el("p", { text: "Everything Bucky does on this server that is not security: which commands members can use, the ticket system, and the applications people fill in." });
+    // Tijdens het laden een korte zin van ongeveer dezelfde lengte als de kopzin
+    // die erna komt: de lange beschrijving was op een telefoon een regel langer en
+    // liet de tegels omhoog springen zodra de gegevens er waren (4-11-2026).
+    const BESCHRIJVING = "Everything Bucky does on this server that is not security: which commands members can use, the ticket system, and the applications people fill in.";
+    const zin = el("p", { class: "dv2-kopzin", text: "Checking what is waiting for your team…" });
     const naam = serverNaam();
     root.appendChild(el("div", { class: "srv-hero" }, [
       el("p", { class: "dv2-boven", text: naam ? "Server Center" : "Overview" }),
@@ -86,6 +90,7 @@ export default {
     try {
       data = await api.get("/overview");
     } catch (err) {
+      zin.textContent = BESCHRIJVING;
       clear(host);
       host.appendChild(el("div", { class: "sec-card" }, [
         el("div", { class: "sec-page-title", text: "This page did not load" }),

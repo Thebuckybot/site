@@ -275,6 +275,11 @@ function createGuildCard(guild, guildContainer) {
     icoon.loading = "lazy";
     icoon.src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`;
     icoon.alt = "";
+    icoon.addEventListener("error", () => {
+      const vervang = document.createElement("span");
+      vervang.className = "s-icon"; vervang.setAttribute("aria-hidden", "true"); vervang.textContent = initialenVan(naam);
+      icoon.replaceWith(vervang);
+    }, { once: true });
   } else {
     icoon = document.createElement("span");
     icoon.setAttribute("aria-hidden", "true");

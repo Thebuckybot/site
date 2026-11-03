@@ -9,7 +9,7 @@
 import { guildId, api } from "./api.js";
 import { el, clear, toast } from "../security/ui.js";
 import { buildSidebar, setActive, sectionLabel, isInternal, zetTellers, groepVan } from "./router.js";
-import { zoekveld, gebruiker, boventitel, serverKop, serverWissel } from "../dashboard_zij.js";
+import { zoekveld, gebruiker, boventitel, boventitelZodra, serverKop, serverWissel } from "../dashboard_zij.js";
 
 const appEl = document.getElementById("sec-app");
 const nav = document.getElementById("sec-nav");
@@ -65,7 +65,8 @@ async function loadSection(key) {
     const mod = await import(`./pages/${key}.js`);
     if (beurt !== bezig) return;
     clear(content);
-    await mod.default.render(content, { navigate });
+    const stopBoven = boventitelZodra(content, groepVan(key));
+    try { await mod.default.render(content, { navigate }); } finally { stopBoven(); }
     boventitel(content, groepVan(key));
     // Een nieuw scherm begint bovenaan; de focus gaat naar de inhoud zonder dat
     // de browser zelf scrolt (die zette de kop anders onder de balk).

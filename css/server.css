@@ -760,3 +760,7 @@ html { background: var(--sec-bg1); }
 .srv-empty p { color: var(--dv2-tekst-2); }
 
 .srv-sticky { background: linear-gradient(180deg, var(--dv2-bg) 72%, transparent); }
+
+/* De kopzin van het overzicht: twee regels gereserveerd op een telefoon, zodat de
+   tegels niet springen als de zin met de aantallen binnenkomt (4-11-2026). */
+@media (max-width: 699px) { .srv-hero p.dv2-kopzin { min-height: 3em; } }

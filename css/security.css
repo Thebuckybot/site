@@ -1427,3 +1427,48 @@ button.dv2-server[aria-expanded="true"] .dv2-server-pijl { transform: rotate(180
 .sec-body .sec-table-responsive td:has(> .sec-empty) { display: block; }
 .sec-body .sec-table-responsive td:has(> .sec-empty)::before { display: none; }
 .sec-body .sec-table-responsive tr:has(> td > .sec-empty) { border: 0; padding: 0; background: none; }
+
+/* ---- de wisselaar: hoogstens vier servers tegelijk (4-11-2026) ------------------
+   Een item is 44 px met 2 px ertussen: vier is 182 px. Meer servers scrollen binnen
+   die hoogte, met een rustige scrollbalk en een vervaging onderaan zolang er nog
+   iets onder de rand staat (klasse heeft-meer, gezet door js/dashboard_zij.js). */
+.dv2-wissel-lijst { flex: none; }
+.dv2-wissel-lijst.is-scrollend { max-height: 182px; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent; }
+.dv2-wissel-lijst.is-scrollend::-webkit-scrollbar { width: 6px; }
+.dv2-wissel-lijst.is-scrollend::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 6px; }
+.dv2-wissel-lijst.heeft-meer {
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 30px), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 30px), transparent); }
+.dv2-wissel-laden { min-height: 44px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: var(--dv2-tekst-3); }
+.dv2-wissel-home { margin-top: 0; border-top: 0; border-radius: 14px; color: var(--dv2-tekst-2); }
+
+/* ---- scrollen dat stil staat (4-11-2026) -------------------------------------
+   1. GEEN SCROLL-CHAINING. Wie het menu of de lade tot het eind scrolde, scrolde
+      daarna de pagina erachter: de pagina leek te schuiven onder je vinger.
+   2. DE PAGINA STAAT VAST ZOLANG DE LADE OPEN IS. Anders scrolde een veeg over de
+      kop of voet van de lade de inhoud eronder.
+   3. dvh IN PLAATS VAN vh. Op iPhone en iPad is 100vh de hoogte ZONDER werkbalk:
+      het paneel was hoger dan wat je ziet, de voet (Log out) viel eronder en
+      schoof mee als de werkbalk in- of uitklapte. 100dvh volgt het zichtbare deel.
+   De achtergrondlagen (gloed, golf) houden vh: die mogen niet meebewegen met de
+   werkbalk, en ze staan al vast (position: fixed). */
+.sec-nav, .sec-sidebar { overscroll-behavior: contain; }
+html:has(.sec-app.nav-open) { overflow: hidden; }
+html:has(.sec-app.nav-open) body { overflow: hidden; }
+/* Hetzelfde voor een open venster: de pagina erachter scrolt niet mee. */
+html:has(.sec-modal-host.open) { overflow: hidden; }
+@supports (height: 100dvh) {
+  .sec-sidebar { height: calc(100dvh - 2 * var(--dv2-marge)); }
+  @media (max-width: 699px) { .sec-sidebar { height: calc(100dvh - 20px); } }
+  .sec-modal { max-height: calc(100dvh - 40px); }
+  @media (max-width: 640px) { .sec-modal { max-height: 88dvh; } }
+}
+.sec-modal { overscroll-behavior: contain; }
+
+/* De servernaam komt pas na het laden van het script; de regel staat vooraf
+   gereserveerd, zodat "Server Center" eronder niet een regel zakt (gemeten als
+   layoutverschuiving in het paneel, 4-11-2026). */
+.sec-brand.dv2-server { grid-template-rows: minmax(20px, auto) auto; min-height: 68px; }
+.dv2-server .sec-server-nm { grid-row: 1; }
+.dv2-centrum-naam { grid-row: 2; }

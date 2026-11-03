@@ -130,6 +130,7 @@ export function serverKop(id) {
   let ic;
   if (bekend && g.icon && /^(a_)?[a-f0-9]{8,64}$/.test(String(g.icon)) && /^\d{5,20}$/.test(String(g.id))) {
     ic = el("img", { class: "sec-server-ic", alt: "", src: `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` });
+    ic.addEventListener("error", () => ic.replaceWith(el("span", { class: "sec-server-ic dv2-initialen", "aria-hidden": "true", text: initialen(naam) })), { once: true });
   } else {
     ic = el("span", { class: "sec-server-ic dv2-initialen", "aria-hidden": "true", text: bekend ? initialen(naam) : "#" });
   }
@@ -164,19 +165,35 @@ async function mijnServers() {
 
 function serverIcoon(g) {
   if (g && g.icon && /^(a_)?[a-f0-9]{8,64}$/.test(String(g.icon)) && /^\d{5,20}$/.test(String(g.id))) {
-    return el("img", { class: "dv2-wissel-ic", alt: "", src: `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` });
+    const img = el("img", { class: "dv2-wissel-ic", alt: "", src: `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` });
+    // Een icoon dat Discord niet (meer) heeft: de initialen, geen kapot plaatje.
+    img.addEventListener("error", () => img.replaceWith(el("span", { class: "dv2-wissel-ic dv2-initialen", "aria-hidden": "true", text: initialen(g.name) })), { once: true });
+    return img;
   }
   return el("span", { class: "dv2-wissel-ic dv2-initialen", "aria-hidden": "true", text: initialen(g && g.name) });
 }
+
+// WAAROM GEEN focusout (gerepareerd 4-11-2026). De eerste versie sloot de lijst
+// zodra de focus eruit ging. Safari en Firefox op macOS geven een aangeklikte knop
+// of link GEEN focus: bij het indrukken van de muis verliest het actieve element
+// zijn focus naar niets (relatedTarget null). Dan ging de lijst al dicht bij het
+// indrukken - "All servers" verdween onder de muis voor de klik aankwam, en een
+// tweede klik op de server sloot (indrukken) en opende (loslaten) weer. Dicht gaat
+// nu alleen op: nog een klik op de server, Esc, een klik buiten de lijst, of Tab
+// naar iets buiten de lijst (focusin elders, dat komt alleen van het toetsenbord).
+// En niet meer bij resize: Safari op iPhone en iPad stuurt er een zodra de
+// adresbalk in- of uitschuift; dan schuift de lijst mee in plaats van te sluiten.
+const ZICHTBAAR = 4;   // zoveel servers tegelijk in beeld; de rest scrolt
 
 export function serverWissel(pagina, huidigId) {
   const knop = document.getElementById("dv2-server-knop");
   const paneel = document.getElementById("dv2-wissel");
   const lijst = document.getElementById("dv2-wissel-lijst");
   if (!knop || !paneel || !lijst) return;
-  let geladen = false;
+  let geladen = null;   // de belofte van het vullen; een keer
 
   const links = () => [...paneel.querySelectorAll("a")].filter((a) => a.offsetParent !== null);
+  const isOpen = () => !paneel.hidden;
   const zetPlek = () => {
     const r = knop.getBoundingClientRect();
     const rail = window.innerWidth >= 700 && window.innerWidth < 1100;
@@ -187,7 +204,17 @@ export function serverWissel(pagina, huidigId) {
     paneel.style.left = `${Math.round(left)}px`;
     paneel.style.top = `${Math.round(top)}px`;
     paneel.style.width = `${Math.round(breed)}px`;
-    paneel.style.maxHeight = `${Math.max(180, Math.round(window.innerHeight - top - 16))}px`;
+  };
+  // Vervaging onderaan zolang er nog servers onder de rand staan.
+  const meer = () => lijst.classList.toggle("heeft-meer", lijst.scrollTop + lijst.clientHeight < lijst.scrollHeight - 2);
+  const huidigInBeeld = () => {
+    const nu = lijst.querySelector(".is-nu");
+    if (!nu) return;
+    const li = nu.parentElement;
+    if (li.offsetTop < lijst.scrollTop || li.offsetTop + li.offsetHeight > lijst.scrollTop + lijst.clientHeight) {
+      lijst.scrollTop = Math.max(0, li.offsetTop - (lijst.clientHeight - li.offsetHeight) / 2);
+    }
+    meer();
   };
   const vul = async () => {
     const servers = (await mijnServers()).slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
@@ -198,7 +225,7 @@ export function serverWissel(pagina, huidigId) {
       const a = el("a", {
         class: "dv2-wissel-item" + (nu ? " is-nu" : ""),
         href: `${pagina}?guild_id=${encodeURIComponent(g.id)}`,
-      }, [serverIcoon(g), el("span", { class: "dv2-wissel-naam", text: g.name || `Server ${g.id}` })]);
+      }, [serverIcoon(g), el("span", { class: "dv2-wissel-naam", text: g.name || `Server ${g.id}`, title: g.name || "" })]);
       if (nu) {
         a.setAttribute("aria-current", "page");
         a.appendChild(el("span", { class: "dv2-sr", text: " (current)" }));
@@ -209,27 +236,45 @@ export function serverWissel(pagina, huidigId) {
       });
       lijst.appendChild(el("li", {}, [a]));
     }
+    lijst.classList.remove("is-laden");
     lijst.hidden = !lijst.children.length;
-    geladen = true;
+    lijst.classList.toggle("is-scrollend", lijst.children.length > ZICHTBAAR);
   };
   const sluit = (terug) => {
-    if (paneel.hidden) return;
+    if (!isOpen()) return;
     paneel.hidden = true;
     knop.setAttribute("aria-expanded", "false");
     if (terug) knop.focus();
   };
-  const open = async () => {
-    if (!geladen) await vul();
+  const open = async ({ focus = true } = {}) => {
+    // Meteen open; is de lijst er nog niet (geen cache in dit tabblad), dan eerst
+    // "Loading..." in plaats van een klik die niets lijkt te doen.
+    if (!geladen) {
+      clear(lijst);
+      lijst.hidden = false;
+      lijst.classList.add("is-laden");
+      lijst.appendChild(el("li", { class: "dv2-wissel-laden", text: "Loading your servers…" }));
+      geladen = vul();
+    }
     zetPlek();
     paneel.hidden = false;
     knop.setAttribute("aria-expanded", "true");
-    const doel = paneel.querySelector(".is-nu") || links()[0];
-    if (doel) doel.focus();
+    await geladen;
+    if (!isOpen()) return;
+    huidigInBeeld();
+    if (focus) {
+      const doel = paneel.querySelector(".is-nu") || links()[0];
+      if (doel) doel.focus({ preventScroll: true });
+    }
   };
 
-  knop.addEventListener("click", () => (paneel.hidden ? open() : sluit(true)));
+  // Een klik met muis of vinger: open of dicht. De focus gaat dan niet de lijst in
+  // (geen ring na een tik); met het toetsenbord wel (Enter en Spatie geven een
+  // klik met detail 0).
+  knop.addEventListener("click", (e) => (isOpen() ? sluit(e.detail === 0) : open({ focus: e.detail === 0 })));
   knop.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowDown" && paneel.hidden) { e.preventDefault(); open(); }
+    if (e.key === "ArrowDown" && !isOpen()) { e.preventDefault(); open(); }
+    else if (e.key === "Escape" && isOpen()) { e.preventDefault(); e.stopPropagation(); sluit(true); }
   });
   paneel.addEventListener("keydown", (e) => {
     const l = links();
@@ -237,22 +282,50 @@ export function serverWissel(pagina, huidigId) {
     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); sluit(true); }
     else if (e.key === "ArrowDown") { e.preventDefault(); (l[i + 1] || l[0]).focus(); }
     else if (e.key === "ArrowUp") { e.preventDefault(); (l[i - 1] || l[l.length - 1]).focus(); }
-    else if (e.key === "Home") { e.preventDefault(); l[0].focus(); }
-    else if (e.key === "End") { e.preventDefault(); l[l.length - 1].focus(); }
+    else if ((e.key === "Home" || e.key === "End") && e.target.closest(".dv2-wissel-lijst")) {
+      // Home en End lopen binnen de serverlijst: eerste en laatste server.
+      const items = [...lijst.querySelectorAll(".dv2-wissel-item")];
+      if (items.length) { e.preventDefault(); items[e.key === "Home" ? 0 : items.length - 1].focus(); }
+    }
   });
-  // Tab uit de lijst, of ergens anders klikken: dicht.
-  paneel.addEventListener("focusout", (e) => {
-    if (!paneel.contains(e.relatedTarget) && e.relatedTarget !== knop) sluit(false);
-  });
+  // Esc ook als de focus nergens in de lijst staat: na een muisklik in Safari staat
+  // hij op body. In de vangfase, zodat de lade (die ook op Esc sluit) blijft staan.
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || !isOpen()) return;
+    e.preventDefault(); e.stopPropagation();
+    sluit(paneel.contains(document.activeElement) || document.activeElement === knop);
+  }, true);
+  lijst.addEventListener("scroll", meer, { passive: true });
   document.addEventListener("pointerdown", (e) => {
-    if (!paneel.hidden && !paneel.contains(e.target) && !knop.contains(e.target)) sluit(false);
+    if (isOpen() && !paneel.contains(e.target) && !knop.contains(e.target)) sluit(false);
   });
-  window.addEventListener("resize", () => sluit(false));
+  document.addEventListener("focusin", (e) => {
+    if (isOpen() && !paneel.contains(e.target) && !knop.contains(e.target)) sluit(false);
+  });
+  window.addEventListener("resize", () => { if (isOpen()) zetPlek(); });
 }
 
 // ---------------------------------------------------------------------------
 // De boventitel boven de paginatitel
 // ---------------------------------------------------------------------------
+// ZODRA DE KOP ER IS (4-11-2026). boventitel() liep pas na render(), en een pagina
+// zet zijn kop meteen neer maar wacht daarna op de API: de titel stond er dan al
+// en schoof omlaag zodra de boventitel kwam (layoutverschuiving 0,02 tot 0,04,
+// gemeten). Een MutationObserver-callback loopt voor de volgende tekenbeurt, dus
+// de boventitel staat er in hetzelfde frame als de kop. Geeft een stopfunctie.
+export function boventitelZodra(contentEl, tekst) {
+  if (!contentEl || !tekst) return () => {};
+  const probeer = () => {
+    if (!contentEl.querySelector(".srv-hero h1, h1.sec-page-title")) return false;
+    boventitel(contentEl, tekst);
+    return true;
+  };
+  if (probeer()) return () => {};
+  const waarnemer = new MutationObserver(() => { if (probeer()) waarnemer.disconnect(); });
+  waarnemer.observe(contentEl, { childList: true, subtree: true });
+  return () => waarnemer.disconnect();
+}
+
 export function boventitel(contentEl, tekst) {
   if (!contentEl || !tekst) return;
   if (contentEl.querySelector(".dv2-boven")) return;

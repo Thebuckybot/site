@@ -5,7 +5,7 @@
 import { guildId, api } from "./api.js";
 import { el, clear } from "./ui.js";
 import { buildSidebar, setActive, sectionLabel, isInternal, verbergSecties, kopVan } from "./router.js";
-import { zoekveld, gebruiker, boventitel, serverKop, serverWissel } from "../dashboard_zij.js";
+import { zoekveld, gebruiker, boventitel, boventitelZodra, serverKop, serverWissel } from "../dashboard_zij.js";
 import { haalFeatures } from "../features.js";
 
 // One place renders the read-only INDICATOR, driven by the server's /me tier. It
@@ -66,7 +66,8 @@ async function loadSection(key) {
   try {
     const mod = await import(`./pages/${key}.js`);
     clear(content);
-    await mod.default.render(content);
+    const stopBoven = boventitelZodra(content, kopVan(key));
+    try { await mod.default.render(content); } finally { stopBoven(); }
     boventitel(content, kopVan(key));
     // Een nieuw scherm begint bovenaan; de focus gaat naar de inhoud zonder dat
     // de browser zelf scrolt (die zette de kop anders onder de balk).
