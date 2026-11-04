@@ -100,8 +100,8 @@
    Server Center, Security Center), gekozen uit docs/previews/dashboard-v2 (B,
    met de rust van A). ALLEEN TOEGEVOEGD, met een eigen voorvoegsel: geen enkele
    bestaande variabele verandert, dus de rest van de site merkt hier niets van.
-   Donker is de standaard; het lichte palet staat onder `.dv2-licht` en geldt
-   alleen bij prefers-color-scheme: light (de site heeft geen eigen themakeuze).
+   Donker is de standaard; het lichte palet staat onder html[data-thema="licht"]
+   (js/thema.js: automatisch, licht of donker, sinds 4-11-2026).
    ===================================================================== */
 :root {
   --dv2-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Manrope", sans-serif;
@@ -149,33 +149,34 @@
   --dv2-marge: 16px;
 }
 
-@media (prefers-color-scheme: light) {
-  .dv2-licht {
-    --dv2-bg: #EEF0F5;
-    --dv2-vlak: #FFFFFF;
-    --dv2-vlak-2: #F5F6F9;
-    --dv2-vlak-3: #ECEDF2;
-    --dv2-rand: rgba(15, 16, 22, 0.09);
-    --dv2-rand-sterk: rgba(15, 16, 22, 0.2);
-    --dv2-kop: #0F1016;
-    --dv2-tekst: #1C1D24;
-    --dv2-tekst-2: #4C4D57;
-    --dv2-tekst-3: #5C5D67;
-    --dv2-accent: #B00C24;
-    --dv2-accent-bg: rgba(232, 16, 46, 0.09);
-    --dv2-goed: #13703F;  --dv2-goed-bg: #E7F1EC;
-    --dv2-let: #8A4E08;   --dv2-let-bg: #FDF1E2;
-    --dv2-gevaar: #B00C24;
-    --dv2-focus: #CB0E28;
-    --dv2-glas: rgba(255, 255, 255, 0.5);
-    --dv2-glas-effen: #F7F8FB;
-    --dv2-glas-rand: rgba(255, 255, 255, 0.85);
-    --dv2-glans: inset 0 1px 0 #FFFFFF;
-    --dv2-zweef: 0 40px 80px -36px rgba(30, 30, 60, 0.35);
-    --dv2-kaart-schaduw: 0 1px 2px rgba(20, 20, 28, 0.05), 0 12px 30px -16px rgba(20, 20, 28, 0.18);
-    --dv2-gloed-1: rgba(255, 111, 134, 0.35);
-    --dv2-gloed-2: rgba(110, 149, 245, 0.32);
-    --dv2-golf-sterkte: 0.45;
-    color-scheme: light;
-  }
+/* HET LICHTE PALET (4-11-2026): onder html[data-thema="licht"], gezet door js/thema.js.
+   Niet meer onder prefers-color-scheme: de bezoeker kiest, en "donker" op een licht
+   apparaat moet donker blijven. Pagina's zonder js/thema.js (de v1-site) krijgen nooit
+   data-thema en zien dit dus niet. Gloed en golf rustiger dan in de preview. */
+html[data-thema="licht"] {
+  --dv2-bg: #EEF0F5;
+  --dv2-vlak: #FFFFFF;
+  --dv2-vlak-2: #F5F6F9;
+  --dv2-vlak-3: #ECEDF2;
+  --dv2-rand: rgba(15, 16, 22, 0.09);
+  --dv2-rand-sterk: rgba(15, 16, 22, 0.2);
+  --dv2-kop: #0F1016;
+  --dv2-tekst: #1C1D24;
+  --dv2-tekst-2: #4C4D57;
+  --dv2-tekst-3: #5C5D67;
+  --dv2-accent: #B00C24;
+  --dv2-accent-bg: rgba(232, 16, 46, 0.09);
+  --dv2-goed: #13703F;  --dv2-goed-bg: #E7F1EC;
+  --dv2-let: #8A4E08;   --dv2-let-bg: #FDF1E2;
+  --dv2-gevaar: #B00C24;
+  --dv2-focus: #CB0E28;
+  --dv2-glas: rgba(255, 255, 255, 0.5);
+  --dv2-glas-effen: #F7F8FB;
+  --dv2-glas-rand: rgba(255, 255, 255, 0.85);
+  --dv2-glans: inset 0 1px 0 #FFFFFF;
+  --dv2-zweef: 0 40px 80px -36px rgba(30, 30, 60, 0.35);
+  --dv2-kaart-schaduw: 0 1px 2px rgba(20, 20, 28, 0.05), 0 12px 30px -16px rgba(20, 20, 28, 0.18);
+  --dv2-gloed-1: rgba(255, 111, 134, 0.22);
+  --dv2-gloed-2: rgba(110, 149, 245, 0.18);
+  --dv2-golf-sterkte: 0.22;
 }

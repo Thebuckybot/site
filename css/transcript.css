@@ -317,3 +317,39 @@ span.tr-emoji-jumbo { font-size: 48px; line-height: 1.1; }
 @media (prefers-reduced-motion: reduce) {
   .tr-msg.is-flash { transition: none; }
 }
+
+/* ---- licht (4-11-2026) -----------------------------------------------------
+   De lichte stand van Discord zelf, onder html[data-thema="licht"] (js/thema.js).
+   Alleen de tokens en de paar vaste kleuren voor donker; de opbouw blijft gelijk.
+   Contrast per tekstelement gemeten door site/tests/test_thema.py. */
+html[data-thema="licht"] {
+  --tr-bg: #FFFFFF;
+  --tr-bg-2: #F2F3F5;
+  --tr-bg-3: #E3E5E8;
+  --tr-hover: #F2F3F5;
+  --tr-text: #313338;
+  --tr-head: #060607;
+  --tr-muted: #4E5058;
+  --tr-faint: #5C5E66;
+  --tr-link: #0059C2;
+  --tr-border: #D4D7DC;
+  --tr-mention-bg: rgba(88, 101, 242, 0.15);
+  --tr-mention-text: #3B45A8;
+  --tr-code-bg: #F2F3F5;
+  --tr-quote: #C4C9CE;
+  --tr-spoiler: #C4C9CE;
+}
+html[data-thema="licht"] .tr-pill-staff { background: rgba(240, 178, 50, 0.16); border-color: rgba(176, 110, 0, 0.45); color: #7A4A00; }
+html[data-thema="licht"] .tr-notes { border-color: rgba(176, 110, 0, 0.45); }
+html[data-thema="licht"] .tr-notes-warn { color: #7A4A00; }
+html[data-thema="licht"] .tr-spoiler.is-open { background: rgba(15, 16, 22, 0.08); }
+html[data-thema="licht"] .tr-timestamp { background: rgba(15, 16, 22, 0.06); }
+
+/* De themaknop in de bovenbalk. */
+/* 28 px: de hoogte van het B-merk, zodat de balk niet hoger wordt. De titel
+   breekt niet meer over twee regels (dat deed hij met de knop erbij op een
+   telefoon) maar wordt afgekapt. */
+.tr-top-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tr-top .tr-pill { white-space: nowrap; }
+.tr-top .thema-knop { --thema-knop-maat: 28px; --thema-knop-kleur: var(--tr-muted); --thema-knop-rand: var(--tr-border);
+  --thema-knop-bg-hover: var(--tr-hover); --thema-knop-focus: var(--tr-link); }

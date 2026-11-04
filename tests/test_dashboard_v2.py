@@ -218,7 +218,7 @@ def ingelogd(page, servers=SERVERS):
          "guilds": servers})))
 
 
-def open_gevuld(browser, soort, key, breed, servers=SERVERS):
+def open_gevuld(browser, soort, key, breed, servers=SERVERS, thema=None):
     w, h = BREEDTES[breed]
     page = browser.new_page(viewport={"width": w, "height": h})
     fouten = []
@@ -230,6 +230,9 @@ def open_gevuld(browser, soort, key, breed, servers=SERVERS):
         server_stub(page); dd.stub_server(page, GID)
     zonder_tour(page)
     ingelogd(page, servers)
+    if thema:
+        # De keuze van de bezoeker, zoals js/thema.js hem bewaart.
+        page.add_init_script("try { localStorage.setItem('bucky_thema', '%s'); } catch (e) {}" % thema)
     page.goto(f"{BASIS}/{soort}.html?guild_id={GID}#{key}", wait_until="networkidle")
     # Wachten op de pagina zelf, niet op een vaste tijd: bij een volle laptop liep
     # een laadbeurt soms over de 350 ms heen en mat de test een halve pagina.
@@ -728,6 +731,32 @@ def snelheid(browser, paginas):
         page.close()
 
 
+def thema(browser):
+    """Licht en donker (4-11-2026): geen flits, de knop met muis en toetsenbord, de
+    lade op een telefoon en contrast AA per tekstelement op elke pagina, in beide
+    thema's. De controles zelf staan in test_thema.py (ook voor de rest van de site)."""
+    import test_thema as tt
+    tt.BASIS = BASIS
+    for soort in ("server", "security"):
+        tt.geen_flits(browser, soort)
+        tt.knop(browser, soort)
+        tt.smal(browser, soort)
+    tt.lade(browser)
+    for soort, paginas in (("server", SERVER_PAGINAS), ("security", SECURITY_PAGINAS)):
+        for key in paginas:
+            for th in ("licht", "donker"):
+                for breed in ("desktop", "telefoon"):
+                    page, fouten = open_gevuld(browser, soort, key, breed, thema=th)
+                    uit = tt.cm.meet(page)
+                    if th == "donker":
+                        # Gelijk aan live (pixelvergelijking): de ene bekende uitzondering, zie test_thema.py.
+                        uit = [u for u in uit if u["klasse"] != "srv-sub-hint"]
+                    eis(not uit, f"{soort}#{key} {th} {breed}: {len(uit)} tekstelementen onder AA {uit[:3]}")
+                    eis(not fouten, f"{soort}#{key} {th} {breed}: geen paginafout of CSP-melding ({fouten[:2]})")
+                    page.close()
+    FOUTEN.extend(tt.FOUTEN)
+
+
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
@@ -742,6 +771,7 @@ def main():
         print("Meldingen en lege toestanden"); meldingen(browser)
         print("De serverkeuze"); kiezer(browser)
         print("Contrast"); contrast()
+        print("Licht en donker"); thema(browser)
         print("Snelheid"); snelheid(browser, [("server", "#overview"), ("security", "#overview")])
         browser.close()
     if FOUTEN:

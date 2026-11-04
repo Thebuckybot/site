@@ -632,3 +632,35 @@ body.dv2-premium::after { left: 0; right: 0; bottom: 0; height: 36vh; opacity: v
   .dv2-premium.pr-laden #pr-grid-note, .dv2-premium.pr-laden .pr-faq { display: none; }
   .dv2-premium.pr-laden .pr-main { min-height: 140vh; }
 }
+
+/* =====================================================================
+   PREMIUM IN LICHT (4-11-2026), onder html[data-thema="licht"] (js/thema.js).
+   De tokens (css/tokens.css) maken vlakken, tekst en rand al licht; hier staan de
+   regels met een vaste donkere kleur: de kop van de aanrader, de rustige
+   koopknop, code, de schaduwen onder de badges. Prijzen, voorwaarden en de
+   koopstroom veranderen niet: alleen kleuren. De badges zelf blijven zoals ze
+   zijn (donkere metalen schilden): op wit lezen ze, de zware zwarte schaduw is
+   zachter gemaakt.
+   ===================================================================== */
+html[data-thema="licht"] .dv2-premium .pr-main code { background: rgba(15, 16, 22, 0.06); }
+html[data-thema="licht"] .dv2-premium .pr-buy, html[data-thema="licht"] .dv2-premium .pr-buy:hover {
+  background: #FFFFFF; border-color: rgba(15, 16, 22, 0.14); box-shadow: 0 1px 2px rgba(20, 20, 28, 0.06); }
+html[data-thema="licht"] .dv2-premium .pr-buy:hover { background: #F1F2F6; border-color: rgba(15, 16, 22, 0.22); }
+html[data-thema="licht"] .dv2-premium .pr-card-featured .pr-buy, html[data-thema="licht"] .dv2-premium .pr-card-featured .pr-buy:hover {
+  background: linear-gradient(180deg, #DE1431, #BE0A25); border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 22px -12px rgba(232, 16, 46, 0.6); }
+html[data-thema="licht"] .dv2-premium .pr-summary:hover { background: rgba(15, 16, 22, 0.04); }
+html[data-thema="licht"] .dv2-premium .pr-card-featured { box-shadow: var(--dv2-kaart-schaduw), 0 26px 60px -32px rgba(232, 16, 46, 0.4); }
+@supports (background: conic-gradient(from 0deg, #000, #fff)) {
+  html[data-thema="licht"] .dv2-premium .pr-card-featured {
+    background:
+      linear-gradient(180deg, #FFF1F3, #FFFFFF 40%) padding-box,
+      conic-gradient(from var(--pr-a), rgba(232, 16, 46, 0.2), #FF7085, rgba(232, 16, 46, 0.55), #FF7085, rgba(232, 16, 46, 0.2)) border-box; }
+}
+html[data-thema="licht"] .dv2-premium .pr-held img { filter: drop-shadow(0 10px 16px rgba(40, 10, 20, 0.28)); }
+html[data-thema="licht"] .dv2-premium .pr-badge { filter: drop-shadow(0 0 18px rgba(232, 16, 46, 0.3)) drop-shadow(0 6px 12px rgba(40, 10, 20, 0.25)); }
+html[data-thema="licht"] .dv2-premium .pr-sectie-beeld {
+  background: radial-gradient(closest-side, rgba(232, 16, 46, 0.18), rgba(232, 16, 46, 0.05) 60%, transparent 72%);
+  filter: drop-shadow(0 14px 22px rgba(40, 10, 20, 0.28)); }
+html[data-thema="licht"] .dv2-premium .pr-card-mine:not(.pr-card-featured) { border-color: rgba(30, 140, 90, 0.5); box-shadow: var(--dv2-kaart-schaduw), 0 0 0 1px rgba(30, 140, 90, 0.3); }
+html[data-thema="licht"] .dv2-premium .pr-you { border-color: rgba(30, 140, 90, 0.3); }

@@ -1353,7 +1353,10 @@ html.v2 {
 @media (max-width: 639.98px) {
   .v2 .legal-hero { padding-top: 48px; padding-bottom: 28px; }
   .v2 .legal-content { font-size: 16.5px; }
-  .v2 .contact-grid { grid-template-columns: 1fr; }
+  /* minmax(0, 1fr): bij 1fr hield de langste knop de kaart breder dan 360 px
+     (13 px horizontale scroll, gevonden door test_thema.py op 4-11-2026). */
+  .v2 .contact-grid { grid-template-columns: minmax(0, 1fr); }
+  .v2 .contact-card .btn { white-space: normal; text-align: center; }
   .v2 .contact-card .btn { width: 100%; }
 }
 
@@ -1686,3 +1689,63 @@ html.v2 {
   .v2 .op-lore { margin-top: 20px; font-size: 17px; }
   .v2 .op-spec { grid-template-columns: minmax(0, 1fr); gap: 18px; }
 }
+
+/* =========================================================================
+   DONKER (4-11-2026), onder html.v2[data-thema="donker"] (../js/thema.js).
+   De v2-site is licht; dit is de donkere stand ervan, in het warme bijna-zwart
+   van de app (dezelfde tinten als de Security-sectie, --dark-*). De lichte stand
+   verandert hier niet: elke regel begint met het donkere thema.
+
+   De tokens doen het werk; hieronder alleen wat een vaste lichte kleur had (het
+   glas van de balk, de hover-tinten, de overloop onder de hero). De hero-render
+   is een lichte, zonnige lucht: in donker lost hij met hetzelfde masker op in
+   een donkere lucht en is hij iets gedempt, zodat hij geen lichtbak wordt. De
+   Security-sectie blijft wat ze was (een donker vlak) en krijgt een rand, anders
+   valt ze weg tegen het donkere canvas.
+   ========================================================================= */
+html.v2[data-thema="donker"] {
+  --canvas: #0E0D10;
+  --surface: #17141B;
+  --panel: #1E1A22;
+  --ink: #F0ECF3;
+  --ink-dim: #B8B0BE;
+  --line: #2E2833;
+  --line-strong: #4A4250;
+  --signal-text: #FF6B7D;
+  --signal-soft: rgba(255, 70, 92, 0.16);
+  --signal-glow: rgba(255, 70, 92, 0.36);
+  --null-mark: #8C95A6;   --null-text: #A9B1C0;
+  --vanta-mark: #2BE04A;  --vanta-text: #4BE466;
+  --aether-mark: #5B86D6; --aether-text: #8DAEEA;
+  --cytek-mark: #E0A210;  --cytek-text: #E8B132;
+  --sky: #121016;
+  --dark-bg: #0A090C;
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 40px -22px rgba(0, 0, 0, 0.9);
+}
+html.v2[data-thema="donker"] .nav::before { background: rgba(14, 13, 16, 0.55); }
+html.v2[data-thema="donker"] .nav.is-scrolled::before,
+html.v2[data-thema="donker"] .nav.is-open::before { background: rgba(14, 13, 16, 0.9); }
+html.v2[data-thema="donker"] .nav-links a:hover,
+html.v2[data-thema="donker"] .nav-login:hover { background: rgba(255, 255, 255, 0.07); }
+html.v2[data-thema="donker"] .nav-discord:hover { background: rgba(255, 255, 255, 0.08); }
+html.v2[data-thema="donker"] .hero::after { background: linear-gradient(to bottom, rgba(14, 13, 16, 0), var(--canvas)); }
+/* De render is een lichte lucht met een rechthoekige rand boven en rechts. In donker
+   lost hij rondom op (een ovaal rond het eiland) en is hij gedempt. */
+html.v2[data-thema="donker"] .hero-img { filter: brightness(0.72) contrast(1.05) saturate(1.08);
+  -webkit-mask-image: radial-gradient(ellipse 52% 56% at 64% 46%, #000 52%, transparent 100%);
+  mask-image: radial-gradient(ellipse 52% 56% at 64% 46%, #000 52%, transparent 100%);
+  -webkit-mask-composite: source-over; mask-composite: add; }
+@media (max-width: 1079.98px) {
+  html.v2[data-thema="donker"] .hero-img {
+    -webkit-mask-image: radial-gradient(ellipse 62% 50% at 50% 50%, #000 55%, transparent 100%);
+    mask-image: radial-gradient(ellipse 62% 50% at 50% 50%, #000 55%, transparent 100%); }
+}
+@media (max-width: 1079.98px) {
+  html.v2[data-thema="donker"] .nav-menu { box-shadow: 0 24px 40px -24px rgba(0, 0, 0, 0.8); }
+}
+
+/* De themaknop in de balk: de stijl van de Discord-knop ernaast. */
+.v2 .nav-actions .thema-knop { --thema-knop-maat: 40px; --thema-knop-kleur: var(--ink);
+  --thema-knop-bg-hover: rgba(17, 19, 24, 0.06); --thema-knop-focus: var(--signal-text); }
+html.v2[data-thema="donker"] .nav-actions .thema-knop { --thema-knop-bg-hover: rgba(255, 255, 255, 0.08); }
+html.v2[data-thema="donker"] .secure { box-shadow: inset 0 0 0 1px var(--line); }

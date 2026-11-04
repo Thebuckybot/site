@@ -7,6 +7,8 @@
   <!-- De versieschakelaar (ADR 0011). Onder v1 het oude gedrag van
        "Organisations": naar de VM in de arcade. -->
   <script src="../js/site-version.js" data-page="v2" data-v1="../arcade.html#the-vm"></script>
+  <!-- Licht/donker: blokkerend, vóór de stylesheets: geen flits (../js/thema.js). -->
+  <script src="../js/thema.js"></script>
   <title>Bucky - The four organisations</title>
   <meta name="description" content="Null Division, Vanta Collective, Aether Systems and CyTek Industries: the four organisations of the Grid, and the org app to open yours." />
   <!-- Open Graph en Twitter/X: titel en beschrijving zijn die van deze pagina. -->
@@ -31,10 +33,11 @@
   <meta name="twitter:image" content="https://buckybot.app/pics/og/bucky-banner-1200x630.jpg" />
   <meta name="twitter:image:alt" content="The red Bucky mascot next to the BuckyBot logo and the line: The all-in-one Discord bot" />
   <link rel="canonical" href="https://buckybot.app/v2/organisations.html" />
-  <meta name="theme-color" content="#FAFAFC" />
+  <meta name="theme-color" content="#FAFAFC" data-thema-donker="#0E0D10" />
   <link rel="preload" href="fonts/inter-800.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="css/v2.css" />
+  <link rel="stylesheet" href="../css/thema.css" />
   <link rel="icon" type="image/webp" href="img/bucky-mark-96.webp" />
   <script type="module" src="js/v2.js"></script>
   <script type="module" src="js/orgs.js"></script>
@@ -93,6 +96,11 @@
             </ul>
           </div>
         </div>
+        <button type="button" class="thema-knop" data-thema-knop aria-label="Theme">
+          <svg class="ic-auto" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path class="vol" d="M12 4a8 8 0 0 1 0 16z"/></svg>
+          <svg class="ic-licht" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="ic-donker" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 7 7 0 1 0 20 14.5z"/></svg>
+        </button>
         <!-- Discord-logo: Font Awesome Free 6 (brands, "discord"), CC BY 4.0,
              https://fontawesome.com/license/free -->
         <a class="nav-discord" href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener" aria-label="Bucky on Discord (support server)">

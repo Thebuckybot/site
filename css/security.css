@@ -760,7 +760,7 @@ body.sec-readonly .sec-write { display: none !important; }
 
    LICHT. De --sec-*-tokens worden HIER op .sec-body naar --dv2-* gezet, niet op
    :root: een variabele die naar een andere verwijst, wordt opgelost waar hij
-   staat, en het lichte palet hangt aan body.dv2-licht. Een pagina krijgt die
+   staat, en het lichte palet hangt aan html[data-thema="licht"] (js/thema.js). Een pagina krijgt die
    klasse pas als zijn eigen inhoud licht aankan (stap 3 en 4).
    ===================================================================== */
 .sec-body {
@@ -794,10 +794,7 @@ body.sec-readonly .sec-write { display: none !important; }
   -webkit-font-smoothing: antialiased;
 }
 html:has(> body.sec-body) { background: var(--dv2-bg); }
-@media (prefers-color-scheme: light) {
-  .sec-body.dv2-licht { --dv2-hover: rgba(255, 255, 255, 0.6); --dv2-actief: #FFFFFF; --dv2-knop: rgba(255, 255, 255, 0.75); }
-  html:has(> body.dv2-licht) { background: #EEF0F5; }
-}
+html[data-thema="licht"] .sec-body { --dv2-hover: rgba(15, 16, 22, 0.05); --dv2-actief: #FFFFFF; --dv2-knop: rgba(255, 255, 255, 0.75); }
 
 /* ---- de achtergrond: twee gloeden en de golf, vast ------------------------ */
 .sec-body::before, .sec-body::after { content: ""; position: fixed; z-index: -1; pointer-events: none; }
@@ -1013,10 +1010,9 @@ html.glas-vervorming .sec-modal { backdrop-filter: url(#dv2-vervorm) saturate(17
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 6px 16px -10px rgba(0, 0, 0, 0.8);
 }
 .sec-nav-item:focus-visible, .sec-group-head:focus-visible { outline-offset: 2px; }
-@media (prefers-color-scheme: light) {
-  .dv2-licht .sec-nav-item.active, .dv2-licht .sec-nav-item.active:hover {
-    background: #FFFFFF; box-shadow: 0 1px 2px rgba(20, 20, 28, 0.08), 0 6px 16px -10px rgba(20, 20, 28, 0.3); }
-}
+html[data-thema="licht"] .sec-nav-item.active, html[data-thema="licht"] .sec-nav-item.active:hover {
+  background: #FFFFFF; box-shadow: 0 1px 2px rgba(20, 20, 28, 0.08), 0 6px 16px -10px rgba(20, 20, 28, 0.3); }
+
 @media (max-width: 699px) { .sec-content { scroll-margin-top: 84px; } }
 
 /* ---- gedeelde kaart- en kopstijl (B met de rust van A) ----------------------
@@ -1472,3 +1468,145 @@ html:has(.sec-modal-host.open) { overflow: hidden; }
 .sec-brand.dv2-server { grid-template-rows: minmax(20px, auto) auto; min-height: 68px; }
 .dv2-server .sec-server-nm { grid-row: 1; }
 .dv2-centrum-naam { grid-row: 2; }
+
+/* ---- de themaknop in het zijpaneel (4-11-2026), naast de gebruiker -------------- */
+.dv2-ik .thema-knop { --thema-knop-maat: 30px; --thema-knop-focus: var(--dv2-focus);
+  --thema-knop-bg-hover: var(--dv2-hover); color: var(--dv2-tekst-3); }
+.dv2-ik .thema-knop:hover { color: var(--dv2-kop); }
+
+
+/* =====================================================================
+   DASHBOARD V2 - LICHT (4-11-2026)
+   Het lichte thema van het Server Center en het Security Center, onder
+   html[data-thema="licht"] (js/thema.js). De tokens (tokens.css) doen het meeste;
+   hier staan de componenten met een vaste donkere kleur: wit-op-transparant voor
+   knoppen, chips en invoer, het witte verloop op grote getallen, de roze link,
+   het venster, de wisselaar en de voet van een venster.
+   Glas lichter, schaduwen zachter, gloed en golf rustiger (tokens.css). De
+   donkere modus verandert hier niet: elke regel begint met het lichte thema.
+   De Discord-voorbeelden (.dc-*, .srv-preview*) blijven donker: ze tonen hoe
+   het er in Discord uitziet.
+   ===================================================================== */
+html[data-thema="licht"] {
+  --dv2-licht-knop: #FFFFFF;
+  --dv2-licht-knop-rand: rgba(15, 16, 22, 0.14);
+  --dv2-licht-knop-hover: #F1F2F6;
+  --dv2-licht-invoer: #FFFFFF;
+  --dv2-licht-link: #B00C24;
+}
+html[data-thema="licht"] .sec-body { --dv2-actief: #FFFFFF; }
+
+/* Knoppen: wit met een dunne rand; de hoofdknop blijft rood. */
+html[data-thema="licht"] .sec-btn, html[data-thema="licht"] .srv-modal-btn,
+html[data-thema="licht"] .sec-topbar #sec-refresh {
+  background: var(--dv2-licht-knop); border-color: var(--dv2-licht-knop-rand); color: var(--dv2-kop);
+  box-shadow: 0 1px 2px rgba(20, 20, 28, 0.06); }
+html[data-thema="licht"] .sec-btn:hover, html[data-thema="licht"] .srv-modal-btn:hover,
+html[data-thema="licht"] .sec-topbar #sec-refresh:hover {
+  background: var(--dv2-licht-knop-hover); border-color: rgba(15, 16, 22, 0.22); }
+html[data-thema="licht"] .sec-btn-ghost { background: transparent; box-shadow: none; }
+html[data-thema="licht"] .sec-btn-ghost:hover { background: rgba(15, 16, 22, 0.05); }
+html[data-thema="licht"] .sec-btn-primary, html[data-thema="licht"] .sec-btn-primary:hover {
+  background: linear-gradient(180deg, #DE1431, #BE0A25); border-color: transparent; color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 18px -10px rgba(232, 16, 46, 0.55); }
+html[data-thema="licht"] .sec-btn-primary:hover { background: linear-gradient(180deg, #E8102E, #C40D27); }
+html[data-thema="licht"] .sec-btn-danger, html[data-thema="licht"] .sec-btn-danger:hover {
+  background: #C40D27; border-color: transparent; color: #fff; }
+html[data-thema="licht"] .sec-btn:disabled:hover { background: var(--dv2-licht-knop); }
+html[data-thema="licht"] .sec-body input[type="file"]::file-selector-button {
+  background: var(--dv2-licht-knop); border-color: var(--dv2-licht-knop-rand); color: var(--dv2-kop); }
+
+/* Invoer: wit, een rand die je ziet. */
+html[data-thema="licht"] .sec-input, html[data-thema="licht"] .sec-select,
+html[data-thema="licht"] .srv-modal-input, html[data-thema="licht"] .srv-modal-select,
+html[data-thema="licht"] .srv-textarea, html[data-thema="licht"] .dv2-zoek,
+html[data-thema="licht"] .srv-picker-search, html[data-thema="licht"] .sec-body textarea {
+  background: var(--dv2-licht-invoer); border-color: rgba(15, 16, 22, 0.16); color: var(--dv2-tekst); }
+html[data-thema="licht"] .sec-select option { background: #FFFFFF; color: var(--dv2-tekst); }
+html[data-thema="licht"] .dv2-zoek kbd { border-color: rgba(15, 16, 22, 0.2); color: var(--dv2-tekst-3); }
+
+/* Schakelaar: uit is een grijze baan die je ziet; aan blijft groen. */
+html[data-thema="licht"] .sec-switch .track { background: rgba(15, 16, 22, 0.2); }
+html[data-thema="licht"] .sec-switch input:checked + .track { background: var(--dv2-goed-vul); }
+
+/* Chips en pillen. */
+html[data-thema="licht"] .sec-badge.muted,
+html[data-thema="licht"] .sec-badge:not(.ok):not(.warn):not(.bad):not(.brand),
+html[data-thema="licht"] .srv-state:not(.is-on):not(.is-off):not(.is-let),
+html[data-thema="licht"] .sec-pill { background: rgba(15, 16, 22, 0.06); color: var(--dv2-tekst-2); }
+html[data-thema="licht"] .sec-pill { color: var(--dv2-tekst); }
+html[data-thema="licht"] .sec-badge.bad, html[data-thema="licht"] .srv-state.is-off { background: rgba(176, 12, 36, 0.09); color: #A50B22; }
+html[data-thema="licht"] .sec-badge.ok, html[data-thema="licht"] .srv-state.is-on { background: var(--dv2-goed-bg); color: var(--dv2-goed); }
+html[data-thema="licht"] .sec-badge.warn, html[data-thema="licht"] .srv-state.is-let { background: var(--dv2-let-bg); color: var(--dv2-let); }
+html[data-thema="licht"] .srv-dept { background: rgba(15, 16, 22, 0.05); }
+html[data-thema="licht"] .srv-dept-btn { color: var(--dv2-tekst-2); }
+html[data-thema="licht"] .srv-dept-btn.is-active { background: #FFFFFF; color: var(--dv2-kop);
+  box-shadow: 0 1px 2px rgba(20, 20, 28, 0.1); }
+html[data-thema="licht"] .sec-tab[aria-selected="true"] { color: var(--dv2-kop); }
+html[data-thema="licht"] .srv-name code, html[data-thema="licht"] .sec-body code {
+  background: rgba(15, 16, 22, 0.06); border-color: rgba(15, 16, 22, 0.1); color: var(--dv2-tekst); }
+
+/* Grote getallen: geen wit verloop meer, gewoon de kopkleur. */
+html[data-thema="licht"] .srv-figure .n, html[data-thema="licht"] .sec-score .num {
+  background: none; -webkit-background-clip: border-box; background-clip: border-box;
+  -webkit-text-fill-color: var(--dv2-kop); color: var(--dv2-kop); }
+
+/* Links: het donkerdere rood (AA op wit en op de lichte achtergrond). */
+html[data-thema="licht"] .srv-tile .dv2-tegel-link, html[data-thema="licht"] .sec-body a:not(.sec-btn):not(.dv2-ander):not(.dv2-wissel-item):not(.dv2-wissel-alle):not(.sec-nav-item):not(.crumb-link):not(.sec-brand) {
+  color: var(--dv2-licht-link); }
+html[data-thema="licht"] .sec-breadcrumb .crumb-link { color: var(--dv2-tekst-3); }
+
+/* Het zijpaneel: het andere centrum, het pijltje. */
+html[data-thema="licht"] .dv2-ander { background: #FFFFFF; box-shadow: 0 1px 2px rgba(20, 20, 28, 0.08); color: var(--dv2-kop); }
+html[data-thema="licht"] .dv2-ander:hover { background: #F6F7FA; }
+html[data-thema="licht"] .dv2-server:hover .dv2-server-pijl,
+html[data-thema="licht"] button.dv2-server[aria-expanded="true"] .dv2-server-pijl { background: rgba(15, 16, 22, 0.06); }
+html[data-thema="licht"] .sec-sidebar::after { background: radial-gradient(120% 90% at 20% 0%, rgba(255, 255, 255, 0.7), transparent 70%); }
+html[data-thema="licht"] .dv2-avatar { background: #D9DBE3; color: #1C1D24; }
+
+/* De wisselaar en het menu. */
+html[data-thema="licht"] .dv2-wissel { background: #FFFFFF; border-color: rgba(15, 16, 22, 0.12);
+  box-shadow: 0 24px 50px -24px rgba(20, 20, 40, 0.35); }
+html[data-thema="licht"] .dv2-wissel-item:hover, html[data-thema="licht"] .dv2-wissel-alle:hover { background: rgba(15, 16, 22, 0.05); }
+html[data-thema="licht"] .dv2-wissel-item.is-nu { background: rgba(15, 16, 22, 0.06); box-shadow: none; }
+html[data-thema="licht"] .dv2-wissel-lijst.is-scrollend { scrollbar-color: rgba(15, 16, 22, 0.25) transparent; }
+html[data-thema="licht"] .dv2-wissel-lijst.is-scrollend::-webkit-scrollbar-thumb { background: rgba(15, 16, 22, 0.25); }
+html[data-thema="licht"] .sec-menu { background: #FFFFFF; border-color: rgba(15, 16, 22, 0.12); }
+
+/* Het venster: licht glas, een lichte voet. */
+html[data-thema="licht"] .sec-modal-host { background: rgba(30, 32, 44, 0.32); }
+html[data-thema="licht"] .sec-modal { background: var(--dv2-glas-effen); border-color: rgba(15, 16, 22, 0.1);
+  box-shadow: 0 40px 90px -30px rgba(20, 20, 40, 0.45); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html[data-thema="licht"] .sec-modal { background: rgba(250, 250, 253, 0.86); }
+}
+html[data-thema="licht"] .sec-modal > .sec-modal-actions { background: #F3F4F8; }
+html[data-thema="licht"] .sec-toast { color: var(--dv2-tekst); }
+
+/* Meldingen en lege toestanden: dezelfde tint, de tekstkleur van licht. */
+html[data-thema="licht"] .sec-body .srv-fout { color: #8E0A1E; }
+html[data-thema="licht"] .sec-body .sec-rb-add { border-color: rgba(15, 16, 22, 0.14); background: #FFFFFF; }
+html[data-thema="licht"] .sec-body .srv-answers { background: rgba(15, 16, 22, 0.03); }
+html[data-thema="licht"] .sec-body .srv-banner-klein.leeg { border-color: rgba(15, 16, 22, 0.14); }
+html[data-thema="licht"] .sec-body { --dv2-t-let: 196, 116, 20; --dv2-t-fout: 196, 22, 50; --dv2-t-info: 60, 100, 210; --dv2-t-goed: 30, 140, 90; }
+
+/* Tabellen en rijen. */
+html[data-thema="licht"] .sec-table tr:hover td, html[data-thema="licht"] .srv-row:hover { background: rgba(15, 16, 22, 0.035); }
+html[data-thema="licht"] .srv-row.is-off { background: rgba(176, 12, 36, 0.04); }
+html[data-thema="licht"] .srv-sticky { background: linear-gradient(180deg, var(--dv2-bg) 72%, transparent); }
+
+/* De balk op een telefoon: licht glas. */
+@media (max-width: 699px) {
+  html[data-thema="licht"] .sec-topbar { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 12px 30px -20px rgba(20, 20, 40, 0.35); }
+}
+
+/* Contrast in licht (gemeten per tekstelement, tests/contrast_meting.py): de koele
+   staatkleur, de link "Show answers", de actieve rij en het label If waren in
+   donker gekozen en haalden op wit geen 4,5:1. */
+html[data-thema="licht"] .sec-body { --srv-state: #4A6684; }
+html[data-thema="licht"] .srv-sub-hint { color: var(--dv2-licht-link); }
+html[data-thema="licht"] .srv-row.is-active { background: rgba(176, 12, 36, 0.06); }
+html[data-thema="licht"] .sec-body .sec-rb-block.if { --dv2-t: 176, 12, 36; }
+html[data-thema="licht"] .sec-body .sec-rb-tag { background: rgba(var(--dv2-t, 15, 16, 22), 0.1); }
+html[data-thema="licht"] .sec-body .sec-rb-block.when .sec-rb-tag { color: #8A5100; }
+html[data-thema="licht"] .sec-body .sec-rb-block.then .sec-rb-tag { color: #17643F; }

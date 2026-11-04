@@ -1,0 +1,75 @@
+/* =====================================================================
+   DE THEMAKNOP EN color-scheme (4-11-2026), zie js/thema.js.
+   Geladen door de v2-site, premium, het dashboard en de transcriptpagina.
+
+   color-scheme volgt het GETEKENDE thema, zodat formulierelementen, scrollbalken
+   en de standaardkleuren van de browser meekleuren.
+
+   De knop: één knop die doorloopt van automatisch naar licht naar donker. Welk
+   icoon er staat, hangt aan html[data-thema-keuze], dat js/thema.js al vóór de
+   eerste tekening zet: er verspringt dus geen icoon. De kleuren komen van de
+   pagina (currentColor en drie variabelen), zodat dezelfde knop in de donkere
+   app en op de lichte site past.
+   ===================================================================== */
+html[data-thema="licht"] { color-scheme: light; }
+html[data-thema="donker"] { color-scheme: dark; }
+
+.thema-knop {
+  --thema-knop-maat: 36px;
+  display: inline-grid; place-items: center; flex: none;
+  width: var(--thema-knop-maat); height: var(--thema-knop-maat); padding: 0; margin: 0;
+  border-radius: 999px; cursor: pointer; font: inherit;
+  color: var(--thema-knop-kleur, currentColor);
+  background: var(--thema-knop-bg, transparent);
+  border: 1px solid var(--thema-knop-rand, transparent);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .15s, border-color .15s;
+}
+.thema-knop:hover { background: var(--thema-knop-bg-hover, rgba(127, 127, 127, 0.14)); }
+.thema-knop:focus { outline: none; }
+.thema-knop:focus-visible { outline: 2px solid var(--thema-knop-focus, currentColor); outline-offset: 2px; }
+.thema-knop svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; display: none; }
+.thema-knop .ic-auto .vol { fill: currentColor; stroke: none; }
+
+/* Het icoon van de KEUZE: automatisch (half gevulde cirkel), licht (zon), donker (maan). */
+html:not([data-thema-keuze]) .thema-knop .ic-auto,
+html[data-thema-keuze="auto"] .thema-knop .ic-auto,
+html[data-thema-keuze="licht"] .thema-knop .ic-licht,
+html[data-thema-keuze="donker"] .thema-knop .ic-donker { display: block; }
+
+@media (prefers-reduced-motion: reduce) { .thema-knop { transition: none; } }
+
+/* In de balk van de site (dashboard.html, premium.html): rechts, na het menu; op
+   een smal scherm vóór de hamburger. */
+.site-nav .nav-inner > #nav-menu { margin-left: auto; }
+.site-nav .thema-knop { --thema-knop-kleur: var(--dv2-tekst-2); --thema-knop-rand: rgba(255, 255, 255, 0.1);
+  --thema-knop-bg-hover: rgba(255, 255, 255, 0.08); --thema-knop-focus: var(--dv2-focus); order: 3; }
+.site-nav .hamburger { order: 4; }
+html[data-thema="licht"] .site-nav .thema-knop { --thema-knop-rand: rgba(15, 16, 22, 0.14);
+  --thema-knop-bg-hover: rgba(15, 16, 22, 0.05); }
+/* 34 px op een smal scherm: de hoogte van het logo, zodat de balk niet hoger wordt. */
+@media (max-width: 820px) { .site-nav .thema-knop { margin-left: auto; --thema-knop-maat: 34px; } }
+
+/* =====================================================================
+   DE GEDEELDE BALK EN VOET IN LICHT (serverkeuze en premium)
+   public.css tekent ze met de donkere --bk-*-kleuren en een donker glas; die
+   pagina's zijn de enige met een lichte stand die ze delen. De v1-site laadt dit
+   bestand niet, dus daar verandert niets.
+   ===================================================================== */
+html[data-thema="licht"] :is(body.dv2-kiezer, body.dv2-premium) {
+  --bk-text: #1C1D24; --bk-muted: #4C4D57; --bk-panel: #FFFFFF; --bk-panel-2: rgba(15, 16, 22, 0.05);
+  --bk-border: rgba(15, 16, 22, 0.1); --bk-border-strong: rgba(15, 16, 22, 0.16); --bk-red-300: #B00C24; }
+html[data-thema="licht"] :is(.dv2-kiezer, .dv2-premium) .site-footer { background: rgba(255, 255, 255, 0.55); }
+html[data-thema="licht"] :is(.dv2-kiezer, .dv2-premium) .footer-col a { opacity: 1; }
+html[data-thema="licht"] :is(.dv2-kiezer, .dv2-premium) #nav-menu li a#dashboard-link {
+  color: var(--dv2-kop) !important; background: #FFFFFF; border: 1px solid rgba(15, 16, 22, 0.12); box-shadow: 0 1px 2px rgba(20, 20, 28, 0.06); }
+html[data-thema="licht"] :is(.dv2-kiezer, .dv2-premium) #nav-menu li #logout-btn {
+  color: var(--dv2-tekst-2) !important; border-color: rgba(15, 16, 22, 0.14); }
+html[data-thema="licht"] .dv2-premium .nav-inner { box-shadow: var(--dv2-glans), 0 18px 36px -26px rgba(20, 20, 40, 0.35); }
+html[data-thema="licht"] .hamburger span { background: var(--bk-text); }
+@media (max-width: 820px) {
+  html[data-thema="licht"] .dv2-kiezer #nav-menu { box-shadow: 0 24px 50px -24px rgba(20, 20, 40, 0.35); }
+}
+/* Het dichte uitklapmenu: zijn witte achtergrond liet een streep van 2 px zien. */
+html[data-thema="licht"] .dv2-kiezer #nav-menu:not(.open) { border-width: 0; }
