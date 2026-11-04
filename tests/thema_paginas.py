@@ -76,14 +76,17 @@ def nieuw(browser, breed, thema=None, *, opslag=True, kleur=None):
         page.add_init_script("""(() => { const weg = { get() { throw new DOMException('denied', 'SecurityError'); } };
           Object.defineProperty(window, 'localStorage', weg); Object.defineProperty(window, 'sessionStorage', weg); })();""")
     # Eerst de vangnetroute, dan de specifieke: Playwright zoekt achterstevoren.
-    page.route("**/api/**", lambda r: _json(r, {"ok": True, "data": {}}))
-    page.route("**/api/site/features", lambda r: _json(r, {"features": {"premium": True}}))
+    # Op de context, niet de pagina: een tweede tabblad (test_thema.twee_tabbladen)
+    # moet dezelfde stubs zien, anders praat het met de echte API en wordt het
+    # doorgestuurd naar de login (gevonden tegen live, 4-11-2026).
+    page.context.route("**/api/**", lambda r: _json(r, {"ok": True, "data": {}}))
+    page.context.route("**/api/site/features", lambda r: _json(r, {"features": {"premium": True}}))
     return page, fouten
 
 
 def open_kiezer(browser, breed, thema=None, **kw):
     page, fouten = nieuw(browser, breed, thema, **kw)
-    page.route("**/api/me", lambda r: _json(r, {"logged_in": True, "user": {
+    page.context.route("**/api/me", lambda r: _json(r, {"logged_in": True, "user": {
         "id": "123456789012345678", "username": "tommy", "global_name": "tommy", "avatar": None}, "guilds": SERVERS}))
     page.goto_doel = "dashboard.html"
     return page, fouten
@@ -91,16 +94,16 @@ def open_kiezer(browser, breed, thema=None, **kw):
 
 def open_premium(browser, breed, thema=None, **kw):
     page, fouten = nieuw(browser, breed, thema, **kw)
-    page.route("**/api/premium/me", lambda r: _json(r, {"signed_in": False}))
-    page.route("**/api/premium/tiers", lambda r: _json(r, {"available": True, "tiers": RIJEN}))
+    page.context.route("**/api/premium/me", lambda r: _json(r, {"signed_in": False}))
+    page.context.route("**/api/premium/tiers", lambda r: _json(r, {"available": True, "tiers": RIJEN}))
     page.goto_doel = "premium.html"
     return page, fouten
 
 
 def open_transcript(browser, breed, thema=None, **kw):
     page, fouten = nieuw(browser, breed, thema, **kw)
-    page.route("https://api.buckybot.app/api/tickets/transcripts/**", lambda r: _json(r, TRANSCRIPT))
-    page.route("https://x.test/**", lambda r: r.abort())
+    page.context.route("https://api.buckybot.app/api/tickets/transcripts/**", lambda r: _json(r, TRANSCRIPT))
+    page.context.route("https://x.test/**", lambda r: r.abort())
     page.goto_doel = "transcript.html?id=41"
     return page, fouten
 
@@ -123,7 +126,7 @@ def ga(page, basis):
 def _v2(naam):
     def open_v2(browser, breed, thema=None, **kw):
         page, fouten = nieuw(browser, breed, thema, **kw)
-        page.route("**/api/stats*", lambda r: _json(r, {"servers": 104, "users": 104831, "commands": 212}))
+        page.context.route("**/api/stats*", lambda r: _json(r, {"servers": 104, "users": 104831, "commands": 212}))
         # ?site=v2: de preview van de versieschakelaar, los van wat live de standaard is.
         page.goto_doel = f"v2/{naam}.html?site=v2"
         return page, fouten
