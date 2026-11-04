@@ -22,6 +22,7 @@ import functools
 import http.server
 import json
 import pathlib
+import re
 import threading
 from urllib.parse import urlsplit
 
@@ -242,28 +243,46 @@ def test_premium_volgt_de_vlag(v2):
 # --------------------------------------------------------------------------- #
 # C. De hero
 # --------------------------------------------------------------------------- #
-def test_het_heldenbeeld_heeft_afmetingen_varianten_en_wordt_vooraf_gehaald(v2):
-    t = v2()
-    img = t.page.evaluate("""() => {
-      const i = document.querySelector('.hero-img');
-      const s = document.querySelector('.hero picture source');
-      const pre = document.querySelector('link[rel=preload][as=image]');
-      return {w: i.getAttribute('width'), h: i.getAttribute('height'), prio: i.getAttribute('fetchpriority'),
-              geladen: i.complete && i.naturalWidth > 0, bron: i.currentSrc,
-              srcset: s.getAttribute('srcset'), type: s.getAttribute('type'),
-              pre: pre && pre.getAttribute('imagesrcset')};
-    }""")
-    assert (img["w"], img["h"]) == ("1600", "900")
-    assert img["prio"] == "high" and img["geladen"]
-    assert img["type"] == "image/webp" and img["bron"].endswith(".webp")
-    assert img["pre"] == img["srcset"], "de preload haalt een andere variant dan het beeld toont"
+def test_het_heldenbeeld_laadt_een_variant_per_thema_zonder_te_verspringen(v2):
+    """Sinds 4-11-2026 een CSS-achtergrond: dag in licht, nacht in donker. Alleen het
+    beeld van het getekende thema wordt gehaald (een preload zou altijd de dag
+    halen), de doos heeft een vaste maat, en elke variant bestaat en is klein."""
     from PIL import Image
-    for deel in img["srcset"].split(","):
-        pad, breedte = deel.split()
-        bestand = (SITE / "v2" / pad).resolve()
+    t = v2()
+    t.page.wait_for_timeout(300)
+    st = t.page.evaluate("""() => { const i = document.querySelector('.hero-img'), s = getComputedStyle(i);
+      return {rol: i.getAttribute('role'), label: i.getAttribute('aria-label'), beeld: s.backgroundImage,
+              maat: s.backgroundSize, h: i.getBoundingClientRect().height,
+              pre: document.querySelectorAll('link[rel=preload][as=image]').length}; }""")
+    assert st["rol"] == "img" and "floating island" in st["label"]
+    assert st["maat"] == "cover" and st["h"] > 300
+    assert st["pre"] == 0, "een preload haalt de dagversie ook in donker"
+    dag = [u for u in t.verzoeken if "hero-island" in u]
+    assert dag and all("night" not in u for u in dag), dag
+    assert all(u.endswith(".webp") for u in dag), f"Chromium hoort de WebP te nemen: {dag}"
+    css = (SITE / "v2" / "css" / "v2.css").read_text(encoding="utf-8")
+    for pad in sorted(set(re.findall(r'url\("(\.\./\.\./assets/images/hero/[^"]+)"\)', css))):
+        bestand = (SITE / "v2" / "css" / pad).resolve()
         assert bestand.exists(), pad
         assert bestand.stat().st_size < 120_000, f"{pad} is {bestand.stat().st_size} bytes"
-        assert Image.open(bestand).width == int(breedte[:-1])
+        breedte = int(re.search(r"-(\d+)\.", pad).group(1))
+        assert Image.open(bestand).width == breedte, pad
+
+
+def test_in_donker_laadt_alleen_de_nachtversie(browser, server):
+    ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+    page = ctx.new_page()
+    verzoeken = []
+    page.on("request", lambda r: verzoeken.append(r.url))
+    page.add_init_script("try { localStorage.setItem('bucky_thema', 'donker'); } catch (e) {}")
+    page.route("https://api.buckybot.app/**", lambda r: r.abort())
+    page.goto(f"{server}/v2/?site=v2", wait_until="networkidle")
+    held = [u for u in verzoeken if "hero-island" in u]
+    assert held and all("night" in u for u in held), held
+    assert all(u.endswith(".avif") for u in held), f"Chromium hoort de AVIF te nemen: {held}"
+    hoek = page.evaluate("getComputedStyle(document.querySelector('.hero')).backgroundColor")
+    assert hoek == "rgb(2, 7, 15)", "de lucht is de hoekkleur van de nachtversie"
+    ctx.close()
 
 
 def test_de_hero_draagt_exact_de_hoekkleur_en_het_beeld_vervaagt(v2):
@@ -278,18 +297,17 @@ def test_de_hero_draagt_exact_de_hoekkleur_en_het_beeld_vervaagt(v2):
 
 
 _BURCHT = """() => {
-  // Waar de rode burcht (66,1% van de breedte van de render) op het scherm
-  // staat: object-fit cover, object-position, en dan de schaal rond de origin.
+  // Waar de rode burcht (66,1% van de breedte van de render) op het scherm staat:
+  // background-size cover op een render van 16:9, background-position, en dan de
+  // schaal rond de origin (sinds 4-11-2026 een achtergrond, eerst object-fit).
   const i = document.querySelector('.hero-img');
   const s = getComputedStyle(i);
   const m = s.transform === 'none' ? new DOMMatrix() : new DOMMatrix(s.transform);
   const w = i.offsetWidth, h = i.offsetHeight;          // de ongeschaalde doos
-  const doos = i.getBoundingClientRect();
-  const links = doos.left + (doos.width - w * m.a) / 2 * 0;   // offsetLeft hieronder
   let el = i, x0 = 0; while (el) { x0 += el.offsetLeft; el = el.offsetParent; }
-  const schaal = Math.max(w / i.naturalWidth, h / i.naturalHeight);
-  const breed = i.naturalWidth * schaal;
-  const px = parseFloat(s.objectPosition) / 100;
+  const schaal = Math.max(w / 1600, h / 900);
+  const breed = 1600 * schaal;
+  const px = parseFloat(s.backgroundPositionX) / 100;
   const xLokaal = 0.661 * breed - (breed - w) * px;
   const ox = parseFloat(s.transformOrigin);
   const xNa = ox + (xLokaal - ox) * m.a;

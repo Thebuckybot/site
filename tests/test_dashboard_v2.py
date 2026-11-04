@@ -748,9 +748,6 @@ def thema(browser):
                 for breed in ("desktop", "telefoon"):
                     page, fouten = open_gevuld(browser, soort, key, breed, thema=th)
                     uit = tt.cm.meet(page)
-                    if th == "donker":
-                        # Gelijk aan live (pixelvergelijking): de ene bekende uitzondering, zie test_thema.py.
-                        uit = [u for u in uit if u["klasse"] != "srv-sub-hint"]
                     eis(not uit, f"{soort}#{key} {th} {breed}: {len(uit)} tekstelementen onder AA {uit[:3]}")
                     eis(not fouten, f"{soort}#{key} {th} {breed}: geen paginafout of CSP-melding ({fouten[:2]})")
                     page.close()

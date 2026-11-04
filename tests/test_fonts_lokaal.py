@@ -109,7 +109,10 @@ def test_in_de_browser_gaat_er_geen_verzoek_naar_google_en_manrope_staat_er(serv
             pg.goto(f"{server}/{pagina.name}", wait_until="load")
             # Een pagina zonder sessie (het dashboard) stuurt zichzelf door: dan meten
             # op de pagina waar hij uitkomt, die laadt dezelfde letters.
-            for _ in range(3):
+            # Zes pogingen, niet drie (4-11-2026): zonder sessie gaat security.html via
+            # dashboard.html en / naar /v2/, drie keer doorsturen, en elke stap kan een
+            # poging opmaken. Met drie faalde de test willekeurig, ook op de live versie.
+            for _ in range(6):
                 try:
                     pg.wait_for_load_state("load")
                     geladen = pg.evaluate("async () => { await document.fonts.ready; await document.fonts.load('700 16px Manrope');"
@@ -118,6 +121,7 @@ def test_in_de_browser_gaat_er_geen_verzoek_naar_google_en_manrope_staat_er(serv
                 except Exception as fout:                       # noqa: BLE001
                     if "Execution context was destroyed" not in str(fout):
                         raise
+                    pg.wait_for_timeout(200)
             else:
                 raise AssertionError(f"{pagina.name}: bleef doorsturen")
             ctx.close()

@@ -1610,3 +1610,8 @@ html[data-thema="licht"] .sec-body .sec-rb-block.if { --dv2-t: 176, 12, 36; }
 html[data-thema="licht"] .sec-body .sec-rb-tag { background: rgba(var(--dv2-t, 15, 16, 22), 0.1); }
 html[data-thema="licht"] .sec-body .sec-rb-block.when .sec-rb-tag { color: #8A5100; }
 html[data-thema="licht"] .sec-body .sec-rb-block.then .sec-rb-tag { color: #17643F; }
+
+/* "Show N answers" in donker: het rood haalde 4,33:1 op het paneel; #F23A50 haalt
+   5,24:1 (en 4,59 op de donkerste rode tint). Licht heeft zijn eigen regel hierboven,
+   die wint op specificiteit (4-11-2026). */
+.sec-body .srv-sub-hint { color: #F23A50; }

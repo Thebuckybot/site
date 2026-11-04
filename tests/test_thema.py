@@ -232,9 +232,6 @@ def contrast(browser):
                 dv2.BASIS = BASIS
                 page, _ = dv2.open_gevuld(browser, soort, key, "desktop", thema=thema)
                 uit = cm.meet(page)
-                # Donker is gelijk aan live (pixelvergelijking); de ene bekende uitzondering staat hier met reden.
-                if thema == "donker":
-                    uit = [u for u in uit if u["klasse"] != "srv-sub-hint"]
                 eis(not uit, f"contrast {soort}#{key} {thema}: {len(uit)} onder AA {uit[:3]}")
                 page.close()
 

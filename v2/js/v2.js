@@ -38,7 +38,8 @@ function nav() {
             knop.focus();
         }
     });
-    const breed = window.matchMedia("(min-width: 1080px)");
+    // Gelijk aan de grens van het menu in v2.css (1200 px sinds 4-11-2026).
+    const breed = window.matchMedia("(min-width: 1200px)");
     breed.addEventListener("change", (e) => { if (e.matches) zet(false); });
 
     const gescrold = () => kop.classList.toggle("is-scrolled", window.scrollY > 8);
@@ -174,6 +175,35 @@ function beweging() {
         }
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
     for (const el of items) if (!el.classList.contains("is-in")) kijker.observe(el);
+
+    // Vangnet (4-11-2026): nooit alleen op de observer leunen (iPad, Discord-app).
+    // tests/test_v2_vangnet.py
+    const open = () => items.some((el) => !el.classList.contains("is-in"));
+    let gepland = false;
+    const controleer = () => {
+        gepland = false;
+        const rand = window.innerHeight;
+        for (const el of items) {
+            if (el.classList.contains("is-in")) continue;
+            if (el.getBoundingClientRect().top < rand) el.classList.add("is-in");
+        }
+        if (!open()) {
+            window.removeEventListener("scroll", plan);
+            window.removeEventListener("resize", plan);
+            window.removeEventListener("hashchange", plan);
+        }
+    };
+    const plan = () => { if (!gepland) { gepland = true; requestAnimationFrame(controleer); } };
+    window.addEventListener("scroll", plan, { passive: true });
+    window.addEventListener("resize", plan);
+    window.addEventListener("hashchange", plan);
+    window.addEventListener("load", plan);
+    window.setTimeout(() => {
+        const rand = window.innerHeight;
+        if (items.some((el) => !el.classList.contains("is-in") && el.getBoundingClientRect().top < rand)) {
+            root.classList.remove("v2-motion");
+        }
+    }, 2500);
 
     parallax(root);
 }

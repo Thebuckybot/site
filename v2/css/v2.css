@@ -267,7 +267,7 @@ html.v2 {
 /* =========================================================================
    B1. Nav
    Boven de hero doorzichtig, zodat de lucht doorloopt; na het scrollen een
-   lichte, wazige balk met een haarlijn. Onder 1080 px een hamburger met
+   lichte, wazige balk met een haarlijn. Onder 1200 px een hamburger met
    grote tikvlakken.
    ========================================================================= */
 .v2 .nav {
@@ -368,7 +368,8 @@ html.v2 {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 .v2 .nav-discord:hover { background: rgba(17, 19, 24, 0.06); }
-.v2 .btn-nav { min-height: 40px; padding: 0 18px; font-size: 15px; margin-left: 6px; }
+.v2 .btn-nav { min-height: 40px; padding: 0 18px; font-size: 15px; margin-left: 6px;
+  flex: none; white-space: nowrap; }  /* krimpt nooit en breekt nooit: altijd heel */
 
 .v2 .nav-toggle {
   display: none;
@@ -401,7 +402,9 @@ html.v2 {
 .v2 .nav.is-open .nav-toggle-bars::before { transform: translateY(6px) rotate(45deg); }
 .v2 .nav.is-open .nav-toggle-bars::after { transform: translateY(-6px) rotate(-45deg); }
 
-@media (max-width: 1079.98px) {
+/* Menu onder 1200 px (was 1080; ingelogd liep de balk op een iPad buiten beeld,
+   4-11-2026). tests/test_v2_nav_breedtes.py */
+@media (max-width: 1199.98px) {
   .v2 .nav-toggle { display: inline-grid; place-items: center; }
   .v2 .nav-login,
   .v2 .nav-discord { display: none; }
@@ -533,12 +536,17 @@ html.v2 {
   width: 76%;
   z-index: -2;
 }
-.v2 .hero-media picture { display: contents; }
 .v2 .hero-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 66% 40%;
+  /* Achtergrond, geen <img> (4-11-2026): het thema kiest, er laadt maar één beeld.
+     Maten als de oude sizes. Zie tests/test_v2_pagina.py. */
+  background-color: var(--sky);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: 66% 40%;
+  background-image: url("../../assets/images/hero/bucky-hero-island-1000.jpg");
+  background-image: image-set(url("../../assets/images/hero/bucky-hero-island-1600.webp") type("image/webp"), url("../../assets/images/hero/bucky-hero-island-1000.jpg") type("image/jpeg"));
   -webkit-mask-image:
     linear-gradient(to right, transparent 0%, #000 34%),
     linear-gradient(to top, transparent 0%, #000 26%);
@@ -570,6 +578,19 @@ html.v2 {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 36px;
+}
+
+@media (max-width: 526.98px) {
+  .v2 .hero-img {
+    background-image: image-set(url("../../assets/images/hero/bucky-hero-island-1000.webp") type("image/webp") 1x, url("../../assets/images/hero/bucky-hero-island-1600.webp") type("image/webp") 2x,
+                                url("../../assets/images/hero/bucky-hero-island-1000.jpg") type("image/jpeg") 1x);
+  }
+}
+@media (max-width: 368.98px) {
+  .v2 .hero-img {
+    background-image: image-set(url("../../assets/images/hero/bucky-hero-island-700.webp") type("image/webp") 1x, url("../../assets/images/hero/bucky-hero-island-1600.webp") type("image/webp") 2x,
+                                url("../../assets/images/hero/bucky-hero-island-1000.jpg") type("image/jpeg") 1x);
+  }
 }
 
 /* ---- C4. De stats-balk ------------------------------------------------------ */
@@ -644,7 +665,7 @@ html.v2 {
     z-index: -2;
   }
   .v2 .hero-img {
-    object-position: 74% 42%;
+    background-position: 74% 42%;
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 72%, transparent 100%);
     mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 72%, transparent 100%);
     -webkit-mask-composite: source-over;
@@ -667,7 +688,7 @@ html.v2 {
      390 x 515 (cover, dus geschaald op de hoogte) komt hij met 78% precies in
      het midden; de schaal rond het midden houdt hem daar. */
   .v2 .hero-img {
-    object-position: 78% 40%;
+    background-position: 78% 40%;
     transform: scale(1.06);
     transform-origin: 50% 36%;
   }
@@ -1173,10 +1194,10 @@ html.v2 {
   text-align: left;
   cursor: pointer;
 }
-@media (max-width: 1079.98px) {
+@media (max-width: 1199.98px) {
   .v2 .nav-auth { display: none; }
 }
-@media (min-width: 1080px) {
+@media (min-width: 1200px) {
   .v2 .nav-sheet-extra { display: none !important; }
 }
 
@@ -1718,7 +1739,7 @@ html.v2[data-thema="donker"] {
   --vanta-mark: #2BE04A;  --vanta-text: #4BE466;
   --aether-mark: #5B86D6; --aether-text: #8DAEEA;
   --cytek-mark: #E0A210;  --cytek-text: #E8B132;
-  --sky: #121016;
+  --sky: #02070F;
   --dark-bg: #0A090C;
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 40px -22px rgba(0, 0, 0, 0.9);
 }
@@ -1729,18 +1750,27 @@ html.v2[data-thema="donker"] .nav-links a:hover,
 html.v2[data-thema="donker"] .nav-login:hover { background: rgba(255, 255, 255, 0.07); }
 html.v2[data-thema="donker"] .nav-discord:hover { background: rgba(255, 255, 255, 0.08); }
 html.v2[data-thema="donker"] .hero::after { background: linear-gradient(to bottom, rgba(14, 13, 16, 0), var(--canvas)); }
-/* De render is een lichte lucht met een rechthoekige rand boven en rechts. In donker
-   lost hij rondom op (een ovaal rond het eiland) en is hij gedempt. */
-html.v2[data-thema="donker"] .hero-img { filter: brightness(0.72) contrast(1.05) saturate(1.08);
-  -webkit-mask-image: radial-gradient(ellipse 52% 56% at 64% 46%, #000 52%, transparent 100%);
-  mask-image: radial-gradient(ellipse 52% 56% at 64% 46%, #000 52%, transparent 100%);
-  -webkit-mask-composite: source-over; mask-composite: add; }
-@media (max-width: 1079.98px) {
-  html.v2[data-thema="donker"] .hero-img {
-    -webkit-mask-image: radial-gradient(ellipse 62% 50% at 50% 50%, #000 55%, transparent 100%);
-    mask-image: radial-gradient(ellipse 62% 50% at 50% 50%, #000 55%, transparent 100%); }
+/* Nacht (4-11-2026): --sky is zijn hoekkleur, dus het gewone masker volstaat. */
+html.v2[data-thema="donker"] .hero-img {
+  background-image: url("../../assets/images/hero/bucky-hero-island-night-1000.jpg");
+  background-image: image-set(url("../../assets/images/hero/bucky-hero-island-night-1600.avif") type("image/avif"), url("../../assets/images/hero/bucky-hero-island-night-1600.webp") type("image/webp"),
+                              url("../../assets/images/hero/bucky-hero-island-night-1000.jpg") type("image/jpeg"));
 }
-@media (max-width: 1079.98px) {
+@media (max-width: 526.98px) {
+  html.v2[data-thema="donker"] .hero-img {
+    background-image: image-set(url("../../assets/images/hero/bucky-hero-island-night-1000.avif") type("image/avif") 1x, url("../../assets/images/hero/bucky-hero-island-night-1600.avif") type("image/avif") 2x,
+                                url("../../assets/images/hero/bucky-hero-island-night-1000.webp") type("image/webp") 1x, url("../../assets/images/hero/bucky-hero-island-night-1600.webp") type("image/webp") 2x,
+                                url("../../assets/images/hero/bucky-hero-island-night-1000.jpg") type("image/jpeg") 1x);
+  }
+}
+@media (max-width: 368.98px) {
+  html.v2[data-thema="donker"] .hero-img {
+    background-image: image-set(url("../../assets/images/hero/bucky-hero-island-night-700.avif") type("image/avif") 1x, url("../../assets/images/hero/bucky-hero-island-night-1600.avif") type("image/avif") 2x,
+                                url("../../assets/images/hero/bucky-hero-island-night-700.webp") type("image/webp") 1x, url("../../assets/images/hero/bucky-hero-island-night-1600.webp") type("image/webp") 2x,
+                                url("../../assets/images/hero/bucky-hero-island-night-1000.jpg") type("image/jpeg") 1x);
+  }
+}
+@media (max-width: 1199.98px) {
   html.v2[data-thema="donker"] .nav-menu { box-shadow: 0 24px 40px -24px rgba(0, 0, 0, 0.8); }
 }
 
