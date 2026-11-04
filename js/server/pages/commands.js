@@ -163,7 +163,9 @@ export default {
     function regel(item, cogNaam, isCog) {
       const uit = !!item.disabled;
       const kanalen = item.channels || [];
-      const rij = el("div", { class: "srv-row" + (uit ? " is-off" : "") });
+      // `srv-cmd-row`: de telefoonindeling van DEZE pagina (server.css), zodat de
+      // rijen op de andere pagina's niet meeveranderen.
+      const rij = el("div", { class: "srv-row srv-cmd-row" + (uit ? " is-off" : "") });
 
       const naamBlok = el("div", { class: "srv-name" }, [
         el("code", { text: isCog ? cogNaam : item.name }),
@@ -294,14 +296,17 @@ export default {
           const schakelaar = el("label", { class: "sec-switch" }, [input, el("span", { class: "track" })]);
           input.addEventListener("change", () =>
             schakel(lid, lid.name, true, input.checked, schakelaar));
-          cogActies.append(
+          // LABEL EN SCHAKELAAR ALS EEN PAAR (4-11-2026): op een smal scherm lopen
+          // de paren door naar een volgende regel, en dan hoort een schakelaar bij
+          // zijn eigen naam te blijven staan en niet los op de regel eronder.
+          cogActies.append(el("span", { class: "srv-paar" }, [
             el("span", {
               class: `srv-state ${lid.disabled ? "is-off" : ""}`.trim(),
               text: leden.length > 1
                 ? (lid.disabled ? `${lid.name} off` : lid.name)
                 : (lid.disabled ? "Whole category off" : "Whole category"),
             }),
-            schakelaar);
+            schakelaar]));
         }
 
         // INGEKLAPT TENZIJ JE ERNAAR ZOEKT (17 september 2026).

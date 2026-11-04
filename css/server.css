@@ -764,3 +764,38 @@ html { background: var(--sec-bg1); }
 /* De kopzin van het overzicht: twee regels gereserveerd op een telefoon, zodat de
    tegels niet springen als de zin met de aantallen binnenkomt (4-11-2026). */
 @media (max-width: 699px) { .srv-hero p.dv2-kopzin { min-height: 3em; } }
+
+/* =====================================================================
+   COMMANDS OP ELKE BREEDTE (4-11-2026)
+   De pagina schoof op een telefoon horizontaal, en daardoor viel ook het venster
+   (Per channel, Disable all) links buiten beeld: een telefoon zoomt uit of schuift
+   zodra de inhoud breder is dan het scherm. De oorzaak: `1fr` is nooit smaller
+   dan zijn breedste inhoud, en een commandonaam in een <code> brak niet af.
+   Nu: de naamkolom mag krimpen en de naam breekt; naam links, schakelaar rechts;
+   "Per channel" op een telefoon onder de naam; label en schakelaar in een kop
+   blijven een paar en lopen samen door naar de volgende regel.
+   ===================================================================== */
+.srv-cmd-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+.srv-cmd-row .srv-name { min-width: 0; flex-wrap: wrap; }
+.srv-cmd-row .srv-name code { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.srv-paar { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.srv-group-row { min-width: 0; }
+.srv-group-row .srv-actions { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; min-width: 0; }
+.srv-sticky, .srv-sticky .srv-dept { flex-wrap: wrap; }
+.srv-sticky > * { min-width: 0; max-width: 100%; }
+@media (max-width: 700px) {
+  /* Naam en stand links, de schakelaar rechts over de hele hoogte; de knop
+     "Per channel" eronder in de linkerkolom. `display: contents` laat de twee
+     kinderen van .srv-actions elk hun eigen plek in het raster nemen. */
+  .srv-cmd-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; }
+  .srv-cmd-row .srv-name { grid-column: 1; grid-row: 1; }
+  .srv-cmd-row .srv-state { grid-column: 1; grid-row: 2; }
+  .srv-cmd-row .srv-actions { display: contents; }
+  .srv-cmd-row .srv-actions .sec-switch { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+  .srv-cmd-row .srv-actions .sec-btn { grid-column: 1; grid-row: 3; justify-self: start; }
+  /* Een kop: de naam houdt zijn regel, de paren lopen eronder door als dat moet. */
+  .srv-group-row { flex-wrap: wrap; row-gap: 8px; }
+  .srv-group-row .srv-group-title { flex: 1 1 140px; }
+  .srv-group-row .srv-actions { flex: 0 1 auto; margin-left: auto; }
+  .srv-sticky .srv-dept { border-radius: 20px; }
+}

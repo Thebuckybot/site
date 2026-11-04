@@ -30,6 +30,9 @@ gegevens uit dashboard_v2_data.py:
     op macOS (SAFARI_KLIK); open, dicht (tweede klik, Esc, ernaast), vier servers in
     beeld, All servers en Home navigeren echt;
   * niets springt bij het laden (CLS), menu en lade ketenen niet door bij scrollen.
+4-11-2026: Commands is op 360, 390, 820 en 1440 nergens breder dan het scherm, ook
+  met lange namen, veel categorieën, een kop met twee categorieën en leeg; naam
+  links en schakelaar rechts, label en schakelaar als paar, het venster in beeld.
 
 DRAAIEN (een script, zoals de andere browsertests):
     cd site && python -m http.server 8899
@@ -614,6 +617,77 @@ def stil_scrollen(browser):
     page.close()
 
 
+# ---------------------------------------------------------------------------
+# Commands op elke breedte (4-11-2026)
+# ---------------------------------------------------------------------------
+# DE FOUT DIE DIT VASTHOUDT. Op een telefoon schoof de pagina horizontaal en viel
+# het venster (Per channel, Disable all) links buiten beeld: `1fr` is nooit smaller
+# dan zijn breedste inhoud, en een commandonaam in een <code> brak niet af.
+LANGE_NAAM = "a_command_with_an_extremely_long_name_that_keeps_going"
+COMMANDS_VOL = {
+    "cogs": [{"name": n, "cogs": leden, "disabled": i % 3 == 1, "channels": [],
+              "commands": [{"name": c, "disabled": j == 1, "channels": ["900000000000000002"] if j == 2 else [],
+                            "protected": False} for j, c in enumerate(cmds)]}
+             for i, (n, leden, cmds) in enumerate([
+                 ("Currency", [{"name": "currency", "disabled": False, "channels": []}], ["daily", "balance", "rob", LANGE_NAAM]),
+                 ("A Category With A Very Long Name For Testing Purposes",
+                  [{"name": "a_cog_with_a_long_name", "disabled": False, "channels": []},
+                   {"name": "another_cog_with_a_long_name", "disabled": True, "channels": []}], ["x", LANGE_NAAM]),
+             ] + [(f"Category {k}", [{"name": f"cog{k}", "disabled": False, "channels": []}], ["ping", "help"])
+                  for k in range(12)])],
+    "channels": [{"id": "900000000000000001", "name": "verify", "type": 0},
+                 {"id": "900000000000000002", "name": "a-channel-with-a-very-long-name-indeed", "type": 0}],
+    "bulk": True,
+}
+
+
+def commands_breedte(browser):
+    for naam, data in (("vol", COMMANDS_VOL), ("leeg", {"cogs": [], "channels": [], "bulk": True})):
+        for breed in BREEDTES:
+            w, h = BREEDTES[breed]
+            page = browser.new_page(viewport={"width": w, "height": h})
+            fouten = []
+            page.on("pageerror", lambda e: fouten.append(str(e)))
+            server_stub(page); zonder_tour(page); ingelogd(page)
+            page.route(f"**/api/server/{GID}/commands", (lambda d: (lambda r: wp.antwoord(r, d)))(data))
+            page.goto(f"{BASIS}/server.html?guild_id={GID}#commands", wait_until="networkidle")
+            page.wait_for_timeout(500)
+            if naam == "vol":
+                # Alle categorieën open, zodat ook de lange namen erin staan.
+                # Elke klik tekent de lijst opnieuw: steeds de eerste dichte kop.
+                dicht = page.locator(".srv-group-title[aria-expanded='false']")
+                for _ in range(40):
+                    if not dicht.count():
+                        break
+                    dicht.first.click(timeout=5000)
+                    page.wait_for_timeout(80)
+                page.wait_for_timeout(200)
+            label = f"commands {naam} {breed}"
+            breder = page.evaluate("document.documentElement.scrollWidth - innerWidth")
+            uit = page.evaluate("""() => [...document.querySelectorAll('#sec-content *')].filter(n => {
+              const r = n.getBoundingClientRect(); return r.width > 0 && (r.right > innerWidth + 1 || r.left < -1); }).length""")
+            eis(breder <= 0 and uit == 0, f"{label}: nergens breder dan het scherm ({breder} px, {uit} elementen)")
+            if naam == "vol" and breed in ("telefoon", "smal"):
+                # Naam links, schakelaar rechts, op dezelfde rij.
+                rij = page.evaluate("""() => { const r = document.querySelector('.srv-cmd-row');
+                  const n = r.querySelector('.srv-name').getBoundingClientRect(); const s = r.querySelector('.sec-switch').getBoundingClientRect();
+                  return {links: n.left < s.left, rechts: s.right <= innerWidth}; }""")
+                eis(rij["links"] and rij["rechts"], f"{label}: naam links en schakelaar rechts in beeld")
+                # Een kop met twee categorieën: elk label naast zijn eigen schakelaar.
+                paren = page.evaluate("""() => [...document.querySelectorAll('.srv-group-row.is-multi .srv-paar')].map(p => {
+                  const a = p.children[0].getBoundingClientRect(), b = p.children[1].getBoundingClientRect();
+                  return Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) < 6; })""")
+                eis(paren and all(paren), f"{label}: in een kop staan label en schakelaar samen ({paren})")
+                # Het venster valt binnen het scherm.
+                page.get_by_role("button", name="Per channel…").first.click()
+                page.wait_for_timeout(400)
+                r = page.evaluate("(() => { const m = document.querySelector('.sec-modal').getBoundingClientRect(); return [m.left, m.right]; })()")
+                eis(r[0] >= 0 and r[1] <= w, f"{label}: het venster staat binnen het scherm ({r})")
+                page.keyboard.press("Escape")
+            eis(not fouten, f"{label}: geen paginafout ({fouten[:2]})")
+            page.close()
+
+
 FRAMES = """async () => {
   const tijden = []; let vorige = performance.now(); let loopt = true;
   const tel = (t) => { tijden.push(t - vorige); vorige = t; if (loopt) requestAnimationFrame(tel); };
@@ -662,6 +736,7 @@ def main():
         print("De serverwisselaar"); wisselaar(browser)
         print("De wisselaar met echte gegevens en echt klikgedrag"); wisselaar_echt(browser)
         print("Stil scrollen"); stil_scrollen(browser)
+        print("Commands op elke breedte"); commands_breedte(browser)
         print("Broodkruimel, zoeken, tikken"); kruimel_en_zoeken(browser)
         print("Incidenten: de ernstfilter"); incidenten_filter(browser)
         print("Meldingen en lege toestanden"); meldingen(browser)
