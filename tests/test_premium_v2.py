@@ -45,6 +45,10 @@ for _i, _t in enumerate(TIERS):
     _t["challenge_bonus"] = [10, 15, 25, 40][_i]
     _t["shards_monthly"] = [1500000, 3000000, 6250000, 12000000][_i]
     _t["contents"] = [f"{n}x Pixel Banknote" for n in range(_i + 2)]
+# De telling zoals de feed hem geeft (item_pieces/item_kinds, migratie 0124). Bewust
+# een ANDER getal dan het aantal regels in `contents`: de site mag niet meer tellen.
+for _t, _p, _k in zip(TIERS, (64, 131, 231, 264), (4, 7, 8, 8)):
+    _t["item_pieces"], _t["item_kinds"], _t["item_choice"] = _p, _k, False
 TIERS[2]["featured"] = True
 # badge_url zoals de bot hem stuurt: de PNG in assets/badges/. De laatste tier heeft
 # een badge zonder WebP-versie: die moet terugvallen op de PNG zelf.
@@ -131,7 +135,8 @@ def pagina(browser):
               const waarden = vgl ? [...vgl.querySelectorAll('tbody tr')].map(r => [...r.querySelectorAll('td')].map(t => t.textContent)) : [];
               const kaartWaarden = [...document.querySelectorAll('#pr-grid .pr-card')].map(k =>
                   [...k.querySelectorAll('.pr-stats dd')].map(d => d.textContent));
-              return {n: kaarten.length, knoppen, kolommen, waarden, kaartWaarden,
+              const tellingen = [...document.querySelectorAll('#pr-grid .pr-card .pr-count')].map(c => c.textContent);
+              return {n: kaarten.length, knoppen, kolommen, waarden, kaartWaarden, tellingen,
                       aanbevolen: [...document.querySelectorAll('#pr-grid .pr-featured-flag')].map(f => f.textContent),
                       jij: !document.getElementById('pr-you').hidden, tekst: document.body.innerText.replace(/\\s+/g, ' '),
                       h1: document.querySelector('h1').textContent,
@@ -148,6 +153,12 @@ def pagina(browser):
             eis(st["aanbevolen"] == ["Recommended"], f"{label}: een uitgelichte tier, met het woord")
             eis(st["kolommen"] == 4 and [list(rij) for rij in zip(*st["waarden"][:3])] == [kw[:3] for kw in st["kaartWaarden"]],
                 f"{label}: de vergelijking geeft dezelfde waarden als de kaarten")
+            eis(st["tellingen"] == ["64 pieces across 4 kinds", "131 pieces across 7 kinds",
+                                    "231 pieces across 8 kinds", "264 pieces across 8 kinds"],
+                f"{label}: de kaarten tonen stuks en soorten uit de feed ({st['tellingen']})")
+            eis(all(t in st["tekst"] for t in ("64 pieces across 4 kinds", "264 pieces across 8 kinds")),
+                f"{label}: de vergelijking toont dezelfde telling")
+            eis(" items" not in st["tekst"], f"{label}: nergens meer 'N items' op basis van regels")
             eis(st["jij"] == ingelogd, f"{label}: het blok met je abonnement alleen als je er een hebt")
             for t in TEKSTEN:
                 eis(" ".join(t.split()) in st["tekst"], f"{label}: tekst letterlijk aanwezig: {t[:50]}...")

@@ -80,6 +80,22 @@ function formatShards(amount) {
 }
 
 /**
+ * "264 pieces across 8 kinds", uit de feed (`item_pieces`, `item_kinds`) - dezelfde
+ * telling als `+premium`, bepaald door de bot (premium_packages.count_contents).
+ * NIET UIT HET AANTAL REGELS van `contents`: daar staan ook shards, Cipher en
+ * commendation in, en dat gaf "11 items" voor een kist met 231 stuks. Ontbreekt
+ * de telling (oudere rij, boost, Cipher-pakket), dan staat er niets in plaats van
+ * een gok.
+ */
+function countLabel(row) {
+  const pieces = Number(row && row.item_pieces);
+  const kinds = Number(row && row.item_kinds);
+  if (!Number.isFinite(pieces) || !Number.isFinite(kinds) || pieces < 1 || kinds < 1) return "";
+  const n = (v) => v.toLocaleString("en-US");
+  return `${n(pieces)} piece${pieces === 1 ? "" : "s"} across ${n(kinds)} kind${kinds === 1 ? "" : "s"}`;
+}
+
+/**
  * Eén tierkaart.
  *
  * `<li>` in een `<ul>` omdat het een lijst van vier gelijkwaardige dingen is;
@@ -163,7 +179,8 @@ function card(tier, mine) {
     const details = el("details", "pr-details");
     const summary = el("summary", "pr-summary");
     summary.appendChild(document.createTextNode("What's in the monthly cache"));
-    summary.appendChild(el("span", "pr-count", `${lines.length} items`));
+    const telling = countLabel(tier);
+    if (telling) summary.appendChild(el("span", "pr-count", telling));
     details.appendChild(summary);
     const list = el("ul", "pr-contents");
     for (const line of lines) list.appendChild(el("li", null, line));
@@ -314,7 +331,6 @@ function boostCard(row) {
     const details = el("details", "pr-details");
     const summary = el("summary", "pr-summary");
     summary.appendChild(document.createTextNode("What the server gets"));
-    summary.appendChild(el("span", "pr-count", `${lines.length} items`));
     details.appendChild(summary);
     const list = el("ul", "pr-contents");
     for (const line of lines) list.appendChild(el("li", null, line));
@@ -381,7 +397,6 @@ function cipherCard(row) {
     const details = el("details", "pr-details");
     const summary = el("summary", "pr-summary");
     summary.appendChild(document.createTextNode("What you get"));
-    summary.appendChild(el("span", "pr-count", `${lines.length} items`));
     details.appendChild(summary);
     const list = el("ul", "pr-contents");
     for (const line of lines) list.appendChild(el("li", null, line));
@@ -452,7 +467,7 @@ function renderVergelijk(tiers, mine) {
     ["Earnings boost", (t) => formatBoost(t.boost)],
     ["Challenge bonus", (t) => `+${Number(t.challenge_bonus) || 0}% on shards`],
     ["Monthly shards", (t) => formatShards(t.shards_monthly)],
-    ["What's in the monthly cache", (t) => (Array.isArray(t.contents) && t.contents.length ? `${t.contents.length} items` : "")],
+    ["What's in the monthly cache", (t) => countLabel(t) || ""],
   ];
   const tbody = el("tbody");
   for (const [label, waarde] of rijen) {
