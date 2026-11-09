@@ -154,6 +154,30 @@ export default {
           text: "A welcome text per type comes with the new ticket panel, which is not switched on for this server yet." }));
       }
 
+      // Emoji en eigen staff-rol (tickets v2, migratie 0125). Zonder de migratie
+      // (`type_appearance` false) toont het scherm deze sectie niet.
+      let emojiInput = null;
+      let rolKeuze = null;
+      const uiterlijkSectie = el("div", { class: "srv-editor-sec" });
+      if (data.type_appearance) {
+        uiterlijkSectie.appendChild(el("h4", { text: "Emoji and staff role" }));
+        emojiInput = el("input", { class: "sec-input", value: t.emoji || "", maxlength: "64",
+                                   placeholder: "🐞 or <:name:id>", "aria-label": "Emoji next to the type in the picker" });
+        rolKeuze = el("select", { class: "sec-input", "aria-label": "Staff role for this type" });
+        rolKeuze.appendChild(el("option", { value: "", text: "General support role" }));
+        (data.staff_roles || []).forEach((r) => {
+          const o = el("option", { value: r.id, text: "@" + r.name + (r.allowed ? "" : ` (${r.reason || "not allowed"})`) });
+          if (!r.allowed && r.id !== t.staff_role_id) o.disabled = true;
+          rolKeuze.appendChild(o);
+        });
+        rolKeuze.value = t.staff_role_id || "";
+        uiterlijkSectie.append(
+          el("p", { class: "sec-muted", style: "margin:0",
+            text: "The emoji shows next to this type in the picker. The staff role sees, claims and closes tickets of this type and is pinged instead of the general support role. Roles with moderator permissions are not allowed." }),
+          el("label", { class: "srv-field-label", text: "Emoji" }), emojiInput,
+          el("label", { class: "srv-field-label", text: "Staff role" }), rolKeuze);
+      }
+
       // Het formulier.
       const formSectie = el("div", { class: "srv-editor-sec" });
       const voorbeeld = el("div", { class: "srv-form-preview", "aria-label": "Preview of the form", role: "img" });
@@ -268,6 +292,7 @@ export default {
                                 : "No support role yet. Pick one under Channels and roles." }),
         ]),
         welkomSectie,
+        uiterlijkSectie,
         formSectie,
         el("div", { class: "sec-modal-actions" }, [
           el("button", { class: "sec-btn sec-btn-ghost", type: "button", text: "Cancel", onclick: () => sluit() }),
@@ -290,6 +315,12 @@ export default {
           if (welkom && welkom.value !== (t.welcome_text || "")) {
             const uit = await api.patch("/tickets/types/welcome", { key: t.key, welcome_text: welkom.value });
             t.welcome_text = uit.welcome_text;
+          }
+          if (emojiInput && (emojiInput.value.trim() !== (t.emoji || "") || rolKeuze.value !== (t.staff_role_id || ""))) {
+            const uit = await api.patch("/tickets/types/appearance",
+              { key: t.key, emoji: emojiInput.value.trim(), staff_role_id: rolKeuze.value });
+            t.emoji = uit.emoji;
+            t.staff_role_id = uit.staff_role_id;
           }
           const nieuw = formulierAan ? werk : [];
           if (data.forms && JSON.stringify(nieuw) !== JSON.stringify(vragen[t.key] || [])) {
