@@ -40,6 +40,7 @@
   <link rel="stylesheet" href="../css/thema.css" />
   <link rel="icon" type="image/webp" href="img/bucky-mark-96.webp" />
   <script type="module" src="js/v2.js"></script>
+  <script type="module" src="../js/kaart-ingang.js"></script>
   <script type="module" src="js/orgs.js"></script>
 </head>
 <body class="orgs-pagina">
@@ -74,6 +75,7 @@
             <span data-auth-naam></span>
           </li>
           <li data-auth-in hidden><a href="../dashboard.html">Dashboard</a></li>
+          <li data-auth-in hidden><a href="cards.html" data-kaart-ingang hidden>My cards</a></li>
           <li data-auth-in hidden><button type="button" class="nav-sheet-logout" data-auth-logout>Log out</button></li>
           <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Bucky on Discord</a></li>
         </ul>
@@ -92,6 +94,7 @@
             </button>
             <ul class="nav-user-menu" id="nav-user-menu" hidden>
               <li><a href="../dashboard.html">Dashboard</a></li>
+              <li data-kaart-ingang hidden><a href="cards.html">My cards</a></li>
               <li><button type="button" data-auth-logout>Log out</button></li>
             </ul>
           </div>
