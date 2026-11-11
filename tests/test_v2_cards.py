@@ -979,3 +979,22 @@ def test_de_pagina_werkt_los_zonder_site_versie_of_navigatie(tab):
     t = tab().open()
     assert t.page.locator("h1").inner_text() == "Make your cards yours"
     assert not t.page.locator("a", has_text="My cards").first.is_visible(), "met de vlag uit staat de ingang er niet"
+
+
+def test_in_een_vreemd_frame_blijft_de_editor_leeg_en_zelf_open_werkt_hij_gewoon(tab):
+    """Review A8: een frame zonder toestemming om het bovenste venster te sturen (sandbox zonder allow-top-navigation) krijgt een
+    lege pagina; de pagina zelf, niet in een frame, laadt zoals altijd. De gastpagina heeft geen eigen CSP, zodat het frame laadt."""
+    t = tab(NepApi())
+    gast = (f"{t.server}/__gast.html")
+    t.page.route(gast, lambda r: r.fulfill(status=200, content_type="text/html",
+        body='<!doctype html><title>gast</title><iframe id="vreemd" sandbox="allow-scripts" src="/v2/cards.html"></iframe>'))
+    t.page.goto(gast, wait_until="load")
+    t.page.wait_for_timeout(2500)
+    frame = [f for f in t.page.frames if f != t.page.main_frame][0]
+    assert "cards.html" in frame.url, frame.url
+    assert frame.evaluate("() => document.documentElement.children.length") == 0
+    assert frame.evaluate("() => document.querySelectorAll('main, script').length") == 0
+    t2 = tab(NepApi())
+    t2.page.goto(f"{t2.server}/v2/cards.html", wait_until="commit")
+    t2.wacht_staat("editor")
+    assert t2.page.locator("main").count() == 1
