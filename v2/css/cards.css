@@ -1,12 +1,16 @@
-/* De kaarteditor van v2 (11-11-2026), naast v2.css. Alleen tokens van v2: de lichte en de donkere stand van de site komen
-   dus vanzelf mee (html.v2[data-thema="donker"] herdefinieert --canvas, --surface, --ink, ...). Mobiel eerst; 16 px zijmarge
-   via .wrap; tikdoelen minstens 44 px; geen horizontale scroll (alles wrapt of krimpt). Animatie alleen onder
-   prefers-reduced-motion: no-preference.
+/* De kaarteditor van v2 (11-11-2026), naast v2.css. DE LOOK IS DIE VAN EEN MAC-APP: een venster met een werkbalk, een zijbalk van
+   matglas (backdrop-filter) met de categorieen, een segmented control voor Profile en Balance, een raster van staaltjes met
+   afgeronde hoeken en zachte schaduwen, en een duidelijke geselecteerde staat. Alleen een ontwerpstijl: een systeemlettertype-
+   stack en de tokens van v2, geen logo's, pictogrammen of afbeeldingen van iemand anders.
 
-   HET PODIUM benadert een Components V2-container van Discord: een afgerond vlak met de accentkleur als streep links, de platen
-   in de volgorde van +cardstyle, en de tekst erbij. Het heeft een eigen schakelaar (Discord dark / light) met vaste Discord-
-   achtige kleuren, los van het thema van de site: zo zie je hoe een plaat in beide Discord-thema's staat. De tekst op het
-   podium haalt 4,5 : 1 in beide standen (zie site/tests/test_v2_cards.py). */
+   Licht en donker volgen de themaschakelaar van v2 (html.v2[data-thema="donker"] herdefinieert --canvas, --surface, --ink, ...).
+   Mobiel eerst: 16 px zijmarge via .wrap, tikdoelen minstens 44 px, geen horizontale scroll (de categorieen worden op een
+   telefoon een horizontale rij die zelf scrolt). Animatie alleen onder prefers-reduced-motion: no-preference.
+
+   DE PREVIEW is de look-alike van Discords container: de INDELING komt uit de bouwcode van de bot (js/kaart-opbouw.js tekent de
+   beschrijving); dit bestand tekent alleen de omlijsting (donkere kaart, accentstreep links, afgeronde hoeken). Het podium heeft een
+   eigen schakelaar (Discord dark / light) met vaste Discord-achtige kleuren, los van het thema van de site. De tekst erop haalt
+   4,5 : 1 in beide standen (site/tests/test_v2_cards.py). */
 
 .v2 .kc { padding: calc(var(--nav-h) + 40px) 0 72px; }
 .v2 .kc-eyebrow { color: var(--signal-text); }
@@ -22,7 +26,7 @@
   max-width: 640px;
   padding: 24px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 12px;
   background: var(--surface);
   box-shadow: var(--shadow-card);
 }
@@ -31,64 +35,165 @@
 .v2 .kc-staat .kc-knop { margin-top: 18px; }
 .v2 .kc-staat .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
 
-/* ---- Tabs en indeling --------------------------------------------------------------------------------------- */
+/* ---- Het venster -------------------------------------------------------------------------------------------- */
 .v2 .kc-editor { margin-top: 32px; }
 .v2 .kc-editor[hidden] { display: none; }
-.v2 .kc-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
-.v2 .kc-tab,
-.v2 .kc-chip {
-  min-height: 44px;
-  padding: 0 18px;
+.v2 .kc-venster {
+  --kc-systeem: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
+  font-family: var(--kc-systeem);
   border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
+  border-radius: 12px;
   background: var(--surface);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 24px 48px -28px rgba(0, 0, 0, 0.35);
+  overflow: clip;
+  min-width: 0;
+}
+.v2 .kc-venster button { font-family: inherit; }
+
+/* De werkbalk: matglas, met het segmented control links en de podiumschakelaar rechts. */
+.v2 .kc-balk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+.v2 .kc-segment { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 9%, transparent); }
+.v2 .kc-seg {
+  min-height: 44px;
+  min-width: 88px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   color: var(--ink-dim);
-  font: inherit;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
-.v2 .kc-tab:hover,
-.v2 .kc-chip:hover { color: var(--ink); border-color: var(--line-strong); }
-.v2 .kc-tab[aria-selected="true"],
-.v2 .kc-chip[aria-pressed="true"] { color: var(--signal-ink); background: var(--signal); border-color: var(--signal); }
-html.v2[data-thema="donker"] .kc-tab[aria-selected="true"],
-html.v2[data-thema="donker"] .kc-chip[aria-pressed="true"] { color: var(--signal-ink); }
+.v2 .kc-seg:hover { color: var(--ink); }
+.v2 .kc-seg[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06); }
+.v2 .kc-zacht {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+}
+.v2 .kc-zacht:hover { border-color: var(--line-strong); }
 
-.v2 .kc-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; margin-top: 20px; }
-.v2 .kc-links { position: sticky; top: calc(var(--nav-h) + 8px); z-index: 4; max-height: 45vh; overflow: auto; background: var(--canvas); padding-bottom: 8px; }
-.v2 .kc-rechts { min-width: 0; }
-.v2 .kc-podium-kop { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-.v2 .kc-podium-knop { padding: 0 16px; font-size: 14px; }
+/* ---- De indeling: zijbalk | raster | preview ---------------------------------------------------------------- */
+.v2 .kc-romp { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.v2 .kc-rechts { order: 1; position: sticky; top: calc(var(--nav-h) + 8px); z-index: 4; max-height: 45vh; overflow: auto; padding: 12px 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.v2 .kc-zijbalk { order: 2; padding: 10px 14px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 70%, transparent); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); min-width: 0; }
+.v2 .kc-midden { order: 3; padding: 16px 14px 20px; min-width: 0; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .v2 .kc-balk, .v2 .kc-zijbalk { background: var(--panel); }
+}
+.v2 .kc-zij-kop { display: none; margin: 0 0 6px 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-dim); }
+.v2 .kc-cats { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.v2 .kc-cats::-webkit-scrollbar { display: none; }
+.v2 .kc-zij {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.v2 .kc-zij:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.v2 .kc-zij[aria-pressed="true"] { background: var(--signal); color: var(--signal-ink); font-weight: 600; }
 
-/* ---- Het podium --------------------------------------------------------------------------------------------- */
+.v2 .kc-pod-titel { margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-dim); }
+
+/* ---- De preview: Discord-achtig ----------------------------------------------------------------------------- */
 .v2 .kc-podium {
-  --pod-bg: #FFFFFF;
-  --pod-ink: #1E1F22;
+  --pod-bg: #FFFFFF;          /* de chat achter het bericht */
+  --pod-kaart: #F2F3F5;       /* de container zelf */
+  --pod-ink: #060607;
   --pod-dim: #4E5058;
   --pod-lijn: #D9DBE0;
   --pod-spoor: #E3E5E8;
-  border: var(--kc-rand-dikte, 1px) solid var(--kc-rand, var(--pod-lijn));
-  border-left: 6px solid var(--kc-accent, var(--signal));
+  padding: 12px;
   border-radius: 12px;
   background: var(--pod-bg);
   color: var(--pod-ink);
-  padding: 16px;
   min-width: 0;
 }
 .v2 .kc-podium[data-podium="donker"] {
   --pod-bg: #313338;
+  --pod-kaart: #2B2D31;
   --pod-ink: #F2F3F5;
   --pod-dim: #B5BAC1;
   --pod-lijn: #3F4147;
   --pod-spoor: #1E1F22;
 }
-.v2 .kc-podium[data-rand-stijl="dubbel"] { border-top-style: double; border-right-style: double; border-bottom-style: double; }
-.v2 .kc-podium[data-rand-stijl="gloed"] { box-shadow: 0 0 14px var(--kc-rand, transparent); }
 .v2 .kc-pod { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+/* Het bericht: een donkere kaart met een accentstreep links en afgeronde hoeken. De inhoud is de beschrijving van de bot. */
+.v2 .kc-dc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 14px 14px;
+  border-left: 4px solid var(--kc-accent, var(--signal));
+  border-radius: 8px;
+  background: var(--pod-kaart);
+  color: var(--pod-ink);
+  font-size: 15px;
+  line-height: 1.4;
+  min-width: 0;
+}
+.v2 .kc-dc-sectie { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.v2 .kc-dc-sectie > .kc-dc-tekst { flex: 1; min-width: 0; }
+.v2 .kc-dc-duim { flex: none; width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--pod-spoor); }
+.v2 .kc-dc-initiaal { display: grid; place-items: center; font-size: 26px; font-weight: 800; color: var(--pod-ink); }
+.v2 .kc-dc-tekst { min-width: 0; overflow-wrap: anywhere; }
+.v2 .kc-dc-tekst p,
+.v2 .kc-dc-tekst h2,
+.v2 .kc-dc-tekst h3,
+.v2 .kc-dc-tekst h4 { margin: 0; }
+.v2 .kc-dc-kop { font-weight: 700; line-height: 1.25; }
+.v2 .kc-dc-kop1 { font-size: 24px; }
+.v2 .kc-dc-kop2 { font-size: 20px; }
+.v2 .kc-dc-kop3 { font-size: 17px; }
+.v2 .kc-dc-klein { font-size: 12.5px; line-height: 1.4; color: var(--pod-dim); }
+.v2 .kc-dc-punt { position: relative; padding-left: 14px; }
+.v2 .kc-dc-punt::before { content: ""; position: absolute; left: 3px; top: 0.65em; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.v2 .kc-dc-leeg { height: 8px; }
+.v2 .kc-dc strong { font-weight: 700; }
+.v2 .kc-dc code { font-family: var(--font-mono); font-size: 0.9em; padding: 1px 5px; border-radius: 4px; background: var(--pod-spoor); color: var(--pod-ink); }
+.v2 .kc-dc-emoji { display: inline-block; width: 20px; height: 20px; vertical-align: -4px; }
+.v2 .kc-dc-media { display: block; width: 100%; height: auto; border-radius: 4px; }
+.v2 .kc-dc-hr { width: 100%; height: 0; margin: 4px 0; border: 0; border-top: 1px solid var(--pod-lijn); }
+
+/* De eenvoudige preview (een oudere bot of een mislukte opbouw): dezelfde omlijsting, minder inhoud. */
+.v2 .kc-podium[data-weergave="eenvoudig"] .kc-pod {
+  padding: 14px 16px 14px 14px;
+  border-left: 4px solid var(--kc-accent, var(--signal));
+  border-radius: 8px;
+  background: var(--pod-kaart);
+}
+.v2 .kc-podium[data-weergave="eenvoudig"][data-rand-stijl="dubbel"] .kc-pod { border-top: 3px double var(--kc-rand, var(--pod-lijn)); border-right: 3px double var(--kc-rand, var(--pod-lijn)); border-bottom: 3px double var(--kc-rand, var(--pod-lijn)); }
+.v2 .kc-podium[data-weergave="eenvoudig"][data-rand-stijl="gloed"] .kc-pod { box-shadow: 0 0 14px var(--kc-rand, transparent); }
 .v2 .kc-pod-kop { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .v2 .kc-pod-kopTekst { min-width: 0; }
-.v2 .kc-pod-naam { font-size: 20px; line-height: 1.25; font-weight: 800; overflow-wrap: anywhere; }
+.v2 .kc-pod-naam { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 800; overflow-wrap: anywhere; }
 .v2 .kc-pod-klein { font-size: 14px; line-height: 1.4; color: var(--pod-dim); margin: 0; }
 .v2 .kc-pod-embleem,
 .v2 .kc-pod-initiaal { width: 64px; height: 64px; flex: none; border-radius: 50%; object-fit: cover; }
@@ -109,9 +214,8 @@ html.v2[data-thema="donker"] .kc-chip[aria-pressed="true"] { color: var(--signal
 .v2 .kc-previewstatus { margin-top: 8px; font-size: 14px; line-height: 1.5; color: var(--ink-dim); }
 .v2 .kc-previewstatus:empty { display: none; }
 
-/* ---- Categorieen en het raster ------------------------------------------------------------------------------ */
-.v2 .kc-cats { display: flex; flex-wrap: wrap; gap: 8px; }
-.v2 .kc-grid-kop { margin-top: 20px; }
+/* ---- Het raster --------------------------------------------------------------------------------------------- */
+.v2 .kc-grid-kop { margin-bottom: 4px; }
 .v2 .kc-gekozen { margin-top: 4px; font-size: 14px; color: var(--ink-dim); }
 .v2 .kc-gekozen:empty { display: none; }
 .v2 .kc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 12px; margin-top: 12px; }
@@ -124,16 +228,17 @@ html.v2[data-thema="donker"] .kc-chip[aria-pressed="true"] { color: var(--signal
   min-height: 44px;
   padding: 8px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   background: var(--surface);
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
   min-width: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 16px -12px rgba(0, 0, 0, 0.25);
 }
 .v2 .kc-tegel:hover { border-color: var(--line-strong); }
-.v2 .kc-tegel[aria-checked="true"] { border-color: var(--signal-text); box-shadow: 0 0 0 2px var(--signal-soft); outline: 2px solid var(--signal-text); outline-offset: -2px; }
+.v2 .kc-tegel[aria-checked="true"] { border-color: var(--signal-text); outline: 2px solid var(--signal-text); outline-offset: -2px; box-shadow: 0 0 0 4px var(--signal-soft), 0 8px 16px -12px rgba(0, 0, 0, 0.3); }
 .v2 .kc-tegel-beeld,
 .v2 .kc-sw,
 .v2 .kc-tegel-leeg { width: 100%; height: 72px; border-radius: 8px; object-fit: cover; background: var(--panel); }
@@ -145,7 +250,7 @@ html.v2[data-thema="donker"] .kc-chip[aria-pressed="true"] { color: var(--signal
 }
 .v2 .kc-sw[data-stijl="dubbel"] { border-style: double; }
 .v2 .kc-sw[data-stijl="gloed"] { box-shadow: 0 0 10px var(--sw-r, transparent); }
-.v2 .kc-tegel-naam { font-size: 14px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.v2 .kc-tegel-naam { font-size: 14px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
 .v2 .kc-tegel-status { font-size: 13px; line-height: 1.3; color: var(--ink-dim); overflow-wrap: anywhere; }
 .v2 .kc-tegel[data-status="locked_tier"] .kc-tegel-beeld,
 .v2 .kc-tegel[data-status="locked_level"] .kc-tegel-beeld,
@@ -164,10 +269,11 @@ html.v2[data-thema="donker"] .kc-chip[aria-pressed="true"] { color: var(--signal
   flex-wrap: wrap;
   margin-top: 16px;
   padding: 12px 0;
-  background: var(--canvas);
+  background: var(--surface);
   border-top: 1px solid var(--line);
 }
 .v2 .kc-actie-tekst { flex: 1 1 220px; margin: 0; font-size: 15px; line-height: 1.5; color: var(--ink-dim); min-width: 0; }
+.v2 .kc-equip { border-radius: 8px; background: linear-gradient(var(--signal), color-mix(in srgb, var(--signal) 86%, #000)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 1px 2px rgba(0, 0, 0, 0.2); }
 .v2 .kc-equip[hidden] { display: none; }
 .v2 .kc-equip[disabled] { opacity: 0.6; cursor: progress; }
 .v2 .kc-melding { margin-top: 8px; font-size: 15px; line-height: 1.5; color: var(--ink); min-height: 1.5em; }
@@ -176,26 +282,36 @@ html.v2[data-thema="donker"] .kc-chip[aria-pressed="true"] { color: var(--signal
 .v2 .kc-link { color: var(--signal-text); font-weight: 700; }
 
 @media (prefers-reduced-motion: no-preference) {
-  .v2 .kc-tab,
-  .v2 .kc-chip,
-  .v2 .kc-tegel { transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease; }
+  .v2 .kc-seg,
+  .v2 .kc-zij,
+  .v2 .kc-zacht,
+  .v2 .kc-tegel { transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
   .v2 .kc-xp-vul { transition: width 0.3s var(--ease-out); }
 }
 
-/* ---- Tablet en breder --------------------------------------------------------------------------------------- */
+/* ---- Tablet: de zijbalk staat links, de preview boven ------------------------------------------------------- */
 @media (min-width: 768px) {
+  .v2 .kc-romp { grid-template-columns: 200px minmax(0, 1fr); grid-template-areas: "rechts rechts" "zij midden"; }
+  .v2 .kc-rechts { grid-area: rechts; position: static; max-height: none; }
+  .v2 .kc-zijbalk { grid-area: zij; order: 0; border-bottom: 0; border-right: 1px solid var(--line); padding: 12px 8px; }
+  .v2 .kc-midden { grid-area: midden; order: 0; }
+  .v2 .kc-zij-kop { display: block; }
+  .v2 .kc-cats { flex-direction: column; overflow: visible; }
+  .v2 .kc-zij { width: 100%; min-height: 36px; }
+  .v2 .kc-seg, .v2 .kc-zacht { min-height: 36px; }
   .v2 .kc-grid { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
-  .v2 .kc-tegel-beeld,
-  .v2 .kc-sw,
-  .v2 .kc-tegel-leeg { height: 84px; }
+  .v2 .kc-tegel-beeld, .v2 .kc-sw, .v2 .kc-tegel-leeg { height: 84px; }
 }
-@media (min-width: 1024px) {
-  .v2 .kc-layout { grid-template-columns: minmax(0, min(560px, 45%)) minmax(0, 1fr); gap: 32px; align-items: start; }
-  .v2 .kc-links { max-height: calc(100vh - var(--nav-h) - 24px); }
+/* ---- Breed: zijbalk | raster | preview ---------------------------------------------------------------------- */
+@media (min-width: 1100px) {
+  .v2 .kc-romp { grid-template-columns: 208px minmax(0, 1fr) minmax(320px, 400px); grid-template-areas: "zij midden rechts"; align-items: start; }
+  .v2 .kc-rechts { position: sticky; top: calc(var(--nav-h) + 12px); max-height: calc(100vh - var(--nav-h) - 24px); overflow: auto; border-left: 1px solid var(--line); border-bottom: 0; }
+  .v2 .kc-zijbalk { align-self: stretch; }
 }
 @media (max-width: 767px) {
   .v2 .kc { padding-top: calc(var(--nav-h) + 24px); }
   .v2 .kc-staat { padding: 20px; }
-  .v2 .kc-podium { padding: 12px; }
+  .v2 .kc-balk { padding: 8px 10px; }
   .v2 .kc-equip { width: 100%; }
+  .v2 .kc-dc { padding: 12px 12px 12px 10px; }
 }

@@ -44,7 +44,7 @@ def test_de_csp_staat_img_van_de_api_en_discord_toe_en_verder_niets_nieuws():
 
 
 def test_geen_innerhtml_geen_inline_en_geen_em_dash_in_de_pagina():
-    js = JS.read_text(encoding="utf-8")
+    js = JS.read_text(encoding="utf-8") + (SITE / "js" / "kaart-opbouw.js").read_text(encoding="utf-8")         + (SITE / "js" / "kaart-ingang.js").read_text(encoding="utf-8")
     code = re.sub(r"/\*.*?\*/", "", js, flags=re.S)
     code = re.sub(r"(?m)^\s*//.*$", "", code)
     for verboden in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function", 'setAttribute("on',
@@ -53,18 +53,23 @@ def test_geen_innerhtml_geen_inline_en_geen_em_dash_in_de_pagina():
     html = PAGINA.read_text(encoding="utf-8")
     assert not re.search(r"<script(?![^>]*\bsrc=)", html) and "<style" not in html and not re.search(r'\sstyle="', html)
     assert not re.search(r"\son[a-z]+=", html)
-    for pad in (PAGINA, JS, CSS):
+    for pad in (PAGINA, JS, CSS, SITE / "js" / "kaart-opbouw.js", SITE / "js" / "kaart-ingang.js"):
         for n, regel in enumerate(pad.read_text(encoding="utf-8").splitlines(), 1):
             if "—" in regel:
                 assert regel.strip().startswith(("//", "/*", "*", "<!--", "-->")) or "<!--" in regel, (pad.name, n)
 
 
-def test_de_pagina_staat_niet_in_de_navigatie_van_een_andere_pagina():
+def test_de_pagina_staat_alleen_als_verborgen_ingang_in_de_navigatie():
+    """Sinds de ingangen (11-11-2026): "My cards" staat in het menu van het account-bolletje, maar als `data-kaart-ingang hidden`:
+    zichtbaar pas als /api/site/features `kaart_editor: true` meldt (site/tests/test_kaart_ingangen.py). Nergens een gewone link."""
     for p in (SITE / "v2").glob("*.html"):
-        if p.name != "cards.html":
-            assert "cards.html" not in p.read_text(encoding="utf-8"), p.name
+        html = p.read_text(encoding="utf-8")
+        for m in re.finditer(r'<a [^>]*href="cards\.html"[^>]*>', html):
+            omgeving = html[max(0, m.start() - 80):m.end()]            # het <li> ervoor of de <a> zelf draagt de markering
+            assert "data-kaart-ingang" in omgeving and "hidden" in omgeving, (p.name, omgeving)
+        assert not re.search(r'<li><a href="cards\.html"', html), p.name
     for p in SITE.glob("*.html"):
-        assert "v2/cards.html" not in p.read_text(encoding="utf-8"), p.name
+        assert "v2/cards.html" not in p.read_text(encoding="utf-8") or p.name == "dashboard.html", p.name
 
 
 def test_nav_en_footer_zijn_die_van_de_voorpagina():
@@ -74,7 +79,9 @@ def test_nav_en_footer_zijn_die_van_de_voorpagina():
     for begin, eind in (('<header class="nav"', "</header>"), ('<footer class="foot">', "</footer>")):
         assert _blok(pagina, begin, eind) == _blok(index, begin, eind), begin
     nav = pagina[pagina.index('<header class="nav"'):pagina.index("</header>")]
-    assert "cards" not in nav.lower().replace("cards-pagina", "")
+    assert 'class="nav-links"' in nav
+    hoofdmenu = nav[nav.index('<ul class="nav-links">'):nav.index("</ul>", nav.index('<ul class="nav-links">'))]
+    assert "cards" not in hoofdmenu.lower(), "de hoofdnavigatie is ongewijzigd: de ingang zit in het account-menu"
 
 
 def test_de_pagina_noemt_geen_google_fonts_en_heeft_een_thema_script_voor_de_stylesheets():
@@ -84,7 +91,7 @@ def test_de_pagina_noemt_geen_google_fonts_en_heeft_een_thema_script_voor_de_sty
 
 
 def test_de_veilige_url_regel_staat_in_de_code():
-    js = JS.read_text(encoding="utf-8")
+    js = (SITE / "js" / "kaart-opbouw.js").read_text(encoding="utf-8")
     assert 'u.protocol !== "https:"' in js and "u.host !== API_HOST" in js and "/kaart/plaat/" in js
     assert r"\/api\/v1\/me\/kaart\/preview\/[0-9a-f]{40}" in js
 
@@ -174,10 +181,13 @@ def staat_basis(gekozen=None):
                       "bankkaart_standaard": "free", "bankkaart_goud": "for_sale"}}
 
 
-def preview_basis(**platen):
-    alle = {"banner": None, "divider": None, "embleem": None, "plaquette": None, "bank": None, "tegels": None}
+def preview_basis(opbouw=None, **platen):
+    alle = {n: None for n in ("banner", "divider", "embleem", "plaquette", "bank", "tegels", "profiel", "blokken")}
     alle.update(platen)
-    return {"accent": "#F35168", "rand": None, "platen": alle, "tekst": {"bank_regels": True}}
+    uit = {"accent": "#F35168", "rand": None, "platen": alle, "tekst": {"bank_regels": True}}
+    if opbouw is not None:
+        uit["opbouw"] = opbouw
+    return uit
 
 
 SPELER = {"available": True, "item": {"level": 27, "xp_into_level": 400, "xp_to_next_level": 1000, "equipped_title": "Vault Breaker",
@@ -870,7 +880,7 @@ def test_telefoon_geen_horizontale_scroll_marge_16_en_tikdoelen_44(tab, breedte,
     assert m["sw"] <= m["iw"], m
     assert m["links"] >= 16 - 0.5, m
     if toestand == "editor":
-        klein = t.page.evaluate("""() => [...document.querySelectorAll('.kc-tab, .kc-chip, .kc-tegel, .kc-podium-knop, [data-kc-equip]:not([hidden])')]
+        klein = t.page.evaluate("""() => [...document.querySelectorAll('.kc-seg, .kc-zij, .kc-tegel, .kc-podium-knop, [data-kc-equip]:not([hidden])')]
             .map(e => [e.className, e.getBoundingClientRect().width, e.getBoundingClientRect().height])
             .filter(([c, w, h]) => w < 43.5 || h < 43.5)""")
         assert klein == [], klein
@@ -904,12 +914,12 @@ def test_licht_en_donker_halen_4_5_op_de_pagina_en_op_beide_podiumstanden(tab, s
     assert t.page.evaluate("() => document.documentElement.dataset.thema") == ("donker" if schema == "dark" else "licht")
     pagina = t.page.evaluate("""() => {
       const bg = (e) => { for (let n = e; n; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (c !== 'rgba(0, 0, 0, 0)') return c; } return 'rgb(255,255,255)'; };
-      return [...document.querySelectorAll('.kc-lead, .kc-tegel-status, .kc-tegel-naam, .kc-actie-tekst, .kc-pod-noot, .kc-gekozen, .kc-tab, .kc-eyebrow')]
+      return [...document.querySelectorAll('.kc-lead, .kc-tegel-status, .kc-tegel-naam, .kc-actie-tekst, .kc-pod-noot, .kc-gekozen, .kc-seg, .kc-zij, .kc-eyebrow')]
         .filter(e => e.getBoundingClientRect().width && e.textContent.trim())
         .map(e => [e.className, getComputedStyle(e).color, bg(e)]);
     }""")
     for klasse, fg, bg in pagina:
-        if "kc-tab" in klasse:
+        if "kc-seg" in klasse or "kc-zij" in klasse:
             continue
         assert _contrast(_rgb(fg), _rgb(bg)) >= 4.5, (schema, klasse, fg, bg)
     assert t.page.evaluate("() => document.querySelector('[data-kc-podium]').textContent") == ("Discord dark" if schema == "dark" else "Discord light")
@@ -918,11 +928,12 @@ def test_licht_en_donker_halen_4_5_op_de_pagina_en_op_beide_podiumstanden(tab, s
             t.page.locator("[data-kc-podium]").click()
             t.page.wait_for_timeout(250)                 # de kleuren zijn pas na een frame bijgewerkt
         waarden = t.page.evaluate("""() => {
-          const k = document.querySelector('[data-kc-podium-vak]'); const c = getComputedStyle(k);
-          const naam = getComputedStyle(k.querySelector('.kc-pod-naam')).color;
-          const label = getComputedStyle(k.querySelector('.kc-pod-label')).color;
-          const klein = getComputedStyle(k.querySelector('.kc-pod-klein')).color;
-          return [c.backgroundColor, naam, label, klein];
+          const bg = (e) => { for (let n = e; n; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (c !== 'rgba(0, 0, 0, 0)') return c; } return 'rgb(255,255,255)'; };
+          const k = document.querySelector('[data-kc-podium-vak]');
+          const naam = k.querySelector('.kc-pod-naam');
+          const label = k.querySelector('.kc-pod-label');
+          const klein = k.querySelector('.kc-pod-klein');
+          return [bg(naam), getComputedStyle(naam).color, getComputedStyle(label).color, getComputedStyle(klein).color];
         }""")
         for fg in waarden[1:]:
             assert _contrast(_rgb(fg), _rgb(waarden[0])) >= 4.5, (schema, stand, fg, waarden[0])
@@ -967,4 +978,4 @@ def test_staaltjes_laden_lui(tab):
 def test_de_pagina_werkt_los_zonder_site_versie_of_navigatie(tab):
     t = tab().open()
     assert t.page.locator("h1").inner_text() == "Make your cards yours"
-    assert t.page.locator("#nav-menu a", has_text="Cards").count() == 0
+    assert not t.page.locator("a", has_text="My cards").first.is_visible(), "met de vlag uit staat de ingang er niet"

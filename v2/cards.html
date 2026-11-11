@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="../css/thema.css" />
   <link rel="icon" type="image/webp" href="img/bucky-mark-96.webp" />
   <script type="module" src="js/v2.js"></script>
+  <script type="module" src="../js/kaart-ingang.js"></script>
   <script type="module" src="js/cards.js"></script>
 </head>
 <body class="cards-pagina">
@@ -51,6 +52,7 @@
             <span data-auth-naam></span>
           </li>
           <li data-auth-in hidden><a href="../dashboard.html">Dashboard</a></li>
+          <li data-auth-in hidden><a href="cards.html" data-kaart-ingang hidden>My cards</a></li>
           <li data-auth-in hidden><button type="button" class="nav-sheet-logout" data-auth-logout>Log out</button></li>
           <li><a href="https://discord.gg/sjESUgXguQ" target="_blank" rel="noopener">Bucky on Discord</a></li>
         </ul>
@@ -69,6 +71,7 @@
             </button>
             <ul class="nav-user-menu" id="nav-user-menu" hidden>
               <li><a href="../dashboard.html">Dashboard</a></li>
+              <li data-kaart-ingang hidden><a href="cards.html">My cards</a></li>
               <li><button type="button" data-auth-logout>Log out</button></li>
             </ul>
           </div>
@@ -132,37 +135,46 @@
         </div>
 
         <div class="kc-editor" data-kc-editor hidden>
-          <div class="kc-tabs" role="tablist" aria-label="Card">
-            <button type="button" class="kc-tab" role="tab" id="kc-tab-profiel" aria-selected="true" aria-controls="kc-paneel" data-kc-tab="profiel">Profile</button>
-            <button type="button" class="kc-tab" role="tab" id="kc-tab-saldo" aria-selected="false" aria-controls="kc-paneel" tabindex="-1" data-kc-tab="saldo">Balance</button>
-          </div>
-
-          <div class="kc-layout" role="tabpanel" id="kc-paneel">
-            <div class="kc-links">
-              <div class="kc-podium-kop">
-                <h2 class="title-m">Preview</h2>
-                <button type="button" class="btn btn-quiet kc-podium-knop" data-kc-podium aria-pressed="false">Discord light</button>
+          <div class="kc-venster">
+            <!-- De werkbalk: een segmented control voor Profile en Balance, zoals in een Mac-app, en de schakelaar voor de
+                 achtergrond van de preview. Alleen een ontwerpstijl: geen logo's of pictogrammen van iemand anders. -->
+            <div class="kc-balk">
+              <div class="kc-segment" role="tablist" aria-label="Card">
+                <button type="button" class="kc-seg" role="tab" id="kc-tab-profiel" aria-selected="true" aria-controls="kc-paneel" data-kc-tab="profiel">Profile</button>
+                <button type="button" class="kc-seg" role="tab" id="kc-tab-saldo" aria-selected="false" aria-controls="kc-paneel" tabindex="-1" data-kc-tab="saldo">Balance</button>
               </div>
-              <div class="kc-podium" data-kc-podium-vak data-podium="licht">
-                <div class="kc-pod" data-kc-pod></div>
-              </div>
-              <p class="kc-pod-noot">Preview. Discord draws it almost exactly like this. The real card is <code>+profile</code> or <code>+balance</code>.</p>
-              <p class="kc-previewstatus" data-kc-previewstatus role="status" aria-live="polite"></p>
+              <button type="button" class="kc-zacht kc-podium-knop" data-kc-podium aria-pressed="false">Discord light</button>
             </div>
 
-            <div class="kc-rechts">
-              <div class="kc-cats" role="group" aria-label="Category" data-kc-cats></div>
-              <div class="kc-grid-kop">
-                <h2 class="title-m" data-kc-cat-titel></h2>
-                <p class="kc-gekozen" data-kc-gekozen></p>
-              </div>
-              <div class="kc-grid" role="radiogroup" data-kc-grid></div>
-              <p class="kc-modus" data-kc-modus hidden></p>
-              <div class="kc-actie" data-kc-actie>
-                <p class="kc-actie-tekst" data-kc-actie-tekst></p>
-                <button type="button" class="btn btn-signal kc-equip" data-kc-equip hidden>Equip</button>
-              </div>
-              <p class="kc-melding" data-kc-melding role="status" aria-live="polite"></p>
+            <div class="kc-romp" role="tabpanel" id="kc-paneel">
+              <!-- De zijbalk met de categorieen (matglas). Op een telefoon wordt het een horizontale rij boven het raster. -->
+              <aside class="kc-zijbalk" aria-label="Categories">
+                <p class="kc-zij-kop">Look</p>
+                <div class="kc-cats" role="group" aria-label="Category" data-kc-cats></div>
+              </aside>
+
+              <section class="kc-midden" aria-label="Choose a look">
+                <div class="kc-grid-kop">
+                  <h2 class="title-m" data-kc-cat-titel></h2>
+                  <p class="kc-gekozen" data-kc-gekozen></p>
+                </div>
+                <div class="kc-grid" role="radiogroup" data-kc-grid></div>
+                <p class="kc-modus" data-kc-modus hidden></p>
+                <div class="kc-actie" data-kc-actie>
+                  <p class="kc-actie-tekst" data-kc-actie-tekst></p>
+                  <button type="button" class="btn btn-signal kc-equip" data-kc-equip hidden>Equip</button>
+                </div>
+                <p class="kc-melding" data-kc-melding role="status" aria-live="polite"></p>
+              </section>
+
+              <section class="kc-rechts" aria-label="Preview">
+                <h2 class="kc-pod-titel">Preview</h2>
+                <div class="kc-podium" data-kc-podium-vak data-podium="licht">
+                  <div class="kc-pod" data-kc-pod></div>
+                </div>
+                <p class="kc-pod-noot">Preview. This is what Discord shows, drawn from the same layout. The real card is <code>+profile</code> or <code>+balance</code>.</p>
+                <p class="kc-previewstatus" data-kc-previewstatus role="status" aria-live="polite"></p>
+              </section>
             </div>
           </div>
         </div>

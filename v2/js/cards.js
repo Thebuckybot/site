@@ -22,14 +22,13 @@
  */
 import { API_URL } from "../../js/config.js";
 import { loginUrl } from "../../js/sessie.js";
+import { discordAvatar, el, plaatImg, tekenOpbouw, veiligeUrl, zetKleur } from "../../js/kaart-opbouw.js";
+
+export { veiligeUrl };
 
 export const TERUG = "v2/cards.html";
 const API_HOST = new URL(API_URL).host;
-const PERSOONLIJK = /^\/api\/v1\/me\/kaart\/preview\/[0-9a-f]{40}$/;
-const HEX = /^#[0-9a-fA-F]{6}$/;
 const ID = /^[a-z0-9_]{3,40}$/;
-const DISCORD_ID = /^[0-9]{5,25}$/;
-const DISCORD_HASH = /^[a-z0-9_]{1,64}$/;
 const DEBOUNCE_MS = 350;
 const CONCEPT = "kaart_concept";
 
@@ -73,52 +72,10 @@ const REDEN = {
 };
 
 // --------------------------------------------------------------------------
-// Kleine hulpen: elementen met tekst, nooit innerHTML
+// Kleine hulpen komen uit js/kaart-opbouw.js (el, veiligeUrl, plaatImg, zetKleur, tekenOpbouw): dezelfde als op het dashboard
 // --------------------------------------------------------------------------
-function el(tag, attrs = {}, ...kinderen) {
-    const n = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs)) {
-        if (v === null || v === undefined || v === false) continue;
-        if (k === "class") n.className = v;
-        else n.setAttribute(k, v === true ? "" : String(v));
-    }
-    for (const k of kinderen) {
-        if (k === null || k === undefined) continue;
-        n.append(typeof k === "string" ? document.createTextNode(k) : k);
-    }
-    return n;
-}
-
 const $ = (sel, wortel = document) => wortel.querySelector(sel);
-const minderBeweging = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const getal = (n) => (Number.isFinite(Number(n)) ? Number(n).toLocaleString("en-US") : "0");
-
-/** Een URL van een plaat, of null. Alleen https op de API-host onder /kaart/plaat/, of het relatieve pad van een
- *  persoonlijke previewplaat (daar komt de API-basis voor). Alles anders, ook http, een andere host of een URL met
- *  gebruikersnaam, wordt niet geladen. */
-export function veiligeUrl(waarde) {
-    if (typeof waarde !== "string" || waarde.length > 300) return null;
-    if (PERSOONLIJK.test(waarde)) return API_URL + waarde;
-    let u;
-    try {
-        u = new URL(waarde);
-    } catch (_e) {
-        return null;
-    }
-    if (u.protocol !== "https:" || u.host !== API_HOST || u.username || u.password) return null;
-    if (!u.pathname.startsWith("/kaart/plaat/")) return null;
-    return u.href;
-}
-
-function discordAvatar(id, hash) {
-    if (typeof id !== "string" || !DISCORD_ID.test(id) || typeof hash !== "string" || !DISCORD_HASH.test(hash)) return null;
-    return `https://cdn.discordapp.com/avatars/${id}/${hash}.png?size=128`;
-}
-
-function zetKleur(doel, naam, hex) {
-    if (typeof hex === "string" && HEX.test(hex)) doel.style.setProperty(naam, hex);
-    else doel.style.removeProperty(naam);
-}
 
 // --------------------------------------------------------------------------
 // De API
@@ -306,61 +263,6 @@ function statusTekst(x) {
 }
 
 // --------------------------------------------------------------------------
-// Plaatjes
-// --------------------------------------------------------------------------
-/** Een <img> voor een plaat `{url, beweegt, stil}` of null. Bewegende platen tonen eerst `stil` en spelen bij hover, focus
- *  of tik; met prefers-reduced-motion spelen ze nooit. Een plaat die niet laadt verdwijnt (geen kapot plaatje). */
-function plaatImg(p, alt, klasse) {
-    if (!p || typeof p !== "object") return null;
-    const anim = veiligeUrl(p.url);
-    const stil = veiligeUrl(p.stil);
-    if (!anim && !stil) return null;
-    const img = el("img", { class: klasse, alt, loading: "lazy", decoding: "async", referrerpolicy: "no-referrer" });
-    const verdwijn = () => img.remove();
-    img.addEventListener("error", verdwijn, { once: true });
-    if (!p.beweegt) {
-        img.src = anim || stil;
-        return img;
-    }
-    if (!stil) {
-        if (minderBeweging() || !anim) return null;
-        img.src = anim;
-        return img;
-    }
-    img.src = stil;
-    if (anim) {
-        img.tabIndex = 0;
-        const speel = () => {
-            if (!minderBeweging()) img.src = anim;
-        };
-        const stop = () => {
-            img.src = stil;
-        };
-        // Muis: spelen zolang je erover staat. Aanraking en toetsenbord: tikken (of Enter of spatie) zet de animatie aan en uit;
-        // bij aanraking volgt pointerleave direct op de tik, dus daar mag hij de animatie niet stoppen.
-        img.addEventListener("pointerenter", (e) => {
-            if (e.pointerType === "mouse") speel();
-        });
-        img.addEventListener("pointerleave", (e) => {
-            if (e.pointerType === "mouse") stop();
-        });
-        img.addEventListener("focus", speel);
-        img.addEventListener("blur", stop);
-        const wissel = () => (img.src === anim ? stop() : speel());
-        img.addEventListener("click", (e) => {
-            if (e.pointerType !== "mouse") wissel();
-        });
-        img.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                wissel();
-            }
-        });
-    }
-    return img;
-}
-
-// --------------------------------------------------------------------------
 // De preview (het "podium")
 // --------------------------------------------------------------------------
 function podiumKaart() {
@@ -391,6 +293,13 @@ function tekenPodium() {
     const platen = (data && data.platen) || {};
     const sp = S.speler || {};
     kader.dataset.podium = S.podium;
+    if (data && data.opbouw) {
+        // DE INDELING KOMT VAN DE BOT: dezelfde bouwcode als het Discord-bericht; hier wordt alleen de omlijsting getekend.
+        kader.dataset.weergave = "discord";
+        tekenOpbouw(vak, data.opbouw, { platen, avatarUrl: S.avatarUrl, naam: S.naam });
+        return;
+    }
+    kader.dataset.weergave = "eenvoudig";        // een oudere bot of een mislukte opbouw: de eenvoudige preview
     zetKleur(kader, "--kc-accent", data && data.accent);
     const rand = data && data.rand;
     zetKleur(kader, "--kc-rand", rand && rand.rand);
@@ -518,7 +427,7 @@ function tekenCats() {
     const cats = catsVanTab();
     if (!cats.some(([, c]) => c === S.cat)) S.cat = cats.length ? cats[0][1] : S.cat;
     vak.replaceChildren(...cats.map(([kaart, cat]) => {
-        const knop = el("button", { type: "button", class: "kc-chip", "aria-pressed": String(cat === S.cat), "data-kc-cat": cat, "data-kc-kaart": kaart },
+        const knop = el("button", { type: "button", class: "kc-zij", "aria-pressed": String(cat === S.cat), "data-kc-cat": cat, "data-kc-kaart": kaart },
             CAT_NAAM[cat] || cat);
         knop.addEventListener("click", () => {
             S.cat = cat;
