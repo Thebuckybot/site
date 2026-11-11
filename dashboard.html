@@ -6,7 +6,7 @@
   <!-- Content Security Policy. Als <meta> omdat GitHub Pages geen headers laat
        zetten; frame-ancestors (clickjacking) werkt daardoor niet. Moet vóór elk
        script en stylesheet staan. Zie bucky1.0/tests/test_site_csp.py. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https://cdn.discordapp.com; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https://cdn.discordapp.com https://api.buckybot.app; connect-src https://api.buckybot.app; base-uri 'self'; form-action 'none'; object-src 'none'" />
   <title>Choose a server - Bucky</title>
   <!-- Open Graph en Twitter/X: titel en beschrijving zijn die van deze pagina. -->
   <meta property="og:type" content="website" />
@@ -35,11 +35,13 @@
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="public.css" />
   <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="css/kaart-opbouw.css" />
   <link rel="stylesheet" href="css/tour.css" />
 
   <script src="js/dashboard.js" type="module"></script>
   <script src="js/nav-auth.js" type="module"></script>
 <script type="module" src="js/features.js"></script>
+  <script type="module" src="js/kaart-tegel.js"></script>
 </head>
 <body class="dv2-kiezer" data-tour="dashboard">
 
@@ -65,6 +67,15 @@
       </div>
       <div class="picker-user" id="user-info"></div>
     </div>
+
+    <!-- De tegel "Cards" (11-11-2026): een kleine preview van je profielkaart en een link naar de editor. Verborgen tot
+         /api/site/features kaart_editor: true meldt (js/kaart-tegel.js); met de vlag uit of een mislukte aanroep staat hij er niet. -->
+    <section class="kc-tegel-dash" data-kaart-tegel hidden aria-labelledby="kc-tegel-titel">
+      <h2 id="kc-tegel-titel">Cards</h2>
+      <p>Your profile card, the way Discord shows it.</p>
+      <div class="kc-mini" data-kaart-mini></div>
+      <a class="btn btn-primary" href="v2/cards.html">Customise your cards</a>
+    </section>
 
     <div class="picker-toolbar">
       <div class="picker-search" id="picker-search" hidden>

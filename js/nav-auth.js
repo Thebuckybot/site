@@ -3,6 +3,8 @@ import { API_URL } from "./config.js";
 // sessie.js, zonder bijwerkingen, zodat v2 en de arcade hem kunnen gebruiken
 // zonder deze balk te tekenen. Hier is hij precies wat hij was.
 import { clearUserData, fetchMetDeadline, haalLogin, uitloggen } from "./sessie.js";
+// "My cards" staat er alleen als de vlag kaart_editor aan staat (kaart-ingang.js: bij twijfel verborgen).
+import { kaartEditorAan } from "./kaart-ingang.js";
 
 const navMenu = document.getElementById("nav-menu");
 
@@ -71,6 +73,13 @@ function renderNav(loggedIn, user = null) {
 
     // Dashboard link
     navMenu.appendChild(navLi("dashboard.html", "Dashboard", "dashboard-link"));
+
+    // De kaarteditor: verborgen tot de site meldt dat hij aan staat.
+    const kaartLi = navLi("v2/cards.html", "My cards", "kaart-link");
+    kaartLi.hidden = true;
+    kaartLi.setAttribute("data-kaart-ingang", "");
+    navMenu.appendChild(kaartLi);
+    kaartEditorAan().then((aan) => { if (aan) kaartLi.hidden = false; });
 
     // Logout knop
     const logoutLi = document.createElement("li");

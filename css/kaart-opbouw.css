@@ -1,0 +1,52 @@
+/* De look-alike van Discords container (11-11-2026), gedeeld door de editorpagina (v2/cards.html) en de tegel op het dashboard.
+   De INDELING komt uit de beschrijving van de bot (js/kaart-opbouw.js); dit bestand tekent alleen de omlijsting: een donkere kaart
+   met een accentstreep links en afgeronde hoeken. De kleuren hebben een Discord-donker als standaard; de editorpagina zet ze per
+   podiumstand (Discord dark / light) met --pod-*. */
+
+/* Het bericht: een donkere kaart met een accentstreep links en afgeronde hoeken. De inhoud is de beschrijving van de bot. */
+.kc-dc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 14px 14px;
+  border-left: 4px solid var(--kc-accent, var(--signal, #FF465C));
+  border-radius: 8px;
+  background: var(--pod-kaart, #2B2D31);
+  color: var(--pod-ink, #F2F3F5);
+  font-size: 15px;
+  line-height: 1.4;
+  min-width: 0;
+}
+.kc-dc-sectie { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.kc-dc-sectie > .kc-dc-tekst { flex: 1; min-width: 0; }
+.kc-dc-duim { flex: none; width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--pod-spoor, #1E1F22); }
+.kc-dc-initiaal { display: grid; place-items: center; font-size: 26px; font-weight: 800; color: var(--pod-ink, #F2F3F5); }
+.kc-dc-tekst { min-width: 0; overflow-wrap: anywhere; }
+.kc-dc-tekst p,
+.kc-dc-tekst h2,
+.kc-dc-tekst h3,
+.kc-dc-tekst h4 { margin: 0; }
+.kc-dc-kop { font-weight: 700; line-height: 1.25; }
+.kc-dc-kop1 { font-size: 24px; }
+.kc-dc-kop2 { font-size: 20px; }
+.kc-dc-kop3 { font-size: 17px; }
+.kc-dc-klein { font-size: 12.5px; line-height: 1.4; color: var(--pod-dim, #B5BAC1); }
+.kc-dc-punt { position: relative; padding-left: 14px; }
+.kc-dc-punt::before { content: ""; position: absolute; left: 3px; top: 0.65em; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.kc-dc-leeg { height: 8px; }
+.kc-dc strong { font-weight: 700; }
+.kc-dc code { font-family: var(--font-mono, ui-monospace, Consolas, monospace); font-size: 0.9em; padding: 1px 5px; border-radius: 4px; background: var(--pod-spoor, #1E1F22); color: var(--pod-ink, #F2F3F5); }
+.kc-dc-emoji { display: inline-block; width: 20px; height: 20px; vertical-align: -4px; }
+.kc-dc-media { display: block; width: 100%; height: auto; border-radius: 4px; }
+.kc-dc-hr { width: 100%; height: 0; margin: 4px 0; border: 0; border-top: 1px solid var(--pod-lijn, #3F4147); }
+
+/* ---- De tegel "Cards" op het dashboard (js/kaart-tegel.js): verborgen tot de vlag kaart_editor aan staat ---------------- */
+.kc-tegel-dash { max-width: 640px; margin: 0 0 24px; padding: 16px; border: 1px solid var(--border, #2E2833); border-radius: 12px; background: var(--surface, #17141B); color: var(--text, inherit); }
+.kc-tegel-dash[hidden] { display: none; }
+.kc-tegel-dash h2 { margin: 0 0 4px; font-size: 18px; }
+.kc-tegel-dash p { margin: 0 0 12px; opacity: 0.8; }
+.kc-tegel-dash .kc-mini { max-height: 240px; overflow: hidden; margin-bottom: 12px; font-size: 13px; }
+.kc-tegel-dash .kc-mini .kc-dc { font-size: 13px; padding: 10px 12px 10px 10px; }
+.kc-tegel-dash .kc-mini .kc-dc-duim { width: 40px; height: 40px; }
+.kc-tegel-dash .kc-mini:empty { display: none; }
+.kc-tegel-dash a.btn { min-height: 44px; display: inline-flex; align-items: center; }
