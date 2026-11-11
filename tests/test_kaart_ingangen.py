@@ -247,3 +247,81 @@ def test_de_ingangen_laden_niets_van_een_vreemde_host(tab):
     _open_v1(t)
     _open_v2(t, "/v2/index.html")
     assert api.extern == []
+
+
+# --------------------------------------------------------------------------- #
+# De tegel haalt zijn preview zuinig (review A1): pas in beeld, 10 minuten onthouden, werkt zonder opslag
+# --------------------------------------------------------------------------- #
+def _tegel_in_beeld(t):
+    t.page.locator("[data-kaart-tegel]").scroll_into_view_if_needed()
+    t.page.wait_for_timeout(300)
+
+
+def _wacht_op_cache(t):
+    wacht_op(t, "() => sessionStorage.getItem('bucky_kaart_tegel_v1')", timeout=8000)
+
+
+def test_de_tegel_haalt_zijn_preview_pas_als_hij_in_beeld_komt(tab):
+    api = _api(AAN)
+    t = tab(api, breedte=1280, hoogte=400)
+    t.page.add_init_script("""new MutationObserver((_m, ob) => {
+        const g = document.querySelector('[data-kaart-tegel]'); if (g) { g.style.marginTop = '4000px'; ob.disconnect(); }
+    }).observe(document, { childList: true, subtree: true });""")
+    _open_v1(t)
+    t.page.evaluate("() => window.scrollTo(0, 0)")
+    t.page.wait_for_timeout(800)
+    assert t.page.locator("[data-kaart-tegel]").is_visible()
+    assert api.aantal("POST", "/api/v1/me/kaart/preview") == 0, "buiten beeld: nog geen preview"
+    _tegel_in_beeld(t)
+    wacht_op(t, "() => document.querySelector('[data-kaart-mini] .kc-dc')")
+    assert api.aantal("POST", "/api/v1/me/kaart/preview") == 1
+
+
+def test_twee_keer_het_dashboard_openen_geeft_een_previewaanroep(tab):
+    api = _api(AAN)
+    t = tab(api, breedte=1280)
+    _open_v1(t)
+    wacht_op(t, "() => document.querySelector('[data-kaart-mini] .kc-dc')")
+    _wacht_op_cache(t)
+    assert api.aantal("POST", "/api/v1/me/kaart/preview") == 1
+    _open_v1(t)
+    wacht_op(t, "() => document.querySelector('[data-kaart-mini] .kc-dc')")
+    assert t.page.locator("[data-kaart-mini] .kc-dc h3").inner_text() == "Tommy's Profile"
+    assert api.aantal("POST", "/api/v1/me/kaart/preview") == 1, "de tweede keer komt uit de cache"
+
+
+def test_na_tien_minuten_is_de_cache_verlopen_en_komt_er_een_nieuwe_aanroep(tab):
+    api = _api(AAN)
+    t = tab(api, breedte=1280)
+    _open_v1(t)
+    wacht_op(t, "() => document.querySelector('[data-kaart-mini] .kc-dc')")
+    _wacht_op_cache(t)
+    t.page.evaluate("""() => { const k = 'bucky_kaart_tegel_v1'; const c = JSON.parse(sessionStorage.getItem(k));
+                               c.tijd -= 11 * 60 * 1000; sessionStorage.setItem(k, JSON.stringify(c)); }""")
+    _open_v1(t)
+    wacht_op(t, "() => document.querySelector('[data-kaart-mini] .kc-dc')")
+    assert api.aantal("POST", "/api/v1/me/kaart/preview") == 2
+
+
+def test_een_kapotte_cachewaarde_wordt_genegeerd(tab):
+    api = _api(AAN)
+    t = tab(api, breedte=1280)
+    _open_v1(t)
+    wacht_op(t, "() => document.querySelector('[data-kaart-mini] .kc-dc')")
+    _wacht_op_cache(t)
+    t.page.evaluate("() => sessionStorage.setItem('bucky_kaart_tegel_v1', '{kapot')")
+    _open_v1(t)
+    wacht_op(t, "() => document.querySelector('[data-kaart-mini] .kc-dc')")
+    assert api.aantal("POST", "/api/v1/me/kaart/preview") == 2
+
+
+def test_de_tegel_werkt_zonder_sessionstorage(tab):
+    api = _api(AAN)
+    t = tab(api, breedte=1280)
+    t.page.add_init_script("""
+        const stuk = () => { throw new DOMException('geblokkeerd', 'SecurityError'); };
+        Object.defineProperty(window, 'sessionStorage', { get: stuk, configurable: true });""")
+    _open_v1(t)
+    wacht_op(t, "() => document.querySelector('[data-kaart-mini] .kc-dc')")
+    assert t.page.locator("[data-kaart-tegel] a.btn").is_visible()
+    assert api.aantal("POST", "/api/v1/me/kaart/preview") == 1
