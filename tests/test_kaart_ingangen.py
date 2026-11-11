@@ -18,8 +18,9 @@ UIT = (200, {"features": {"kaart_editor": False}, "site": {"version": "v2"}})
 ZONDER = (200, {"features": {"wordle": True}, "site": {"version": "v2"}})
 STANDEN = {
     "uit": UIT, "zonder-sleutel": ZONDER, "serverfout": (500, {"error": "boem"}), "geen-json": (200, "geen json"),
-    "netwerk": "netwerk", "tekst-true": (200, {"features": {"kaart_editor": "true"}}), "getal-1": (200, {"features": {"kaart_editor": 1}}),
-    "features-geen-object": (200, {"features": ["kaart_editor"]}),
+    "netwerk": "netwerk", "tekst-true": (200, {"features": {"kaart_editor": "true"}, "site": {"version": "v2"}}),
+    "getal-1": (200, {"features": {"kaart_editor": 1}, "site": {"version": "v2"}}),
+    "features-geen-object": (200, {"features": ["kaart_editor"], "site": {"version": "v2"}}),
 }
 OPBOUW = {"accent": "#4BC987", "onderdelen": [
     {"type": "sectie", "tekst": "## Tommy's Profile\n-# Elite", "plaat": "avatar:discord"},
@@ -65,6 +66,13 @@ def test_met_de_vlag_aan_staat_my_cards_in_het_menu_van_het_account_bolletje(tab
 @pytest.mark.parametrize("stand", list(STANDEN))
 def test_met_de_vlag_uit_of_een_mislukte_aanroep_staat_my_cards_er_niet(tab, stand):
     t = tab(_api(STANDEN[stand]), breedte=1280)
+    if stand == "geen-json":
+        # Een features-antwoord dat geen object is, kan de siteversie niet geven: site-version.js valt dan terug op v1 (bestaand
+        # gedrag, "bij twijfel v1") en de pagina verlaat v2. Er staat dan op geen enkele pagina een ingang.
+        t.page.goto(f"{t.server}/v2/index.html", wait_until="commit")
+        t.page.wait_for_timeout(2500)
+        assert t.page.locator('[data-kaart-ingang]:visible').count() == 0
+        return
     _open_v2(t, "/v2/index.html")
     _menu_open(t)
     assert not _ingang(t).is_visible(), stand
