@@ -35,6 +35,7 @@
  *                                                "connect to BuckyNet first"
  *                                                message. Page never crashes.
  */
+import { kaartEditorAan } from "../../../../js/kaart-ingang.js";
 import { escapeHtml, link, chip, sitePage, crossRefs } from "./kit.js";
 import { gatewayClient } from "../../../core/gatewayClient.js";
 
@@ -361,7 +362,22 @@ function renderSecurityBlock(sec) {
     `;
 }
 
-function renderCosmeticsBlock(view) {
+// De ingang naar de kaarteditor (11-11-2026): een klein "Customise" bij je profiel. ALLEEN als /api/site/features
+// kaart_editor: true meldt; met de vlag uit, een mislukte aanroep of twijfel staat er niets en gebeurt er niets.
+let kaartIngangAan = false;
+
+export function zetKaartIngang(aan) {
+    kaartIngangAan = aan === true;
+}
+
+/** De link naar de editor, of een lege string. Vaste tekst en een vaste URL: geen data van de speler erin. */
+export function kaartIngangHtml() {
+    return kaartIngangAan
+        ? `<p class="vm-profile-customise"><a href="v2/cards.html" target="_blank" rel="noopener">Customise your cards</a></p>`
+        : "";
+}
+
+export function renderCosmeticsBlock(view) {
     const titles = view.titles || [];
     const achievements = view.achievements || [];
     const eq = view.equipped_title || "";
@@ -388,6 +404,7 @@ function renderCosmeticsBlock(view) {
     return `
         <section class="vm-wiki-section vm-profile-block">
             <h2>Cosmetics &amp; recognition</h2>
+            ${kaartIngangHtml()}
             ${showcaseRow}
             <h3 class="vm-profile-subh">Titles (${titles.length})</h3>
             <div class="vm-site-chiprow">${titleChips}</div>
@@ -763,6 +780,13 @@ const PUBLIC_URL_RE = /^bucky:\/\/profile\/([^/?#]+)$/;
 // Registration + preload hook (Phase 4.3 polish)
 // ---------------------------------------------------------------------------
 export function registerProfileSite(registry) {
+    kaartEditorAan().then((aan) => {
+        if (aan && !kaartIngangAan) {
+            kaartIngangAan = true;
+            notifyHydrated();                 // een open profielpagina tekent zich opnieuw, nu met de link
+        }
+    });
+
     registry.register({
         id: "profile-home",
         url: SITE_URL,
