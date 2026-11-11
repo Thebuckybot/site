@@ -717,7 +717,9 @@ def test_geen_fouten_in_de_console(browser, server):
 #: Alles wat v2 bij het laden ophaalt, ongecomprimeerd (GitHub Pages comprimeert
 #: tekst nog). Gemeten op 12-10-2026: 201 KB (60 KB daarvan het heldenbeeld). Wie hier
 #: overheen gaat, voegt iets zwaars toe en moet dat met een reden doen.
-BUDGET_BYTES = 260_000
+#: Op 11-11-2026 van 260 naar 263 KB: de ingang naar de kaarteditor (js/kaart-ingang.js, 2 KB, en een verborgen menu-item en een
+#: regel CSS op elke v2-pagina) kostte 2,7 KB. De pagina zelf is niet zwaarder geworden; het script is klein en wordt maar eenmaal geladen.
+BUDGET_BYTES = 263_000
 
 
 @pytest.mark.parametrize("breedte,hoogte", [(390, 844), (1280, 900)])
